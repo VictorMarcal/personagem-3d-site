@@ -17,6 +17,18 @@
       <canvas id="viewer-canvas"></canvas>
       <div id="viewer-loading">Carregando personagem...</div>
     </div>
+
+    <section id="training-panel">
+      <div id="start-screen" class="panel-screen">
+        <button id="btn-start-treino" class="btn-primary">Iniciar Treino</button>
+      </div>
+
+      <div id="training-screen" class="panel-screen hidden">
+        <p class="training-label">Distância percorrida</p>
+        <p id="training-distance" class="training-distance">0 m</p>
+        <button id="btn-stop-treino" class="btn-secondary">Parar Treino</button>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -25,5 +37,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/training.js"></script>
 </body>
 </html>

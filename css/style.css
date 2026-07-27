@@ -29,6 +29,7 @@ body {
 main {
   flex: 1;
   display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 
@@ -36,6 +37,7 @@ main {
   position: relative;
   flex: 1;
   width: 100%;
+  min-height: 0;
 }
 
 #viewer-canvas {
@@ -53,6 +55,55 @@ main {
   color: #888;
   font-size: 0.9rem;
   pointer-events: none;
+}
+
+#training-panel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.25rem;
+  border-top: 1px solid #2a2a30;
+}
+
+.panel-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panel-screen.hidden {
+  display: none;
+}
+
+.btn-primary,
+.btn-secondary {
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: #4a90d9;
+  color: #fff;
+}
+
+.btn-secondary {
+  background: #2a2a30;
+  color: #f0f0f0;
+}
+
+.training-label {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.training-distance {
+  font-size: 2rem;
+  font-weight: 700;
 }
 
 .site-footer {
