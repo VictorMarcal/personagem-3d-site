@@ -233,6 +233,34 @@ main {
   color: #999;
 }
 
+.debug-label {
+  display: block;
+  font-size: 0.8rem;
+  color: #999;
+  margin-bottom: 0.5rem;
+}
+
+.debug-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+#input-max-speed {
+  width: 5rem;
+  border: 1px solid #2a2a30;
+  border-radius: 0.5rem;
+  background: #1f1f26;
+  color: #f0f0f0;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+.debug-status {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #888;
+}
+
 .site-footer {
   padding: 0.75rem 1.5rem;
   text-align: center;

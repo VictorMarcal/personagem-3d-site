@@ -10,11 +10,10 @@ const SAVE_INTERVAL_MS = 10000;
 // Filtros contra ruido/erros de GPS: ignora leituras pouco precisas,
 // movimentos pequenos demais para serem deslocamento real (parado, o GPS
 // "deriva" uns metros por conta propria) e saltos rapidos demais para
-// serem deslocamento real a pe (erro de GPS ou veiculo)
+// serem deslocamento real a pe (erro de GPS ou veiculo). O limite de
+// velocidade e ajustavel no card de Debug (js/debug.js: getMaxSpeedMps())
 const MAX_ACCURACY_M = 20;
 const MIN_MOVEMENT_M = 3;
-const MAX_SPEED_KMH = 30;
-const MAX_SPEED_MPS = MAX_SPEED_KMH / 3.6;
 
 const STORAGE_KEYS = {
   active: "treino.ativo",
@@ -81,7 +80,7 @@ function onPositionUpdate(position) {
     const deltaSeconds = (timestamp - lastPosition.timestamp) / 1000;
     const speedMps = deltaSeconds > 0 ? segmentM / deltaSeconds : Infinity;
 
-    if (speedMps > MAX_SPEED_MPS) {
+    if (speedMps > getMaxSpeedMps()) {
       return; // salto irreal (erro de GPS ou veiculo), mantem a ancora e ignora
     }
 

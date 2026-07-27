@@ -55,6 +55,20 @@
       <h2 class="card-title">Monstros</h2>
       <div id="monsters-list"></div>
     </section>
+
+    <section id="debug-card" class="card">
+      <h2 class="card-title">Debug</h2>
+
+      <label class="debug-label" for="input-max-speed">
+        Velocidade máxima aceite pelo filtro de GPS (km/h)
+      </label>
+      <div class="debug-row">
+        <input type="number" id="input-max-speed" min="1" step="1">
+        <button id="btn-save-max-speed" class="btn-secondary">Guardar</button>
+        <button id="btn-reset-max-speed" class="btn-secondary">Repor padrão</button>
+      </div>
+      <p id="debug-max-speed-status" class="debug-status"></p>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -66,6 +80,7 @@
   <script src="js/equipment.js"></script>
   <script src="js/experience.js"></script>
   <script src="js/monsters.js"></script>
+  <script src="js/debug.js"></script>
   <script src="js/training.js"></script>
   <script src="js/orientation.js"></script>
 </body>
