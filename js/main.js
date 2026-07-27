@@ -12,15 +12,12 @@ const camera = new THREE.PerspectiveCamera(
   100
 );
 camera.position.set(0, 1.5, 4);
+camera.lookAt(0, 1, 0);
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(viewer.clientWidth, viewer.clientHeight);
 renderer.shadowMap.enabled = true;
-
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 1, 0);
-controls.enableDamping = true;
 
 // Luzes
 const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
@@ -71,10 +68,35 @@ function onResize() {
 }
 window.addEventListener("resize", onResize);
 
+// Rotacao do personagem por arraste (mouse ou toque)
+const ROTATE_SPEED = 0.01; // radianos por pixel arrastado
+let isDragging = false;
+let lastPointerX = 0;
+
+canvas.addEventListener("pointerdown", (event) => {
+  isDragging = true;
+  lastPointerX = event.clientX;
+  canvas.setPointerCapture(event.pointerId);
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (!isDragging) return;
+  const deltaX = event.clientX - lastPointerX;
+  lastPointerX = event.clientX;
+  character.rotation.y += deltaX * ROTATE_SPEED;
+});
+
+canvas.addEventListener("pointerup", (event) => {
+  isDragging = false;
+  canvas.releasePointerCapture(event.pointerId);
+});
+
+canvas.addEventListener("pointercancel", () => {
+  isDragging = false;
+});
+
 function animate() {
   requestAnimationFrame(animate);
-  character.rotation.y += 0.005;
-  controls.update();
   renderer.render(scene, camera);
 }
 animate();
