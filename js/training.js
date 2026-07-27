@@ -38,6 +38,7 @@ let saveIntervalId = null;
 
 function updateDistanceDisplay() {
   distanceEl.textContent = `${Math.round(totalDistanceM)} m`;
+  updateXPDisplay(totalDistanceM);
 }
 
 // Treino acumulado: copia persistida em localStorage, salva a cada 10s
@@ -131,6 +132,12 @@ function stopTraining() {
     clearInterval(saveIntervalId);
     saveIntervalId = null;
   }
+
+  addToLifetimeDistance(totalDistanceM);
+  totalDistanceM = 0;
+  lastPosition = null;
+  updateXPDisplay(0);
+
   clearPersistedTraining();
   showStartScreen();
 }

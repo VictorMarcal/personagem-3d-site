@@ -58,6 +58,41 @@ main {
   pointer-events: none;
 }
 
+#xp-panel {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.75rem 1.25rem 0;
+}
+
+#xp-level {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.xp-bar-track {
+  width: 100%;
+  max-width: 320px;
+  height: 10px;
+  border-radius: 999px;
+  background: #2a2a30;
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: #4a90d9;
+  transition: width 0.2s ease;
+}
+
+#xp-progress-text {
+  font-size: 0.75rem;
+  color: #888;
+}
+
 #training-panel {
   display: flex;
   flex-shrink: 0;
