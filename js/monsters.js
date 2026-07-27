@@ -14,6 +14,7 @@ function generateCreatures() {
   const creatures = [];
 
   for (let lvl = MONSTER_LEVEL_STEP; lvl <= MAX_LEVEL_TO_GENERATE; lvl += MONSTER_LEVEL_STEP) {
+    if (lvl % BOSS_LEVEL_STEP === 0) continue; // nivel reservado para o boss
     creatures.push({ level: lvl, name: `Monstro Nível ${lvl}`, isBoss: false });
   }
 
