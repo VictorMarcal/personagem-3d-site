@@ -56,6 +56,29 @@ head.position.y = 1.9;
 head.castShadow = true;
 character.add(head);
 
+// Equipamentos placeholder, clicaveis para evoluir os status do personagem
+body.userData.equipType = "energia"; // armadura = corpo
+
+const sword = new THREE.Mesh(
+  new THREE.BoxGeometry(0.08, 0.9, 0.08),
+  new THREE.MeshStandardMaterial({ color: 0xc0c0c0 })
+);
+sword.position.set(0.55, 1.1, 0);
+sword.rotation.z = Math.PI / 10;
+sword.castShadow = true;
+sword.userData.equipType = "ataque";
+character.add(sword);
+
+const shield = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.28, 0.28, 0.08, 16),
+  new THREE.MeshStandardMaterial({ color: 0x8a5a2b })
+);
+shield.position.set(-0.55, 1.1, 0);
+shield.rotation.x = Math.PI / 2;
+shield.castShadow = true;
+shield.userData.equipType = "defesa";
+character.add(shield);
+
 scene.add(character);
 
 loadingEl.style.display = "none";
@@ -72,10 +95,32 @@ window.addEventListener("resize", onResize);
 const ROTATE_SPEED = 0.01; // radianos por pixel arrastado
 let isDragging = false;
 let lastPointerX = 0;
+let pointerDownX = 0;
+let pointerDownY = 0;
+
+// Selecao de equipamento por toque/clique (sem arrastar)
+const TAP_MAX_MOVEMENT_PX = 6;
+const raycaster = new THREE.Raycaster();
+const pointerNDC = new THREE.Vector2();
+const equipmentMeshes = [body, sword, shield];
+
+function raycastEquipmentAt(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+  raycaster.setFromCamera(pointerNDC, camera);
+  const hits = raycaster.intersectObjects(equipmentMeshes, false);
+  if (hits.length > 0 && hits[0].object.userData.equipType) {
+    selectEquipment(hits[0].object.userData.equipType);
+  }
+}
 
 canvas.addEventListener("pointerdown", (event) => {
   isDragging = true;
   lastPointerX = event.clientX;
+  pointerDownX = event.clientX;
+  pointerDownY = event.clientY;
   canvas.setPointerCapture(event.pointerId);
 });
 
@@ -89,6 +134,11 @@ canvas.addEventListener("pointermove", (event) => {
 canvas.addEventListener("pointerup", (event) => {
   isDragging = false;
   canvas.releasePointerCapture(event.pointerId);
+
+  const movedDistance = Math.hypot(event.clientX - pointerDownX, event.clientY - pointerDownY);
+  if (movedDistance < TAP_MAX_MOVEMENT_PX) {
+    raycastEquipmentAt(event.clientX, event.clientY);
+  }
 });
 
 canvas.addEventListener("pointercancel", () => {

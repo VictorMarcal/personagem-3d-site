@@ -20,7 +20,15 @@
     <div id="viewer">
       <canvas id="viewer-canvas"></canvas>
       <div id="viewer-loading">Carregando personagem...</div>
-      <div id="character-hud">Personagem Lvl <span id="character-level-value">1</span></div>
+
+      <div id="character-hud">
+        <p class="hud-title">Personagem Lvl <span id="character-level-value">1</span></p>
+        <p>Energia: <span id="stat-energia-value">0</span></p>
+        <p>Ataque: <span id="stat-ataque-value">0</span></p>
+        <p>Defesa: <span id="stat-defesa-value">0</span></p>
+      </div>
+
+      <button id="btn-upgrade-equip" class="btn-primary btn-upgrade hidden">Upgrade</button>
     </div>
 
     <section id="xp-panel">
@@ -50,6 +58,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/equipment.js"></script>
   <script src="js/experience.js"></script>
   <script src="js/training.js"></script>
   <script src="js/orientation.js"></script>

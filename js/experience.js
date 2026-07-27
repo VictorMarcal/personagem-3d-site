@@ -43,6 +43,11 @@ function getLevelInfo(totalM) {
 // liveSessionM: distancia do treino em curso ainda nao commitada ao total
 // vitalicio, para a barra refletir progresso em tempo real durante o treino
 function updateXPDisplay(liveSessionM = 0) {
+  // Pontos de status so sao creditados com base em distancia ja confirmada
+  // (nunca com a sessao em curso, que pode ainda ser perdida)
+  const committedLevel = getLevelInfo(getLifetimeDistanceM()).level;
+  awardPointsIfLeveledUp(committedLevel);
+
   const totalM = getLifetimeDistanceM() + liveSessionM;
   const info = getLevelInfo(totalM);
   const progressPct = Math.min(100, (info.distanceIntoLevel / info.distanceForNextLevel) * 100);
