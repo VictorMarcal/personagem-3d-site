@@ -5,8 +5,8 @@
 }
 
 html, body {
-  height: 100%;
-  height: 100dvh;
+  min-height: 100%;
+  min-height: 100dvh;
 }
 
 body {
@@ -36,9 +36,10 @@ main {
 
 #viewer {
   position: relative;
-  flex: 1;
+  flex-shrink: 0;
   width: 100%;
-  min-height: 0;
+  height: 55vh;
+  min-height: 320px;
 }
 
 #viewer-canvas {
@@ -172,6 +173,64 @@ main {
 .training-distance {
   font-size: 2rem;
   font-weight: 700;
+}
+
+.card {
+  margin: 1.25rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: #17171d;
+  border: 1px solid #2a2a30;
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+#monsters-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.monster-item {
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #1f1f26;
+  border: 1px solid #2a2a30;
+}
+
+.monster-item.locked {
+  opacity: 0.45;
+}
+
+.monster-item.boss {
+  border-color: #b5482f;
+}
+
+.monster-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.boss-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.3rem;
+  background: #b5482f;
+  color: #fff;
+}
+
+.monster-stats,
+.monster-locked-label {
+  font-size: 0.8rem;
+  color: #999;
 }
 
 .site-footer {

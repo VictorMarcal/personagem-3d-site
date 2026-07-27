@@ -10,25 +10,25 @@ const QUARTERS_PER_LEVEL = 4;
 
 const STORAGE_KEYS_EQUIPMENT = {
   pontosDisponiveis: "personagem.pontosDisponiveis",
-  nivelEquipEnergia: "personagem.nivelEquipEnergia",
+  nivelEquipVida: "personagem.nivelEquipVida",
   nivelEquipAtaque: "personagem.nivelEquipAtaque",
   nivelEquipDefesa: "personagem.nivelEquipDefesa",
   ultimoQuartoPremiado: "personagem.ultimoQuartoPremiado",
 };
 
 const EQUIP_LEVEL_STORAGE_KEY_BY_TYPE = {
-  energia: STORAGE_KEYS_EQUIPMENT.nivelEquipEnergia,
+  vida: STORAGE_KEYS_EQUIPMENT.nivelEquipVida,
   ataque: STORAGE_KEYS_EQUIPMENT.nivelEquipAtaque,
   defesa: STORAGE_KEYS_EQUIPMENT.nivelEquipDefesa,
 };
 
 const STAT_LABEL_BY_TYPE = {
-  energia: "Energia",
+  vida: "Vida",
   ataque: "Ataque",
   defesa: "Defesa",
 };
 
-const statEnergiaValueEl = document.getElementById("stat-energia-value");
+const statVidaValueEl = document.getElementById("stat-vida-value");
 const statAtaqueValueEl = document.getElementById("stat-ataque-value");
 const statDefesaValueEl = document.getElementById("stat-defesa-value");
 const btnUpgradeEquip = document.getElementById("btn-upgrade-equip");
@@ -81,7 +81,7 @@ function awardPointsIfNeeded(lifetimeM) {
 }
 
 function renderStatsHud() {
-  statEnergiaValueEl.textContent = computeStatValue(getEquipLevel("energia"));
+  statVidaValueEl.textContent = computeStatValue(getEquipLevel("vida"));
   statAtaqueValueEl.textContent = computeStatValue(getEquipLevel("ataque"));
   statDefesaValueEl.textContent = computeStatValue(getEquipLevel("defesa"));
 }

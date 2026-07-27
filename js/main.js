@@ -57,7 +57,7 @@ head.castShadow = true;
 character.add(head);
 
 // Equipamentos placeholder, clicaveis para evoluir os status do personagem
-body.userData.equipType = "energia"; // armadura = corpo
+body.userData.equipType = "vida"; // armadura = corpo
 
 const sword = new THREE.Mesh(
   new THREE.BoxGeometry(0.08, 0.9, 0.08),

@@ -152,6 +152,7 @@ function stopTraining() {
   totalDistanceM = 0;
   lastPosition = null;
   updateXPDisplay(0);
+  renderMonsters(); // pode ter desbloqueado monstros novos
 
   clearPersistedTraining();
   showStartScreen();
