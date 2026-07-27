@@ -7,11 +7,14 @@ const distanceEl = document.getElementById("training-distance");
 const EARTH_RADIUS_M = 6371000;
 const SAVE_INTERVAL_MS = 10000;
 
-// Filtros contra ruido de GPS: ignora leituras pouco precisas e movimentos
-// pequenos demais para serem deslocamento real (parado, o GPS "deriva" uns
-// metros por conta propria)
+// Filtros contra ruido/erros de GPS: ignora leituras pouco precisas,
+// movimentos pequenos demais para serem deslocamento real (parado, o GPS
+// "deriva" uns metros por conta propria) e saltos rapidos demais para
+// serem deslocamento real a pe (erro de GPS ou veiculo)
 const MAX_ACCURACY_M = 20;
 const MIN_MOVEMENT_M = 3;
+const MAX_SPEED_KMH = 30;
+const MAX_SPEED_MPS = MAX_SPEED_KMH / 3.6;
 
 const STORAGE_KEYS = {
   active: "treino.ativo",
@@ -57,6 +60,7 @@ function clearPersistedTraining() {
 
 function onPositionUpdate(position) {
   const { latitude, longitude, accuracy } = position.coords;
+  const timestamp = position.timestamp;
 
   if (accuracy != null && accuracy > MAX_ACCURACY_M) {
     return; // leitura pouco confiavel, ignora
@@ -74,11 +78,18 @@ function onPositionUpdate(position) {
       return; // provavel ruido de GPS parado, mantem a ancora e ignora
     }
 
+    const deltaSeconds = (timestamp - lastPosition.timestamp) / 1000;
+    const speedMps = deltaSeconds > 0 ? segmentM / deltaSeconds : Infinity;
+
+    if (speedMps > MAX_SPEED_MPS) {
+      return; // salto irreal (erro de GPS ou veiculo), mantem a ancora e ignora
+    }
+
     totalDistanceM += segmentM;
     updateDistanceDisplay();
   }
 
-  lastPosition = { latitude, longitude };
+  lastPosition = { latitude, longitude, timestamp };
 }
 
 function onPositionError(error) {
