@@ -6,7 +6,7 @@ const LEVEL_EXP = 1.3;
 
 const STORAGE_KEY_LIFETIME_M = "personagem.distanciaTotalM";
 
-const xpLevelEl = document.getElementById("xp-level");
+const characterLevelValueEl = document.getElementById("character-level-value");
 const xpProgressTextEl = document.getElementById("xp-progress-text");
 const xpBarFillEl = document.getElementById("xp-bar-fill");
 
@@ -47,7 +47,7 @@ function updateXPDisplay(liveSessionM = 0) {
   const info = getLevelInfo(totalM);
   const progressPct = Math.min(100, (info.distanceIntoLevel / info.distanceForNextLevel) * 100);
 
-  xpLevelEl.textContent = `Nível ${info.level}`;
+  characterLevelValueEl.textContent = info.level;
   xpProgressTextEl.textContent = `${Math.round(info.distanceIntoLevel)} / ${info.distanceForNextLevel} m`;
   xpBarFillEl.style.width = `${progressPct}%`;
 }

@@ -38,7 +38,6 @@ let saveIntervalId = null;
 
 function updateDistanceDisplay() {
   distanceEl.textContent = `${Math.round(totalDistanceM)} m`;
-  updateXPDisplay(totalDistanceM);
 }
 
 // Treino acumulado: copia persistida em localStorage, salva a cada 10s
@@ -93,7 +92,12 @@ function beginWatch() {
     maximumAge: 5000,
     timeout: 15000,
   });
-  saveIntervalId = setInterval(persistAccumulatedTraining, SAVE_INTERVAL_MS);
+
+  updateXPDisplay(totalDistanceM);
+  saveIntervalId = setInterval(() => {
+    persistAccumulatedTraining();
+    updateXPDisplay(totalDistanceM);
+  }, SAVE_INTERVAL_MS);
 }
 
 function showTrainingScreen() {

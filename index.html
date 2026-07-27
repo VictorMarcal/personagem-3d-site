@@ -20,14 +20,17 @@
     <div id="viewer">
       <canvas id="viewer-canvas"></canvas>
       <div id="viewer-loading">Carregando personagem...</div>
+      <div id="character-hud">Personagem Lvl <span id="character-level-value">1</span></div>
     </div>
 
     <section id="xp-panel">
-      <p id="xp-level">Nível 1</p>
       <div class="xp-bar-track">
         <div id="xp-bar-fill" class="xp-bar-fill"></div>
       </div>
       <p id="xp-progress-text">0 / 500 m</p>
+
+      <p class="training-label">Distância percorrida (treino atual)</p>
+      <p id="training-distance" class="training-distance">0 m</p>
     </section>
 
     <section id="training-panel">
@@ -36,8 +39,6 @@
       </div>
 
       <div id="training-screen" class="panel-screen hidden">
-        <p class="training-label">Distância percorrida</p>
-        <p id="training-distance" class="training-distance">0 m</p>
         <button id="btn-stop-treino" class="btn-secondary">Parar Treino</button>
       </div>
     </section>
