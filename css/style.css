@@ -113,3 +113,24 @@ main {
   color: #666;
   border-top: 1px solid #2a2a30;
 }
+
+#rotate-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  font-size: 1.1rem;
+  background: #101014;
+  color: #f0f0f0;
+}
+
+/* Mostra o aviso apenas em dispositivos de toque (mobile/tablet) em paisagem */
+@media (orientation: landscape) and (hover: none) and (pointer: coarse) {
+  #rotate-overlay {
+    display: flex;
+  }
+}
