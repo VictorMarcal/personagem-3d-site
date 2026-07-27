@@ -6,6 +6,7 @@
 
 html, body {
   height: 100%;
+  height: 100dvh;
 }
 
 body {
@@ -59,6 +60,7 @@ main {
 
 #training-panel {
   display: flex;
+  flex-shrink: 0;
   justify-content: center;
   align-items: center;
   padding: 1.25rem;
@@ -128,9 +130,8 @@ main {
   color: #f0f0f0;
 }
 
-/* Mostra o aviso apenas em dispositivos de toque (mobile/tablet) em paisagem */
-@media (orientation: landscape) and (hover: none) and (pointer: coarse) {
-  #rotate-overlay {
-    display: flex;
-  }
+/* Controlado via JS (js/orientation.js): so aparece em dispositivos de
+   toque e apenas enquanto estiverem em paisagem */
+#rotate-overlay.visible {
+  display: flex;
 }

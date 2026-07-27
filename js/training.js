@@ -7,6 +7,12 @@ const distanceEl = document.getElementById("training-distance");
 const EARTH_RADIUS_M = 6371000;
 const SAVE_INTERVAL_MS = 10000;
 
+// Filtros contra ruido de GPS: ignora leituras pouco precisas e movimentos
+// pequenos demais para serem deslocamento real (parado, o GPS "deriva" uns
+// metros por conta propria)
+const MAX_ACCURACY_M = 20;
+const MIN_MOVEMENT_M = 3;
+
 const STORAGE_KEYS = {
   active: "treino.ativo",
   distanciaAcumuladaM: "treino.distanciaAcumuladaM",
@@ -50,16 +56,28 @@ function clearPersistedTraining() {
 }
 
 function onPositionUpdate(position) {
-  const { latitude, longitude } = position.coords;
+  const { latitude, longitude, accuracy } = position.coords;
+
+  if (accuracy != null && accuracy > MAX_ACCURACY_M) {
+    return; // leitura pouco confiavel, ignora
+  }
+
   if (lastPosition) {
-    totalDistanceM += haversineDistance(
+    const segmentM = haversineDistance(
       lastPosition.latitude,
       lastPosition.longitude,
       latitude,
       longitude
     );
+
+    if (segmentM < MIN_MOVEMENT_M) {
+      return; // provavel ruido de GPS parado, mantem a ancora e ignora
+    }
+
+    totalDistanceM += segmentM;
     updateDistanceDisplay();
   }
+
   lastPosition = { latitude, longitude };
 }
 
@@ -71,8 +89,8 @@ function onPositionError(error) {
 function beginWatch() {
   watchId = navigator.geolocation.watchPosition(onPositionUpdate, onPositionError, {
     enableHighAccuracy: true,
-    maximumAge: 1000,
-    timeout: 10000,
+    maximumAge: 5000,
+    timeout: 15000,
   });
   saveIntervalId = setInterval(persistAccumulatedTraining, SAVE_INTERVAL_MS);
 }
