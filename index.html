@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personagem 3D</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Personagem 3D</h1>
+  </header>
+
+  <main>
+    <div id="viewer">
+      <canvas id="viewer-canvas"></canvas>
+      <div id="viewer-loading">Carregando personagem...</div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 Personagem 3D</p>
+  </footer>
+
+  <script src="https://unpkg.com/three@0.142.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.142.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
