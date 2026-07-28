@@ -233,20 +233,29 @@ main {
   color: #999;
 }
 
-.debug-label {
-  display: block;
-  font-size: 0.8rem;
-  color: #999;
-  margin-bottom: 0.5rem;
-}
-
-.debug-row {
+.debug-vars {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
 }
 
-#input-max-speed {
-  width: 5rem;
+.debug-vars label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #ccc;
+}
+
+.debug-hint {
+  font-weight: 400;
+  color: #777;
+}
+
+.debug-vars input[type="number"] {
+  width: 100%;
+  max-width: 10rem;
   border: 1px solid #2a2a30;
   border-radius: 0.5rem;
   background: #1f1f26;
@@ -255,10 +264,32 @@ main {
   font-size: 1rem;
 }
 
+.debug-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .debug-status {
   margin-top: 0.5rem;
   font-size: 0.8rem;
   color: #888;
+}
+
+.debug-divider {
+  border: none;
+  border-top: 1px solid #2a2a30;
+  margin: 1rem 0;
+}
+
+#debug-character-info p {
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.btn-danger {
+  background: #b5482f;
+  color: #fff;
 }
 
 .site-footer {

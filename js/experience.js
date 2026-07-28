@@ -1,9 +1,7 @@
 // Curva de progressao de nivel: distancia (m) necessaria para subir do
 // nivel n para o n+1 = round(LEVEL_BASE * n^LEVEL_EXP). Nem linear nem
 // exponencial: os incrementos crescem, mas a taxa de crescimento desacelera.
-const LEVEL_BASE = 500;
-const LEVEL_EXP = 1.3;
-
+// LEVEL_BASE/LEVEL_EXP sao ajustaveis no card de Debug (js/debug.js).
 const STORAGE_KEY_LIFETIME_M = "personagem.distanciaTotalM";
 
 const characterLevelValueEl = document.getElementById("character-level-value");
@@ -27,7 +25,7 @@ function getLevelInfo(totalM) {
   let levelStartM = 0;
 
   while (true) {
-    const distanceForThisLevel = Math.round(LEVEL_BASE * Math.pow(level, LEVEL_EXP));
+    const distanceForThisLevel = Math.round(getLevelBase() * Math.pow(level, getLevelExp()));
     if (levelStartM + distanceForThisLevel > totalM) {
       return {
         level,
@@ -56,6 +54,8 @@ function updateXPDisplay(liveSessionM = 0) {
   characterLevelValueEl.textContent = info.level;
   xpProgressTextEl.textContent = `${Math.round(info.distanceIntoLevel)} / ${info.distanceForNextLevel} m`;
   xpBarFillEl.style.width = `${progressPct}%`;
+
+  renderDebugCharacterInfo();
 }
 
 updateXPDisplay();

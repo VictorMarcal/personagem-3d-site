@@ -59,15 +59,58 @@
     <section id="debug-card" class="card">
       <h2 class="card-title">Debug</h2>
 
-      <label class="debug-label" for="input-max-speed">
-        Velocidade máxima aceite pelo filtro de GPS (km/h)
-      </label>
-      <div class="debug-row">
-        <input type="number" id="input-max-speed" min="1" step="1">
-        <button id="btn-save-max-speed" class="btn-secondary">Guardar</button>
-        <button id="btn-reset-max-speed" class="btn-secondary">Repor padrão</button>
+      <div class="debug-vars">
+        <label>LEVEL_BASE <span class="debug-hint">distância base p/ nível</span>
+          <input type="number" id="dbg-levelBase" step="1">
+        </label>
+        <label>LEVEL_EXP <span class="debug-hint">expoente da curva de nível</span>
+          <input type="number" id="dbg-levelExp" step="0.01">
+        </label>
+        <label>STAT_BASE <span class="debug-hint">valor base do equipamento</span>
+          <input type="number" id="dbg-statBase" step="1">
+        </label>
+        <label>STAT_LEVEL_EXP <span class="debug-hint">expoente da curva de equipamento</span>
+          <input type="number" id="dbg-statLevelExp" step="0.01">
+        </label>
+        <label>QUARTERS_PER_LEVEL <span class="debug-hint">pontos de status por nível</span>
+          <input type="number" id="dbg-quartersPerLevel" step="1">
+        </label>
+        <label>MAX_ACCURACY_M <span class="debug-hint">precisão máx. de GPS aceite (m)</span>
+          <input type="number" id="dbg-maxAccuracyM" step="1">
+        </label>
+        <label>MIN_MOVEMENT_M <span class="debug-hint">movimento mín. para contar (m)</span>
+          <input type="number" id="dbg-minMovementM" step="1">
+        </label>
+        <label>MAX_SPEED_KMH <span class="debug-hint">velocidade máx. aceite (km/h)</span>
+          <input type="number" id="dbg-maxSpeedKmh" step="1">
+        </label>
+        <label>MONSTER_LEVEL_STEP <span class="debug-hint">intervalo de monstros (níveis)</span>
+          <input type="number" id="dbg-monsterLevelStep" step="1">
+        </label>
+        <label>BOSS_LEVEL_STEP <span class="debug-hint">intervalo de bosses (níveis)</span>
+          <input type="number" id="dbg-bossLevelStep" step="1">
+        </label>
+        <label>MAX_LEVEL_TO_GENERATE <span class="debug-hint">nível máximo gerado</span>
+          <input type="number" id="dbg-maxLevelToGenerate" step="1">
+        </label>
       </div>
-      <p id="debug-max-speed-status" class="debug-status"></p>
+
+      <div class="debug-row">
+        <button id="btn-save-debug-vars" class="btn-secondary">Guardar</button>
+        <button id="btn-reset-debug-vars" class="btn-secondary">Repor todos os padrões</button>
+      </div>
+      <p id="debug-vars-status" class="debug-status"></p>
+
+      <hr class="debug-divider">
+
+      <div id="debug-character-info">
+        <p>Pontos disponíveis: <span id="debug-points-value">0</span></p>
+        <p>Nível do equipamento — Vida: <span id="debug-level-vida">1</span> · Ataque: <span id="debug-level-ataque">1</span> · Defesa: <span id="debug-level-defesa">1</span></p>
+      </div>
+
+      <hr class="debug-divider">
+
+      <button id="btn-reset-character" class="btn-secondary btn-danger">Repor personagem e distância</button>
     </section>
   </main>
 
@@ -77,10 +120,10 @@
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/debug.js"></script>
   <script src="js/equipment.js"></script>
   <script src="js/experience.js"></script>
   <script src="js/monsters.js"></script>
-  <script src="js/debug.js"></script>
   <script src="js/training.js"></script>
   <script src="js/orientation.js"></script>
 </body>

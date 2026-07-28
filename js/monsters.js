@@ -1,24 +1,23 @@
-// Monstros aparecem a cada 3 niveis, Bosses a cada 10. Ambos usam a mesma
-// formula de status dos equipamentos (computeStatValue, definida em
-// equipment.js), com base no nivel a que pertencem - sem tratamento
-// especial de dificuldade para os bosses, so o intervalo e diferente.
-const MONSTER_LEVEL_STEP = 3;
-const BOSS_LEVEL_STEP = 10;
-
-// Lista gerada ate este nivel; simples de aumentar mais tarde
-const MAX_LEVEL_TO_GENERATE = 60;
-
+// Monstros aparecem a cada MONSTER_LEVEL_STEP niveis, Bosses a cada
+// BOSS_LEVEL_STEP. Ambos usam a mesma formula de status dos equipamentos
+// (computeStatValue, definida em equipment.js), com base no nivel a que
+// pertencem - sem tratamento especial de dificuldade para os bosses, so
+// o intervalo e diferente. Todos os passos/limites sao ajustaveis no
+// card de Debug (js/debug.js).
 const monstersListEl = document.getElementById("monsters-list");
 
 function generateCreatures() {
+  const monsterStep = getMonsterLevelStep();
+  const bossStep = getBossLevelStep();
+  const maxLevel = getMaxLevelToGenerate();
   const creatures = [];
 
-  for (let lvl = MONSTER_LEVEL_STEP; lvl <= MAX_LEVEL_TO_GENERATE; lvl += MONSTER_LEVEL_STEP) {
-    if (lvl % BOSS_LEVEL_STEP === 0) continue; // nivel reservado para o boss
+  for (let lvl = monsterStep; lvl <= maxLevel; lvl += monsterStep) {
+    if (lvl % bossStep === 0) continue; // nivel reservado para o boss
     creatures.push({ level: lvl, name: `Monstro Nível ${lvl}`, isBoss: false });
   }
 
-  for (let lvl = BOSS_LEVEL_STEP; lvl <= MAX_LEVEL_TO_GENERATE; lvl += BOSS_LEVEL_STEP) {
+  for (let lvl = bossStep; lvl <= maxLevel; lvl += bossStep) {
     creatures.push({ level: lvl, name: `Boss Nível ${lvl}`, isBoss: true });
   }
 

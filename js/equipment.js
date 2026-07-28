@@ -1,13 +1,8 @@
-// Cada equipamento tem um nivel proprio (comeca em 1 = valor base 100).
+// Cada equipamento tem um nivel proprio (comeca em 1 = valor base).
 // O valor do status cresce em curva sub-linear (retornos decrescentes)
-// para nao explodir em niveis altos: valor = 100 * nivelEquip^0.7
-const STAT_BASE = 100;
-const STAT_LEVEL_EXP = 0.7;
-
-// 1 ponto a cada 25% de progresso dentro do nivel do personagem
-// (4 pontos por nivel, distribuidos ao longo do nivel em vez de so no fim)
-const QUARTERS_PER_LEVEL = 4;
-
+// para nao explodir em niveis altos: valor = STAT_BASE * nivelEquip^STAT_LEVEL_EXP
+// STAT_BASE/STAT_LEVEL_EXP/QUARTERS_PER_LEVEL sao ajustaveis no card de
+// Debug (js/debug.js).
 const STORAGE_KEYS_EQUIPMENT = {
   pontosDisponiveis: "personagem.pontosDisponiveis",
   nivelEquipVida: "personagem.nivelEquipVida",
@@ -49,7 +44,7 @@ function getEquipLevel(type) {
 }
 
 function computeStatValue(equipLevel) {
-  return Math.round(STAT_BASE * Math.pow(equipLevel, STAT_LEVEL_EXP));
+  return Math.round(getStatBase() * Math.pow(equipLevel, getStatLevelExp()));
 }
 
 function getLastAwardedQuarters() {
@@ -59,13 +54,14 @@ function getLastAwardedQuarters() {
 // Quantos "quartos" (25%) de progresso ja foram alcancados no total,
 // somando todos os niveis ja completados mais a fracao do nivel atual
 function getTotalQuartersEarned(lifetimeM) {
+  const quartersPerLevel = getQuartersPerLevel();
   const info = getLevelInfo(lifetimeM);
   const fraction = info.distanceIntoLevel / info.distanceForNextLevel;
   const quartersInCurrentLevel = Math.min(
-    QUARTERS_PER_LEVEL,
-    Math.floor(fraction * QUARTERS_PER_LEVEL + 1e-9)
+    quartersPerLevel,
+    Math.floor(fraction * quartersPerLevel + 1e-9)
   );
-  return (info.level - 1) * QUARTERS_PER_LEVEL + quartersInCurrentLevel;
+  return (info.level - 1) * quartersPerLevel + quartersInCurrentLevel;
 }
 
 // Chamado sempre que a distancia confirmada (nunca a sessao em curso)
@@ -110,6 +106,7 @@ function upgradeSelectedEquipment() {
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(getUnspentPoints() - 1));
 
   renderStatsHud();
+  renderDebugCharacterInfo();
   hideUpgradeButton();
 }
 
