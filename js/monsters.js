@@ -87,6 +87,23 @@ function getVisibleWindow(creatures, centerIndex, windowSize) {
 
 const VISIBLE_WINDOW_SIZE = 5;
 
+// So mexe no scrollLeft do proprio carrossel (nunca no scroll da
+// pagina) e so quando o "proximo a derrotar" muda de facto - evita que
+// re-renderizacoes frequentes (ex: a cada tick da simulacao de
+// distancia) fiquem a repor a posicao e a "saltar" a pagina
+let lastCenteredNextIndex = null;
+
+function centerNextTargetInCarousel() {
+  const nextTargetEl = monstersListEl.querySelector(".next-target");
+  if (!nextTargetEl) return;
+
+  const containerWidth = monstersListEl.clientWidth;
+  const targetLeft = nextTargetEl.offsetLeft;
+  const targetWidth = nextTargetEl.offsetWidth;
+
+  monstersListEl.scrollLeft = targetLeft - containerWidth / 2 + targetWidth / 2;
+}
+
 function renderMonsters() {
   const characterLevel = getLevelInfo(getLifetimeDistanceM()).level;
   const creatures = generateCreatures();
@@ -154,9 +171,9 @@ function renderMonsters() {
     monstersListEl.appendChild(item);
   });
 
-  const nextTargetEl = monstersListEl.querySelector(".next-target");
-  if (nextTargetEl) {
-    nextTargetEl.scrollIntoView({ inline: "center", block: "nearest" });
+  if (nextIndex !== lastCenteredNextIndex) {
+    centerNextTargetInCarousel();
+    lastCenteredNextIndex = nextIndex;
   }
 }
 
