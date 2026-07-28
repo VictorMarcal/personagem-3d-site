@@ -14,9 +14,7 @@ const battleLogEl = document.getElementById("battle-log");
 const battleResultEl = document.getElementById("battle-result");
 const btnBattleBack = document.getElementById("btn-battle-back");
 
-const xpPanelEl = document.getElementById("xp-panel");
-const trainingPanelEl = document.getElementById("training-panel");
-const monstersCardEl = document.getElementById("monsters-card");
+const viewerEl = document.getElementById("viewer");
 const characterHudEl = document.getElementById("character-hud");
 
 const BATTLE_ROUND_DELAY_MS = 550;
@@ -61,15 +59,14 @@ async function startBattle(creature) {
   let monsterHp = monsterMaxHp;
 
   characterHudEl.classList.add("hidden");
-  xpPanelEl.classList.add("hidden");
-  trainingPanelEl.classList.add("hidden");
-  monstersCardEl.classList.add("hidden");
   btnBattleBack.classList.add("hidden");
   battleResultEl.textContent = "";
   battleMonsterNameEl.textContent = creature.name;
   battleHudEl.classList.remove("hidden");
   battlePanelEl.classList.remove("hidden");
 
+  viewerEl.classList.add("battle-fullscreen");
+  onResize();
   enterBattleView();
   updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
   battleLogEl.textContent = "A batalha começou!";
@@ -119,10 +116,9 @@ function endBattle() {
   battleHudEl.classList.add("hidden");
   battlePanelEl.classList.add("hidden");
   characterHudEl.classList.remove("hidden");
-  xpPanelEl.classList.remove("hidden");
-  trainingPanelEl.classList.remove("hidden");
-  monstersCardEl.classList.remove("hidden");
 
+  viewerEl.classList.remove("battle-fullscreen");
+  onResize();
   exitBattleView();
   renderMonsters(); // pode ter desbloqueado o proximo monstro
 }
