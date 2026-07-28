@@ -109,10 +109,10 @@ function renderMonsters() {
     }
     item.appendChild(detail);
 
-    if (unlocked && !defeated) {
+    if (unlocked) {
       const battleBtn = document.createElement("button");
       battleBtn.className = "btn-primary btn-battle";
-      battleBtn.textContent = "Batalhar";
+      battleBtn.textContent = defeated ? "Lutar novamente" : "Batalhar";
       battleBtn.addEventListener("click", () => startBattle(creature));
       item.appendChild(battleBtn);
     }
