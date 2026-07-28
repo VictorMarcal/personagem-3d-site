@@ -25,10 +25,11 @@ function generateCreatures() {
   return creatures;
 }
 
-// Bosses estao sempre desbloqueados; monstros normais exigem que o
-// personagem ja tenha alcancado o nivel correspondente
+// Qualquer criatura (monstro ou boss) exige que o personagem ja tenha
+// alcancado o nivel correspondente; os status so ficam visiveis quando
+// desbloqueada
 function isCreatureUnlocked(creature, characterLevel) {
-  return creature.isBoss || characterLevel >= creature.level;
+  return characterLevel >= creature.level;
 }
 
 function renderMonsters() {
