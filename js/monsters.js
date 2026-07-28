@@ -58,13 +58,44 @@ function isCreatureUnlocked(creature, characterLevel, creatures, index) {
   return isCreatureDefeated(creatures[index - 1].level);
 }
 
+// Indice da proxima criatura por derrotar (a primeira ainda nao
+// derrotada na sequencia); se estiver tudo derrotado, mostra a ultima
+function findNextToDefeatIndex(creatures) {
+  const index = creatures.findIndex((creature) => !isCreatureDefeated(creature.level));
+  return index === -1 ? creatures.length - 1 : index;
+}
+
+// Janela de 5 criaturas centrada na proxima por derrotar, ajustada nos
+// limites da lista (inicio/fim) para continuar a mostrar 5 quando possivel
+function getVisibleWindow(creatures, centerIndex, windowSize) {
+  const half = Math.floor(windowSize / 2);
+  let start = centerIndex - half;
+  let end = centerIndex + half;
+
+  if (start < 0) {
+    end += -start;
+    start = 0;
+  }
+  if (end > creatures.length - 1) {
+    start -= end - (creatures.length - 1);
+    end = creatures.length - 1;
+  }
+  start = Math.max(0, start);
+
+  return creatures.slice(start, end + 1).map((creature, i) => ({ creature, index: start + i }));
+}
+
+const VISIBLE_WINDOW_SIZE = 5;
+
 function renderMonsters() {
   const characterLevel = getLevelInfo(getLifetimeDistanceM()).level;
   const creatures = generateCreatures();
+  const nextIndex = findNextToDefeatIndex(creatures);
+  const visible = getVisibleWindow(creatures, nextIndex, VISIBLE_WINDOW_SIZE);
 
   monstersListEl.innerHTML = "";
 
-  creatures.forEach((creature, index) => {
+  visible.forEach(({ creature, index }) => {
     const unlocked = isCreatureUnlocked(creature, characterLevel, creatures, index);
     const defeated = isCreatureDefeated(creature.level);
     const vidaValue = computeStatValue("vida", creature.level);
@@ -73,7 +104,10 @@ function renderMonsters() {
 
     const item = document.createElement("div");
     item.className =
-      "monster-item" + (unlocked ? "" : " locked") + (creature.isBoss ? " boss" : "");
+      "monster-item" +
+      (unlocked ? "" : " locked") +
+      (creature.isBoss ? " boss" : "") +
+      (index === nextIndex ? " next-target" : "");
 
     const header = document.createElement("div");
     header.className = "monster-header";
@@ -119,6 +153,11 @@ function renderMonsters() {
 
     monstersListEl.appendChild(item);
   });
+
+  const nextTargetEl = monstersListEl.querySelector(".next-target");
+  if (nextTargetEl) {
+    nextTargetEl.scrollIntoView({ inline: "center", block: "nearest" });
+  }
 }
 
 renderMonsters();
