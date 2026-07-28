@@ -1,7 +1,9 @@
 // Cada equipamento tem um nivel proprio (comeca em 1 = valor base).
-// O valor do status cresce em curva sub-linear (retornos decrescentes)
-// para nao explodir em niveis altos: valor = STAT_BASE * nivelEquip^STAT_LEVEL_EXP
-// Cada status (Vida/Ataque/Defesa) tem a sua propria base e expoente,
+// O valor do status cresce de forma recursiva e aditiva (nunca decresce
+// de nivel para nivel, ao contrario de uma curva de potencia pura):
+//   Valor(1) = STAT_BASE
+//   Valor(n) = round(Valor(n-1) + STAT_FLAT + n * STAT_PERCENT)
+// Cada status (Vida/Ataque/Defesa) tem a sua propria base/flat/percentagem,
 // ajustaveis independentemente no card de Debug (js/debug.js).
 const STORAGE_KEYS_EQUIPMENT = {
   pontosDisponiveis: "personagem.pontosDisponiveis",
@@ -44,7 +46,14 @@ function getEquipLevel(type) {
 }
 
 function computeStatValue(type, equipLevel) {
-  return Math.round(getStatBase(type) * Math.pow(equipLevel, getStatLevelExp(type)));
+  const flat = getStatFlat(type);
+  const percent = getStatPercent(type);
+
+  let value = getStatBase(type);
+  for (let level = 2; level <= equipLevel; level++) {
+    value = Math.round(value + flat + level * percent);
+  }
+  return value;
 }
 
 function getLastAwardedQuarters() {
