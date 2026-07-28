@@ -4,6 +4,13 @@
   padding: 0;
 }
 
+/* Utilitario generico de esconder; regras mais especificas (ex:
+   #battle-hud.hidden) tem prioridade quando precisam de valores
+   diferentes de display:none em conjunto com outras propriedades */
+.hidden {
+  display: none;
+}
+
 html, body {
   min-height: 100%;
   min-height: 100dvh;
@@ -269,6 +276,10 @@ main {
   max-width: 480px;
 }
 
+#battle-hud.hidden {
+  display: none;
+}
+
 .battle-side {
   flex: 1;
   padding: 0.5rem 0.7rem;
@@ -322,6 +333,10 @@ main {
   border-radius: 0.75rem;
   background: rgba(0, 0, 0, 0.6);
   text-align: center;
+}
+
+#battle-panel.hidden {
+  display: none;
 }
 
 .battle-log {
