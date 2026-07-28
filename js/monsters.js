@@ -39,7 +39,9 @@ function renderMonsters() {
 
   creatures.forEach((creature) => {
     const unlocked = isCreatureUnlocked(creature, characterLevel);
-    const statValue = computeStatValue(creature.level);
+    const vidaValue = computeStatValue("vida", creature.level);
+    const ataqueValue = computeStatValue("ataque", creature.level);
+    const defesaValue = computeStatValue("defesa", creature.level);
 
     const item = document.createElement("div");
     item.className =
@@ -65,7 +67,7 @@ function renderMonsters() {
     const detail = document.createElement("div");
     if (unlocked) {
       detail.className = "monster-stats";
-      detail.textContent = `Vida: ${statValue} · Ataque: ${statValue} · Defesa: ${statValue}`;
+      detail.textContent = `Vida: ${vidaValue} · Ataque: ${ataqueValue} · Defesa: ${defesaValue}`;
     } else {
       detail.className = "monster-locked-label";
       detail.textContent = `Bloqueado — nível ${creature.level} necessário`;

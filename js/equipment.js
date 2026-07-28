@@ -1,8 +1,8 @@
 // Cada equipamento tem um nivel proprio (comeca em 1 = valor base).
 // O valor do status cresce em curva sub-linear (retornos decrescentes)
 // para nao explodir em niveis altos: valor = STAT_BASE * nivelEquip^STAT_LEVEL_EXP
-// STAT_BASE/STAT_LEVEL_EXP/QUARTERS_PER_LEVEL sao ajustaveis no card de
-// Debug (js/debug.js).
+// Cada status (Vida/Ataque/Defesa) tem a sua propria base e expoente,
+// ajustaveis independentemente no card de Debug (js/debug.js).
 const STORAGE_KEYS_EQUIPMENT = {
   pontosDisponiveis: "personagem.pontosDisponiveis",
   nivelEquipVida: "personagem.nivelEquipVida",
@@ -43,8 +43,8 @@ function getEquipLevel(type) {
   return getStoredNumber(EQUIP_LEVEL_STORAGE_KEY_BY_TYPE[type], 1);
 }
 
-function computeStatValue(equipLevel) {
-  return Math.round(getStatBase() * Math.pow(equipLevel, getStatLevelExp()));
+function computeStatValue(type, equipLevel) {
+  return Math.round(getStatBase(type) * Math.pow(equipLevel, getStatLevelExp(type)));
 }
 
 function getLastAwardedQuarters() {
@@ -77,9 +77,9 @@ function awardPointsIfNeeded(lifetimeM) {
 }
 
 function renderStatsHud() {
-  statVidaValueEl.textContent = computeStatValue(getEquipLevel("vida"));
-  statAtaqueValueEl.textContent = computeStatValue(getEquipLevel("ataque"));
-  statDefesaValueEl.textContent = computeStatValue(getEquipLevel("defesa"));
+  statVidaValueEl.textContent = computeStatValue("vida", getEquipLevel("vida"));
+  statAtaqueValueEl.textContent = computeStatValue("ataque", getEquipLevel("ataque"));
+  statDefesaValueEl.textContent = computeStatValue("defesa", getEquipLevel("defesa"));
 }
 
 function hideUpgradeButton() {

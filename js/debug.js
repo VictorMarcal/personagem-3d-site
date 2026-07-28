@@ -7,8 +7,12 @@
 const DEBUG_DEFAULTS = {
   levelBase: 500,
   levelExp: 1.3,
-  statBase: 100,
-  statLevelExp: 0.7,
+  statBaseVida: 100,
+  statLevelExpVida: 0.7,
+  statBaseAtaque: 100,
+  statLevelExpAtaque: 0.7,
+  statBaseDefesa: 100,
+  statLevelExpDefesa: 0.7,
   quartersPerLevel: 4,
   maxAccuracyM: 20,
   minMovementM: 3,
@@ -17,6 +21,8 @@ const DEBUG_DEFAULTS = {
   bossLevelStep: 10,
   maxLevelToGenerate: 60,
 };
+
+const STAT_TYPE_KEY_SUFFIX = { vida: "Vida", ataque: "Ataque", defesa: "Defesa" };
 
 const DEBUG_STORAGE_PREFIX = "debug.";
 
@@ -32,8 +38,8 @@ function setDebugValue(key, value) {
 
 function getLevelBase() { return getDebugValue("levelBase"); }
 function getLevelExp() { return getDebugValue("levelExp"); }
-function getStatBase() { return getDebugValue("statBase"); }
-function getStatLevelExp() { return getDebugValue("statLevelExp"); }
+function getStatBase(type) { return getDebugValue("statBase" + STAT_TYPE_KEY_SUFFIX[type]); }
+function getStatLevelExp(type) { return getDebugValue("statLevelExp" + STAT_TYPE_KEY_SUFFIX[type]); }
 function getQuartersPerLevel() { return getDebugValue("quartersPerLevel"); }
 function getMaxAccuracyM() { return getDebugValue("maxAccuracyM"); }
 function getMinMovementM() { return getDebugValue("minMovementM"); }
@@ -46,8 +52,12 @@ function getMaxLevelToGenerate() { return getDebugValue("maxLevelToGenerate"); }
 const debugVarInputs = {
   levelBase: document.getElementById("dbg-levelBase"),
   levelExp: document.getElementById("dbg-levelExp"),
-  statBase: document.getElementById("dbg-statBase"),
-  statLevelExp: document.getElementById("dbg-statLevelExp"),
+  statBaseVida: document.getElementById("dbg-statBaseVida"),
+  statLevelExpVida: document.getElementById("dbg-statLevelExpVida"),
+  statBaseAtaque: document.getElementById("dbg-statBaseAtaque"),
+  statLevelExpAtaque: document.getElementById("dbg-statLevelExpAtaque"),
+  statBaseDefesa: document.getElementById("dbg-statBaseDefesa"),
+  statLevelExpDefesa: document.getElementById("dbg-statLevelExpDefesa"),
   quartersPerLevel: document.getElementById("dbg-quartersPerLevel"),
   maxAccuracyM: document.getElementById("dbg-maxAccuracyM"),
   minMovementM: document.getElementById("dbg-minMovementM"),
