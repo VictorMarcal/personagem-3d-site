@@ -125,6 +125,52 @@ function saveDebugVars() {
   refreshAllAfterConfigChange();
 }
 
+// Simula ganho de experiencia pelo tempo em vez de GPS: a cada tick
+// soma (segundos passados * fator) diretamente a distancia vitalicia.
+// Util para testar niveis altos, monstros e batalhas sem andar de
+// verdade. O fator e ajustavel em tempo real, sem precisar de "Guardar".
+const inputSimFactor = document.getElementById("input-sim-factor");
+const btnToggleSimDistance = document.getElementById("btn-toggle-sim-distance");
+const simDistanceStatusEl = document.getElementById("sim-distance-status");
+
+const SIM_DISTANCE_TICK_MS = 500;
+let simDistanceIntervalId = null;
+
+function tickSimDistance() {
+  const factor = Number(inputSimFactor.value) || 0;
+  const elapsedSeconds = SIM_DISTANCE_TICK_MS / 1000;
+  const deltaM = elapsedSeconds * factor;
+
+  addToLifetimeDistance(deltaM);
+  refreshAllAfterConfigChange();
+  simDistanceStatusEl.textContent = `Simulação ativa: +${factor} m/s`;
+}
+
+function startSimDistance() {
+  if (simDistanceIntervalId !== null) return;
+  simDistanceIntervalId = setInterval(tickSimDistance, SIM_DISTANCE_TICK_MS);
+  btnToggleSimDistance.textContent = "Parar simulação";
+  simDistanceStatusEl.textContent = "Simulação a decorrer...";
+}
+
+function stopSimDistance() {
+  if (simDistanceIntervalId === null) return;
+  clearInterval(simDistanceIntervalId);
+  simDistanceIntervalId = null;
+  btnToggleSimDistance.textContent = "Iniciar simulação";
+  simDistanceStatusEl.textContent = "Simulação parada.";
+}
+
+function toggleSimDistance() {
+  if (simDistanceIntervalId !== null) {
+    stopSimDistance();
+  } else {
+    startSimDistance();
+  }
+}
+
+btnToggleSimDistance.addEventListener("click", toggleSimDistance);
+
 function resetDebugVars() {
   Object.keys(DEBUG_DEFAULTS).forEach((key) => {
     localStorage.removeItem(DEBUG_STORAGE_PREFIX + key);
@@ -141,6 +187,8 @@ function resetCharacterAndDistance() {
     "Isto vai repor o nível, os status, os pontos e toda a distância percorrida. Não pode ser desfeito. Continuar?"
   );
   if (!confirmed) return;
+
+  stopSimDistance();
 
   if (watchId !== null) {
     navigator.geolocation.clearWatch(watchId);

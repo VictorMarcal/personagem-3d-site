@@ -394,10 +394,27 @@ main {
   font-size: 1rem;
 }
 
+.debug-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  color: #999;
+}
+
 .debug-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.debug-row input[type="number"] {
+  width: 5rem;
+  border: 1px solid #2a2a30;
+  border-radius: 0.5rem;
+  background: #1f1f26;
+  color: #f0f0f0;
+  padding: 0.5rem;
+  font-size: 1rem;
 }
 
 .debug-status {

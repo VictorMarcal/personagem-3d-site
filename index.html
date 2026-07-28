@@ -153,6 +153,17 @@
 
       <hr class="debug-divider">
 
+      <label class="debug-label" for="input-sim-factor">
+        Simular distância pelo tempo (m por segundo real, em vez de GPS)
+      </label>
+      <div class="debug-row">
+        <input type="number" id="input-sim-factor" min="0.1" step="0.1" value="1">
+        <button id="btn-toggle-sim-distance" class="btn-secondary">Iniciar simulação</button>
+      </div>
+      <p id="sim-distance-status" class="debug-status"></p>
+
+      <hr class="debug-divider">
+
       <div id="debug-character-info">
         <p>Pontos disponíveis: <span id="debug-points-value">0</span></p>
         <p>Nível do equipamento — Vida: <span id="debug-level-vida">1</span> · Ataque: <span id="debug-level-ataque">1</span> · Defesa: <span id="debug-level-defesa">1</span></p>
