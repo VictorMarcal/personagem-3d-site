@@ -81,6 +81,51 @@ character.add(shield);
 
 scene.add(character);
 
+// Placeholder do monstro (mesma forma do personagem, cores diferentes),
+// escondido ate uma batalha comecar (js/battle.js)
+const monster = new THREE.Group();
+
+const monsterBody = new THREE.Mesh(
+  new THREE.CapsuleGeometry(0.4, 1.2, 4, 16),
+  new THREE.MeshStandardMaterial({ color: 0xb5482f })
+);
+monsterBody.position.y = 1;
+monsterBody.castShadow = true;
+monster.add(monsterBody);
+
+const monsterHead = new THREE.Mesh(
+  new THREE.SphereGeometry(0.3, 16, 16),
+  new THREE.MeshStandardMaterial({ color: 0x6b2418 })
+);
+monsterHead.position.y = 1.9;
+monsterHead.castShadow = true;
+monster.add(monsterHead);
+
+monster.visible = false;
+scene.add(monster);
+
+const NORMAL_CAMERA_POSITION = { x: 0, y: 1.5, z: 4 };
+const BATTLE_CAMERA_POSITION = { x: 0, y: 1.8, z: 7 };
+const BATTLE_SIDE_OFFSET_X = 1.3;
+
+function enterBattleView() {
+  character.position.x = -BATTLE_SIDE_OFFSET_X;
+  monster.position.x = BATTLE_SIDE_OFFSET_X;
+  monster.rotation.y = -Math.PI / 2;
+  monster.visible = true;
+
+  camera.position.set(BATTLE_CAMERA_POSITION.x, BATTLE_CAMERA_POSITION.y, BATTLE_CAMERA_POSITION.z);
+  camera.lookAt(0, 1, 0);
+}
+
+function exitBattleView() {
+  character.position.x = 0;
+  monster.visible = false;
+
+  camera.position.set(NORMAL_CAMERA_POSITION.x, NORMAL_CAMERA_POSITION.y, NORMAL_CAMERA_POSITION.z);
+  camera.lookAt(0, 1, 0);
+}
+
 loadingEl.style.display = "none";
 
 function onResize() {
@@ -105,6 +150,8 @@ const pointerNDC = new THREE.Vector2();
 const equipmentMeshes = [body, sword, shield];
 
 function raycastEquipmentAt(clientX, clientY) {
+  if (typeof battleInProgress !== "undefined" && battleInProgress) return;
+
   const rect = canvas.getBoundingClientRect();
   pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
   pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;

@@ -6,6 +6,8 @@
 // card de Debug (js/debug.js).
 const monstersListEl = document.getElementById("monsters-list");
 
+const STORAGE_KEY_DEFEATED_CREATURES = "personagem.monstrosDerrotados";
+
 function generateCreatures() {
   const monsterStep = getMonsterLevelStep();
   const bossStep = getBossLevelStep();
@@ -25,11 +27,35 @@ function generateCreatures() {
   return creatures;
 }
 
-// Qualquer criatura (monstro ou boss) exige que o personagem ja tenha
-// alcancado o nivel correspondente; os status so ficam visiveis quando
-// desbloqueada
-function isCreatureUnlocked(creature, characterLevel) {
-  return characterLevel >= creature.level;
+function getDefeatedLevels() {
+  const raw = localStorage.getItem(STORAGE_KEY_DEFEATED_CREATURES);
+  try {
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function isCreatureDefeated(level) {
+  return getDefeatedLevels().includes(level);
+}
+
+function markCreatureDefeated(level) {
+  const defeated = getDefeatedLevels();
+  if (!defeated.includes(level)) {
+    defeated.push(level);
+    localStorage.setItem(STORAGE_KEY_DEFEATED_CREATURES, JSON.stringify(defeated));
+  }
+}
+
+// Uma criatura so desbloqueia se o personagem ja tiver alcancado o nivel
+// dela E a criatura anterior na sequencia ja tiver sido derrotada (a
+// primeira da lista nao tem "anterior" a exigir)
+function isCreatureUnlocked(creature, characterLevel, creatures, index) {
+  if (characterLevel < creature.level) return false;
+  if (index === 0) return true;
+  return isCreatureDefeated(creatures[index - 1].level);
 }
 
 function renderMonsters() {
@@ -38,8 +64,9 @@ function renderMonsters() {
 
   monstersListEl.innerHTML = "";
 
-  creatures.forEach((creature) => {
-    const unlocked = isCreatureUnlocked(creature, characterLevel);
+  creatures.forEach((creature, index) => {
+    const unlocked = isCreatureUnlocked(creature, characterLevel, creatures, index);
+    const defeated = isCreatureDefeated(creature.level);
     const vidaValue = computeStatValue("vida", creature.level);
     const ataqueValue = computeStatValue("ataque", creature.level);
     const defesaValue = computeStatValue("defesa", creature.level);
@@ -63,6 +90,13 @@ function renderMonsters() {
       header.appendChild(badge);
     }
 
+    if (defeated) {
+      const defeatedBadge = document.createElement("span");
+      defeatedBadge.className = "defeated-badge";
+      defeatedBadge.textContent = "DERROTADO";
+      header.appendChild(defeatedBadge);
+    }
+
     item.appendChild(header);
 
     const detail = document.createElement("div");
@@ -74,6 +108,14 @@ function renderMonsters() {
       detail.textContent = `Bloqueado — nível ${creature.level} necessário`;
     }
     item.appendChild(detail);
+
+    if (unlocked && !defeated) {
+      const battleBtn = document.createElement("button");
+      battleBtn.className = "btn-primary btn-battle";
+      battleBtn.textContent = "Batalhar";
+      battleBtn.addEventListener("click", () => startBattle(creature));
+      item.appendChild(battleBtn);
+    }
 
     monstersListEl.appendChild(item);
   });

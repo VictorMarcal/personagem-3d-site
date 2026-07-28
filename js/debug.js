@@ -10,12 +10,15 @@ const DEBUG_DEFAULTS = {
   statBaseVida: 100,
   statFlatVida: 4,
   statPercentVida: 0.89,
-  statBaseAtaque: 10,
+  // Ataque e Defesa trocam de curva de crescimento (decisao tomada ao
+  // discutir o sistema de duelos): Ataque cresce como a Defesa crescia
+  // antes, e vice-versa, para o dano de combate nunca ficar negativo.
+  statBaseAtaque: 50,
   statFlatAtaque: 2,
-  statPercentAtaque: 0.16,
-  statBaseDefesa: 50,
+  statPercentAtaque: 0.45,
+  statBaseDefesa: 10,
   statFlatDefesa: 2,
-  statPercentDefesa: 0.45,
+  statPercentDefesa: 0.16,
   quartersPerLevel: 4,
   maxAccuracyM: 20,
   minMovementM: 3,
@@ -23,6 +26,8 @@ const DEBUG_DEFAULTS = {
   monsterLevelStep: 3,
   bossLevelStep: 10,
   maxLevelToGenerate: 60,
+  battleDefensePercent: 0.6,
+  battleFloorPercent: 0.5,
 };
 
 const STAT_TYPE_KEY_SUFFIX = { vida: "Vida", ataque: "Ataque", defesa: "Defesa" };
@@ -52,6 +57,8 @@ function getMaxSpeedMps() { return getMaxSpeedKmh() / 3.6; }
 function getMonsterLevelStep() { return getDebugValue("monsterLevelStep"); }
 function getBossLevelStep() { return getDebugValue("bossLevelStep"); }
 function getMaxLevelToGenerate() { return getDebugValue("maxLevelToGenerate"); }
+function getBattleDefensePercent() { return getDebugValue("battleDefensePercent"); }
+function getBattleFloorPercent() { return getDebugValue("battleFloorPercent"); }
 
 const debugVarInputs = {
   levelBase: document.getElementById("dbg-levelBase"),
@@ -72,6 +79,8 @@ const debugVarInputs = {
   monsterLevelStep: document.getElementById("dbg-monsterLevelStep"),
   bossLevelStep: document.getElementById("dbg-bossLevelStep"),
   maxLevelToGenerate: document.getElementById("dbg-maxLevelToGenerate"),
+  battleDefensePercent: document.getElementById("dbg-battleDefensePercent"),
+  battleFloorPercent: document.getElementById("dbg-battleFloorPercent"),
 };
 
 const debugVarsStatusEl = document.getElementById("debug-vars-status");
@@ -151,6 +160,7 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEYS.active);
   localStorage.removeItem(STORAGE_KEYS.distanciaAcumuladaM);
   localStorage.removeItem(STORAGE_KEYS.ultimaPosicao);
+  localStorage.removeItem(STORAGE_KEY_DEFEATED_CREATURES);
 
   totalDistanceM = 0;
   lastPosition = null;

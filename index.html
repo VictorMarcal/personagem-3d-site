@@ -29,7 +29,30 @@
       </div>
 
       <button id="btn-upgrade-equip" class="btn-primary btn-upgrade hidden">Upgrade</button>
+
+      <div id="battle-hud" class="hidden">
+        <div class="battle-side">
+          <p class="battle-name">Personagem</p>
+          <div class="hp-bar-track">
+            <div id="battle-player-hp-fill" class="hp-bar-fill player"></div>
+          </div>
+          <p id="battle-player-hp-text">0 / 0</p>
+        </div>
+        <div class="battle-side">
+          <p id="battle-monster-name" class="battle-name">Monstro</p>
+          <div class="hp-bar-track">
+            <div id="battle-monster-hp-fill" class="hp-bar-fill monster"></div>
+          </div>
+          <p id="battle-monster-hp-text">0 / 0</p>
+        </div>
+      </div>
     </div>
+
+    <section id="battle-panel" class="card hidden">
+      <p id="battle-log" class="battle-log"></p>
+      <p id="battle-result" class="battle-result"></p>
+      <button id="btn-battle-back" class="btn-secondary hidden">Voltar</button>
+    </section>
 
     <section id="xp-panel">
       <div class="xp-bar-track">
@@ -114,6 +137,12 @@
         <label>MAX_LEVEL_TO_GENERATE <span class="debug-hint">nível máximo gerado</span>
           <input type="number" id="dbg-maxLevelToGenerate" step="1">
         </label>
+        <label>BATTLE_DEFENSE_PERCENT <span class="debug-hint">% da defesa subtraída no dano (ex: 0.6 = 60%)</span>
+          <input type="number" id="dbg-battleDefensePercent" step="0.01">
+        </label>
+        <label>BATTLE_FLOOR_PERCENT <span class="debug-hint">dano mínimo, % do próprio ataque</span>
+          <input type="number" id="dbg-battleFloorPercent" step="0.01">
+        </label>
       </div>
 
       <div class="debug-row">
@@ -145,6 +174,7 @@
   <script src="js/equipment.js"></script>
   <script src="js/experience.js"></script>
   <script src="js/monsters.js"></script>
+  <script src="js/battle.js"></script>
   <script src="js/training.js"></script>
   <script src="js/orientation.js"></script>
 </body>

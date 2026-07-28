@@ -233,6 +233,89 @@ main {
   color: #999;
 }
 
+.defeated-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.3rem;
+  background: #2f7a3d;
+  color: #fff;
+}
+
+.btn-battle {
+  margin-top: 0.6rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+#battle-hud {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1.5rem;
+  width: 90%;
+  max-width: 480px;
+}
+
+.battle-side {
+  flex: 1;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.4rem;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.battle-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.hp-bar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #2a2a30;
+  overflow: hidden;
+}
+
+.hp-bar-fill {
+  height: 100%;
+  width: 100%;
+  transition: width 0.3s ease;
+}
+
+.hp-bar-fill.player {
+  background: #4a90d9;
+}
+
+.hp-bar-fill.monster {
+  background: #b5482f;
+}
+
+#battle-player-hp-text,
+#battle-monster-hp-text {
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  color: #ccc;
+}
+
+#battle-panel {
+  text-align: center;
+}
+
+.battle-log {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.battle-result {
+  margin: 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
 .debug-vars {
   display: flex;
   flex-direction: column;
