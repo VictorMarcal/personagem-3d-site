@@ -138,12 +138,10 @@ function checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds) {
 }
 
 function createAchievementItemEl(achievement) {
-  const progress = getAchievementProgress(achievement);
   const unlocked = isAchievementUnlocked(achievement.id);
-  const pct = Math.min(100, (progress.current / progress.target) * 100);
 
   const item = document.createElement("div");
-  item.className = "achievement-item" + (unlocked ? "" : " locked");
+  item.className = "achievement-item " + (unlocked ? "unlocked" : "locked");
 
   const icon = document.createElement("div");
   icon.className = "achievement-icon";
@@ -154,14 +152,6 @@ function createAchievementItemEl(achievement) {
   name.className = "achievement-name";
   name.textContent = achievement.name;
   item.appendChild(name);
-
-  const track = document.createElement("div");
-  track.className = "achievement-progress-track";
-  const fill = document.createElement("div");
-  fill.className = "achievement-progress-fill";
-  fill.style.width = `${pct}%`;
-  track.appendChild(fill);
-  item.appendChild(track);
 
   return item;
 }

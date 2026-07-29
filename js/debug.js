@@ -136,6 +136,11 @@ const simDistanceStatusEl = document.getElementById("sim-distance-status");
 
 const SIM_DISTANCE_TICK_MS = 500;
 let simDistanceIntervalId = null;
+// Trata o tempo simulado como uma sessao de treino continua, para as
+// conquistas de distancia/ritmo (que dependem de uma sessao, nao da
+// distancia vitalicia) tambem poderem ser testadas com o simulador
+let simSessionDistanceM = 0;
+let simSessionStartTime = null;
 
 function tickSimDistance() {
   const factor = Number(inputSimFactor.value) || 0;
@@ -143,12 +148,18 @@ function tickSimDistance() {
   const deltaM = elapsedSeconds * factor;
 
   addToLifetimeDistance(deltaM);
+  simSessionDistanceM += deltaM;
+  const simSessionDurationSeconds = (Date.now() - simSessionStartTime) / 1000;
+  checkAndUnlockAchievements(simSessionDistanceM, simSessionDurationSeconds);
+
   refreshAllAfterConfigChange();
   simDistanceStatusEl.textContent = `Simulação ativa: +${factor} m/s`;
 }
 
 function startSimDistance() {
   if (simDistanceIntervalId !== null) return;
+  simSessionDistanceM = 0;
+  simSessionStartTime = Date.now();
   simDistanceIntervalId = setInterval(tickSimDistance, SIM_DISTANCE_TICK_MS);
   btnToggleSimDistance.textContent = "Parar simulação";
   simDistanceStatusEl.textContent = "Simulação a decorrer...";
