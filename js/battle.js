@@ -103,6 +103,7 @@ async function startBattle(creature) {
 
   if (won) {
     markCreatureDefeated(creature.level);
+    checkAndUnlockAchievements(); // pode ter desbloqueado uma conquista de boss
     battleResultEl.textContent = `Vitória! Derrotaste ${creature.name}.`;
   } else {
     battleResultEl.textContent = `Derrota... ${creature.name} venceu.`;

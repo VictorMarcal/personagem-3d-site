@@ -16,6 +16,7 @@ const STORAGE_KEYS = {
   active: "treino.ativo",
   distanciaAcumuladaM: "treino.distanciaAcumuladaM",
   ultimaPosicao: "treino.ultimaPosicao",
+  inicioSessao: "treino.inicioSessao",
 };
 
 function haversineDistance(lat1, lon1, lat2, lon2) {
@@ -34,6 +35,7 @@ let totalDistanceM = 0;
 let lastPosition = null;
 let watchId = null;
 let saveIntervalId = null;
+let sessionStartTime = null; // usado para conquistas de ritmo (ex: 5km em menos de 25 min)
 
 function updateDistanceDisplay() {
   distanceEl.textContent = `${Math.round(totalDistanceM)} m`;
@@ -52,6 +54,7 @@ function clearPersistedTraining() {
   localStorage.removeItem(STORAGE_KEYS.active);
   localStorage.removeItem(STORAGE_KEYS.distanciaAcumuladaM);
   localStorage.removeItem(STORAGE_KEYS.ultimaPosicao);
+  localStorage.removeItem(STORAGE_KEYS.inicioSessao);
 }
 
 function onPositionUpdate(position) {
@@ -125,10 +128,12 @@ function startTraining() {
 
   totalDistanceM = 0;
   lastPosition = null;
+  sessionStartTime = Date.now();
   updateDistanceDisplay();
   showTrainingScreen();
 
   localStorage.setItem(STORAGE_KEYS.active, "true");
+  localStorage.setItem(STORAGE_KEYS.inicioSessao, String(sessionStartTime));
   persistAccumulatedTraining();
 
   beginWatch();
@@ -144,9 +149,16 @@ function stopTraining() {
     saveIntervalId = null;
   }
 
+  const sessionDistanceM = totalDistanceM;
+  const sessionDurationSeconds = sessionStartTime ? (Date.now() - sessionStartTime) / 1000 : null;
+
   addToLifetimeDistance(totalDistanceM);
+  incrementTotalTrainingsCompleted();
+  checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds);
+
   totalDistanceM = 0;
   lastPosition = null;
+  sessionStartTime = null;
   updateXPDisplay(0);
   renderMonsters(); // pode ter desbloqueado monstros novos
 
@@ -162,6 +174,7 @@ function resumeTrainingIfNeeded() {
   totalDistanceM = Number(localStorage.getItem(STORAGE_KEYS.distanciaAcumuladaM)) || 0;
   const savedPosition = localStorage.getItem(STORAGE_KEYS.ultimaPosicao);
   lastPosition = savedPosition ? JSON.parse(savedPosition) : null;
+  sessionStartTime = Number(localStorage.getItem(STORAGE_KEYS.inicioSessao)) || Date.now();
 
   updateDistanceDisplay();
   showTrainingScreen();

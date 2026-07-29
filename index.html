@@ -79,6 +79,20 @@
       <div id="monsters-list"></div>
     </section>
 
+    <section id="achievements-card" class="card">
+      <h2 class="card-title">Conquistas</h2>
+      <div id="achievements-summary" class="achievements-grid"></div>
+      <button id="btn-open-achievements" class="btn-secondary btn-view-all">Ver todas</button>
+    </section>
+
+    <div id="achievements-modal" class="modal-overlay hidden">
+      <div class="modal-header">
+        <h2 class="card-title">Conquistas</h2>
+        <button id="btn-close-achievements" class="btn-secondary">Fechar</button>
+      </div>
+      <div id="achievements-grid-full" class="achievements-grid"></div>
+    </div>
+
     <section id="debug-card" class="card">
       <h2 class="card-title">Debug</h2>
 
@@ -185,6 +199,7 @@
   <script src="js/equipment.js"></script>
   <script src="js/experience.js"></script>
   <script src="js/monsters.js"></script>
+  <script src="js/achievements.js"></script>
   <script src="js/battle.js"></script>
   <script src="js/training.js"></script>
   <script src="js/orientation.js"></script>

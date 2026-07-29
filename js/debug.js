@@ -112,6 +112,7 @@ function refreshAllAfterConfigChange() {
   renderStatsHud();
   renderMonsters();
   renderDebugCharacterInfo();
+  renderAchievementsSummary();
 }
 
 function saveDebugVars() {
@@ -208,10 +209,15 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEYS.active);
   localStorage.removeItem(STORAGE_KEYS.distanciaAcumuladaM);
   localStorage.removeItem(STORAGE_KEYS.ultimaPosicao);
+  localStorage.removeItem(STORAGE_KEYS.inicioSessao);
   localStorage.removeItem(STORAGE_KEY_DEFEATED_CREATURES);
+  localStorage.removeItem(STORAGE_KEY_UNLOCKED_ACHIEVEMENTS);
+  localStorage.removeItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M);
+  localStorage.removeItem(STORAGE_KEY_TOTAL_TRAININGS);
 
   totalDistanceM = 0;
   lastPosition = null;
+  sessionStartTime = null;
 
   updateDistanceDisplay();
   showStartScreen();

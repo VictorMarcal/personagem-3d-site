@@ -278,6 +278,77 @@ main {
   font-size: 0.85rem;
 }
 
+.btn-view-all {
+  margin-top: 0.75rem;
+  width: 100%;
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+}
+
+.achievement-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+  border-radius: 0.5rem;
+  background: #1f1f26;
+  border: 1px solid #2a2a30;
+}
+
+.achievement-item.locked {
+  opacity: 0.4;
+}
+
+.achievement-icon {
+  font-size: 1.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.achievement-name {
+  min-height: 2.2em;
+  margin-bottom: 0.35rem;
+  font-size: 0.6rem;
+  line-height: 1.15;
+}
+
+.achievement-progress-track {
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: #2a2a30;
+  overflow: hidden;
+}
+
+.achievement-progress-fill {
+  height: 100%;
+  background: #4a90d9;
+}
+
+#achievements-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  padding: 1rem;
+  background: #101014;
+  overflow-y: auto;
+}
+
+#achievements-modal.hidden {
+  display: none;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
 #battle-hud {
   position: absolute;
   top: 0.75rem;
