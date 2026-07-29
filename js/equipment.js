@@ -33,6 +33,12 @@ const hudLevelAtaqueEl = document.getElementById("hud-level-ataque");
 const hudLevelDefesaEl = document.getElementById("hud-level-defesa");
 const btnUpgradeEquip = document.getElementById("btn-upgrade-equip");
 
+const btnHudUpgradeByType = {
+  vida: document.getElementById("btn-hud-upgrade-vida"),
+  ataque: document.getElementById("btn-hud-upgrade-ataque"),
+  defesa: document.getElementById("btn-hud-upgrade-defesa"),
+};
+
 let selectedEquipType = null;
 
 function getStoredNumber(key, defaultValue) {
@@ -96,6 +102,11 @@ function renderStatsHud() {
   hudLevelVidaEl.textContent = getEquipLevel("vida");
   hudLevelAtaqueEl.textContent = getEquipLevel("ataque");
   hudLevelDefesaEl.textContent = getEquipLevel("defesa");
+
+  const hasPoints = getUnspentPoints() > 0;
+  Object.values(btnHudUpgradeByType).forEach((btn) => {
+    btn.classList.toggle("hidden", !hasPoints);
+  });
 }
 
 function hideUpgradeButton() {
@@ -114,18 +125,29 @@ function selectEquipment(type) {
   btnUpgradeEquip.classList.remove("hidden");
 }
 
-function upgradeSelectedEquipment() {
-  if (!selectedEquipType || getUnspentPoints() <= 0) return;
+// Gasta 1 ponto a subir o nivel de um equipamento; partilhado pelo
+// fluxo de clicar no personagem 3D e pelos botoes "+" do HUD
+function upgradeEquipmentType(type) {
+  if (getUnspentPoints() <= 0) return;
 
-  const levelKey = EQUIP_LEVEL_STORAGE_KEY_BY_TYPE[selectedEquipType];
-  localStorage.setItem(levelKey, String(getEquipLevel(selectedEquipType) + 1));
+  const levelKey = EQUIP_LEVEL_STORAGE_KEY_BY_TYPE[type];
+  localStorage.setItem(levelKey, String(getEquipLevel(type) + 1));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(getUnspentPoints() - 1));
 
   renderStatsHud();
   renderDebugCharacterInfo();
+}
+
+function upgradeSelectedEquipment() {
+  if (!selectedEquipType) return;
+  upgradeEquipmentType(selectedEquipType);
   hideUpgradeButton();
 }
 
 btnUpgradeEquip.addEventListener("click", upgradeSelectedEquipment);
+
+Object.entries(btnHudUpgradeByType).forEach(([type, btn]) => {
+  btn.addEventListener("click", () => upgradeEquipmentType(type));
+});
 
 renderStatsHud();
