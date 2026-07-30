@@ -705,6 +705,25 @@ main {
   color: #888;
 }
 
+.profile-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.btn-month-nav {
+  padding: 0.3rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.btn-month-nav:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .profile-chart {
   display: flex;
   align-items: flex-end;

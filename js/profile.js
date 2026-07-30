@@ -40,6 +40,19 @@ function formatMonthKey(date) {
   return `${y}-${m}`;
 }
 
+const MONTH_NAMES_PT = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
+function formatMonthLabel(date) {
+  return `${MONTH_NAMES_PT[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function isSameMonth(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
 // --- Navegacao entre abas ---------------------------------------------
 
 function showView(name) {
@@ -114,11 +127,11 @@ function renderProfileSummary(sessions) {
   addSummaryRow(listEl, "Dias distintos treinados", `${distinctDays}`);
 }
 
-// --- Historico por dia ---------------------------------------------------
+// --- Historico agrupado por mes, com os dias dentro de cada mes ---------
 
-// Limitado aos ultimos 60 dias com treino para a lista nao crescer sem
+// Limitado aos ultimos 24 meses com treino para a lista nao crescer sem
 // fim - os graficos abaixo continuam a cobrir a historia completa.
-const HISTORY_MAX_DAYS = 60;
+const HISTORY_MAX_MONTHS = 24;
 
 function renderProfileHistory(sessions) {
   const listEl = document.getElementById("profile-history-list");
@@ -131,29 +144,44 @@ function renderProfileHistory(sessions) {
 
   const byDay = new Map();
   sessions.forEach((s) => {
-    const key = formatDayKey(new Date(s.started_at));
-    const entry = byDay.get(key) || { distance: 0, duration: 0, count: 0 };
+    const date = new Date(s.started_at);
+    const key = formatDayKey(date);
+    const entry = byDay.get(key) || { date, distance: 0, duration: 0, count: 0 };
     entry.distance += toNum(s.distance_m);
     entry.duration += toNum(s.duration_seconds);
     entry.count += 1;
     byDay.set(key, entry);
   });
 
-  const days = Array.from(byDay.keys()).sort().reverse().slice(0, HISTORY_MAX_DAYS);
+  const byMonth = new Map();
+  byDay.forEach((entry, dayKey) => {
+    const monthKey = formatMonthKey(entry.date);
+    if (!byMonth.has(monthKey)) byMonth.set(monthKey, []);
+    byMonth.get(monthKey).push({ dayKey, ...entry });
+  });
 
-  days.forEach((day) => {
-    const entry = byDay.get(day);
-    const row = document.createElement("div");
-    row.className = "profile-history-row";
+  const monthKeys = Array.from(byMonth.keys()).sort().reverse().slice(0, HISTORY_MAX_MONTHS);
 
-    const label = document.createElement("span");
-    label.textContent = entry.count > 1 ? `${day} (${entry.count} treinos)` : day;
+  monthKeys.forEach((monthKey) => {
+    const title = document.createElement("p");
+    title.className = "profile-history-group-title";
+    title.textContent = formatMonthLabel(byMonth.get(monthKey)[0].date);
+    listEl.appendChild(title);
 
-    const value = document.createElement("span");
-    value.textContent = `${Math.round(entry.distance)} m · ${Math.round(entry.duration / 60)} min`;
+    const days = byMonth.get(monthKey).sort((a, b) => (a.dayKey < b.dayKey ? 1 : -1));
+    days.forEach((entry) => {
+      const row = document.createElement("div");
+      row.className = "profile-history-row";
 
-    row.append(label, value);
-    listEl.appendChild(row);
+      const label = document.createElement("span");
+      label.textContent = entry.count > 1 ? `${entry.dayKey} (${entry.count} treinos)` : entry.dayKey;
+
+      const value = document.createElement("span");
+      value.textContent = `${Math.round(entry.distance)} m · ${Math.round(entry.duration / 60)} min`;
+
+      row.append(label, value);
+      listEl.appendChild(row);
+    });
   });
 }
 
@@ -187,20 +215,65 @@ function sumDistanceInRange(sessions, start, end) {
     .reduce((sum, s) => sum + toNum(s.distance_m), 0);
 }
 
-function renderMonthChart(sessions) {
+// --- Navegacao de mes no grafico "Este mes" -------------------------------
+//
+// Por omissao mostra o mes atual; as setas deixam recuar ate ao mes do
+// primeiro treino de sempre. Reposto para o mes atual sempre que a aba
+// e reaberta (nao persiste a escolha entre visitas).
+
+let cachedSessions = [];
+let selectedMonthCursor = new Date();
+
+const btnMonthChartPrev = document.getElementById("btn-month-chart-prev");
+const btnMonthChartNext = document.getElementById("btn-month-chart-next");
+const profileMonthChartLabelEl = document.getElementById("profile-month-chart-label");
+
+function getEarliestSessionMonth() {
+  if (cachedSessions.length === 0) return getStartOfLocalMonth(new Date());
+  return getStartOfLocalMonth(new Date(cachedSessions[0].started_at));
+}
+
+function renderMonthChart(sessions, monthCursor) {
   const container = document.getElementById("profile-chart-month");
   const now = new Date();
-  const daysSoFar = now.getDate();
+  const lastDay = isSameMonth(monthCursor, now)
+    ? now.getDate()
+    : new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0).getDate();
 
   const entries = [];
-  for (let day = 1; day <= daysSoFar; day++) {
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), day);
-    const dayEnd = new Date(now.getFullYear(), now.getMonth(), day + 1);
+  for (let day = 1; day <= lastDay; day++) {
+    const dayStart = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), day);
+    const dayEnd = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), day + 1);
     entries.push({ label: String(day), value: sumDistanceInRange(sessions, dayStart, dayEnd) });
   }
 
   container.innerHTML = buildBarChartSvg(entries);
 }
+
+function renderSelectedMonthChart() {
+  const now = new Date();
+  const earliest = getEarliestSessionMonth();
+
+  profileMonthChartLabelEl.textContent = isSameMonth(selectedMonthCursor, now)
+    ? "Este mês"
+    : formatMonthLabel(selectedMonthCursor);
+  btnMonthChartPrev.disabled = selectedMonthCursor <= earliest;
+  btnMonthChartNext.disabled = isSameMonth(selectedMonthCursor, now);
+
+  renderMonthChart(cachedSessions, selectedMonthCursor);
+}
+
+btnMonthChartPrev.addEventListener("click", () => {
+  if (btnMonthChartPrev.disabled) return;
+  selectedMonthCursor = new Date(selectedMonthCursor.getFullYear(), selectedMonthCursor.getMonth() - 1, 1);
+  renderSelectedMonthChart();
+});
+
+btnMonthChartNext.addEventListener("click", () => {
+  if (btnMonthChartNext.disabled) return;
+  selectedMonthCursor = new Date(selectedMonthCursor.getFullYear(), selectedMonthCursor.getMonth() + 1, 1);
+  renderSelectedMonthChart();
+});
 
 function renderAllMonthsChart(sessions) {
   const container = document.getElementById("profile-chart-all-months");
@@ -244,8 +317,11 @@ async function renderProfileTab() {
     return;
   }
 
+  cachedSessions = sessions;
+  selectedMonthCursor = new Date();
+
   renderProfileSummary(sessions);
   renderProfileHistory(sessions);
-  renderMonthChart(sessions);
+  renderSelectedMonthChart();
   renderAllMonthsChart(sessions);
 }

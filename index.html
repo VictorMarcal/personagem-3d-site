@@ -235,7 +235,11 @@
 
       <section class="card" id="profile-charts-card">
         <h2 class="card-title">Evolução</h2>
-        <p class="training-label">Este mês</p>
+        <div class="profile-month-nav">
+          <button id="btn-month-chart-prev" class="btn-secondary btn-month-nav">‹</button>
+          <span id="profile-month-chart-label" class="training-label">Este mês</span>
+          <button id="btn-month-chart-next" class="btn-secondary btn-month-nav">›</button>
+        </div>
         <div id="profile-chart-month" class="profile-chart"></div>
         <p class="training-label">Todos os meses</p>
         <div id="profile-chart-all-months" class="profile-chart"></div>
