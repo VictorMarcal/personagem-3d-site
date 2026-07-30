@@ -16,6 +16,7 @@ const namePickerInputEl = document.getElementById("name-picker-input");
 const btnNamePickerConfirm = document.getElementById("btn-name-picker-confirm");
 const namePickerStatusEl = document.getElementById("name-picker-status");
 const leaderboardListEl = document.getElementById("leaderboard-list");
+const characterHudNameEl = document.getElementById("character-hud-name");
 
 let currentUserId = null;
 let currentProfile = null;
@@ -176,6 +177,14 @@ async function renderLeaderboardCard() {
 
 // --- Gate do card de Debug --------------------------------------------------
 
+// Mostra o nome escolhido no popup em vez de "Personagem" no HUD do
+// personagem 3D - o leaderboard ja usa currentDisplayName() diretamente.
+function applyDisplayNameToHud() {
+  if (characterHudNameEl && currentProfile && currentProfile.display_name) {
+    characterHudNameEl.textContent = currentProfile.display_name;
+  }
+}
+
 function applyAdminGate() {
   if (currentProfile && currentProfile.is_admin) {
     document.getElementById("debug-card").classList.remove("hidden");
@@ -319,6 +328,7 @@ async function bootstrapAfterLogin(user) {
   }
 
   readyForSync = true;
+  applyDisplayNameToHud();
 
   // Re-renderiza tudo com os dados hidratados/migrados (funcao existente em
   // js/debug.js) - corre sempre, mesmo que os passos acima tenham falhado.
