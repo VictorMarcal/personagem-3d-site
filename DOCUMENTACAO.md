@@ -25,7 +25,9 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `index.html` | Estrutura da página, todos os elementos de UI |
 | `css/style.css` | Todo o estilo (tema escuro, mobile-first) |
 | `js/storage-keys.js` | Constantes de chaves de `localStorage` do progresso (`personagem.*`) — centralizadas porque `auth.js` precisa delas antes dos ficheiros que historicamente as declaravam |
-| `js/auth.js` | Login Google (Supabase Auth), popup de escolha de nome, migração/hidratação do progresso, sincronização contínua (`queueProgressSync`), leaderboard, gate do card de Debug |
+| `js/auth.js` | Login Google (Supabase Auth), popup de escolha de nome, gate do card de Debug, orquestração do arranque pós-login |
+| `js/progress-sync.js` | Migração/hidratação do progresso local ↔ Supabase, sincronização contínua (`queueProgressSync`) |
+| `js/leaderboard.js` | Renderização do card de leaderboard |
 | `js/main.js` | Cena 3D (Three.js): personagem, equipamentos, monstro placeholder, câmara, rotação por arraste, raycasting de equipamento |
 | `js/debug.js` | Centraliza **todas** as variáveis afináveis do jogo + ferramentas de debug (reset, simulador de distância) |
 | `js/equipment.js` | Stats do personagem, níveis de equipamento, fórmula de valor de status, upgrade |
@@ -39,7 +41,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — corre-se manualmente no SQL Editor do Supabase, não é lido pelo site |
 
 Ordem de carregamento dos scripts (importa por causa de dependências entre módulos):
-`storage-keys → auth → main → debug → equipment → experience → monsters → achievements → battle → training → profile → orientation`
+`storage-keys → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → achievements → battle → training → profile → orientation`
 
 ## 4. Sistema de treino (GPS)
 

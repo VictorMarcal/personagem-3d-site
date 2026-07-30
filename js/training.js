@@ -111,6 +111,10 @@ async function flushTrainingSessionQueue() {
   if (typeof onTrainingSessionsSynced === "function") onTrainingSessionsSynced();
 }
 
+window.addEventListener("online", () => {
+  flushTrainingSessionQueue();
+});
+
 function onPositionUpdate(position) {
   const { latitude, longitude, accuracy } = position.coords;
   const timestamp = position.timestamp;

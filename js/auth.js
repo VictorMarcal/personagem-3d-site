@@ -6,7 +6,6 @@
 // vez que so o faz depois de todos os scripts terem corrido.
 const SUPABASE_URL = "https://vnqjaepjfqlhgmlrhzlr.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_5o0ebiPFcC8jKjQbpbok2A_p1ozZMEz";
-const SYNC_PENDING_KEY = "sync.pendingPush";
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
@@ -15,13 +14,11 @@ const namePickerModalEl = document.getElementById("name-picker-modal");
 const namePickerInputEl = document.getElementById("name-picker-input");
 const btnNamePickerConfirm = document.getElementById("btn-name-picker-confirm");
 const namePickerStatusEl = document.getElementById("name-picker-status");
-const leaderboardListEl = document.getElementById("leaderboard-list");
 const characterHudNameEl = document.getElementById("character-hud-name");
 
 let currentUserId = null;
 let currentProfile = null;
 let bootstrapped = false;
-let syncTimeoutId = null;
 // So true depois do arranque pos-login terminar (perfil carregado e
 // progresso migrado/hidratado) - evita que uma sincronizacao em segundo
 // plano (ex: GPS a ganhar pontos durante o proprio login) crie a linha em
@@ -37,6 +34,10 @@ function hideAuthModal() {
   authModalEl.classList.add("hidden");
 }
 
+function currentDisplayName() {
+  return (currentProfile && currentProfile.display_name) || "Jogador";
+}
+
 document.getElementById("btn-google-signin").addEventListener("click", () => {
   // URL limpo (sem query/hash) - se o clique acontecer depois de um erro
   // anterior deixar #error=... ou ?error=... na barra de endereco, usar
@@ -49,134 +50,7 @@ document.getElementById("btn-google-signin").addEventListener("click", () => {
   });
 });
 
-// --- Sincronizacao continua com o Supabase -------------------------------
-
-// Le o estado atual via os getters ja existentes (equipment/experience/
-// monsters/achievements), que a esta altura (chamado sempre de forma
-// assincrona) estao garantidamente definidos.
-function readLocalProgressSnapshot() {
-  return {
-    lifetime_distance_m: getLifetimeDistanceM(),
-    unspent_points: getUnspentPoints(),
-    equip_level_vida: getEquipLevel("vida"),
-    equip_level_ataque: getEquipLevel("ataque"),
-    equip_level_defesa: getEquipLevel("defesa"),
-    last_awarded_quarters: getLastAwardedQuarters(),
-    defeated_levels: getDefeatedLevels(),
-    unlocked_achievements: getUnlockedAchievements(),
-    best_session_distance_m: getBestSessionDistanceM(),
-    total_trainings_completed: getTotalTrainingsCompleted(),
-  };
-}
-
-function currentDisplayName() {
-  return (currentProfile && currentProfile.display_name) || "Jogador";
-}
-
-async function syncProgressToSupabase() {
-  if (!currentUserId) return;
-  const snapshot = readLocalProgressSnapshot();
-  const nowIso = new Date().toISOString();
-
-  const { error: progressError } = await supabaseClient
-    .from("player_progress")
-    .upsert({ user_id: currentUserId, ...snapshot, updated_at: nowIso });
-
-  const { error: leaderboardError } = await supabaseClient
-    .from("leaderboard")
-    .upsert({
-      user_id: currentUserId,
-      display_name: currentDisplayName(),
-      lifetime_distance_m: snapshot.lifetime_distance_m,
-      updated_at: nowIso,
-    });
-
-  if (progressError || leaderboardError) {
-    localStorage.setItem(SYNC_PENDING_KEY, "true");
-    console.warn("Falha ao sincronizar progresso com o Supabase, tenta de novo mais tarde.", progressError || leaderboardError);
-    return;
-  }
-
-  localStorage.removeItem(SYNC_PENDING_KEY);
-  renderLeaderboardCard();
-}
-
-// Debounce de ~400ms: uma rajada de mutacoes (ex: fim de um treino) so
-// gera um pedido de rede, com o estado final consolidado.
-function queueProgressSync() {
-  if (!currentUserId || !readyForSync) return;
-  if (syncTimeoutId) clearTimeout(syncTimeoutId);
-  syncTimeoutId = setTimeout(syncProgressToSupabase, 400);
-}
-
-window.addEventListener("online", () => {
-  if (localStorage.getItem(SYNC_PENDING_KEY) === "true") {
-    queueProgressSync();
-  }
-  flushTrainingSessionQueue();
-});
-
-// --- Leaderboard ----------------------------------------------------------
-
-function createLeaderboardRowEl(row, rank, isOwn) {
-  const el = document.createElement("div");
-  el.className = "leaderboard-row" + (isOwn ? " own" : "");
-
-  const rankEl = document.createElement("span");
-  rankEl.className = "leaderboard-rank";
-  rankEl.textContent = `#${rank}`;
-
-  const nameEl = document.createElement("span");
-  nameEl.className = "leaderboard-name";
-  nameEl.textContent = row.display_name;
-
-  const distEl = document.createElement("span");
-  distEl.className = "leaderboard-distance";
-  distEl.textContent = `${Math.round(row.lifetime_distance_m)} m`;
-
-  el.append(rankEl, nameEl, distEl);
-  return el;
-}
-
-async function renderLeaderboardCard() {
-  if (!leaderboardListEl) return;
-
-  const { data: top, error } = await supabaseClient
-    .from("leaderboard")
-    .select("user_id, display_name, lifetime_distance_m")
-    .order("lifetime_distance_m", { ascending: false })
-    .limit(10);
-
-  if (error || !top) {
-    leaderboardListEl.innerHTML = '<p class="debug-status">Não foi possível carregar o leaderboard.</p>';
-    return;
-  }
-
-  leaderboardListEl.innerHTML = "";
-  top.forEach((row, index) => {
-    leaderboardListEl.appendChild(createLeaderboardRowEl(row, index + 1, row.user_id === currentUserId));
-  });
-
-  const isOwnInTop = top.some((row) => row.user_id === currentUserId);
-  if (isOwnInTop || !currentUserId) return;
-
-  const { data: allRows } = await supabaseClient
-    .from("leaderboard")
-    .select("user_id, display_name, lifetime_distance_m")
-    .order("lifetime_distance_m", { ascending: false });
-
-  if (!allRows) return;
-  const ownIndex = allRows.findIndex((row) => row.user_id === currentUserId);
-  if (ownIndex === -1) return;
-
-  const divider = document.createElement("p");
-  divider.className = "leaderboard-divider";
-  divider.textContent = "···";
-  leaderboardListEl.appendChild(divider);
-  leaderboardListEl.appendChild(createLeaderboardRowEl(allRows[ownIndex], ownIndex + 1, true));
-}
-
-// --- Gate do card de Debug --------------------------------------------------
+// --- Gate do card de Debug e HUD -------------------------------------------
 
 // Mostra o nome escolhido no popup em vez de "Personagem" no HUD do
 // personagem 3D - o leaderboard ja usa currentDisplayName() diretamente.
@@ -204,53 +78,6 @@ async function fetchOrWaitForProfile(userId) {
     await delay(300);
   }
   throw new Error("Perfil não encontrado após várias tentativas.");
-}
-
-async function fetchProgress(userId) {
-  const { data, error } = await supabaseClient
-    .from("player_progress")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) {
-    console.error("Erro ao carregar progresso:", error);
-    return null;
-  }
-  return data;
-}
-
-// Primeira sincronizacao desta conta (em qualquer dispositivo): sobe o
-// estado local atual (existente ou vazio, tanto serve) para o Supabase.
-async function migrateLocalProgressToSupabase(userId, existingDisplayName) {
-  const snapshot = readLocalProgressSnapshot();
-
-  // upsert (nao insert): se uma sincronizacao em segundo plano ja tiver
-  // criado esta linha entretanto, isto so a atualiza em vez de falhar por
-  // duplicado - a migracao tem de ser segura a repetir.
-  await supabaseClient.from("player_progress").upsert({ user_id: userId, ...snapshot });
-  await supabaseClient.from("leaderboard").upsert({
-    user_id: userId,
-    display_name: existingDisplayName || "Jogador",
-    lifetime_distance_m: snapshot.lifetime_distance_m,
-  });
-
-  return snapshot;
-}
-
-// Jogador a repetir login (possivelmente noutro dispositivo): o Supabase
-// e a fonte de verdade, sobrescreve o localStorage para o resto do codigo
-// continuar a funcionar sem alteracoes.
-function hydrateLocalStorageFromProgress(progress) {
-  localStorage.setItem(STORAGE_KEY_LIFETIME_M, String(progress.lifetime_distance_m));
-  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(progress.unspent_points));
-  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEquipVida, String(progress.equip_level_vida));
-  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEquipAtaque, String(progress.equip_level_ataque));
-  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEquipDefesa, String(progress.equip_level_defesa));
-  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoQuartoPremiado, String(progress.last_awarded_quarters));
-  localStorage.setItem(STORAGE_KEY_DEFEATED_CREATURES, JSON.stringify(progress.defeated_levels || []));
-  localStorage.setItem(STORAGE_KEY_UNLOCKED_ACHIEVEMENTS, JSON.stringify(progress.unlocked_achievements || {}));
-  localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M, String(progress.best_session_distance_m));
-  localStorage.setItem(STORAGE_KEY_TOTAL_TRAININGS, String(progress.total_trainings_completed));
 }
 
 // Sem botao de cancelar - so fecha depois de um nome valido e unico ser
@@ -297,6 +124,10 @@ function promptForDisplayName(userId) {
 // correr - em particular, refreshAllAfterConfigChange() no fim tem de
 // correr sempre que o perfil foi carregado, para os cartoes de Monstros/
 // Conquistas nunca ficarem vazios por causa de um erro noutro passo.
+// migrateLocalProgressToSupabase/hydrateLocalStorageFromProgress vivem em
+// js/progress-sync.js; renderLeaderboardCard em js/leaderboard.js - ambos
+// carregados antes deste ficheiro correr esta funcao (so acontece de forma
+// assincrona, depois de todos os scripts terem executado).
 async function bootstrapAfterLogin(user) {
   currentUserId = user.id;
 
