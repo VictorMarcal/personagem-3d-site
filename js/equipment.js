@@ -80,6 +80,16 @@ function awardPointsIfNeeded(lifetimeM) {
   queueProgressSync();
 }
 
+// Pontuacao por derrotar uma criatura depende da vida do jogador no
+// momento da vitoria (quanto mais apertada a luta, menos pontos):
+// >=50% vida = pontuacao maxima, 25-49% = maxima-1, <25% = maxima-2
+// (nunca abaixo de 0).
+function computeBonusPoints(maxPoints, playerHpPercent) {
+  if (playerHpPercent >= 50) return maxPoints;
+  if (playerHpPercent >= 25) return Math.max(0, maxPoints - 1);
+  return Math.max(0, maxPoints - 2);
+}
+
 // Pontos de bonus por derrotar um mini-boss/boss pela primeira vez
 // (js/battle.js decide quando chamar isto, com base em isCreatureDefeated
 // antes de markCreatureDefeated).

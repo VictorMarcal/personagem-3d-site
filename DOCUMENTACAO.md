@@ -74,8 +74,12 @@ Escolhida para não ser nem linear nem exponencial — os incrementos crescem, m
 
 - `LEVEL_UP_POINTS = 1` ponto por cada nível de personagem subido (substituiu o antigo sistema de "quartos": 4 pontos distribuídos a cada 25% de progresso dentro do nível)
 - Pontos só contam com base em **distância confirmada** (nunca a sessão de treino em curso, que pode ainda ser perdida)
-- **Bónus por derrotar criaturas** (só na primeira derrota — re-lutar não dá pontos outra vez): Mini-Boss dá `MINIBOSS_POINTS = 2`, Boss dá `BOSS_POINTS = 4`
-- Com os valores de produção, até ao nível 60 (assumindo todos os mini-bosses/bosses no caminho derrotados): 59 pontos de nível + 12 de mini-bosses (6 × 2) + 24 de bosses (6 × 4) = **95 pontos no máximo** — bem menos que os ~236 do sistema antigo, tornando o equipamento mais lento a evoluir e a derrota de criaturas mais relevante
+- **Bónus por derrotar criaturas** (só na primeira derrota — re-lutar não dá pontos outra vez), escalado pela vida do jogador restante no momento da vitória — quanto mais apertada a luta, menos pontos:
+  - ≥ 50% de vida → pontuação máxima
+  - 25%–49% de vida → pontuação máxima − 1
+  - < 25% de vida → pontuação máxima − 2 (nunca abaixo de 0)
+  - `MINIBOSS_MAX_POINTS = 3`, `BOSS_MAX_POINTS = 5`
+- Com os valores de produção, até ao nível 60 (assumindo todos os mini-bosses/bosses no caminho derrotados com vida acima de 50%): 59 pontos de nível + até 18 de mini-bosses (6 × 3) + até 30 de bosses (6 × 5) = **até 107 pontos no máximo** — bem menos que os ~236 do sistema antigo, tornando o equipamento mais lento a evoluir e a forma como se luta (arriscar vs jogar seguro) relevante para a pontuação
 
 ## 7. Fórmula de valor dos equipamentos
 

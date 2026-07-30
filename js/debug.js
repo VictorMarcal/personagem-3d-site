@@ -26,8 +26,8 @@ const DEBUG_DEFAULTS = {
   miniBossLevelStep: 5,
   bossLevelStep: 10,
   maxLevelToGenerate: 60,
-  miniBossPoints: 2,
-  bossPoints: 4,
+  miniBossMaxPoints: 3,
+  bossMaxPoints: 5,
   battleDefensePercent: 0.6,
   battleFloorPercent: 0.5,
 };
@@ -59,8 +59,8 @@ function getMaxSpeedMps() { return getMaxSpeedKmh() / 3.6; }
 function getMiniBossLevelStep() { return getDebugValue("miniBossLevelStep"); }
 function getBossLevelStep() { return getDebugValue("bossLevelStep"); }
 function getMaxLevelToGenerate() { return getDebugValue("maxLevelToGenerate"); }
-function getMiniBossPoints() { return getDebugValue("miniBossPoints"); }
-function getBossPoints() { return getDebugValue("bossPoints"); }
+function getMiniBossMaxPoints() { return getDebugValue("miniBossMaxPoints"); }
+function getBossMaxPoints() { return getDebugValue("bossMaxPoints"); }
 function getBattleDefensePercent() { return getDebugValue("battleDefensePercent"); }
 function getBattleFloorPercent() { return getDebugValue("battleFloorPercent"); }
 
@@ -83,8 +83,8 @@ const debugVarInputs = {
   miniBossLevelStep: document.getElementById("dbg-miniBossLevelStep"),
   bossLevelStep: document.getElementById("dbg-bossLevelStep"),
   maxLevelToGenerate: document.getElementById("dbg-maxLevelToGenerate"),
-  miniBossPoints: document.getElementById("dbg-miniBossPoints"),
-  bossPoints: document.getElementById("dbg-bossPoints"),
+  miniBossMaxPoints: document.getElementById("dbg-miniBossMaxPoints"),
+  bossMaxPoints: document.getElementById("dbg-bossMaxPoints"),
   battleDefensePercent: document.getElementById("dbg-battleDefensePercent"),
   battleFloorPercent: document.getElementById("dbg-battleFloorPercent"),
 };

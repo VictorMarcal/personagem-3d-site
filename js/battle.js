@@ -74,6 +74,7 @@ async function startBattle(creature) {
 
   let won = false;
   let round = 0;
+  let playerHpPercentAtWin = 100;
 
   while (round < BATTLE_MAX_ROUNDS) {
     round += 1;
@@ -86,6 +87,7 @@ async function startBattle(creature) {
 
     if (monsterHp <= 0) {
       won = true;
+      playerHpPercentAtWin = Math.max(0, (playerHp / playerMaxHp) * 100);
       break;
     }
 
@@ -106,8 +108,10 @@ async function startBattle(creature) {
     markCreatureDefeated(creature.level);
 
     if (firstDefeat) {
-      if (creature.isBoss) awardBonusPoints(getBossPoints());
-      else if (creature.isMiniBoss) awardBonusPoints(getMiniBossPoints());
+      const maxPoints = creature.isBoss ? getBossMaxPoints() : creature.isMiniBoss ? getMiniBossMaxPoints() : 0;
+      if (maxPoints > 0) {
+        awardBonusPoints(computeBonusPoints(maxPoints, playerHpPercentAtWin));
+      }
     }
 
     checkAndUnlockAchievements(); // pode ter desbloqueado uma conquista de boss
