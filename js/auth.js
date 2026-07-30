@@ -21,6 +21,12 @@ let currentUserId = null;
 let currentProfile = null;
 let bootstrapped = false;
 let syncTimeoutId = null;
+// So true depois do arranque pos-login terminar (perfil carregado e
+// progresso migrado/hidratado) - evita que uma sincronizacao em segundo
+// plano (ex: GPS a ganhar pontos durante o proprio login) crie a linha em
+// player_progress antes do passo de migracao, o que fazia esse passo
+// falhar por duplicado e travava o resto do arranque a meio.
+let readyForSync = false;
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -97,7 +103,7 @@ async function syncProgressToSupabase() {
 // Debounce de ~400ms: uma rajada de mutacoes (ex: fim de um treino) so
 // gera um pedido de rede, com o estado final consolidado.
 function queueProgressSync() {
-  if (!currentUserId) return;
+  if (!currentUserId || !readyForSync) return;
   if (syncTimeoutId) clearTimeout(syncTimeoutId);
   syncTimeoutId = setTimeout(syncProgressToSupabase, 400);
 }
@@ -208,7 +214,10 @@ async function fetchProgress(userId) {
 async function migrateLocalProgressToSupabase(userId, existingDisplayName) {
   const snapshot = readLocalProgressSnapshot();
 
-  await supabaseClient.from("player_progress").insert({ user_id: userId, ...snapshot });
+  // upsert (nao insert): se uma sincronizacao em segundo plano ja tiver
+  // criado esta linha entretanto, isto so a atualiza em vez de falhar por
+  // duplicado - a migracao tem de ser segura a repetir.
+  await supabaseClient.from("player_progress").upsert({ user_id: userId, ...snapshot });
   await supabaseClient.from("leaderboard").upsert({
     user_id: userId,
     display_name: existingDisplayName || "Jogador",
@@ -273,27 +282,54 @@ function promptForDisplayName(userId) {
   });
 }
 
+// Cada passo tem o seu proprio try/catch: uma falha (ex: rede instavel no
+// telemovel a meio do login) nunca deve impedir os passos seguintes de
+// correr - em particular, refreshAllAfterConfigChange() no fim tem de
+// correr sempre que o perfil foi carregado, para os cartoes de Monstros/
+// Conquistas nunca ficarem vazios por causa de um erro noutro passo.
 async function bootstrapAfterLogin(user) {
   currentUserId = user.id;
 
-  const profile = await fetchOrWaitForProfile(user.id);
+  let profile;
+  try {
+    profile = await fetchOrWaitForProfile(user.id);
+  } catch (err) {
+    console.error("Falha ao carregar perfil:", err);
+    return;
+  }
   currentProfile = profile;
 
-  const progress = await fetchProgress(user.id);
-  if (!progress) {
-    await migrateLocalProgressToSupabase(user.id, profile.display_name);
-  } else {
-    hydrateLocalStorageFromProgress(progress);
+  try {
+    const progress = await fetchProgress(user.id);
+    if (!progress) {
+      await migrateLocalProgressToSupabase(user.id, profile.display_name);
+    } else {
+      hydrateLocalStorageFromProgress(progress);
+    }
+  } catch (err) {
+    console.error("Falha ao migrar/hidratar progresso:", err);
   }
 
   if (!profile.display_name) {
-    await promptForDisplayName(user.id);
+    try {
+      await promptForDisplayName(user.id);
+    } catch (err) {
+      console.error("Falha ao guardar nome:", err);
+    }
   }
 
+  readyForSync = true;
+
   // Re-renderiza tudo com os dados hidratados/migrados (funcao existente em
-  // js/debug.js) e so entao mostra o leaderboard e liberta o Debug.
+  // js/debug.js) - corre sempre, mesmo que os passos acima tenham falhado.
   refreshAllAfterConfigChange();
-  renderLeaderboardCard();
+
+  try {
+    renderLeaderboardCard();
+  } catch (err) {
+    console.error("Falha ao carregar leaderboard:", err);
+  }
+
   applyAdminGate();
 
   if (localStorage.getItem(SYNC_PENDING_KEY) === "true") {
