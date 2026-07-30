@@ -47,11 +47,11 @@ async function startBattle(creature) {
   if (battleInProgress) return;
   battleInProgress = true;
 
-  // Recuperacao de vida da armadura: bonus aplicado uma vez, no inicio da
-  // luta (a vida do jogador ja e sempre recalculada do zero a cada
-  // batalha, nunca herda dano de lutas anteriores).
-  const recoveryPercent = computeRecoveryPercent(getEquipLevel("vida"));
-  const playerMaxHp = Math.round(computeStatValue("vida", getEquipLevel("vida")) * (1 + recoveryPercent));
+  // A vida entra na luta com o que tiver recuperado ate agora (nunca cheia
+  // por garantia) - lutar com vida parcial e uma escolha do jogador, nao
+  // um bloqueio. A recuperacao para de contar assim que a luta comeca
+  // (so volta a avancar depois, a partir do valor guardado no fim dela).
+  const playerMaxHp = computeStatValue("vida", getEquipLevel("vida"));
   const playerAtaque = computeStatValue("ataque", getEquipLevel("ataque"));
   const playerDefesa = computeStatValue("defesa", getEquipLevel("defesa"));
 
@@ -59,7 +59,7 @@ async function startBattle(creature) {
   const monsterAtaque = computeStatValue("ataque", creature.level);
   const monsterDefesa = computeStatValue("defesa", creature.level);
 
-  let playerHp = playerMaxHp;
+  let playerHp = getCurrentHp(playerMaxHp);
   let monsterHp = monsterMaxHp;
 
   characterHudEl.classList.add("hidden");
@@ -124,6 +124,10 @@ async function startBattle(creature) {
   } else {
     battleResultEl.textContent = `Derrota... ${creature.name} venceu.`;
   }
+
+  // Guarda a vida com que ficou (ganhando ou perdendo) - e a partir daqui
+  // que a recuperacao por tempo real comeca a contar.
+  setCurrentHp(Math.max(0, playerHp));
 
   btnBattleBack.classList.remove("hidden");
   battleInProgress = false;

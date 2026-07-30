@@ -22,3 +22,10 @@ const STORAGE_KEY_TOTAL_TRAININGS = "personagem.totalTreinosConcluidos";
 // js/training.js) - diferente das chaves acima porque cada sessao e um
 // evento discreto, nao um valor agregado que pode ser reenviado.
 const STORAGE_KEY_SESSION_QUEUE = "personagem.filaSessoesTreino";
+
+// Vida atual do jogador (persiste entre lutas, ao contrario do resto do
+// combate) + timestamp da ultima atualizacao, para calcular a recuperacao
+// por tempo real decorrido. So local (como debug.*) - e um mecanismo
+// anti-spam de batalhas, nao precisa de sincronizar entre dispositivos.
+const STORAGE_KEY_CURRENT_HP = "personagem.vidaAtual";
+const STORAGE_KEY_HP_LAST_UPDATE = "personagem.vidaUltimaAtualizacao";

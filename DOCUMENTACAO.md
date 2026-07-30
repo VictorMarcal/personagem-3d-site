@@ -102,14 +102,14 @@ Isto garante que o incremento **nunca decresce** (na verdade cresce sempre um po
 
 Todos os 9 parâmetros (base/flat/% × 3 status) são ajustáveis independentemente no card de Debug.
 
-**Recuperação de Vida** (novo 4º status, só da Armadura): fórmula linear simples, não recursiva —
+**Recuperação de Vida** (novo 4º status, só da Armadura): fórmula linear simples, não recursiva, em pontos de vida por segundo real —
 
 ```
-Recuperação = STAT_RECOVERY_BASE + NívelArmadura × 0.10
-STAT_RECOVERY_BASE = 0.1 (10%)
+Recuperação (pontos/s) = STAT_RECOVERY_BASE + NívelArmadura × 0.10
+STAT_RECOVERY_BASE = 0.1
 ```
 
-Aplicada como bónus percentual à Vida máxima do jogador, uma vez no início de cada batalha (a vida já é sempre recalculada do zero por luta, nunca herda dano de lutas anteriores).
+Mostrado no HUD como "Recuperação: X/s". Não afeta nada durante a luta em si — é o ritmo a que a vida do jogador recupera fora de combate (ver secção 9, Sistema de duelos).
 
 ## 8. Mini-Bosses e Bosses
 
@@ -132,7 +132,7 @@ BATTLE_DEFENSE_PERCENT = 0.6, BATTLE_FLOOR_PERCENT = 0.5
 ```
 
 - **Porquê a troca de curvas Ataque/Defesa**: com as curvas originais (Defesa maior que Ataque), o dano dava sempre negativo em qualquer nível/build. Trocar as curvas resolveu a maior parte dos casos, mas builds extremos (100% investidos numa só stat) ainda podiam ficar presos em impasses ou derrotas garantidas — daí a necessidade do piso mínimo.
-- Vida do jogador é sempre recalculada do zero no início de cada batalha (nunca herda dano de lutas anteriores)
+- **Vida do jogador persiste entre lutas** — não recomeça cheia automaticamente. Recupera com o tempo real decorrido (secção 7, Recuperação), calculado sob demanda (valor guardado + segundos passados × Recuperação, sem timer a correr em segundo plano). Lutar com vida parcial é uma escolha do jogador, não há bloqueio — a recuperação simplesmente não avança durante a luta em si (só volta a contar a partir do valor com que se fica no fim, ganhando ou perdendo). É um mecanismo anti-spam de batalhas, só local (não sincroniza entre dispositivos)
 - Vitória contra um boss marca-o como derrotado e desbloqueia o próximo da sequência
 
 ## 10. Conquistas

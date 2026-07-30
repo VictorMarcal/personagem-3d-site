@@ -100,6 +100,27 @@ function computeBonusPoints(maxPoints, playerHpPercent) {
   return Math.max(0, maxPoints - 2);
 }
 
+// Vida atual do jogador: persiste entre lutas e recupera com o tempo real
+// decorrido (nao um timer a correr sempre - calculado sob demanda a partir
+// do ultimo valor guardado + segundos passados, padrao comum em jogos
+// idle). Nunca lutou ainda = comeca cheia.
+function getCurrentHp(maxHp) {
+  const stored = localStorage.getItem(STORAGE_KEY_CURRENT_HP);
+  if (stored === null) return maxHp;
+
+  const lastUpdate = Number(localStorage.getItem(STORAGE_KEY_HP_LAST_UPDATE)) || Date.now();
+  const elapsedSeconds = Math.max(0, (Date.now() - lastUpdate) / 1000);
+  const recovered = Number(stored) + computeRecoveryPercent(getEquipLevel("vida")) * elapsedSeconds;
+  return Math.min(maxHp, Math.max(0, recovered));
+}
+
+// Chamado no fim de cada luta (ganha ou perdida) com a vida com que o
+// jogador ficou - e a partir daqui que a recuperacao por tempo comeca.
+function setCurrentHp(value) {
+  localStorage.setItem(STORAGE_KEY_CURRENT_HP, String(value));
+  localStorage.setItem(STORAGE_KEY_HP_LAST_UPDATE, String(Date.now()));
+}
+
 // Pontos de bonus por derrotar um mini-boss/boss pela primeira vez
 // (js/battle.js decide quando chamar isto, com base em isCreatureDefeated
 // antes de markCreatureDefeated).
@@ -115,7 +136,7 @@ function renderStatsHud() {
   statVidaValueEl.textContent = computeStatValue("vida", getEquipLevel("vida"));
   statAtaqueValueEl.textContent = computeStatValue("ataque", getEquipLevel("ataque"));
   statDefesaValueEl.textContent = computeStatValue("defesa", getEquipLevel("defesa"));
-  statRecuperacaoValueEl.textContent = Math.round(computeRecoveryPercent(getEquipLevel("vida")) * 100);
+  statRecuperacaoValueEl.textContent = computeRecoveryPercent(getEquipLevel("vida")).toFixed(1);
 
   hudLevelVidaEl.textContent = getEquipLevel("vida");
   hudLevelAtaqueEl.textContent = getEquipLevel("ataque");

@@ -246,6 +246,8 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEY_UNLOCKED_ACHIEVEMENTS);
   localStorage.removeItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M);
   localStorage.removeItem(STORAGE_KEY_TOTAL_TRAININGS);
+  localStorage.removeItem(STORAGE_KEY_CURRENT_HP);
+  localStorage.removeItem(STORAGE_KEY_HP_LAST_UPDATE);
 
   totalDistanceM = 0;
   lastPosition = null;
