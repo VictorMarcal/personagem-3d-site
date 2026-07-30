@@ -63,10 +63,10 @@ function computeStatValue(type, equipLevel) {
 // Recuperacao de vida da armadura: formula linear simples (nao recursiva
 // como computeStatValue), aplicada uma vez no inicio de cada batalha
 // (js/battle.js) como bonus percentual sobre a Vida maxima do jogador.
-// Nivel 1 (inicial, sem upgrades) = so a base, tal como Valor(1) = STAT_BASE
-// nos outros status - so os niveis GANHOS acima do 1 somam 10% cada.
+// Recuperacao = STAT_RECOVERY_BASE + nivelArmadura x 10% (nivel 1 ja conta
+// como 1 nivel, por isso da 20% desde o inicio com a base em 10%).
 function computeRecoveryPercent(armorLevel) {
-  return getStatRecoveryBase() + (armorLevel - 1) * 0.1;
+  return getStatRecoveryBase() + armorLevel * 0.1;
 }
 
 // Comeca em 1 (nivel inicial) para "subir de nivel" so contar a partir
