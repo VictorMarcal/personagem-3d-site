@@ -166,7 +166,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 
 - Mobile-first; página com scroll (deixou de ser "uma tela só" quando o conteúdo cresceu)
 - Aviso para rodar o dispositivo aparece só em ecrãs touch em modo paisagem (deteção via JS: `matchMedia` + `maxTouchPoints`, não só CSS)
-- HUD do personagem sobreposto ao visualizador 3D: nível, os 3 status, e o nível de cada equipamento com botão **"+"** que só aparece quando há pontos disponíveis
+- HUD do personagem sobreposto ao visualizador 3D: nível, os 4 status (Vida mostrada como `atual/máximo`, atualizada ao vivo a cada segundo enquanto estiver a recuperar — para sozinho ao chegar ao máximo), e o nível de cada equipamento com botão **"+"** que só aparece quando há pontos disponíveis
 - Equipamento pode ser evoluído de duas formas: a) tocar na peça no modelo 3D (espada=Ataque, escudo=Defesa, corpo=Vida/Armadura) b) botão "+" no HUD
 - Personagem gira por arraste/toque (câmara fixa); toque curto sem arrastar seleciona equipamento (raycasting Three.js)
 

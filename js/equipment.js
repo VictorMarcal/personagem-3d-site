@@ -133,7 +133,8 @@ function awardBonusPoints(amount) {
 }
 
 function renderStatsHud() {
-  statVidaValueEl.textContent = computeStatValue("vida", getEquipLevel("vida"));
+  const maxHp = computeStatValue("vida", getEquipLevel("vida"));
+  statVidaValueEl.textContent = `${Math.round(getCurrentHp(maxHp))}/${maxHp}`;
   statAtaqueValueEl.textContent = computeStatValue("ataque", getEquipLevel("ataque"));
   statDefesaValueEl.textContent = computeStatValue("defesa", getEquipLevel("defesa"));
   statRecuperacaoValueEl.textContent = computeRecoveryPercent(getEquipLevel("vida")).toFixed(1);
@@ -146,6 +147,23 @@ function renderStatsHud() {
   Object.values(btnHudUpgradeByType).forEach((btn) => {
     btn.classList.toggle("hidden", !hasPoints);
   });
+
+  updateHpTicker(maxHp);
+}
+
+// Enquanto a vida nao estiver completamente recuperada, re-renderiza a
+// cada segundo para o HUD mostrar o incremento ao vivo - para sozinho
+// assim que chegar ao maximo, sem timer a correr desnecessariamente.
+let hpTickerIntervalId = null;
+
+function updateHpTicker(maxHp) {
+  const isFull = getCurrentHp(maxHp) >= maxHp;
+  if (!isFull && hpTickerIntervalId === null) {
+    hpTickerIntervalId = setInterval(renderStatsHud, 1000);
+  } else if (isFull && hpTickerIntervalId !== null) {
+    clearInterval(hpTickerIntervalId);
+    hpTickerIntervalId = null;
+  }
 }
 
 function hideUpgradeButton() {

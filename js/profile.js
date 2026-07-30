@@ -78,7 +78,8 @@ function onTrainingSessionsSynced() {
 // --- Status/Equipamento (dados ja existentes, so leitura) ---------------
 
 function renderProfileStatusSection() {
-  document.getElementById("profile-stat-vida").textContent = computeStatValue("vida", getEquipLevel("vida"));
+  const profileMaxHp = computeStatValue("vida", getEquipLevel("vida"));
+  document.getElementById("profile-stat-vida").textContent = `${Math.round(getCurrentHp(profileMaxHp))}/${profileMaxHp}`;
   document.getElementById("profile-stat-ataque").textContent = computeStatValue("ataque", getEquipLevel("ataque"));
   document.getElementById("profile-stat-defesa").textContent = computeStatValue("defesa", getEquipLevel("defesa"));
   document.getElementById("profile-stat-recuperacao").textContent = computeRecoveryPercent(getEquipLevel("vida")).toFixed(1);
