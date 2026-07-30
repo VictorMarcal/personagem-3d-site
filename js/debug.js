@@ -169,6 +169,18 @@ function stopSimDistance() {
   if (simDistanceIntervalId === null) return;
   clearInterval(simDistanceIntervalId);
   simDistanceIntervalId = null;
+
+  // Tal como ja acontecia para as conquistas, o tempo simulado conta como
+  // uma sessao de treino real - sem isto o Perfil nunca teria dados para
+  // testar sem andar de verdade.
+  enqueueTrainingSession({
+    client_id: crypto.randomUUID(),
+    started_at: new Date(simSessionStartTime).toISOString(),
+    ended_at: new Date().toISOString(),
+    distance_m: simSessionDistanceM,
+    duration_seconds: (Date.now() - simSessionStartTime) / 1000,
+  });
+
   btnToggleSimDistance.textContent = "Iniciar simulação";
   simDistanceStatusEl.textContent = "Simulação parada.";
 }
