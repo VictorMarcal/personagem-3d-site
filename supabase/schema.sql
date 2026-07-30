@@ -55,7 +55,7 @@ create table public.player_progress (
   equip_level_ataque integer not null default 1,
   equip_level_defesa integer not null default 1,
   last_awarded_level integer not null default 1,
-  defeated_levels integer[] not null default '{}',
+  defeated_creatures jsonb not null default '{}',
   unlocked_achievements jsonb not null default '{}',
   best_session_distance_m numeric not null default 0,
   total_trainings_completed integer not null default 0,
@@ -129,6 +129,12 @@ create policy "training_sessions_insert_own" on public.training_sessions
 -- Corre isto uma vez, ja com a tabela player_progress criada:
 alter table public.player_progress drop column if exists last_awarded_quarters;
 alter table public.player_progress add column if not exists last_awarded_level integer not null default 1;
+
+-- Migracao: defeated_levels (so a lista de niveis) passa a
+-- defeated_creatures, um mapa { nivel: estrelas } - guarda tambem o
+-- melhor resultado (1-3 estrelas) contra cada criatura (ver js/monsters.js).
+alter table public.player_progress drop column if exists defeated_levels;
+alter table public.player_progress add column if not exists defeated_creatures jsonb not null default '{}';
 
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication

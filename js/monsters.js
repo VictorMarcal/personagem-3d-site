@@ -28,34 +28,49 @@ function generateCreatures() {
   return creatures;
 }
 
-function getDefeatedLevels() {
+// Mapa { nivel: estrelas } em vez de uma simples lista de niveis - guarda
+// tambem o melhor resultado (1-3 estrelas) alcancado contra cada criatura.
+function getDefeatedCreaturesMap() {
   const raw = localStorage.getItem(STORAGE_KEY_DEFEATED_CREATURES);
   try {
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = raw ? JSON.parse(raw) : {};
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? parsed : {};
   } catch (e) {
-    return [];
+    return {};
   }
 }
 
 function isCreatureDefeated(level) {
-  return getDefeatedLevels().includes(level);
+  return Object.prototype.hasOwnProperty.call(getDefeatedCreaturesMap(), level);
 }
 
-function markCreatureDefeated(level) {
-  const defeated = getDefeatedLevels();
-  if (!defeated.includes(level)) {
-    defeated.push(level);
+function getCreatureStars(level) {
+  return getDefeatedCreaturesMap()[level] || 0;
+}
+
+// 1 estrela: venceu com vida < 25%; 2 estrelas: 25%-49%; 3 estrelas: >= 50%
+function computeStarsForHp(playerHpPercent) {
+  if (playerHpPercent >= 50) return 3;
+  if (playerHpPercent >= 25) return 2;
+  return 1;
+}
+
+// Pode ser re-lutada depois de derrotada - guarda sempre o MELHOR
+// resultado (nunca piora as estrelas de uma tentativa anterior).
+function markCreatureDefeated(level, stars) {
+  const defeated = getDefeatedCreaturesMap();
+  const previousStars = defeated[level] || 0;
+  if (stars > previousStars) {
+    defeated[level] = stars;
     localStorage.setItem(STORAGE_KEY_DEFEATED_CREATURES, JSON.stringify(defeated));
     queueProgressSync();
   }
 }
 
-// Uma criatura so desbloqueia se o personagem ja tiver alcancado o nivel
-// dela E a criatura anterior na sequencia ja tiver sido derrotada (a
-// primeira da lista nao tem "anterior" a exigir)
-function isCreatureUnlocked(creature, characterLevel, creatures, index) {
-  if (characterLevel < creature.level) return false;
+// So desbloqueia sequencialmente por combate - a primeira criatura ja
+// comeca desbloqueada, as seguintes so depois da anterior ser derrotada
+// (o nivel do personagem ja nao e um requisito)
+function isCreatureUnlocked(creature, creatures, index) {
   if (index === 0) return true;
   return isCreatureDefeated(creatures[index - 1].level);
 }
@@ -107,7 +122,6 @@ function centerNextTargetInCarousel() {
 }
 
 function renderMonsters() {
-  const characterLevel = getLevelInfo(getLifetimeDistanceM()).level;
   const creatures = generateCreatures();
   const nextIndex = findNextToDefeatIndex(creatures);
   const visible = getVisibleWindow(creatures, nextIndex, VISIBLE_WINDOW_SIZE);
@@ -115,7 +129,7 @@ function renderMonsters() {
   monstersListEl.innerHTML = "";
 
   visible.forEach(({ creature, index }) => {
-    const unlocked = isCreatureUnlocked(creature, characterLevel, creatures, index);
+    const unlocked = isCreatureUnlocked(creature, creatures, index);
     const defeated = isCreatureDefeated(creature.level);
     const vidaValue = computeStatValue("vida", creature.level);
     const ataqueValue = computeStatValue("ataque", creature.level);
@@ -156,6 +170,12 @@ function renderMonsters() {
       defeatedBadge.className = "defeated-badge";
       defeatedBadge.textContent = "DERROTADO";
       header.appendChild(defeatedBadge);
+
+      const starsEl = document.createElement("span");
+      starsEl.className = "creature-stars";
+      const stars = getCreatureStars(creature.level);
+      starsEl.textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
+      header.appendChild(starsEl);
     }
 
     item.appendChild(header);
@@ -166,7 +186,7 @@ function renderMonsters() {
       detail.textContent = `Vida: ${vidaValue} · Ataque: ${ataqueValue} · Defesa: ${defesaValue}`;
     } else {
       detail.className = "monster-locked-label";
-      detail.textContent = `Bloqueado — nível ${creature.level} necessário`;
+      detail.textContent = "Bloqueado — derrota primeiro a criatura anterior";
     }
     item.appendChild(detail);
 

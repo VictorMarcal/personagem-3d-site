@@ -47,7 +47,11 @@ async function startBattle(creature) {
   if (battleInProgress) return;
   battleInProgress = true;
 
-  const playerMaxHp = computeStatValue("vida", getEquipLevel("vida"));
+  // Recuperacao de vida da armadura: bonus aplicado uma vez, no inicio da
+  // luta (a vida do jogador ja e sempre recalculada do zero a cada
+  // batalha, nunca herda dano de lutas anteriores).
+  const recoveryPercent = computeRecoveryPercent(getEquipLevel("vida"));
+  const playerMaxHp = Math.round(computeStatValue("vida", getEquipLevel("vida")) * (1 + recoveryPercent));
   const playerAtaque = computeStatValue("ataque", getEquipLevel("ataque"));
   const playerDefesa = computeStatValue("defesa", getEquipLevel("defesa"));
 
@@ -105,7 +109,8 @@ async function startBattle(creature) {
 
   if (won) {
     const firstDefeat = !isCreatureDefeated(creature.level);
-    markCreatureDefeated(creature.level);
+    const stars = computeStarsForHp(playerHpPercentAtWin);
+    markCreatureDefeated(creature.level, stars);
 
     if (firstDefeat) {
       const maxPoints = creature.isBoss ? getBossMaxPoints() : creature.isMiniBoss ? getMiniBossMaxPoints() : 0;

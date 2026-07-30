@@ -79,7 +79,7 @@ Escolhida para não ser nem linear nem exponencial — os incrementos crescem, m
   - 25%–49% de vida → pontuação máxima − 1
   - < 25% de vida → pontuação máxima − 2 (nunca abaixo de 0)
   - `MINIBOSS_MAX_POINTS = 3`, `BOSS_MAX_POINTS = 5`
-- Com os valores de produção, até ao nível 60 (assumindo todos os mini-bosses/bosses no caminho derrotados com vida acima de 50%): 59 pontos de nível + até 18 de mini-bosses (6 × 3) + até 30 de bosses (6 × 5) = **até 107 pontos no máximo** — bem menos que os ~236 do sistema antigo, tornando o equipamento mais lento a evoluir e a forma como se luta (arriscar vs jogar seguro) relevante para a pontuação
+- Com os valores de produção, até ao nível 100 (assumindo todas as 10 mini-bosses + 10 bosses derrotados com vida acima de 50%): 99 pontos de nível + até 30 de mini-bosses (10 × 3) + até 50 de bosses (10 × 5) = **até 179 pontos no máximo** — a forma como se luta (arriscar vs jogar seguro) é relevante para a pontuação
 
 ## 7. Fórmula de valor dos equipamentos
 
@@ -102,12 +102,22 @@ Isto garante que o incremento **nunca decresce** (na verdade cresce sempre um po
 
 Todos os 9 parâmetros (base/flat/% × 3 status) são ajustáveis independentemente no card de Debug.
 
+**Recuperação de Vida** (novo 4º status, só da Armadura): fórmula linear simples, não recursiva —
+
+```
+Recuperação = STAT_RECOVERY_BASE + NívelArmadura × 0.10
+STAT_RECOVERY_BASE = 0.1 (10%)
+```
+
+Aplicada como bónus percentual à Vida máxima do jogador, uma vez no início de cada batalha (a vida já é sempre recalculada do zero por luta, nunca herda dano de lutas anteriores).
+
 ## 8. Mini-Bosses e Bosses
 
-- Duas camadas de criaturas (já não há "monstros normais"): **Mini-Boss** a cada `MINIBOSS_LEVEL_STEP = 5` níveis, **Boss** a cada `BOSS_LEVEL_STEP = 10` níveis, até `MAX_LEVEL_TO_GENERATE = 60` (tudo ajustável)
+- Duas camadas de criaturas (já não há "monstros normais"): **Mini-Boss** a cada `MINIBOSS_LEVEL_STEP = 5` níveis, **Boss** a cada `BOSS_LEVEL_STEP = 10` níveis, até `MAX_LEVEL_TO_GENERATE = 100` (tudo ajustável)
 - Níveis múltiplos de 10 ficam reservados exclusivamente para bosses (nunca um mini-boss no mesmo nível de um boss)
-- **Regra de desbloqueio**: nível do personagem ≥ nível da criatura **E** a criatura anterior na sequência já derrotada (bosses não têm exceção — também seguem esta regra)
+- **Regra de desbloqueio**: puramente sequencial por combate — a primeira criatura já começa desbloqueada, cada seguinte só desbloqueia depois da anterior ser derrotada. O nível do personagem **não** é um requisito (a dificuldade vem só dos status da criatura, que escalam com o nível dela)
 - Podem ser **re-lutados** depois de derrotados ("Lutar novamente"), mas os pontos de bónus (secção 6) só são dados na primeira derrota
+- **Estrelas** (1-3) por criatura derrotada, com base na vida do jogador restante no fim da luta (mesmos limiares dos pontos de bónus — secção 6): guarda-se sempre o **melhor resultado** de sempre, uma re-luta pior nunca faz perder estrelas já conquistadas
 - Card "Batalhas": mostra só uma janela de **5 criaturas em carrossel horizontal**, sempre centrada na próxima por derrotar (nunca a lista inteira)
 
 ## 9. Sistema de duelos

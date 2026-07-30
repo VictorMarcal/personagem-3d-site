@@ -22,6 +22,7 @@ const STAT_LABEL_BY_TYPE = {
 const statVidaValueEl = document.getElementById("stat-vida-value");
 const statAtaqueValueEl = document.getElementById("stat-ataque-value");
 const statDefesaValueEl = document.getElementById("stat-defesa-value");
+const statRecuperacaoValueEl = document.getElementById("stat-recuperacao-value");
 const hudLevelVidaEl = document.getElementById("hud-level-vida");
 const hudLevelAtaqueEl = document.getElementById("hud-level-ataque");
 const hudLevelDefesaEl = document.getElementById("hud-level-defesa");
@@ -57,6 +58,13 @@ function computeStatValue(type, equipLevel) {
     value = Math.round(value + flat + level * percent);
   }
   return value;
+}
+
+// Recuperacao de vida da armadura: formula linear simples (nao recursiva
+// como computeStatValue), aplicada uma vez no inicio de cada batalha
+// (js/battle.js) como bonus percentual sobre a Vida maxima do jogador.
+function computeRecoveryPercent(armorLevel) {
+  return getStatRecoveryBase() + armorLevel * 0.1;
 }
 
 // Comeca em 1 (nivel inicial) para "subir de nivel" so contar a partir
@@ -105,6 +113,7 @@ function renderStatsHud() {
   statVidaValueEl.textContent = computeStatValue("vida", getEquipLevel("vida"));
   statAtaqueValueEl.textContent = computeStatValue("ataque", getEquipLevel("ataque"));
   statDefesaValueEl.textContent = computeStatValue("defesa", getEquipLevel("defesa"));
+  statRecuperacaoValueEl.textContent = Math.round(computeRecoveryPercent(getEquipLevel("vida")) * 100);
 
   hudLevelVidaEl.textContent = getEquipLevel("vida");
   hudLevelAtaqueEl.textContent = getEquipLevel("ataque");

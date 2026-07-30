@@ -19,13 +19,14 @@ const DEBUG_DEFAULTS = {
   statBaseDefesa: 10,
   statFlatDefesa: 2,
   statPercentDefesa: 0.16,
+  statRecoveryBase: 0.1,
   levelUpPoints: 1,
   maxAccuracyM: 20,
   minMovementM: 3,
   maxSpeedKmh: 30,
   miniBossLevelStep: 5,
   bossLevelStep: 10,
-  maxLevelToGenerate: 60,
+  maxLevelToGenerate: 100,
   miniBossMaxPoints: 3,
   bossMaxPoints: 5,
   battleDefensePercent: 0.6,
@@ -51,6 +52,7 @@ function getLevelExp() { return getDebugValue("levelExp"); }
 function getStatBase(type) { return getDebugValue("statBase" + STAT_TYPE_KEY_SUFFIX[type]); }
 function getStatFlat(type) { return getDebugValue("statFlat" + STAT_TYPE_KEY_SUFFIX[type]); }
 function getStatPercent(type) { return getDebugValue("statPercent" + STAT_TYPE_KEY_SUFFIX[type]); }
+function getStatRecoveryBase() { return getDebugValue("statRecoveryBase"); }
 function getLevelUpPoints() { return getDebugValue("levelUpPoints"); }
 function getMaxAccuracyM() { return getDebugValue("maxAccuracyM"); }
 function getMinMovementM() { return getDebugValue("minMovementM"); }
@@ -76,6 +78,7 @@ const debugVarInputs = {
   statBaseDefesa: document.getElementById("dbg-statBaseDefesa"),
   statFlatDefesa: document.getElementById("dbg-statFlatDefesa"),
   statPercentDefesa: document.getElementById("dbg-statPercentDefesa"),
+  statRecoveryBase: document.getElementById("dbg-statRecoveryBase"),
   levelUpPoints: document.getElementById("dbg-levelUpPoints"),
   maxAccuracyM: document.getElementById("dbg-maxAccuracyM"),
   minMovementM: document.getElementById("dbg-minMovementM"),

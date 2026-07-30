@@ -50,6 +50,7 @@
         <p>Vida: <span id="stat-vida-value">0</span></p>
         <p>Ataque: <span id="stat-ataque-value">0</span></p>
         <p>Defesa: <span id="stat-defesa-value">0</span></p>
+        <p>Recuperação: <span id="stat-recuperacao-value">0</span>%</p>
         <p>Armadura Lvl <span id="hud-level-vida">1</span> <button id="btn-hud-upgrade-vida" class="btn-hud-plus hidden">+</button></p>
         <p>Arma Lvl <span id="hud-level-ataque">1</span> <button id="btn-hud-upgrade-ataque" class="btn-hud-plus hidden">+</button></p>
         <p>Escudo Lvl <span id="hud-level-defesa">1</span> <button id="btn-hud-upgrade-defesa" class="btn-hud-plus hidden">+</button></p>
@@ -162,6 +163,9 @@
         <label>STAT_PERCENT_DEFESA <span class="debug-hint">percentagem × nível (ex: 0.45 = 45%)</span>
           <input type="number" id="dbg-statPercentDefesa" step="0.01">
         </label>
+        <label>STAT_RECOVERY_BASE <span class="debug-hint">recuperação base da armadura (0.1 = 10%)</span>
+          <input type="number" id="dbg-statRecoveryBase" step="0.01">
+        </label>
         <label>LEVEL_UP_POINTS <span class="debug-hint">pontos de status por nível subido</span>
           <input type="number" id="dbg-levelUpPoints" step="1">
         </label>
@@ -230,7 +234,7 @@
     <div id="view-perfil" class="hidden">
       <section class="card" id="profile-status-card">
         <h2 class="card-title">Status</h2>
-        <p>Vida: <span id="profile-stat-vida">0</span> · Ataque: <span id="profile-stat-ataque">0</span> · Defesa: <span id="profile-stat-defesa">0</span></p>
+        <p>Vida: <span id="profile-stat-vida">0</span> · Ataque: <span id="profile-stat-ataque">0</span> · Defesa: <span id="profile-stat-defesa">0</span> · Recuperação: <span id="profile-stat-recuperacao">0</span>%</p>
         <p>Armadura Lvl <span id="profile-level-vida">1</span> · Arma Lvl <span id="profile-level-ataque">1</span> · Escudo Lvl <span id="profile-level-defesa">1</span></p>
       </section>
 

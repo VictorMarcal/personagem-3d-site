@@ -337,6 +337,12 @@ main {
   color: #fff;
 }
 
+.creature-stars {
+  font-size: 0.75rem;
+  color: #e0b090;
+  letter-spacing: 1px;
+}
+
 .btn-battle {
   margin-top: 0.6rem;
   padding: 0.5rem 1rem;

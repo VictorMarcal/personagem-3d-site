@@ -81,6 +81,7 @@ function renderProfileStatusSection() {
   document.getElementById("profile-stat-vida").textContent = computeStatValue("vida", getEquipLevel("vida"));
   document.getElementById("profile-stat-ataque").textContent = computeStatValue("ataque", getEquipLevel("ataque"));
   document.getElementById("profile-stat-defesa").textContent = computeStatValue("defesa", getEquipLevel("defesa"));
+  document.getElementById("profile-stat-recuperacao").textContent = Math.round(computeRecoveryPercent(getEquipLevel("vida")) * 100);
   document.getElementById("profile-level-vida").textContent = getEquipLevel("vida");
   document.getElementById("profile-level-ataque").textContent = getEquipLevel("ataque");
   document.getElementById("profile-level-defesa").textContent = getEquipLevel("defesa");
