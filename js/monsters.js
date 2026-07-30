@@ -6,7 +6,7 @@
 // card de Debug (js/debug.js).
 const monstersListEl = document.getElementById("monsters-list");
 
-const STORAGE_KEY_DEFEATED_CREATURES = "personagem.monstrosDerrotados";
+// STORAGE_KEY_DEFEATED_CREATURES esta definida em js/storage-keys.js
 
 function generateCreatures() {
   const monsterStep = getMonsterLevelStep();
@@ -46,6 +46,7 @@ function markCreatureDefeated(level) {
   if (!defeated.includes(level)) {
     defeated.push(level);
     localStorage.setItem(STORAGE_KEY_DEFEATED_CREATURES, JSON.stringify(defeated));
+    queueProgressSync();
   }
 }
 

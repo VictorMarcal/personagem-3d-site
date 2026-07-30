@@ -2,7 +2,7 @@
 // nivel n para o n+1 = round(LEVEL_BASE * n^LEVEL_EXP). Nem linear nem
 // exponencial: os incrementos crescem, mas a taxa de crescimento desacelera.
 // LEVEL_BASE/LEVEL_EXP sao ajustaveis no card de Debug (js/debug.js).
-const STORAGE_KEY_LIFETIME_M = "personagem.distanciaTotalM";
+// STORAGE_KEY_LIFETIME_M esta definida em js/storage-keys.js
 
 const characterLevelValueEl = document.getElementById("character-level-value");
 const xpProgressTextEl = document.getElementById("xp-progress-text");
@@ -18,6 +18,7 @@ function addToLifetimeDistance(deltaM) {
   if (deltaM <= 0) return;
   const total = getLifetimeDistanceM() + deltaM;
   localStorage.setItem(STORAGE_KEY_LIFETIME_M, String(total));
+  queueProgressSync();
 }
 
 function getLevelInfo(totalM) {

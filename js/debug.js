@@ -233,6 +233,7 @@ function resetCharacterAndDistance() {
   updateDistanceDisplay();
   showStartScreen();
   refreshAllAfterConfigChange();
+  queueProgressSync();
 }
 
 document.getElementById("btn-save-debug-vars").addEventListener("click", saveDebugVars);

@@ -5,13 +5,7 @@
 //   Valor(n) = round(Valor(n-1) + STAT_FLAT + n * STAT_PERCENT)
 // Cada status (Vida/Ataque/Defesa) tem a sua propria base/flat/percentagem,
 // ajustaveis independentemente no card de Debug (js/debug.js).
-const STORAGE_KEYS_EQUIPMENT = {
-  pontosDisponiveis: "personagem.pontosDisponiveis",
-  nivelEquipVida: "personagem.nivelEquipVida",
-  nivelEquipAtaque: "personagem.nivelEquipAtaque",
-  nivelEquipDefesa: "personagem.nivelEquipDefesa",
-  ultimoQuartoPremiado: "personagem.ultimoQuartoPremiado",
-};
+// STORAGE_KEYS_EQUIPMENT esta definida em js/storage-keys.js
 
 const EQUIP_LEVEL_STORAGE_KEY_BY_TYPE = {
   vida: STORAGE_KEYS_EQUIPMENT.nivelEquipVida,
@@ -92,6 +86,7 @@ function awardPointsIfNeeded(lifetimeM) {
   const newPoints = getUnspentPoints() + (totalQuartersEarned - lastAwarded);
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(newPoints));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoQuartoPremiado, String(totalQuartersEarned));
+  queueProgressSync();
 }
 
 function renderStatsHud() {
@@ -133,6 +128,7 @@ function upgradeEquipmentType(type) {
   const levelKey = EQUIP_LEVEL_STORAGE_KEY_BY_TYPE[type];
   localStorage.setItem(levelKey, String(getEquipLevel(type) + 1));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(getUnspentPoints() - 1));
+  queueProgressSync();
 
   renderStatsHud();
   renderDebugCharacterInfo();

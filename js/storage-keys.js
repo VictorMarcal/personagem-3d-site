@@ -1,0 +1,19 @@
+// Chaves de localStorage para o progresso do personagem (personagem.*).
+// Centralizadas aqui porque js/auth.js precisa de as ler/escrever antes
+// dos ficheiros que historicamente as declaravam (equipment/experience/
+// monsters/achievements), que continuam a ser os donos da lógica.
+const STORAGE_KEY_LIFETIME_M = "personagem.distanciaTotalM";
+
+const STORAGE_KEYS_EQUIPMENT = {
+  pontosDisponiveis: "personagem.pontosDisponiveis",
+  nivelEquipVida: "personagem.nivelEquipVida",
+  nivelEquipAtaque: "personagem.nivelEquipAtaque",
+  nivelEquipDefesa: "personagem.nivelEquipDefesa",
+  ultimoQuartoPremiado: "personagem.ultimoQuartoPremiado",
+};
+
+const STORAGE_KEY_DEFEATED_CREATURES = "personagem.monstrosDerrotados";
+
+const STORAGE_KEY_UNLOCKED_ACHIEVEMENTS = "personagem.conquistasDesbloqueadas";
+const STORAGE_KEY_BEST_SESSION_DISTANCE_M = "personagem.melhorDistanciaSessaoM";
+const STORAGE_KEY_TOTAL_TRAININGS = "personagem.totalTreinosConcluidos";

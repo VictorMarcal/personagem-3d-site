@@ -3,9 +3,8 @@
 // dados proprios (melhor distancia numa so sessao, numero de treinos).
 // As conquistas de ritmo (pace) sao eventos binarios verificados no
 // momento em que um treino termina.
-const STORAGE_KEY_UNLOCKED_ACHIEVEMENTS = "personagem.conquistasDesbloqueadas";
-const STORAGE_KEY_BEST_SESSION_DISTANCE_M = "personagem.melhorDistanciaSessaoM";
-const STORAGE_KEY_TOTAL_TRAININGS = "personagem.totalTreinosConcluidos";
+// STORAGE_KEY_UNLOCKED_ACHIEVEMENTS / STORAGE_KEY_BEST_SESSION_DISTANCE_M /
+// STORAGE_KEY_TOTAL_TRAININGS estao definidas em js/storage-keys.js
 
 const STATIC_ACHIEVEMENTS = [
   { id: "dist_1km", name: "1 km seguido", icon: "🏃", type: "sessionDistance", threshold: 1000 },
@@ -47,6 +46,7 @@ function getBestSessionDistanceM() {
 function updateBestSessionDistanceM(sessionDistanceM) {
   if (sessionDistanceM > getBestSessionDistanceM()) {
     localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M, String(sessionDistanceM));
+    queueProgressSync();
   }
 }
 
@@ -56,6 +56,7 @@ function getTotalTrainingsCompleted() {
 
 function incrementTotalTrainingsCompleted() {
   localStorage.setItem(STORAGE_KEY_TOTAL_TRAININGS, String(getTotalTrainingsCompleted() + 1));
+  queueProgressSync();
 }
 
 function getUnlockedAchievements() {
@@ -77,6 +78,7 @@ function unlockAchievement(id, unlockedAt) {
   if (unlocked[id] === undefined) {
     unlocked[id] = unlockedAt;
     localStorage.setItem(STORAGE_KEY_UNLOCKED_ACHIEVEMENTS, JSON.stringify(unlocked));
+    queueProgressSync();
   }
 }
 

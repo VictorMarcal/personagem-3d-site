@@ -532,6 +532,92 @@ main {
   border-top: 1px solid #2a2a30;
 }
 
+#auth-modal,
+#name-picker-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: #101014;
+}
+
+#auth-modal.hidden,
+#name-picker-modal.hidden {
+  display: none;
+}
+
+.auth-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+}
+
+.auth-text {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+#name-picker-input {
+  width: 100%;
+  border: 1px solid #2a2a30;
+  border-radius: 0.5rem;
+  background: #1f1f26;
+  color: #f0f0f0;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  background: #1f1f26;
+  border: 1px solid #2a2a30;
+  font-size: 0.85rem;
+}
+
+.leaderboard-row.own {
+  border-color: #4a90d9;
+  box-shadow: 0 0 0 1px rgba(74, 144, 217, 0.35);
+}
+
+.leaderboard-rank {
+  width: 2rem;
+  font-weight: 700;
+  color: #888;
+}
+
+.leaderboard-name {
+  flex: 1;
+}
+
+.leaderboard-distance {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+.leaderboard-divider {
+  text-align: center;
+  color: #666;
+  font-size: 0.8rem;
+}
+
 #rotate-overlay {
   display: none;
   position: fixed;
