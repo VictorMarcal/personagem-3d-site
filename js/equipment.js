@@ -59,34 +59,36 @@ function computeStatValue(type, equipLevel) {
   return value;
 }
 
-function getLastAwardedQuarters() {
-  return getStoredNumber(STORAGE_KEYS_EQUIPMENT.ultimoQuartoPremiado, 0);
+// Comeca em 1 (nivel inicial) para "subir de nivel" so contar a partir
+// do primeiro nivel realmente ganho, nao do nivel de partida.
+function getLastAwardedLevel() {
+  return getStoredNumber(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado, 1);
 }
 
-// Quantos "quartos" (25%) de progresso ja foram alcancados no total,
-// somando todos os niveis ja completados mais a fracao do nivel atual
-function getTotalQuartersEarned(lifetimeM) {
-  const quartersPerLevel = getQuartersPerLevel();
-  const info = getLevelInfo(lifetimeM);
-  const fraction = info.distanceIntoLevel / info.distanceForNextLevel;
-  const quartersInCurrentLevel = Math.min(
-    quartersPerLevel,
-    Math.floor(fraction * quartersPerLevel + 1e-9)
-  );
-  return (info.level - 1) * quartersPerLevel + quartersInCurrentLevel;
-}
-
-// Chamado sempre que a distancia confirmada (nunca a sessao em curso)
-// avanca, para creditar pontos de status a cada 25% de progresso
+// Cada nivel de personagem ganho (por distancia) da LEVEL_UP_POINTS
+// pontos (1 por omissao) - substituiu o antigo sistema de "quartos"
+// (4 pontos distribuidos a cada 25% de progresso).
 function awardPointsIfNeeded(lifetimeM) {
-  const totalQuartersEarned = getTotalQuartersEarned(lifetimeM);
-  const lastAwarded = getLastAwardedQuarters();
-  if (totalQuartersEarned <= lastAwarded) return;
+  const currentLevel = getLevelInfo(lifetimeM).level;
+  const lastAwarded = getLastAwardedLevel();
+  if (currentLevel <= lastAwarded) return;
 
-  const newPoints = getUnspentPoints() + (totalQuartersEarned - lastAwarded);
+  const levelsGained = currentLevel - lastAwarded;
+  const newPoints = getUnspentPoints() + levelsGained * getLevelUpPoints();
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(newPoints));
-  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoQuartoPremiado, String(totalQuartersEarned));
+  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado, String(currentLevel));
   queueProgressSync();
+}
+
+// Pontos de bonus por derrotar um mini-boss/boss pela primeira vez
+// (js/battle.js decide quando chamar isto, com base em isCreatureDefeated
+// antes de markCreatureDefeated).
+function awardBonusPoints(amount) {
+  if (amount <= 0) return;
+  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(getUnspentPoints() + amount));
+  queueProgressSync();
+  renderStatsHud();
+  renderDebugCharacterInfo();
 }
 
 function renderStatsHud() {

@@ -1,26 +1,27 @@
-// Monstros aparecem a cada MONSTER_LEVEL_STEP niveis, Bosses a cada
-// BOSS_LEVEL_STEP. Ambos usam a mesma formula de status dos equipamentos
-// (computeStatValue, definida em equipment.js), com base no nivel a que
-// pertencem - sem tratamento especial de dificuldade para os bosses, so
-// o intervalo e diferente. Todos os passos/limites sao ajustaveis no
-// card de Debug (js/debug.js).
+// Duas camadas de criaturas: Mini-Bosses a cada MINIBOSS_LEVEL_STEP niveis,
+// Bosses a cada BOSS_LEVEL_STEP (sem monstros "normais" entre elas). Ambas
+// usam a mesma formula de status dos equipamentos (computeStatValue,
+// definida em equipment.js), com base no nivel a que pertencem - sem
+// tratamento especial de dificuldade, so o intervalo e diferente. Niveis de
+// boss tem prioridade sobre mini-boss (nunca ha sobreposicao). Passos/
+// limites ajustaveis no card de Debug (js/debug.js).
 const monstersListEl = document.getElementById("monsters-list");
 
 // STORAGE_KEY_DEFEATED_CREATURES esta definida em js/storage-keys.js
 
 function generateCreatures() {
-  const monsterStep = getMonsterLevelStep();
+  const miniBossStep = getMiniBossLevelStep();
   const bossStep = getBossLevelStep();
   const maxLevel = getMaxLevelToGenerate();
   const creatures = [];
 
-  for (let lvl = monsterStep; lvl <= maxLevel; lvl += monsterStep) {
+  for (let lvl = miniBossStep; lvl <= maxLevel; lvl += miniBossStep) {
     if (lvl % bossStep === 0) continue; // nivel reservado para o boss
-    creatures.push({ level: lvl, name: `Monstro Nível ${lvl}`, isBoss: false });
+    creatures.push({ level: lvl, name: `Mini-Boss Nível ${lvl}`, isBoss: false, isMiniBoss: true });
   }
 
   for (let lvl = bossStep; lvl <= maxLevel; lvl += bossStep) {
-    creatures.push({ level: lvl, name: `Boss Nível ${lvl}`, isBoss: true });
+    creatures.push({ level: lvl, name: `Boss Nível ${lvl}`, isBoss: true, isMiniBoss: false });
   }
 
   creatures.sort((a, b) => a.level - b.level || (a.isBoss ? 1 : -1));
@@ -125,6 +126,7 @@ function renderMonsters() {
       "monster-item" +
       (unlocked ? "" : " locked") +
       (creature.isBoss ? " boss" : "") +
+      (creature.isMiniBoss ? " miniboss" : "") +
       (index === nextIndex ? " next-target" : "");
 
     const header = document.createElement("div");
@@ -139,6 +141,13 @@ function renderMonsters() {
       const badge = document.createElement("span");
       badge.className = "boss-badge";
       badge.textContent = "BOSS";
+      header.appendChild(badge);
+    }
+
+    if (creature.isMiniBoss) {
+      const badge = document.createElement("span");
+      badge.className = "miniboss-badge";
+      badge.textContent = "MINI-BOSS";
       header.appendChild(badge);
     }
 

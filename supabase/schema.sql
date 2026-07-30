@@ -54,7 +54,7 @@ create table public.player_progress (
   equip_level_vida integer not null default 1,
   equip_level_ataque integer not null default 1,
   equip_level_defesa integer not null default 1,
-  last_awarded_quarters integer not null default 0,
+  last_awarded_level integer not null default 1,
   defeated_levels integer[] not null default '{}',
   unlocked_achievements jsonb not null default '{}',
   best_session_distance_m numeric not null default 0,
@@ -122,6 +122,13 @@ create policy "training_sessions_select_own" on public.training_sessions
 
 create policy "training_sessions_insert_own" on public.training_sessions
   for insert with check (auth.uid() = user_id);
+
+-- Migracao: substitui o antigo sistema de "quartos" (4 pontos a cada 25%
+-- de progresso dentro do nivel) por 1 ponto por nivel subido (mini-bosses/
+-- bosses passam a dar pontos extra na primeira derrota - ver js/battle.js).
+-- Corre isto uma vez, ja com a tabela player_progress criada:
+alter table public.player_progress drop column if exists last_awarded_quarters;
+alter table public.player_progress add column if not exists last_awarded_level integer not null default 1;
 
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication

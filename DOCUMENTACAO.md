@@ -72,8 +72,10 @@ Escolhida para não ser nem linear nem exponencial — os incrementos crescem, m
 
 ## 6. Pontos de status
 
-- `QUARTERS_PER_LEVEL = 4` pontos por nível, distribuídos a cada 25% de progresso dentro do nível atual (não só no fim) — dá feedback mais frequente
+- `LEVEL_UP_POINTS = 1` ponto por cada nível de personagem subido (substituiu o antigo sistema de "quartos": 4 pontos distribuídos a cada 25% de progresso dentro do nível)
 - Pontos só contam com base em **distância confirmada** (nunca a sessão de treino em curso, que pode ainda ser perdida)
+- **Bónus por derrotar criaturas** (só na primeira derrota — re-lutar não dá pontos outra vez): Mini-Boss dá `MINIBOSS_POINTS = 2`, Boss dá `BOSS_POINTS = 4`
+- Com os valores de produção, até ao nível 60 (assumindo todos os mini-bosses/bosses no caminho derrotados): 59 pontos de nível + 12 de mini-bosses (6 × 2) + 24 de bosses (6 × 4) = **95 pontos no máximo** — bem menos que os ~236 do sistema antigo, tornando o equipamento mais lento a evoluir e a derrota de criaturas mais relevante
 
 ## 7. Fórmula de valor dos equipamentos
 
@@ -96,12 +98,12 @@ Isto garante que o incremento **nunca decresce** (na verdade cresce sempre um po
 
 Todos os 9 parâmetros (base/flat/% × 3 status) são ajustáveis independentemente no card de Debug.
 
-## 8. Monstros e Bosses
+## 8. Mini-Bosses e Bosses
 
-- `MONSTER_LEVEL_STEP = 3`, `BOSS_LEVEL_STEP = 10`, `MAX_LEVEL_TO_GENERATE = 60` (ajustável)
-- Níveis múltiplos de 10 ficam reservados exclusivamente para bosses (sem monstro duplicado no mesmo nível)
+- Duas camadas de criaturas (já não há "monstros normais"): **Mini-Boss** a cada `MINIBOSS_LEVEL_STEP = 5` níveis, **Boss** a cada `BOSS_LEVEL_STEP = 10` níveis, até `MAX_LEVEL_TO_GENERATE = 60` (tudo ajustável)
+- Níveis múltiplos de 10 ficam reservados exclusivamente para bosses (nunca um mini-boss no mesmo nível de um boss)
 - **Regra de desbloqueio**: nível do personagem ≥ nível da criatura **E** a criatura anterior na sequência já derrotada (bosses não têm exceção — também seguem esta regra)
-- Podem ser **re-lutados** depois de derrotados ("Lutar novamente")
+- Podem ser **re-lutados** depois de derrotados ("Lutar novamente"), mas os pontos de bónus (secção 6) só são dados na primeira derrota
 - Card "Batalhas": mostra só uma janela de **5 criaturas em carrossel horizontal**, sempre centrada na próxima por derrotar (nunca a lista inteira)
 
 ## 9. Sistema de duelos

@@ -9,7 +9,7 @@ const STORAGE_KEYS_EQUIPMENT = {
   nivelEquipVida: "personagem.nivelEquipVida",
   nivelEquipAtaque: "personagem.nivelEquipAtaque",
   nivelEquipDefesa: "personagem.nivelEquipDefesa",
-  ultimoQuartoPremiado: "personagem.ultimoQuartoPremiado",
+  ultimoNivelPremiado: "personagem.ultimoNivelPremiado",
 };
 
 const STORAGE_KEY_DEFEATED_CREATURES = "personagem.monstrosDerrotados";

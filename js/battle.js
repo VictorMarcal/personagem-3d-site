@@ -102,7 +102,14 @@ async function startBattle(creature) {
   }
 
   if (won) {
+    const firstDefeat = !isCreatureDefeated(creature.level);
     markCreatureDefeated(creature.level);
+
+    if (firstDefeat) {
+      if (creature.isBoss) awardBonusPoints(getBossPoints());
+      else if (creature.isMiniBoss) awardBonusPoints(getMiniBossPoints());
+    }
+
     checkAndUnlockAchievements(); // pode ter desbloqueado uma conquista de boss
     battleResultEl.textContent = `Vitória! Derrotaste ${creature.name}.`;
   } else {

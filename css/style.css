@@ -286,6 +286,10 @@ main {
   border-color: #b5482f;
 }
 
+.monster-item.miniboss {
+  border-color: #b58a2f;
+}
+
 .monster-item.next-target {
   border-color: #4a90d9;
   border-width: 2px;
@@ -306,6 +310,15 @@ main {
   padding: 0.1rem 0.4rem;
   border-radius: 0.3rem;
   background: #b5482f;
+  color: #fff;
+}
+
+.miniboss-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.3rem;
+  background: #b58a2f;
   color: #fff;
 }
 

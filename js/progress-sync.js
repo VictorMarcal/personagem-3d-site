@@ -16,7 +16,7 @@ function readLocalProgressSnapshot() {
     equip_level_vida: getEquipLevel("vida"),
     equip_level_ataque: getEquipLevel("ataque"),
     equip_level_defesa: getEquipLevel("defesa"),
-    last_awarded_quarters: getLastAwardedQuarters(),
+    last_awarded_level: getLastAwardedLevel(),
     defeated_levels: getDefeatedLevels(),
     unlocked_achievements: getUnlockedAchievements(),
     best_session_distance_m: getBestSessionDistanceM(),
@@ -106,7 +106,7 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEquipVida, String(progress.equip_level_vida));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEquipAtaque, String(progress.equip_level_ataque));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEquipDefesa, String(progress.equip_level_defesa));
-  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoQuartoPremiado, String(progress.last_awarded_quarters));
+  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado, String(progress.last_awarded_level));
   localStorage.setItem(STORAGE_KEY_DEFEATED_CREATURES, JSON.stringify(progress.defeated_levels || []));
   localStorage.setItem(STORAGE_KEY_UNLOCKED_ACHIEVEMENTS, JSON.stringify(progress.unlocked_achievements || {}));
   localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M, String(progress.best_session_distance_m));

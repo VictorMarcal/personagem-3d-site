@@ -19,13 +19,15 @@ const DEBUG_DEFAULTS = {
   statBaseDefesa: 10,
   statFlatDefesa: 2,
   statPercentDefesa: 0.16,
-  quartersPerLevel: 4,
+  levelUpPoints: 1,
   maxAccuracyM: 20,
   minMovementM: 3,
   maxSpeedKmh: 30,
-  monsterLevelStep: 3,
+  miniBossLevelStep: 5,
   bossLevelStep: 10,
   maxLevelToGenerate: 60,
+  miniBossPoints: 2,
+  bossPoints: 4,
   battleDefensePercent: 0.6,
   battleFloorPercent: 0.5,
 };
@@ -49,14 +51,16 @@ function getLevelExp() { return getDebugValue("levelExp"); }
 function getStatBase(type) { return getDebugValue("statBase" + STAT_TYPE_KEY_SUFFIX[type]); }
 function getStatFlat(type) { return getDebugValue("statFlat" + STAT_TYPE_KEY_SUFFIX[type]); }
 function getStatPercent(type) { return getDebugValue("statPercent" + STAT_TYPE_KEY_SUFFIX[type]); }
-function getQuartersPerLevel() { return getDebugValue("quartersPerLevel"); }
+function getLevelUpPoints() { return getDebugValue("levelUpPoints"); }
 function getMaxAccuracyM() { return getDebugValue("maxAccuracyM"); }
 function getMinMovementM() { return getDebugValue("minMovementM"); }
 function getMaxSpeedKmh() { return getDebugValue("maxSpeedKmh"); }
 function getMaxSpeedMps() { return getMaxSpeedKmh() / 3.6; }
-function getMonsterLevelStep() { return getDebugValue("monsterLevelStep"); }
+function getMiniBossLevelStep() { return getDebugValue("miniBossLevelStep"); }
 function getBossLevelStep() { return getDebugValue("bossLevelStep"); }
 function getMaxLevelToGenerate() { return getDebugValue("maxLevelToGenerate"); }
+function getMiniBossPoints() { return getDebugValue("miniBossPoints"); }
+function getBossPoints() { return getDebugValue("bossPoints"); }
 function getBattleDefensePercent() { return getDebugValue("battleDefensePercent"); }
 function getBattleFloorPercent() { return getDebugValue("battleFloorPercent"); }
 
@@ -72,13 +76,15 @@ const debugVarInputs = {
   statBaseDefesa: document.getElementById("dbg-statBaseDefesa"),
   statFlatDefesa: document.getElementById("dbg-statFlatDefesa"),
   statPercentDefesa: document.getElementById("dbg-statPercentDefesa"),
-  quartersPerLevel: document.getElementById("dbg-quartersPerLevel"),
+  levelUpPoints: document.getElementById("dbg-levelUpPoints"),
   maxAccuracyM: document.getElementById("dbg-maxAccuracyM"),
   minMovementM: document.getElementById("dbg-minMovementM"),
   maxSpeedKmh: document.getElementById("dbg-maxSpeedKmh"),
-  monsterLevelStep: document.getElementById("dbg-monsterLevelStep"),
+  miniBossLevelStep: document.getElementById("dbg-miniBossLevelStep"),
   bossLevelStep: document.getElementById("dbg-bossLevelStep"),
   maxLevelToGenerate: document.getElementById("dbg-maxLevelToGenerate"),
+  miniBossPoints: document.getElementById("dbg-miniBossPoints"),
+  bossPoints: document.getElementById("dbg-bossPoints"),
   battleDefensePercent: document.getElementById("dbg-battleDefensePercent"),
   battleFloorPercent: document.getElementById("dbg-battleFloorPercent"),
 };
@@ -228,7 +234,7 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEquipVida);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEquipAtaque);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEquipDefesa);
-  localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.ultimoQuartoPremiado);
+  localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado);
   localStorage.removeItem(STORAGE_KEYS.active);
   localStorage.removeItem(STORAGE_KEYS.distanciaAcumuladaM);
   localStorage.removeItem(STORAGE_KEYS.ultimaPosicao);
