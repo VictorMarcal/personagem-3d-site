@@ -160,7 +160,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - Geração de monstros (`MONSTER_LEVEL_STEP`, `BOSS_LEVEL_STEP`, `MAX_LEVEL_TO_GENERATE`)
 - Fórmula de combate (`BATTLE_DEFENSE_PERCENT`, `BATTLE_FLOOR_PERCENT`)
 - **Simulador de distância por tempo**: liga/desliga um timer que soma `segundos × fator` à distância vitalícia, fator ajustável em tempo real — para testar níveis altos sem andar de verdade
-- **Reset de personagem**: apaga nível, status, pontos, monstros derrotados e conquistas (com confirmação)
+- **Reset de personagem**: apaga nível, status, pontos, monstros derrotados, conquistas e o histórico de treinos (`training_sessions` no Supabase, usado pela aba Perfil) — com confirmação
 
 ## 12. UI / UX
 

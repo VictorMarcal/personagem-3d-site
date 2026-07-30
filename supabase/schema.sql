@@ -123,6 +123,12 @@ create policy "training_sessions_select_own" on public.training_sessions
 create policy "training_sessions_insert_own" on public.training_sessions
   for insert with check (auth.uid() = user_id);
 
+-- Migracao: sessoes eram imutaveis por design (sem UPDATE/DELETE), mas o
+-- "Repor personagem" do Debug precisa de poder apagar o historico do
+-- proprio jogador para dar reset completo tambem na aba de Perfil.
+create policy "training_sessions_delete_own" on public.training_sessions
+  for delete using (auth.uid() = user_id);
+
 -- Migracao: substitui o antigo sistema de "quartos" (4 pontos a cada 25%
 -- de progresso dentro do nivel) por 1 ponto por nivel subido (mini-bosses/
 -- bosses passam a dar pontos extra na primeira derrota - ver js/battle.js).

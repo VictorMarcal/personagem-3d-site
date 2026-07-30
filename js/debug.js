@@ -248,6 +248,20 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEY_TOTAL_TRAININGS);
   localStorage.removeItem(STORAGE_KEY_CURRENT_HP);
   localStorage.removeItem(STORAGE_KEY_HP_LAST_UPDATE);
+  localStorage.removeItem(STORAGE_KEY_SESSION_QUEUE);
+
+  // O historico de treinos (aba Perfil) vive numa tabela a parte
+  // (training_sessions) - sem isto o reset local nao mexia nele e o
+  // Perfil continuava a mostrar dados antigos.
+  if (currentUserId) {
+    supabaseClient
+      .from("training_sessions")
+      .delete()
+      .eq("user_id", currentUserId)
+      .then(({ error }) => {
+        if (error) console.warn("Falha ao apagar historico de treinos:", error);
+      });
+  }
 
   totalDistanceM = 0;
   lastPosition = null;
