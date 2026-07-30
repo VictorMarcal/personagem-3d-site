@@ -304,23 +304,6 @@ main {
   margin-bottom: 0.25rem;
 }
 
-.boss-badge {
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 0.1rem 0.4rem;
-  border-radius: 0.3rem;
-  background: #b5482f;
-  color: #fff;
-}
-
-.miniboss-badge {
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 0.1rem 0.4rem;
-  border-radius: 0.3rem;
-  background: #b58a2f;
-  color: #fff;
-}
 
 .monster-stats,
 .monster-locked-label {
@@ -338,9 +321,16 @@ main {
 }
 
 .creature-stars {
-  font-size: 0.75rem;
-  color: #e0b090;
+  font-size: 0.8rem;
   letter-spacing: 1px;
+}
+
+.creature-stars .star.filled {
+  color: #f0c419;
+}
+
+.creature-stars .star.empty {
+  color: #444;
 }
 
 .btn-battle {

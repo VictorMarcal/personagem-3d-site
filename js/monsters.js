@@ -151,32 +151,26 @@ function renderMonsters() {
     nameEl.textContent = creature.name;
     header.appendChild(nameEl);
 
-    if (creature.isBoss) {
-      const badge = document.createElement("span");
-      badge.className = "boss-badge";
-      badge.textContent = "BOSS";
-      header.appendChild(badge);
-    }
-
-    if (creature.isMiniBoss) {
-      const badge = document.createElement("span");
-      badge.className = "miniboss-badge";
-      badge.textContent = "MINI-BOSS";
-      header.appendChild(badge);
-    }
-
     if (defeated) {
       const defeatedBadge = document.createElement("span");
       defeatedBadge.className = "defeated-badge";
       defeatedBadge.textContent = "DERROTADO";
       header.appendChild(defeatedBadge);
-
-      const starsEl = document.createElement("span");
-      starsEl.className = "creature-stars";
-      const stars = getCreatureStars(creature.level);
-      starsEl.textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
-      header.appendChild(starsEl);
     }
+
+    // Sempre visiveis (cinza/bloqueadas ate derrotar) - o tier (mini-boss
+    // vs boss) ja se distingue pela cor da borda do card, sem precisar de
+    // badge de texto.
+    const starsEl = document.createElement("span");
+    starsEl.className = "creature-stars";
+    const stars = defeated ? getCreatureStars(creature.level) : 0;
+    for (let i = 1; i <= 3; i++) {
+      const starEl = document.createElement("span");
+      starEl.className = "star " + (i <= stars ? "filled" : "empty");
+      starEl.textContent = "★";
+      starsEl.appendChild(starEl);
+    }
+    header.appendChild(starsEl);
 
     item.appendChild(header);
 
