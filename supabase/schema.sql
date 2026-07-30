@@ -93,6 +93,36 @@ create policy "leaderboard_insert_own" on public.leaderboard
 create policy "leaderboard_update_own" on public.leaderboard
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- Historico de sessoes de treino individuais (data, distancia, duracao),
+-- usado pela aba de Perfil. Imutavel depois de gravado - sem UPDATE/DELETE,
+-- a RLS nega por omissao. client_id + indice unico tornam o insert
+-- idempotente (a fila local de retry, em js/training.js, pode reenviar o
+-- mesmo registo sem criar duplicado).
+create table public.training_sessions (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  client_id uuid not null,
+  started_at timestamptz not null,
+  ended_at timestamptz not null,
+  distance_m numeric not null,
+  duration_seconds numeric not null,
+  created_at timestamptz not null default now()
+);
+
+create unique index training_sessions_user_client_idx
+  on public.training_sessions (user_id, client_id);
+
+create index training_sessions_user_started_idx
+  on public.training_sessions (user_id, started_at);
+
+alter table public.training_sessions enable row level security;
+
+create policy "training_sessions_select_own" on public.training_sessions
+  for select using (auth.uid() = user_id);
+
+create policy "training_sessions_insert_own" on public.training_sessions
+  for insert with check (auth.uid() = user_id);
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

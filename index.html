@@ -33,9 +33,14 @@
 
   <header class="site-header">
     <h1>Personagem 3D</h1>
+    <nav class="nav-tabs">
+      <button id="btn-nav-jogo" class="nav-tab active">Jogo</button>
+      <button id="btn-nav-perfil" class="nav-tab">Perfil</button>
+    </nav>
   </header>
 
   <main>
+    <div id="view-jogo">
     <div id="viewer">
       <canvas id="viewer-canvas"></canvas>
       <div id="viewer-loading">Carregando personagem...</div>
@@ -214,6 +219,33 @@
 
       <button id="btn-reset-character" class="btn-secondary btn-danger">Repor personagem e distância</button>
     </section>
+    </div>
+
+    <div id="view-perfil" class="hidden">
+      <section class="card" id="profile-status-card">
+        <h2 class="card-title">Status</h2>
+        <p>Vida: <span id="profile-stat-vida">0</span> · Ataque: <span id="profile-stat-ataque">0</span> · Defesa: <span id="profile-stat-defesa">0</span></p>
+        <p>Armadura Lvl <span id="profile-level-vida">1</span> · Arma Lvl <span id="profile-level-ataque">1</span> · Escudo Lvl <span id="profile-level-defesa">1</span></p>
+      </section>
+
+      <section class="card" id="profile-summary-card">
+        <h2 class="card-title">Resumo</h2>
+        <div id="profile-summary-list" class="profile-summary-list"></div>
+      </section>
+
+      <section class="card" id="profile-charts-card">
+        <h2 class="card-title">Evolução</h2>
+        <p class="training-label">Este mês</p>
+        <div id="profile-chart-month" class="profile-chart"></div>
+        <p class="training-label">Todos os meses</p>
+        <div id="profile-chart-all-months" class="profile-chart"></div>
+      </section>
+
+      <section class="card" id="profile-history-card">
+        <h2 class="card-title">Histórico de Treinos</h2>
+        <div id="profile-history-list" class="profile-history-list"></div>
+      </section>
+    </div>
   </main>
 
   <footer class="site-footer">
@@ -231,6 +263,7 @@
   <script src="js/achievements.js"></script>
   <script src="js/battle.js"></script>
   <script src="js/training.js"></script>
+  <script src="js/profile.js"></script>
   <script src="js/orientation.js"></script>
 </body>
 </html>

@@ -17,3 +17,8 @@ const STORAGE_KEY_DEFEATED_CREATURES = "personagem.monstrosDerrotados";
 const STORAGE_KEY_UNLOCKED_ACHIEVEMENTS = "personagem.conquistasDesbloqueadas";
 const STORAGE_KEY_BEST_SESSION_DISTANCE_M = "personagem.melhorDistanciaSessaoM";
 const STORAGE_KEY_TOTAL_TRAININGS = "personagem.totalTreinosConcluidos";
+
+// Fila de sessoes de treino ainda nao confirmadas no Supabase (ver
+// js/training.js) - diferente das chaves acima porque cada sessao e um
+// evento discreto, nao um valor agregado que pode ser reenviado.
+const STORAGE_KEY_SESSION_QUEUE = "personagem.filaSessoesTreino";

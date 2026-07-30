@@ -57,6 +57,60 @@ function clearPersistedTraining() {
   localStorage.removeItem(STORAGE_KEYS.inicioSessao);
 }
 
+// --- Historico de sessoes individuais (aba de Perfil) ---------------------
+//
+// Ao contrario do progresso agregado (que e sempre um snapshot completo,
+// seguro para reenviar), cada sessao e um evento discreto - se a rede
+// falhar mesmo quando o treino termina (comum, GPS ao ar livre), o registo
+// nao pode desaparecer. Fica numa fila local ate ser confirmado no Supabase.
+
+function getQueuedTrainingSessions() {
+  const raw = localStorage.getItem(STORAGE_KEY_SESSION_QUEUE);
+  try {
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveQueuedTrainingSessions(queue) {
+  localStorage.setItem(STORAGE_KEY_SESSION_QUEUE, JSON.stringify(queue));
+}
+
+// Chamado no fim de stopTraining(), sempre (mesmo com distancia 0, para
+// nao criar um caso especial diferente do resto do jogo). Tenta enviar de
+// imediato; se falhar, o registo fica em seguranca na fila local.
+function enqueueTrainingSession(record) {
+  const queue = getQueuedTrainingSessions();
+  queue.push(record);
+  saveQueuedTrainingSessions(queue);
+  flushTrainingSessionQueue();
+}
+
+// So true depois do login/arranque terminar (mesmas globais expostas por
+// js/auth.js que guardam queueProgressSync) - evita tentar enviar antes de
+// haver sessao autenticada.
+async function flushTrainingSessionQueue() {
+  if (!currentUserId || !readyForSync) return;
+
+  const queue = getQueuedTrainingSessions();
+  if (queue.length === 0) return;
+
+  const rows = queue.map((record) => ({ user_id: currentUserId, ...record }));
+  const { error } = await supabaseClient
+    .from("training_sessions")
+    .upsert(rows, { onConflict: "user_id,client_id", ignoreDuplicates: true });
+
+  if (error) {
+    console.warn("Falha ao enviar sessoes de treino pendentes, tenta de novo mais tarde.", error);
+    return;
+  }
+
+  saveQueuedTrainingSessions([]);
+  if (typeof onTrainingSessionsSynced === "function") onTrainingSessionsSynced();
+}
+
 function onPositionUpdate(position) {
   const { latitude, longitude, accuracy } = position.coords;
   const timestamp = position.timestamp;
@@ -150,7 +204,18 @@ function stopTraining() {
   }
 
   const sessionDistanceM = totalDistanceM;
-  const sessionDurationSeconds = sessionStartTime ? (Date.now() - sessionStartTime) / 1000 : null;
+  const sessionEndTime = Date.now();
+  const sessionDurationSeconds = sessionStartTime ? (sessionEndTime - sessionStartTime) / 1000 : null;
+
+  if (sessionStartTime) {
+    enqueueTrainingSession({
+      client_id: crypto.randomUUID(),
+      started_at: new Date(sessionStartTime).toISOString(),
+      ended_at: new Date(sessionEndTime).toISOString(),
+      distance_m: sessionDistanceM,
+      duration_seconds: sessionDurationSeconds,
+    });
+  }
 
   addToLifetimeDistance(totalDistanceM);
   incrementTotalTrainingsCompleted();

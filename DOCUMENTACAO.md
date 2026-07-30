@@ -13,7 +13,8 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 
 - **HTML/CSS/JS puro**, sem framework, sem build step
 - **Three.js r142** (build clássica não-modular, via CDN jsDelivr) — escolhida deliberadamente em vez de ES modules porque testes locais via `file://` bloqueiam módulos ES6 por CORS
-- **`localStorage`** para toda a persistência (sem backend/base de dados)
+- **Supabase** (Postgres + Auth + Row Level Security, via CDN `@supabase/supabase-js@2`) — login Google e fonte de verdade do progresso (ver secção 14)
+- **`localStorage`** como cache/buffer offline (fonte de verdade era só isto antes do login existir; ver secção 14)
 - **GitHub Pages** para hosting estático
 - Sem dependências de build (npm, bundlers) — tudo corre diretamente no browser
 
@@ -23,6 +24,8 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 |---|---|
 | `index.html` | Estrutura da página, todos os elementos de UI |
 | `css/style.css` | Todo o estilo (tema escuro, mobile-first) |
+| `js/storage-keys.js` | Constantes de chaves de `localStorage` do progresso (`personagem.*`) — centralizadas porque `auth.js` precisa delas antes dos ficheiros que historicamente as declaravam |
+| `js/auth.js` | Login Google (Supabase Auth), popup de escolha de nome, migração/hidratação do progresso, sincronização contínua (`queueProgressSync`), leaderboard, gate do card de Debug |
 | `js/main.js` | Cena 3D (Three.js): personagem, equipamentos, monstro placeholder, câmara, rotação por arraste, raycasting de equipamento |
 | `js/debug.js` | Centraliza **todas** as variáveis afináveis do jogo + ferramentas de debug (reset, simulador de distância) |
 | `js/equipment.js` | Stats do personagem, níveis de equipamento, fórmula de valor de status, upgrade |
@@ -30,11 +33,13 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/monsters.js` | Geração de monstros/bosses, regra de desbloqueio, renderização do carrossel "Batalhas" |
 | `js/achievements.js` | Sistema de conquistas |
 | `js/battle.js` | Lógica de combate por turnos, popup fullscreen de batalha |
-| `js/training.js` | GPS, tracking de distância, sessões de treino, filtros de ruído |
+| `js/training.js` | GPS, tracking de distância, sessões de treino, filtros de ruído, fila local de sessões pendentes para `training_sessions` |
+| `js/profile.js` | Aba de Perfil: navegação Jogo/Perfil, status/equipamento, histórico de treinos, agregados semana/mês, gráficos SVG |
 | `js/orientation.js` | Aviso de rodar para retrato em dispositivos touch |
+| `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — corre-se manualmente no SQL Editor do Supabase, não é lido pelo site |
 
 Ordem de carregamento dos scripts (importa por causa de dependências entre módulos):
-`main → debug → equipment → experience → monsters → achievements → battle → training → orientation`
+`storage-keys → auth → main → debug → equipment → experience → monsters → achievements → battle → training → profile → orientation`
 
 ## 4. Sistema de treino (GPS)
 
@@ -155,11 +160,33 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **Emojis como ícones de conquistas**: placeholder deliberado, consistente com o resto do site (cápsulas, caixas coloridas) — substituível por ícones customizados no estilo "flat, duas cores" mais tarde
 - **Um `.hidden { display: none; }` genérico no CSS**: adicionado depois de um bug em que elementos de batalha ficavam sempre visíveis por faltar a regra CSS correspondente à classe
 
-## 14. Limitações conhecidas / possíveis próximos passos
+## 14. Contas e Leaderboard (Supabase)
+
+- **Login obrigatório com Google** — sem modo convidado; `#auth-modal` cobre o ecrã todo até haver sessão confirmada
+- Depois do primeiro login, popup pede o **nome da personagem** (nunca o nome real da conta Google) — nomes são **únicos** (índice único case-insensitive em `profiles.display_name`, erro `23505` tratado no popup)
+- **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância vitalícia, pontos, níveis de equipamento, monstros derrotados, conquistas). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
+- `treino.*` (checkpoint de sessão GPS em curso) e `debug.*` (afinação de jogo) **nunca** são sincronizados — ficam sempre só locais
+- Sincronização contínua via `queueProgressSync()` (debounce ~400ms, snapshot completo, seguro para reenviar) chamada a seguir a cada mutação de progresso existente
+- **`leaderboard`**: tabela pública de leitura (top 10 + posição do próprio jogador se não estiver no top 10), cada jogador só escreve a sua própria linha (RLS)
+- **Debug é admin-only**: flag `is_admin` em `profiles`, alterável só manualmente via SQL Editor — nunca exposta a nenhum caminho do cliente (fronteira real de segurança são as políticas RLS, não a UI escondida)
+- Falhas de rede a meio do arranque pós-login não travam o resto do jogo — cada passo (perfil, migração/hidratação, nome, leaderboard) tem o seu próprio `try/catch`, para os cartões de Monstros/Conquistas nunca ficarem vazios por causa de um erro noutro passo
+
+## 15. Aba de Perfil e histórico de treinos
+
+- Navegação sem framework: dois botões no cabeçalho (`Jogo`/`Perfil`) alternam `.hidden` entre dois containers (`#view-jogo`/`#view-perfil`) — mesmo padrão já usado nos modais
+- A cena 3D (`js/main.js`) pausa o `renderer.render(...)` enquanto a aba Perfil está visível (poupa GPU/bateria), sem parar o loop `requestAnimationFrame`
+- **`training_sessions`** (Postgres): uma linha por sessão de treino (`started_at`, `ended_at`, `distance_m`, `duration_seconds`), imutável depois de gravada (sem UPDATE/DELETE). É a peça que faltava para qualquer métrica não-agregada — antes só existiam totais vitalícios
+- **Captura fiável**: ao contrário do progresso (snapshot substituível), uma sessão é um evento discreto — fica numa fila local (`personagem.filaSessoesTreino`) até ser confirmada no Supabase, com `client_id` + índice único para o reenvio nunca duplicar. Retry no evento `online` e no arranque seguinte
+- **Tudo agregado no cliente** (sem views/RPC no Postgres) — busca todas as sessões do próprio jogador e reduz em JS; volume trivial para um grupo de amigos
+- **Semana** = semana ISO (começa à segunda); **mês** = mês de calendário; ambos em hora local
+- Conteúdo da aba: status/equipamento (dados já existentes, só leitura), histórico por dia (últimos 60 dias com treino), distância total e sessão mais longa da semana/mês atual, dias distintos treinados (base para futuras medalhas de frequência), e dois gráficos **SVG desenhados à mão** (sem biblioteca nova): evolução do mês atual (uma barra por dia) e evolução de todos os meses (uma barra por mês, incluindo meses vazios)
+
+## 16. Limitações conhecidas / possíveis próximos passos
 
 - Combate é **totalmente automático** (sem escolhas do jogador durante a luta)
 - Ícones de conquistas são emoji, não arte customizada
 - Bloqueio de paisagem no mobile é só um **aviso**, não um bloqueio real (tecnicamente impossível de forçar via web/PWA no iOS)
 - Não é uma PWA (sem `manifest.json`/service worker) — instalável no ecrã inicial mas sem funcionar totalmente offline
 - Se convertida para app: PWA é o caminho mais simples (quase nenhuma alteração de código); Capacitor permite lojas de apps com esforço moderado; reescrita nativa exigiria substituir Three.js por um motor 3D nativo
-- Todos os dados vivem em `localStorage` do dispositivo — sem conta/sincronização entre dispositivos
+- Medalhas mensais (Ouro/Prata/Bronze para o top 3 do leaderboard de cada mês) foram discutidas mas ainda não implementadas — exigiriam um corte periódico (ex: verificado a cada login) do leaderboard mensal
+- Gráficos SVG não têm tooltip customizado, só o `<title>` nativo do browser ao passar o rato (não funciona por toque em mobile)

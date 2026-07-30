@@ -192,8 +192,13 @@ canvas.addEventListener("pointercancel", () => {
   isDragging = false;
 });
 
+// Controlado por js/profile.js: poupa GPU/bateria no telemovel enquanto a
+// aba Perfil esta visivel, sem parar o loop de todo (mais simples do que
+// cancelar/reiniciar o requestAnimationFrame).
+let jogoViewVisible = true;
+
 function animate() {
   requestAnimationFrame(animate);
-  renderer.render(scene, camera);
+  if (jogoViewVisible) renderer.render(scene, camera);
 }
 animate();

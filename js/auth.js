@@ -113,6 +113,7 @@ window.addEventListener("online", () => {
   if (localStorage.getItem(SYNC_PENDING_KEY) === "true") {
     queueProgressSync();
   }
+  flushTrainingSessionQueue();
 });
 
 // --- Leaderboard ----------------------------------------------------------
@@ -345,6 +346,7 @@ async function bootstrapAfterLogin(user) {
   if (localStorage.getItem(SYNC_PENDING_KEY) === "true") {
     queueProgressSync();
   }
+  flushTrainingSessionQueue();
 }
 
 supabaseClient.auth.onAuthStateChange((_event, session) => {
