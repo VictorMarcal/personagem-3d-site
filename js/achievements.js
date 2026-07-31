@@ -61,14 +61,18 @@ const STATIC_ACHIEVEMENTS = [
 ];
 
 // Uma conquista por boss, gerada a partir dos mesmos parametros de
-// js/monsters.js, para se manterem sempre sincronizados
+// js/monsters.js (incluindo BOSS_NAMES, definido la), para se manterem
+// sempre sincronizados
 function generateBossAchievements() {
   const bossStep = getBossLevelStep();
   const maxLevel = getMaxLevelToGenerate();
   const achievements = [];
 
+  let bossIndex = 0;
   for (let lvl = bossStep; lvl <= maxLevel; lvl += bossStep) {
-    achievements.push({ id: `boss_${lvl}`, name: `Boss Nível ${lvl}`, icon: "👹", type: "bossDefeated", level: lvl });
+    const name = BOSS_NAMES[bossIndex] || `Boss Nível ${lvl}`;
+    achievements.push({ id: `boss_${lvl}`, name, icon: "👹", type: "bossDefeated", level: lvl });
+    bossIndex += 1;
   }
 
   return achievements;
@@ -355,7 +359,7 @@ function getAchievementDescription(achievement) {
     case "activeWeekend":
       return "Treina no sábado e no domingo da mesma semana.";
     case "bossDefeated":
-      return `Derrota o Boss do nível ${achievement.level}.`;
+      return `Derrota este boss, desbloqueado no nível ${achievement.level}.`;
     case "creatureStars":
       return `Vence uma luta com ${achievement.threshold} estrelas (vida acima de 50% no fim).`;
     case "allMiniBossesThreeStars":

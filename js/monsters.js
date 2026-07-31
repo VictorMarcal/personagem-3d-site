@@ -9,19 +9,44 @@ const monstersListEl = document.getElementById("monsters-list");
 
 // STORAGE_KEY_DEFEATED_CREATURES esta definida em js/storage-keys.js
 
+// Nomes fixos, por ordem (o 1o mini-boss/boss gerado leva o 1o nome, etc.).
+// Tema: obstaculos mentais ao progresso, cada mini-boss e uma forma "menor"
+// do boss correspondente (ex: Lethling -> Lethargor). Se o nivel maximo for
+// aumentado no Debug para alem de 10 de cada, os extra caem num nome
+// generico em vez de partir.
+const MINIBOSS_NAMES = ["Lethling", "Vorik", "Exan", "Pregor", "Névon", "Roth", "Confor", "Egor", "Plator", "Discip"];
+const BOSS_NAMES = [
+  "Lethargor, Senhor da Inércia",
+  "Vorath, Devorador de Vontade",
+  "Exauron, o Falso Exausto",
+  "Pregorath, Rei da Preguiça",
+  "Névoris, Ceifador da Esperança",
+  "Rothar, Rei da Rotina",
+  "Conforth, Tirano do Conforto",
+  "Egorath, Imperador do Ego",
+  "Platorex, Titã do Platô",
+  "Disciplion, Guardião Eterno",
+];
+
 function generateCreatures() {
   const miniBossStep = getMiniBossLevelStep();
   const bossStep = getBossLevelStep();
   const maxLevel = getMaxLevelToGenerate();
   const creatures = [];
 
+  let miniBossIndex = 0;
   for (let lvl = miniBossStep; lvl <= maxLevel; lvl += miniBossStep) {
     if (lvl % bossStep === 0) continue; // nivel reservado para o boss
-    creatures.push({ level: lvl, name: `Mini-Boss Nível ${lvl}`, isBoss: false, isMiniBoss: true });
+    const name = MINIBOSS_NAMES[miniBossIndex] || `Mini-Boss Nível ${lvl}`;
+    creatures.push({ level: lvl, name, isBoss: false, isMiniBoss: true });
+    miniBossIndex += 1;
   }
 
+  let bossIndex = 0;
   for (let lvl = bossStep; lvl <= maxLevel; lvl += bossStep) {
-    creatures.push({ level: lvl, name: `Boss Nível ${lvl}`, isBoss: true, isMiniBoss: false });
+    const name = BOSS_NAMES[bossIndex] || `Boss Nível ${lvl}`;
+    creatures.push({ level: lvl, name, isBoss: true, isMiniBoss: false });
+    bossIndex += 1;
   }
 
   creatures.sort((a, b) => a.level - b.level || (a.isBoss ? 1 : -1));
