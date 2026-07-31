@@ -106,6 +106,35 @@ main {
   pointer-events: none;
 }
 
+.floating-combat-text {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  font-size: 1.2rem;
+  font-weight: 800;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  animation: floatUpFade 1s ease-out forwards;
+}
+
+.floating-combat-text.damage {
+  color: #ff5c5c;
+}
+
+.floating-combat-text.heal {
+  color: #4ade80;
+}
+
+@keyframes floatUpFade {
+  from {
+    opacity: 1;
+    margin-top: 0;
+  }
+  to {
+    opacity: 0;
+    margin-top: -40px;
+  }
+}
+
 #character-hud {
   position: absolute;
   top: 0.75rem;
