@@ -24,6 +24,8 @@ const CATEGORY_BY_TYPE = {
   leaderboardRank: "Liderança",
   monthlyMedal: "Liderança",
   monthlyMedalPending: "Liderança",
+  monthlyMedalMissed: "Liderança",
+  monthlyMedalFuture: "Liderança",
   pace: "Ritmo",
   personalRecord: "Ritmo",
 };
@@ -81,43 +83,60 @@ function generateBossAchievements() {
 
 const MEDAL_LABEL_BY_TYPE = { gold: "Ouro", silver: "Prata", bronze: "Bronze" };
 const MEDAL_ICON_BY_TYPE = { gold: "🥇", silver: "🥈", bronze: "🥉" };
+const MEDAL_ICON_BUNDLE = "🥇🥈🥉";
 const MONTHLY_MEDAL_ID_PATTERN = /^medal_(gold|silver|bronze)_(\d{4})_(\d{2})$/;
 
-// Medalhas ja ganhas aparecem depois de desbloqueadas (js/monthly-medals.js
-// e que as desbloqueia), com a cor/posicao real. Enquanto o mes corrente
-// ainda esta a decorrer, mostra tambem um "placeholder" bloqueado (cinzento,
-// com 1 2 3 em vez de um numero fixo) - so no fim do mes e que se sabe se o
-// jogador fica em 1º/2º/3º (ou fora do podio, caso em que o placeholder
-// simplesmente desaparece no mes seguinte sem nunca desbloquear).
+// Medalha (se ja alguma vez ganha, em qualquer ano) para um mes de
+// calendario (1-12) - o mais recente, se tiver mais que um ano de
+// historico. Usado tanto para desenhar o cartao como para saber se esta
+// desbloqueado (js/monthly-medals.js e que desbloqueia o id real
+// medal_<cor>_<ano>_<mes> quando o mes fecha).
+function findWonMedalForMonthNumber(monthNumber) {
+  const monthKey2 = String(monthNumber).padStart(2, "0");
+  let best = null;
+  Object.keys(getUnlockedAchievements()).forEach((id) => {
+    const match = id.match(MONTHLY_MEDAL_ID_PATTERN);
+    if (!match) return;
+    const [, medal, year, month] = match;
+    if (month !== monthKey2) return;
+    if (!best || year > best.year) best = { medal, year };
+  });
+  return best;
+}
+
+// 12 cartoes fixos (Janeiro a Dezembro), sempre visiveis - nao um por
+// ano/mes especifico. Cada um mostra a medalha real (cor + ano) se ja foi
+// ganha alguma vez nesse mes de calendario; caso contrario fica bloqueado
+// com o icone das 3 medalhas, quer o mes ainda nao tenha chegado, esteja a
+// decorrer (ainda por decidir) ou ja tenha passado sem podio.
 function generateMonthlyMedalAchievements() {
-  const wonMedals = Object.keys(getUnlockedAchievements())
-    .map((id) => ({ id, match: id.match(MONTHLY_MEDAL_ID_PATTERN) }))
-    .filter((entry) => entry.match)
-    .map(({ id, match }) => {
-      const [, medal, year, month] = match;
+  const currentMonthNumber = new Date().getMonth() + 1;
+
+  return MONTH_NAMES_PT.map((monthName, index) => {
+    const monthNumber = index + 1;
+    const monthKey2 = String(monthNumber).padStart(2, "0");
+    const won = findWonMedalForMonthNumber(monthNumber);
+
+    if (won) {
       return {
-        id,
-        name: `${MEDAL_LABEL_BY_TYPE[medal]} — ${month}/${year}`,
-        icon: MEDAL_ICON_BY_TYPE[medal],
+        id: `medal_month_${monthKey2}`,
+        name: `${monthName} ${won.year}`,
+        icon: MEDAL_ICON_BY_TYPE[won.medal],
         type: "monthlyMedal",
       };
-    });
+    }
 
-  const currentMonthKey = formatMonthKey(new Date());
-  const currentMonthAlreadyWon = ["gold", "silver", "bronze"].some(
-    (medal) => isAchievementUnlocked(medalAchievementId(medal, currentMonthKey))
-  );
+    let type = "monthlyMedalMissed";
+    if (monthNumber === currentMonthNumber) type = "monthlyMedalPending";
+    else if (monthNumber > currentMonthNumber) type = "monthlyMedalFuture";
 
-  if (currentMonthAlreadyWon) return wonMedals;
-
-  const [year, month] = currentMonthKey.split("-");
-  const pending = {
-    id: `medal_pending_${currentMonthKey.replace("-", "_")}`,
-    name: `Medalha mensal — ${month}/${year}`,
-    icon: "1 2 3",
-    type: "monthlyMedalPending",
-  };
-  return [...wonMedals, pending];
+    return {
+      id: `medal_month_${monthKey2}`,
+      name: monthName,
+      icon: MEDAL_ICON_BUNDLE,
+      type,
+    };
+  });
 }
 
 function getAllAchievements() {
@@ -184,6 +203,13 @@ function getUnlockedAchievements() {
 }
 
 function isAchievementUnlocked(id) {
+  // Os 12 cartoes fixos de medalha mensal (medal_month_01..12, ver
+  // generateMonthlyMedalAchievements) nao sao eles proprios gravados por
+  // unlockAchievement - o que fica gravado e o id real por ano/mes
+  // (medal_<cor>_<ano>_<mes>), atribuido por js/monthly-medals.js.
+  const slotMatch = id.match(/^medal_month_(\d{2})$/);
+  if (slotMatch) return findWonMedalForMonthNumber(Number(slotMatch[1])) !== null;
+
   return Object.prototype.hasOwnProperty.call(getUnlockedAchievements(), id);
 }
 
@@ -244,7 +270,9 @@ function getAchievementProgress(achievement) {
     case "leaderboardRank":
     case "personalRecord":
     case "monthlyMedal":
-    case "monthlyMedalPending": {
+    case "monthlyMedalPending":
+    case "monthlyMedalMissed":
+    case "monthlyMedalFuture": {
       // Eventos binarios sem "progresso" numerico derivavel a qualquer
       // momento (dependem de historico que so e verificado quando os dados
       // relevantes chegam) - o proprio desbloqueio acontece fora deste
@@ -393,9 +421,13 @@ function getAchievementDescription(achievement) {
     case "leaderboardRank":
       return "Chega ao 1º lugar do leaderboard geral (fica desbloqueada para sempre).";
     case "monthlyMedal":
-      return "Atribuída automaticamente ao top 3 do leaderboard desse mês.";
+      return "Atribuída automaticamente ao top 3 do leaderboard mensal desse mês.";
     case "monthlyMedalPending":
       return "Ainda por decidir - só no fim do mês se sabe se ficas em 1º, 2º ou 3º lugar do leaderboard mensal (ou fora do pódio).";
+    case "monthlyMedalMissed":
+      return "Não ficaste no pódio (1º, 2º ou 3º) do leaderboard mensal nesse mês.";
+    case "monthlyMedalFuture":
+      return "Ainda não chegámos a esse mês este ano.";
     case "pace":
       return `Percorre ${formatDistanceKm(achievement.distanceM)} em menos de ${Math.round(achievement.maxSeconds / 60)} minutos.`;
     case "personalRecord":
@@ -408,6 +440,8 @@ function getAchievementDescription(achievement) {
 function formatAchievementProgressText(achievement, progress, unlocked) {
   if (unlocked) return "Desbloqueada!";
   if (achievement.type === "monthlyMedalPending") return "Só se sabe no fim do mês.";
+  if (achievement.type === "monthlyMedalMissed") return "Não foi desta vez.";
+  if (achievement.type === "monthlyMedalFuture") return "Ainda não chegou.";
   if (achievement.type === "sessionDistance" || achievement.type === "lifetimeDistance") {
     return `Progresso: ${formatDistanceKm(progress.current)} / ${formatDistanceKm(progress.target)}`;
   }
