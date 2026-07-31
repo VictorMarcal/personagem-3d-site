@@ -717,6 +717,14 @@ main {
   gap: 0.4rem;
 }
 
+/* .hidden e .leaderboard-list tem a mesma especificidade (uma classe cada)
+   e .leaderboard-list vem depois no ficheiro - sem isto, o display:flex
+   ganhava ao display:none e as 3 listas apareciam todas empilhadas ao
+   mesmo tempo, independentemente de qual aba estava ativa. */
+.leaderboard-list.hidden {
+  display: none;
+}
+
 .leaderboard-row {
   display: flex;
   align-items: center;
