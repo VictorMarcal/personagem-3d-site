@@ -116,9 +116,11 @@ Mostrado no HUD como "Recuperação: X/s". Não afeta nada durante a luta em si 
 
 - Duas camadas de criaturas (já não há "monstros normais"): **Mini-Boss** a cada `MINIBOSS_LEVEL_STEP = 5` níveis, **Boss** a cada `BOSS_LEVEL_STEP = 10` níveis, até `MAX_LEVEL_TO_GENERATE = 100` (tudo ajustável)
 - Níveis múltiplos de 10 ficam reservados exclusivamente para bosses (nunca um mini-boss no mesmo nível de um boss)
+- **Nomes próprios** (`MINIBOSS_NAMES`/`BOSS_NAMES` em `js/monsters.js`): tema de "obstáculos mentais ao progresso" (Inércia, Preguiça, Rotina, Conforto, Ego, Platô...), cada mini-boss é uma forma "menor" do boss correspondente (ex: Lethling → Lethargor, Senhor da Inércia). Atribuídos por posição na sequência (o 1º mini-boss/boss gerado leva o 1º nome); se o nível máximo for aumentado no Debug para além dos 10 nomes de cada tipo, os extra caem num nome genérico "Mini-Boss/Boss Nível X"
 - **Regra de desbloqueio**: puramente sequencial por combate — a primeira criatura já começa desbloqueada, cada seguinte só desbloqueia depois da anterior ser derrotada. O nível do personagem **não** é um requisito (a dificuldade vem só dos status da criatura, que escalam com o nível dela)
 - Podem ser **re-lutados** depois de derrotados ("Lutar novamente"), mas os pontos de bónus (secção 6) só são dados na primeira derrota
-- **Estrelas** (1-3) por criatura derrotada, com base na vida do jogador restante no fim da luta (mesmos limiares dos pontos de bónus — secção 6): guarda-se sempre o **melhor resultado** de sempre, uma re-luta pior nunca faz perder estrelas já conquistadas
+- **Estrelas** (1-3) por criatura derrotada, com base na vida do jogador restante no fim da luta (mesmos limiares dos pontos de bónus — secção 6): guarda-se sempre o **melhor resultado** de sempre, uma re-luta pior nunca faz perder estrelas já conquistadas. Sempre visíveis no card (cinza antes de conquistadas)
+- **Vida escondida ("`****`") até entrar em combate**: o card de cada criatura só mostra "Vida: ****" até o jogador entrar em batalha com ela pela primeira vez (ganhando ou perdendo) — só depois revela o valor real (`isCreatureEncountered`, `STORAGE_KEY_ENCOUNTERED_CREATURES`). Ataque e Defesa nunca são mostrados no card, ficam sempre desconhecidos (mistério deliberado)
 - Card "Batalhas": mostra só uma janela de **5 criaturas em carrossel horizontal**, sempre centrada na próxima por derrotar (nunca a lista inteira)
 
 ## 9. Sistema de duelos
@@ -129,15 +131,17 @@ Mostrado no HUD como "Recuperação: X/s". Não afeta nada durante a luta em si 
 
 ```
 Bruto = Ataque_atacante − BATTLE_DEFENSE_PERCENT × Defesa_defensor
+Base = max(BATTLE_FLOOR_PERCENT × Ataque_atacante, Bruto)
 Variação = DAMAGE_VARIANCE_MIN + aleatório(0, 1 − DAMAGE_VARIANCE_MIN)
-Dano = max(BATTLE_FLOOR_PERCENT × Ataque_atacante, Bruto × Variação)
+Dano = round(Base × Variação)
 BATTLE_DEFENSE_PERCENT = 0.6, BATTLE_FLOOR_PERCENT = 0.5, DAMAGE_VARIANCE_MIN = 0.8
 ```
 
-A variação aleatória aplica-se ao valor **bruto**, antes do piso — assim o piso continua a ser mesmo o mínimo absoluto (nunca fica mais baixo por causa de uma má sorte na variação). Com os valores de produção, um dano bruto de 20 sai sempre entre 16 e 20.
+A variação aleatória aplica-se **depois** do piso mínimo, não antes. Foi tentado o contrário primeiro, mas builds com defesa forte (dano bruto sempre abaixo do piso) acabavam sempre no mesmo número exato — a variação nunca era visível. Aplicada depois do `max()`, há sempre variação visível seja qual for a origem do dano base (bruto ou piso), e o piso continua a impedir dano zero/negativo (0,8× de qualquer piso positivo continua positivo). Com os valores de produção, uma base de 20 sai sempre entre 16 e 20.
 
 - **Porquê a troca de curvas Ataque/Defesa**: com as curvas originais (Defesa maior que Ataque), o dano dava sempre negativo em qualquer nível/build. Trocar as curvas resolveu a maior parte dos casos, mas builds extremos (100% investidos numa só stat) ainda podiam ficar presos em impasses ou derrotas garantidas — daí a necessidade do piso mínimo.
-- **Vida do jogador persiste entre lutas** — não recomeça cheia automaticamente. Recupera com o tempo real decorrido (secção 7, Recuperação), calculado sob demanda (valor guardado + segundos passados × Recuperação, sem timer a correr em segundo plano). Lutar com vida parcial é uma escolha do jogador, não há bloqueio — a recuperação simplesmente não avança durante a luta em si (só volta a contar a partir do valor com que se fica no fim, ganhando ou perdendo). É um mecanismo anti-spam de batalhas, só local (não sincroniza entre dispositivos)
+- **Dano flutuante**: cada acerto mostra um número a subir e desvanecer por cima da cabeça de quem foi atingido (`showFloatingCombatText`, `js/main.js`), projetado a partir da posição 3D real da cabeça (`head`/`monsterHead`) para o ecrã — só precisa de projetar uma vez por acerto, já que a câmara e as posições ficam fixas durante toda a luta
+- **Vida do jogador persiste entre lutas** — não recomeça cheia automaticamente. Recupera com o tempo real decorrido (secção 7, Recuperação), calculado sob demanda (valor guardado + segundos passados × Recuperação, sem timer a correr em segundo plano). Lutar com vida parcial é uma escolha do jogador, não há bloqueio — a recuperação simplesmente não avança durante a luta em si (só volta a contar a partir do valor com que se fica no fim, ganhando ou perdendo). É um mecanismo anti-spam de batalhas, só local (não sincroniza entre dispositivos). Fora de combate, o mesmo número flutuante ("+0.2" etc.) aparece por cima da cabeça do personagem a cada segundo enquanto a vida não estiver completa
 - Vitória contra um boss marca-o como derrotado e desbloqueia o próximo da sequência
 
 ## 10. Conquistas
@@ -159,6 +163,8 @@ Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem 
 
 Cada conquista tem ícone (emoji como placeholder), nome e um destaque visual verde quando desbloqueada (sem barra de progresso — foi removida a pedido).
 
+**Popup de detalhe**: clicar em qualquer conquista (resumo ou popup completo) abre um pequeno popup central com ícone, nome, descrição e progresso atual (ou "Desbloqueada!"). A descrição é **gerada a partir do tipo/parâmetros** (`getAchievementDescription`), não escrita à mão por conquista — evita repetição para as ~40 conquistas existentes.
+
 **Importante**: o simulador de distância por tempo (Debug) trata o tempo simulado como uma sessão de treino real para efeitos de conquistas — sem isto, conquistas de distância nunca desbloqueariam ao testar via simulador.
 
 **Medalhas mensais — modelo de confiança**: quem fizer login primeiro depois da virada do mês publica a "fotografia" do top 3 desse mês em `monthly_medals`, potencialmente creditando outros jogadores. A política de RLS `monthly_medals_insert_authenticated` deixa qualquer jogador autenticado inserir uma linha para qualquer `user_id` — não há Edge Functions/service role neste projeto. Protegido só por `unique(month, medal)` e ausência de UPDATE/DELETE. Aceitável para um grupo pequeno de amigos de confiança; não usar assim num contexto público. Limitação aceite: só existe um "slot" de mês anterior por jogador — quem não faz login durante 2+ meses seguidos perde o registo do(s) mês(es) saltado(s).
@@ -168,11 +174,11 @@ Cada conquista tem ícone (emoji como placeholder), nome e um destaque visual ve
 Card com todos os valores públicos ajustáveis em tempo real (sem precisar de editar código):
 
 - Curva de nível (`LEVEL_BASE`, `LEVEL_EXP`)
-- Curvas de status × 3 (`STAT_BASE/FLAT/PERCENT` para Vida, Ataque, Defesa)
-- Pontos por nível (`QUARTERS_PER_LEVEL`)
+- Curvas de status × 3 (`STAT_BASE/FLAT/PERCENT` para Vida, Ataque, Defesa) + `STAT_RECOVERY_BASE`
+- Pontos (`LEVEL_UP_POINTS`, `MINIBOSS_MAX_POINTS`, `BOSS_MAX_POINTS`)
 - Filtros de GPS (`MAX_ACCURACY_M`, `MIN_MOVEMENT_M`, `MAX_SPEED_KMH`)
-- Geração de monstros (`MONSTER_LEVEL_STEP`, `BOSS_LEVEL_STEP`, `MAX_LEVEL_TO_GENERATE`)
-- Fórmula de combate (`BATTLE_DEFENSE_PERCENT`, `BATTLE_FLOOR_PERCENT`)
+- Geração de criaturas (`MINIBOSS_LEVEL_STEP`, `BOSS_LEVEL_STEP`, `MAX_LEVEL_TO_GENERATE`)
+- Fórmula de combate (`BATTLE_DEFENSE_PERCENT`, `BATTLE_FLOOR_PERCENT`, `DAMAGE_VARIANCE_MIN`)
 - **Simulador de distância por tempo**: liga/desliga um timer que soma `segundos × fator` à distância vitalícia, fator ajustável em tempo real — para testar níveis altos sem andar de verdade
 - **Reset de personagem**: apaga nível, status, pontos, monstros derrotados, conquistas e o histórico de treinos (`training_sessions` no Supabase, usado pela aba Perfil) — com confirmação
 
@@ -211,7 +217,8 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **Captura fiável**: ao contrário do progresso (snapshot substituível), uma sessão é um evento discreto — fica numa fila local (`personagem.filaSessoesTreino`) até ser confirmada no Supabase, com `client_id` + índice único para o reenvio nunca duplicar. Retry no evento `online` e no arranque seguinte
 - **Tudo agregado no cliente** (sem views/RPC no Postgres) — busca todas as sessões do próprio jogador e reduz em JS; volume trivial para um grupo de amigos
 - **Semana** = semana ISO (começa à segunda); **mês** = mês de calendário; ambos em hora local
-- Conteúdo da aba: status/equipamento (dados já existentes, só leitura), histórico agrupado por mês (últimos 24 meses com treino, dias dentro de cada mês), distância total e sessão mais longa da semana/mês atual, dias distintos treinados (base para futuras medalhas de frequência), e três gráficos **SVG desenhados à mão** (sem biblioteca nova): evolução da semana atual e do mês atual (uma barra por dia, com setas ‹ › para recuar até à semana/mês do primeiro treino de sempre) e evolução de todos os meses (uma barra por mês, incluindo meses vazios)
+- Conteúdo da aba: status/equipamento (dados já existentes, só leitura), histórico agrupado por mês (últimos 24 meses com treino, dias dentro de cada mês), distância total e sessão mais longa da semana/mês atual, dias distintos treinados (base para as conquistas de sequência), e três gráficos **SVG desenhados à mão** (sem biblioteca nova): evolução da semana atual e do mês atual (uma barra por dia, com setas ‹ › para recuar até à semana/mês do primeiro treino de sempre) e evolução de todos os meses (uma barra por mês, incluindo meses vazios)
+- Cada barra mostra sempre um **rótulo visível por baixo** (dia da semana, dia do mês, ou abreviatura do mês no gráfico de todos os meses) — o valor exato continua só no `<title>` nativo ao passar o rato (não funciona por toque em mobile), mas identificar qual barra é qual já não depende disso
 - **Todas as distâncias mostradas ao jogador são em km** (`formatDistanceKm()`, js/experience.js) — os dados continuam guardados/calculados em metros, só a apresentação muda
 
 ## 16. Limitações conhecidas / possíveis próximos passos
@@ -221,5 +228,5 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - Bloqueio de paisagem no mobile é só um **aviso**, não um bloqueio real (tecnicamente impossível de forçar via web/PWA no iOS)
 - Não é uma PWA (sem `manifest.json`/service worker) — instalável no ecrã inicial mas sem funcionar totalmente offline
 - Se convertida para app: PWA é o caminho mais simples (quase nenhuma alteração de código); Capacitor permite lojas de apps com esforço moderado; reescrita nativa exigiria substituir Three.js por um motor 3D nativo
-- Medalhas mensais (Ouro/Prata/Bronze para o top 3 do leaderboard de cada mês) foram discutidas mas ainda não implementadas — exigiriam um corte periódico (ex: verificado a cada login) do leaderboard mensal
-- Gráficos SVG não têm tooltip customizado, só o `<title>` nativo do browser ao passar o rato (não funciona por toque em mobile)
+- Gráficos SVG mostram sempre o rótulo (dia/mês) por baixo de cada barra, mas o **valor exato** só está disponível no `<title>` nativo do browser ao passar o rato — não funciona por toque em mobile
+- Medalhas mensais dependem de confiança entre jogadores (qualquer jogador autenticado pode publicar a medalha de outro — ver secção 10); só 1 "slot" de mês anterior por jogador, perde-se o registo de meses saltados sem login
