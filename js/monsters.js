@@ -67,6 +67,32 @@ function markCreatureDefeated(level, stars) {
   }
 }
 
+// Criaturas com que o jogador ja entrou em combate pelo menos uma vez
+// (ganhando ou perdendo) - a Vida so e revelada no card depois disto,
+// Ataque/Defesa ficam sempre desconhecidos (mistério deliberado).
+function getEncounteredLevels() {
+  const raw = localStorage.getItem(STORAGE_KEY_ENCOUNTERED_CREATURES);
+  try {
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function isCreatureEncountered(level) {
+  return getEncounteredLevels().includes(level);
+}
+
+function markCreatureEncountered(level) {
+  const encountered = getEncounteredLevels();
+  if (!encountered.includes(level)) {
+    encountered.push(level);
+    localStorage.setItem(STORAGE_KEY_ENCOUNTERED_CREATURES, JSON.stringify(encountered));
+    queueProgressSync();
+  }
+}
+
 // So desbloqueia sequencialmente por combate - a primeira criatura ja
 // comeca desbloqueada, as seguintes so depois da anterior ser derrotada
 // (o nivel do personagem ja nao e um requisito)
@@ -131,9 +157,8 @@ function renderMonsters() {
   visible.forEach(({ creature, index }) => {
     const unlocked = isCreatureUnlocked(creature, creatures, index);
     const defeated = isCreatureDefeated(creature.level);
+    const encountered = isCreatureEncountered(creature.level);
     const vidaValue = computeStatValue("vida", creature.level);
-    const ataqueValue = computeStatValue("ataque", creature.level);
-    const defesaValue = computeStatValue("defesa", creature.level);
 
     const item = document.createElement("div");
     item.className =
@@ -177,7 +202,9 @@ function renderMonsters() {
     const detail = document.createElement("div");
     if (unlocked) {
       detail.className = "monster-stats";
-      detail.textContent = `Vida: ${vidaValue} · Ataque: ${ataqueValue} · Defesa: ${defesaValue}`;
+      // Ataque/Defesa ficam sempre desconhecidos - so a Vida e revelada,
+      // e so depois de uma primeira entrada em combate com a criatura.
+      detail.textContent = `Vida: ${encountered ? vidaValue : "****"}`;
     } else {
       detail.className = "monster-locked-label";
       detail.textContent = "Bloqueado — derrota primeiro a criatura anterior";

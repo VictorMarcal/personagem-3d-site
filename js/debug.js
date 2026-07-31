@@ -254,6 +254,7 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEY_BEST_STREAK_DAYS);
   localStorage.removeItem(STORAGE_KEY_MONTHLY_DISTANCE_M);
   localStorage.removeItem(STORAGE_KEY_MONTH_REFERENCE);
+  localStorage.removeItem(STORAGE_KEY_ENCOUNTERED_CREATURES);
 
   // O historico de treinos (aba Perfil) vive numa tabela a parte
   // (training_sessions) - sem isto o reset local nao mexia nele e o

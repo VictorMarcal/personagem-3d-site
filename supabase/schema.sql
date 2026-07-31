@@ -56,6 +56,7 @@ create table public.player_progress (
   equip_level_defesa integer not null default 1,
   last_awarded_level integer not null default 1,
   defeated_creatures jsonb not null default '{}',
+  encountered_creatures integer[] not null default '{}',
   unlocked_achievements jsonb not null default '{}',
   best_session_distance_m numeric not null default 0,
   total_trainings_completed integer not null default 0,
@@ -186,6 +187,10 @@ create policy "monthly_medals_select_all" on public.monthly_medals
 
 create policy "monthly_medals_insert_authenticated" on public.monthly_medals
   for insert to authenticated with check (true);
+
+-- Migracao: criaturas com que ja se entrou em combate pelo menos uma vez -
+-- so estas mostram a Vida revelada no card (ver js/monsters.js, js/battle.js).
+alter table public.player_progress add column if not exists encountered_creatures integer[] not null default '{}';
 
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication

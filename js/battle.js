@@ -47,6 +47,10 @@ async function startBattle(creature) {
   if (battleInProgress) return;
   battleInProgress = true;
 
+  // Entrar em combate revela a Vida da criatura no card, ganhe ou perca
+  // a luta - Ataque/Defesa ficam sempre desconhecidos.
+  markCreatureEncountered(creature.level);
+
   // A vida entra na luta com o que tiver recuperado ate agora (nunca cheia
   // por garantia) - lutar com vida parcial e uma escolha do jogador, nao
   // um bloqueio. A recuperacao para de contar assim que a luta comeca

@@ -14,6 +14,10 @@ const STORAGE_KEYS_EQUIPMENT = {
 
 const STORAGE_KEY_DEFEATED_CREATURES = "personagem.monstrosDerrotados";
 
+// Criaturas com que ja se entrou em combate pelo menos uma vez (ganhando
+// ou perdendo) - controla se a Vida aparece revelada no card ou como "****".
+const STORAGE_KEY_ENCOUNTERED_CREATURES = "personagem.criaturasEncontradas";
+
 const STORAGE_KEY_UNLOCKED_ACHIEVEMENTS = "personagem.conquistasDesbloqueadas";
 const STORAGE_KEY_BEST_SESSION_DISTANCE_M = "personagem.melhorDistanciaSessaoM";
 const STORAGE_KEY_TOTAL_TRAININGS = "personagem.totalTreinosConcluidos";

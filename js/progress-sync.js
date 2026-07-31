@@ -18,6 +18,7 @@ function readLocalProgressSnapshot() {
     equip_level_defesa: getEquipLevel("defesa"),
     last_awarded_level: getLastAwardedLevel(),
     defeated_creatures: getDefeatedCreaturesMap(),
+    encountered_creatures: getEncounteredLevels(),
     unlocked_achievements: getUnlockedAchievements(),
     best_session_distance_m: getBestSessionDistanceM(),
     total_trainings_completed: getTotalTrainingsCompleted(),
@@ -114,6 +115,7 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEquipDefesa, String(progress.equip_level_defesa));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado, String(progress.last_awarded_level));
   localStorage.setItem(STORAGE_KEY_DEFEATED_CREATURES, JSON.stringify(progress.defeated_creatures || {}));
+  localStorage.setItem(STORAGE_KEY_ENCOUNTERED_CREATURES, JSON.stringify(progress.encountered_creatures || []));
   localStorage.setItem(STORAGE_KEY_UNLOCKED_ACHIEVEMENTS, JSON.stringify(progress.unlocked_achievements || {}));
   localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M, String(progress.best_session_distance_m));
   localStorage.setItem(STORAGE_KEY_TOTAL_TRAININGS, String(progress.total_trainings_completed));
