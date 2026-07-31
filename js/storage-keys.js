@@ -29,3 +29,15 @@ const STORAGE_KEY_SESSION_QUEUE = "personagem.filaSessoesTreino";
 // anti-spam de batalhas, nao precisa de sincronizar entre dispositivos.
 const STORAGE_KEY_CURRENT_HP = "personagem.vidaAtual";
 const STORAGE_KEY_HP_LAST_UPDATE = "personagem.vidaUltimaAtualizacao";
+
+// Cache local de valores calculados a partir do Supabase (training_sessions/
+// leaderboard), para as conquistas dependentes disso poderem ser lidas de
+// forma sincrona pelo checkAndUnlockAchievements() como tudo o resto.
+const STORAGE_KEY_BEST_STREAK_DAYS = "personagem.melhorSequenciaDias";
+const STORAGE_KEY_BEST_PACE_MPS = "personagem.melhorRitmoMps";
+
+// Contador de distancia do mes de calendario corrente, espelha
+// leaderboard.monthly_distance_m - usado pelas medalhas mensais
+// (js/monthly-medals.js).
+const STORAGE_KEY_MONTHLY_DISTANCE_M = "personagem.distanciaMesAtual";
+const STORAGE_KEY_MONTH_REFERENCE = "personagem.mesReferencia";

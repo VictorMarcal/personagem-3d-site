@@ -21,6 +21,8 @@ function readLocalProgressSnapshot() {
     unlocked_achievements: getUnlockedAchievements(),
     best_session_distance_m: getBestSessionDistanceM(),
     total_trainings_completed: getTotalTrainingsCompleted(),
+    best_pace_mps: getBestPaceMps(),
+    best_streak_days: getBestStreakDays(),
   };
 }
 
@@ -39,6 +41,8 @@ async function syncProgressToSupabase() {
       user_id: currentUserId,
       display_name: currentDisplayName(),
       lifetime_distance_m: snapshot.lifetime_distance_m,
+      monthly_distance_m: getMonthlyDistanceM(),
+      month_reference: getMonthReference(),
       updated_at: nowIso,
     });
 
@@ -92,6 +96,8 @@ async function migrateLocalProgressToSupabase(userId, existingDisplayName) {
     user_id: userId,
     display_name: existingDisplayName || "Jogador",
     lifetime_distance_m: snapshot.lifetime_distance_m,
+    monthly_distance_m: getMonthlyDistanceM(),
+    month_reference: getMonthReference(),
   });
 
   return snapshot;
@@ -111,4 +117,6 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEY_UNLOCKED_ACHIEVEMENTS, JSON.stringify(progress.unlocked_achievements || {}));
   localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M, String(progress.best_session_distance_m));
   localStorage.setItem(STORAGE_KEY_TOTAL_TRAININGS, String(progress.total_trainings_completed));
+  localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS, String(progress.best_pace_mps || 0));
+  localStorage.setItem(STORAGE_KEY_BEST_STREAK_DAYS, String(progress.best_streak_days || 0));
 }

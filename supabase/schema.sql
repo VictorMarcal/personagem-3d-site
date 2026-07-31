@@ -59,6 +59,8 @@ create table public.player_progress (
   unlocked_achievements jsonb not null default '{}',
   best_session_distance_m numeric not null default 0,
   total_trainings_completed integer not null default 0,
+  best_pace_mps numeric not null default 0,
+  best_streak_days integer not null default 0,
   updated_at timestamptz not null default now()
 );
 
@@ -79,6 +81,13 @@ create table public.leaderboard (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   display_name text not null,
   lifetime_distance_m numeric not null default 0,
+  -- Distancia do mes de calendario corrente + "fotografia" do mes anterior,
+  -- usadas pelo corte de medalhas mensais (js/monthly-medals.js). Um so
+  -- "slot" de mes anterior - ver nota de limitacao na documentacao.
+  monthly_distance_m numeric not null default 0,
+  previous_month_distance_m numeric not null default 0,
+  month_reference text not null default to_char(now(), 'YYYY-MM'),
+  previous_month_reference text not null default '',
   updated_at timestamptz not null default now()
 );
 
@@ -141,6 +150,42 @@ alter table public.player_progress add column if not exists last_awarded_level i
 -- melhor resultado (1-3 estrelas) contra cada criatura (ver js/monsters.js).
 alter table public.player_progress drop column if exists defeated_levels;
 alter table public.player_progress add column if not exists defeated_creatures jsonb not null default '{}';
+
+-- Migracao: conquistas expandidas - recorde pessoal de ritmo, sequencias
+-- de dias, e medalhas mensais (ver js/achievements.js, js/monthly-medals.js).
+alter table public.player_progress add column if not exists best_pace_mps numeric not null default 0;
+alter table public.player_progress add column if not exists best_streak_days integer not null default 0;
+
+alter table public.leaderboard add column if not exists monthly_distance_m numeric not null default 0;
+alter table public.leaderboard add column if not exists previous_month_distance_m numeric not null default 0;
+alter table public.leaderboard add column if not exists month_reference text not null default to_char(now(), 'YYYY-MM');
+alter table public.leaderboard add column if not exists previous_month_reference text not null default '';
+
+-- Historico imutavel de medalhas Ouro/Prata/Bronze por mes. Nota de
+-- confianca: qualquer jogador autenticado pode inserir uma linha creditando
+-- QUALQUER user_id (nao so o proprio) - necessario porque quem fizer login
+-- primeiro depois da virada do mes pode ter de publicar a medalha de outra
+-- pessoa (nao ha Edge Functions/service role neste projeto). Protegido so
+-- pelo unique(month, medal) e pela ausencia de UPDATE/DELETE. Aceitavel
+-- para um grupo pequeno de amigos de confianca.
+create table public.monthly_medals (
+  id bigint generated always as identity primary key,
+  month text not null,
+  medal text not null check (medal in ('gold', 'silver', 'bronze')),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  display_name text not null,
+  distance_m numeric not null,
+  awarded_at timestamptz not null default now(),
+  unique (month, medal)
+);
+
+alter table public.monthly_medals enable row level security;
+
+create policy "monthly_medals_select_all" on public.monthly_medals
+  for select using (true);
+
+create policy "monthly_medals_insert_authenticated" on public.monthly_medals
+  for insert to authenticated with check (true);
 
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
