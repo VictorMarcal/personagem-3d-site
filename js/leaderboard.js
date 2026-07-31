@@ -11,16 +11,15 @@ const btnLeaderboardGeral = document.getElementById("btn-leaderboard-geral");
 const btnLeaderboardMensal = document.getElementById("btn-leaderboard-mensal");
 const btnLeaderboardHistorico = document.getElementById("btn-leaderboard-historico");
 
-const MEDAL_EMOJI_BY_RANK = ["🥇", "🥈", "🥉"];
 const MEDAL_EMOJI_BY_TYPE = { gold: "🥇", silver: "🥈", bronze: "🥉" };
 
-function createLeaderboardRowEl(row, rank, isOwn, distanceM, medalEmoji) {
+function createLeaderboardRowEl(row, rank, isOwn, distanceM) {
   const el = document.createElement("div");
   el.className = "leaderboard-row" + (isOwn ? " own" : "");
 
   const rankEl = document.createElement("span");
   rankEl.className = "leaderboard-rank";
-  rankEl.textContent = medalEmoji ? `${medalEmoji} #${rank}` : `#${rank}`;
+  rankEl.textContent = `#${rank}`;
 
   const nameEl = document.createElement("span");
   nameEl.className = "leaderboard-name";
@@ -38,10 +37,10 @@ function createLeaderboardRowEl(row, rank, isOwn, distanceM, medalEmoji) {
 // (mensal). Quando monthKey e passado, filtra so as linhas cujo
 // month_reference bate com o mes corrente - sem isto, jogadores que ainda
 // nao fizeram login desde a virada do mes apareceriam com a distancia do
-// mes anterior, que ainda nao foi resetada na sua linha. showMedals poe
-// 🥇🥈🥉 nas 3 primeiras posicoes do top (usado so no ranking mensal - o
-// geral ja tem a sua propria conquista de "Nº1 do Leaderboard").
-async function renderLeaderboardInto(listEl, distanceColumn, monthKey, showMedals) {
+// mes anterior, que ainda nao foi resetada na sua linha. Mesmo aspeto do
+// geral em ambas as abas - as medalhas por posicao aparecem so na conquista
+// mensal (js/achievements.js) e no historico abaixo, nao aqui.
+async function renderLeaderboardInto(listEl, distanceColumn, monthKey) {
   if (!listEl) return null;
 
   let query = supabaseClient.from("leaderboard").select(`user_id, display_name, ${distanceColumn}`);
@@ -55,8 +54,7 @@ async function renderLeaderboardInto(listEl, distanceColumn, monthKey, showMedal
 
   listEl.innerHTML = "";
   top.forEach((row, index) => {
-    const medal = showMedals ? MEDAL_EMOJI_BY_RANK[index] : null;
-    listEl.appendChild(createLeaderboardRowEl(row, index + 1, row.user_id === currentUserId, row[distanceColumn], medal));
+    listEl.appendChild(createLeaderboardRowEl(row, index + 1, row.user_id === currentUserId, row[distanceColumn]));
   });
 
   const isOwnInTop = top.some((row) => row.user_id === currentUserId);
@@ -148,7 +146,7 @@ async function renderLeaderboardCardNow() {
     renderAchievementsSummary();
   }
 
-  await renderLeaderboardInto(leaderboardListMonthlyEl, "monthly_distance_m", formatMonthKey(new Date()), true);
+  await renderLeaderboardInto(leaderboardListMonthlyEl, "monthly_distance_m", formatMonthKey(new Date()));
   await renderMedalHistory();
 }
 
