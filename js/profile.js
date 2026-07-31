@@ -122,10 +122,10 @@ function renderProfileSummary(sessions) {
 
   const listEl = document.getElementById("profile-summary-list");
   listEl.innerHTML = "";
-  addSummaryRow(listEl, "Distância total esta semana", `${Math.round(weekTotal)} m`);
-  addSummaryRow(listEl, "Sessão mais longa esta semana", `${Math.round(weekMax)} m`);
-  addSummaryRow(listEl, "Distância total este mês", `${Math.round(monthTotal)} m`);
-  addSummaryRow(listEl, "Sessão mais longa este mês", `${Math.round(monthMax)} m`);
+  addSummaryRow(listEl, "Distância total esta semana", formatDistanceKm(weekTotal));
+  addSummaryRow(listEl, "Sessão mais longa esta semana", formatDistanceKm(weekMax));
+  addSummaryRow(listEl, "Distância total este mês", formatDistanceKm(monthTotal));
+  addSummaryRow(listEl, "Sessão mais longa este mês", formatDistanceKm(monthMax));
   addSummaryRow(listEl, "Dias distintos treinados", `${distinctDays}`);
 }
 
@@ -179,7 +179,7 @@ function renderProfileHistory(sessions) {
       label.textContent = entry.count > 1 ? `${entry.dayKey} (${entry.count} treinos)` : entry.dayKey;
 
       const value = document.createElement("span");
-      value.textContent = `${Math.round(entry.distance)} m · ${Math.round(entry.duration / 60)} min`;
+      value.textContent = `${formatDistanceKm(entry.distance)} · ${Math.round(entry.duration / 60)} min`;
 
       row.append(label, value);
       listEl.appendChild(row);
@@ -201,7 +201,7 @@ function buildBarChartSvg(entries) {
       const barHeight = Math.max(1, Math.round((entry.value / maxValue) * chartHeight));
       const x = i * (barWidth + gap);
       const y = chartHeight - barHeight;
-      return `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="#4a90d9" rx="2"><title>${entry.label}: ${Math.round(entry.value)} m</title></rect>`;
+      return `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="#4a90d9" rx="2"><title>${entry.label}: ${formatDistanceKm(entry.value)}</title></rect>`;
     })
     .join("");
 
@@ -217,14 +217,83 @@ function sumDistanceInRange(sessions, start, end) {
     .reduce((sum, s) => sum + toNum(s.distance_m), 0);
 }
 
+// --- Navegacao de semana no grafico "Esta semana" -------------------------
+//
+// Mesmo padrao da navegacao de mes, mas por semana ISO (comeca a segunda).
+// Por omissao mostra a semana atual; as setas deixam recuar ate a semana
+// do primeiro treino de sempre.
+
+let cachedSessions = [];
+let selectedWeekCursor = getStartOfIsoWeek(new Date());
+
+const btnWeekChartPrev = document.getElementById("btn-week-chart-prev");
+const btnWeekChartNext = document.getElementById("btn-week-chart-next");
+const profileWeekChartLabelEl = document.getElementById("profile-week-chart-label");
+
+const WEEKDAY_NAMES_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+function isSameIsoWeek(a, b) {
+  return getStartOfIsoWeek(a).getTime() === getStartOfIsoWeek(b).getTime();
+}
+
+function formatWeekLabel(weekStart) {
+  const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6);
+  const fmt = (d) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return `${fmt(weekStart)} - ${fmt(weekEnd)}`;
+}
+
+function getEarliestSessionWeek() {
+  if (cachedSessions.length === 0) return getStartOfIsoWeek(new Date());
+  return getStartOfIsoWeek(new Date(cachedSessions[0].started_at));
+}
+
+function renderWeekChart(sessions, weekCursor) {
+  const container = document.getElementById("profile-chart-week");
+  const now = new Date();
+  const lastDayIndex = isSameIsoWeek(weekCursor, now) ? now.getDay() === 0 ? 6 : now.getDay() - 1 : 6;
+
+  const entries = [];
+  for (let i = 0; i <= lastDayIndex; i++) {
+    const dayStart = new Date(weekCursor.getFullYear(), weekCursor.getMonth(), weekCursor.getDate() + i);
+    const dayEnd = new Date(weekCursor.getFullYear(), weekCursor.getMonth(), weekCursor.getDate() + i + 1);
+    entries.push({ label: WEEKDAY_NAMES_PT[i], value: sumDistanceInRange(sessions, dayStart, dayEnd) });
+  }
+
+  container.innerHTML = buildBarChartSvg(entries);
+}
+
+function renderSelectedWeekChart() {
+  const now = new Date();
+  const earliest = getEarliestSessionWeek();
+
+  profileWeekChartLabelEl.textContent = isSameIsoWeek(selectedWeekCursor, now)
+    ? "Esta semana"
+    : formatWeekLabel(selectedWeekCursor);
+  btnWeekChartPrev.disabled = selectedWeekCursor <= earliest;
+  btnWeekChartNext.disabled = isSameIsoWeek(selectedWeekCursor, now);
+
+  renderWeekChart(cachedSessions, selectedWeekCursor);
+}
+
+btnWeekChartPrev.addEventListener("click", () => {
+  if (btnWeekChartPrev.disabled) return;
+  selectedWeekCursor = new Date(selectedWeekCursor.getFullYear(), selectedWeekCursor.getMonth(), selectedWeekCursor.getDate() - 7);
+  renderSelectedWeekChart();
+});
+
+btnWeekChartNext.addEventListener("click", () => {
+  if (btnWeekChartNext.disabled) return;
+  selectedWeekCursor = new Date(selectedWeekCursor.getFullYear(), selectedWeekCursor.getMonth(), selectedWeekCursor.getDate() + 7);
+  renderSelectedWeekChart();
+});
+
 // --- Navegacao de mes no grafico "Este mes" -------------------------------
 //
 // Por omissao mostra o mes atual; as setas deixam recuar ate ao mes do
 // primeiro treino de sempre. Reposto para o mes atual sempre que a aba
 // e reaberta (nao persiste a escolha entre visitas).
 
-let cachedSessions = [];
-let selectedMonthCursor = new Date();
+let selectedMonthCursor = getStartOfLocalMonth(new Date());
 
 const btnMonthChartPrev = document.getElementById("btn-month-chart-prev");
 const btnMonthChartNext = document.getElementById("btn-month-chart-next");
@@ -320,10 +389,12 @@ async function renderProfileTab() {
   }
 
   cachedSessions = sessions;
-  selectedMonthCursor = new Date();
+  selectedWeekCursor = getStartOfIsoWeek(new Date());
+  selectedMonthCursor = getStartOfLocalMonth(new Date());
 
   renderProfileSummary(sessions);
   renderProfileHistory(sessions);
+  renderSelectedWeekChart();
   renderSelectedMonthChart();
   renderAllMonthsChart(sessions);
 }

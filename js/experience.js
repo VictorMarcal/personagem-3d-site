@@ -12,6 +12,12 @@ function getLifetimeDistanceM() {
   return Number(localStorage.getItem(STORAGE_KEY_LIFETIME_M)) || 0;
 }
 
+// Todas as distancias continuam guardadas/calculadas em metros - isto e
+// so a formatacao usada sempre que se mostra uma distancia ao jogador.
+function formatDistanceKm(meters) {
+  return `${(meters / 1000).toFixed(2)} km`;
+}
+
 // Chamado quando um treino e efetivamente parado, para tornar a distancia
 // da sessao permanente (a experiencia do personagem nunca reseta)
 function addToLifetimeDistance(deltaM) {
@@ -53,7 +59,7 @@ function updateXPDisplay(liveSessionM = 0) {
   const progressPct = Math.min(100, (info.distanceIntoLevel / info.distanceForNextLevel) * 100);
 
   characterLevelValueEl.textContent = info.level;
-  xpProgressTextEl.textContent = `${Math.round(info.distanceIntoLevel)} / ${info.distanceForNextLevel} m`;
+  xpProgressTextEl.textContent = `${formatDistanceKm(info.distanceIntoLevel)} / ${formatDistanceKm(info.distanceForNextLevel)}`;
   xpBarFillEl.style.width = `${progressPct}%`;
 
   renderDebugCharacterInfo();

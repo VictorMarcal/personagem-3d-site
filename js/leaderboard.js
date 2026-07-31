@@ -17,7 +17,7 @@ function createLeaderboardRowEl(row, rank, isOwn) {
 
   const distEl = document.createElement("span");
   distEl.className = "leaderboard-distance";
-  distEl.textContent = `${Math.round(row.lifetime_distance_m)} m`;
+  distEl.textContent = formatDistanceKm(row.lifetime_distance_m);
 
   el.append(rankEl, nameEl, distEl);
   return el;

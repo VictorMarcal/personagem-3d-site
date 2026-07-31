@@ -38,7 +38,7 @@ let saveIntervalId = null;
 let sessionStartTime = null; // usado para conquistas de ritmo (ex: 5km em menos de 25 min)
 
 function updateDistanceDisplay() {
-  distanceEl.textContent = `${Math.round(totalDistanceM)} m`;
+  distanceEl.textContent = formatDistanceKm(totalDistanceM);
 }
 
 // Treino acumulado: copia persistida em localStorage, salva a cada 10s

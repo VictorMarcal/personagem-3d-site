@@ -197,7 +197,8 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **Captura fiável**: ao contrário do progresso (snapshot substituível), uma sessão é um evento discreto — fica numa fila local (`personagem.filaSessoesTreino`) até ser confirmada no Supabase, com `client_id` + índice único para o reenvio nunca duplicar. Retry no evento `online` e no arranque seguinte
 - **Tudo agregado no cliente** (sem views/RPC no Postgres) — busca todas as sessões do próprio jogador e reduz em JS; volume trivial para um grupo de amigos
 - **Semana** = semana ISO (começa à segunda); **mês** = mês de calendário; ambos em hora local
-- Conteúdo da aba: status/equipamento (dados já existentes, só leitura), histórico por dia (últimos 60 dias com treino), distância total e sessão mais longa da semana/mês atual, dias distintos treinados (base para futuras medalhas de frequência), e dois gráficos **SVG desenhados à mão** (sem biblioteca nova): evolução do mês atual (uma barra por dia) e evolução de todos os meses (uma barra por mês, incluindo meses vazios)
+- Conteúdo da aba: status/equipamento (dados já existentes, só leitura), histórico agrupado por mês (últimos 24 meses com treino, dias dentro de cada mês), distância total e sessão mais longa da semana/mês atual, dias distintos treinados (base para futuras medalhas de frequência), e três gráficos **SVG desenhados à mão** (sem biblioteca nova): evolução da semana atual e do mês atual (uma barra por dia, com setas ‹ › para recuar até à semana/mês do primeiro treino de sempre) e evolução de todos os meses (uma barra por mês, incluindo meses vazios)
+- **Todas as distâncias mostradas ao jogador são em km** (`formatDistanceKm()`, js/experience.js) — os dados continuam guardados/calculados em metros, só a apresentação muda
 
 ## 16. Limitações conhecidas / possíveis próximos passos
 
