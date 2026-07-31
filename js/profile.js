@@ -193,6 +193,8 @@ function buildBarChartSvg(entries) {
   const barWidth = 14;
   const gap = 4;
   const chartHeight = 100;
+  const labelHeight = 14;
+  const totalHeight = chartHeight + labelHeight;
   const maxValue = Math.max(1, ...entries.map((e) => e.value));
   const width = Math.max(1, entries.length * (barWidth + gap) - gap);
 
@@ -201,11 +203,15 @@ function buildBarChartSvg(entries) {
       const barHeight = Math.max(1, Math.round((entry.value / maxValue) * chartHeight));
       const x = i * (barWidth + gap);
       const y = chartHeight - barHeight;
-      return `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="#4a90d9" rx="2"><title>${entry.label}: ${formatDistanceKm(entry.value)}</title></rect>`;
+      const labelX = x + barWidth / 2;
+      return (
+        `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="#4a90d9" rx="2"><title>${entry.label}: ${formatDistanceKm(entry.value)}</title></rect>` +
+        `<text x="${labelX}" y="${chartHeight + labelHeight - 3}" text-anchor="middle" font-size="8" fill="#888">${entry.label}</text>`
+      );
     })
     .join("");
 
-  return `<svg viewBox="0 0 ${width} ${chartHeight}" width="${width}" height="${chartHeight}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
+  return `<svg viewBox="0 0 ${width} ${totalHeight}" width="${width}" height="${totalHeight}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
 }
 
 function sumDistanceInRange(sessions, start, end) {
@@ -361,7 +367,7 @@ function renderAllMonthsChart(sessions) {
   while (cursor <= now) {
     const monthStart = cursor;
     const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-    entries.push({ label: formatMonthKey(cursor), value: sumDistanceInRange(sessions, monthStart, monthEnd) });
+    entries.push({ label: MONTH_NAMES_PT[cursor.getMonth()].slice(0, 3), value: sumDistanceInRange(sessions, monthStart, monthEnd) });
     cursor = monthEnd;
   }
 
