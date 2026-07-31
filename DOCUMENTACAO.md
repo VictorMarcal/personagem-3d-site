@@ -33,7 +33,8 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/equipment.js` | Stats do personagem, níveis de equipamento, fórmula de valor de status, upgrade |
 | `js/experience.js` | Curva de nível do personagem, cálculo de progresso |
 | `js/monsters.js` | Geração de monstros/bosses, regra de desbloqueio, renderização do carrossel "Batalhas" |
-| `js/achievements.js` | Sistema de conquistas |
+| `js/achievements.js` | Sistema de conquistas, categorias, conquistas de frequência/combate/liderança |
+| `js/monthly-medals.js` | Contador de distância mensal, corte/rollover de mês, medalhas Ouro/Prata/Bronze |
 | `js/battle.js` | Lógica de combate por turnos, popup fullscreen de batalha |
 | `js/training.js` | GPS, tracking de distância, sessões de treino, filtros de ruído, fila local de sessões pendentes para `training_sessions` |
 | `js/profile.js` | Aba de Perfil: navegação Jogo/Perfil, status/equipamento, histórico de treinos, agregados semana/mês, gráficos SVG |
@@ -41,7 +42,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — corre-se manualmente no SQL Editor do Supabase, não é lido pelo site |
 
 Ordem de carregamento dos scripts (importa por causa de dependências entre módulos):
-`storage-keys → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → achievements → battle → training → profile → orientation`
+`storage-keys → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → achievements → monthly-medals → battle → training → profile → orientation`
 
 ## 4. Sistema de treino (GPS)
 
@@ -137,17 +138,26 @@ BATTLE_DEFENSE_PERCENT = 0.6, BATTLE_FLOOR_PERCENT = 0.5
 
 ## 10. Conquistas
 
-Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem de desbloqueio; depois as mais próximas de completar). Botão "Ver todas" abre popup fullscreen com a grelha completa (5 colunas × N linhas).
+Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem de desbloqueio; depois as mais próximas de completar), sempre num grid plano. Botão "Ver todas" abre popup fullscreen, organizado por **categorias** (`CATEGORY_BY_TYPE`/`CATEGORY_ORDER` em `js/achievements.js`, mesmo padrão de títulos de grupo já usado no histórico da aba Perfil): **Distância**, **Frequência**, **Combate**, **Liderança**, **Ritmo**.
+
+**Arquitetura**: `checkAndUnlockAchievements()` continua 100% síncrona, só lê `localStorage`. Para os tipos que dependem do Supabase, um valor derivado fica cacheado localmente (ex: `melhorSequenciaDias`), atualizado por uma função assíncrona chamada nos sítios onde esses dados já são pedidos por outro motivo (login, ou quando o leaderboard/Perfil já buscam o mesmo dado) — sem chamadas de rede dedicadas extra, exceto uma única busca de `training_sessions` no login.
 
 **Tipos implementados:**
-- `sessionDistance` — melhor distância numa única sessão contínua (1km, 5km, 10km, meia maratona, maratona)
-- `trainingCount` — número de treinos concluídos (1, 5, 10, 25, 50)
+- `sessionDistance` / `lifetimeDistance` — melhor distância numa sessão / distância acumulada de sempre
+- `trainingCount` — número de treinos concluídos
+- `streak` — maior sequência de dias distintos treinados **de sempre** (não a sequência atual — uma vez alcançada, fica para sempre, mesmo que a sequência se quebre depois)
+- `fullMonthTrained` / `activeWeekend` — treinar todos os dias de um mês civil / sábado e domingo da mesma semana ISO
 - `bossDefeated` — gerado automaticamente por boss (sincronizado com a lista de monstros)
-- `pace` — distância + tempo limite (ex: 5km em menos de 25 min)
+- `creatureStars` / `allMiniBossesThreeStars` / `allBossesThreeStars` / `allCreaturesDefeated` — baseadas nas estrelas por criatura (secção 8)
+- `leaderboardRank` — "Nº 1 do Leaderboard", desbloqueia ao ver o próprio `user_id` no topo, fica **permanente** mesmo caindo depois no ranking
+- `monthlyMedal` — medalhas Ouro/Prata/Bronze mensais; só aparecem na lista depois de ganhas (não há "meta" fixa para mostrar antes, depende dos outros jogadores)
+- `pace` — distância + tempo limite; `personalRecord` — bater o próprio recorde de ritmo (só a partir da 2ª sessão)
 
 Cada conquista tem ícone (emoji como placeholder), nome e um destaque visual verde quando desbloqueada (sem barra de progresso — foi removida a pedido).
 
 **Importante**: o simulador de distância por tempo (Debug) trata o tempo simulado como uma sessão de treino real para efeitos de conquistas — sem isto, conquistas de distância nunca desbloqueariam ao testar via simulador.
+
+**Medalhas mensais — modelo de confiança**: quem fizer login primeiro depois da virada do mês publica a "fotografia" do top 3 desse mês em `monthly_medals`, potencialmente creditando outros jogadores. A política de RLS `monthly_medals_insert_authenticated` deixa qualquer jogador autenticado inserir uma linha para qualquer `user_id` — não há Edge Functions/service role neste projeto. Protegido só por `unique(month, medal)` e ausência de UPDATE/DELETE. Aceitável para um grupo pequeno de amigos de confiança; não usar assim num contexto público. Limitação aceite: só existe um "slot" de mês anterior por jogador — quem não faz login durante 2+ meses seguidos perde o registo do(s) mês(es) saltado(s).
 
 ## 11. Debug
 
