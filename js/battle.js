@@ -26,10 +26,16 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Variacao aleatoria aplicada ao dano bruto (antes do piso minimo, para o
+// piso continuar a ser mesmo o minimo absoluto mesmo com a pior sorte) -
+// DAMAGE_VARIANCE_MIN=0.8 significa que o dano final roda entre 80% e
+// 100% do valor calculado (ex: base 20 -> entre 16 e 20).
 function computeBattleDamage(attackerAtaque, defenderDefesa) {
   const raw = attackerAtaque - getBattleDefensePercent() * defenderDefesa;
   const floor = getBattleFloorPercent() * attackerAtaque;
-  return Math.round(Math.max(floor, raw));
+  const varianceMin = getDamageVarianceMin();
+  const variance = varianceMin + Math.random() * (1 - varianceMin);
+  return Math.round(Math.max(floor, raw * variance));
 }
 
 function updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp) {

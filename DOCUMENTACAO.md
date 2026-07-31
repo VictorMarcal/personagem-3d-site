@@ -128,9 +128,13 @@ Mostrado no HUD como "Recuperação: X/s". Não afeta nada durante a luta em si 
 - **Fórmula de dano** (com piso mínimo para nunca dar zero/negativo, o que causaria ciclos infinitos):
 
 ```
-Dano = max(BATTLE_FLOOR_PERCENT × Ataque_atacante, Ataque_atacante − BATTLE_DEFENSE_PERCENT × Defesa_defensor)
-BATTLE_DEFENSE_PERCENT = 0.6, BATTLE_FLOOR_PERCENT = 0.5
+Bruto = Ataque_atacante − BATTLE_DEFENSE_PERCENT × Defesa_defensor
+Variação = DAMAGE_VARIANCE_MIN + aleatório(0, 1 − DAMAGE_VARIANCE_MIN)
+Dano = max(BATTLE_FLOOR_PERCENT × Ataque_atacante, Bruto × Variação)
+BATTLE_DEFENSE_PERCENT = 0.6, BATTLE_FLOOR_PERCENT = 0.5, DAMAGE_VARIANCE_MIN = 0.8
 ```
+
+A variação aleatória aplica-se ao valor **bruto**, antes do piso — assim o piso continua a ser mesmo o mínimo absoluto (nunca fica mais baixo por causa de uma má sorte na variação). Com os valores de produção, um dano bruto de 20 sai sempre entre 16 e 20.
 
 - **Porquê a troca de curvas Ataque/Defesa**: com as curvas originais (Defesa maior que Ataque), o dano dava sempre negativo em qualquer nível/build. Trocar as curvas resolveu a maior parte dos casos, mas builds extremos (100% investidos numa só stat) ainda podiam ficar presos em impasses ou derrotas garantidas — daí a necessidade do piso mínimo.
 - **Vida do jogador persiste entre lutas** — não recomeça cheia automaticamente. Recupera com o tempo real decorrido (secção 7, Recuperação), calculado sob demanda (valor guardado + segundos passados × Recuperação, sem timer a correr em segundo plano). Lutar com vida parcial é uma escolha do jogador, não há bloqueio — a recuperação simplesmente não avança durante a luta em si (só volta a contar a partir do valor com que se fica no fim, ganhando ou perdendo). É um mecanismo anti-spam de batalhas, só local (não sincroniza entre dispositivos)

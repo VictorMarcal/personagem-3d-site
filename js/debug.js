@@ -31,6 +31,7 @@ const DEBUG_DEFAULTS = {
   bossMaxPoints: 5,
   battleDefensePercent: 0.6,
   battleFloorPercent: 0.5,
+  damageVarianceMin: 0.8,
 };
 
 const STAT_TYPE_KEY_SUFFIX = { vida: "Vida", ataque: "Ataque", defesa: "Defesa" };
@@ -65,6 +66,7 @@ function getMiniBossMaxPoints() { return getDebugValue("miniBossMaxPoints"); }
 function getBossMaxPoints() { return getDebugValue("bossMaxPoints"); }
 function getBattleDefensePercent() { return getDebugValue("battleDefensePercent"); }
 function getBattleFloorPercent() { return getDebugValue("battleFloorPercent"); }
+function getDamageVarianceMin() { return getDebugValue("damageVarianceMin"); }
 
 const debugVarInputs = {
   levelBase: document.getElementById("dbg-levelBase"),
@@ -90,6 +92,7 @@ const debugVarInputs = {
   bossMaxPoints: document.getElementById("dbg-bossMaxPoints"),
   battleDefensePercent: document.getElementById("dbg-battleDefensePercent"),
   battleFloorPercent: document.getElementById("dbg-battleFloorPercent"),
+  damageVarianceMin: document.getElementById("dbg-damageVarianceMin"),
 };
 
 const debugVarsStatusEl = document.getElementById("debug-vars-status");
