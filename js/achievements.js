@@ -338,11 +338,83 @@ function checkFrequencyAchievementsFromSessions(sessions) {
   checkAndUnlockAchievements();
 }
 
+// Descricao gerada a partir do tipo/parametros, em vez de texto escrito a
+// mao por conquista (evita repeticao para as ~40 conquistas existentes).
+function getAchievementDescription(achievement) {
+  switch (achievement.type) {
+    case "sessionDistance":
+      return `Percorre ${formatDistanceKm(achievement.threshold)} numa única sessão de treino.`;
+    case "lifetimeDistance":
+      return `Acumula ${formatDistanceKm(achievement.threshold)} de distância ao longo da tua vida.`;
+    case "trainingCount":
+      return `Completa ${achievement.threshold} treino${achievement.threshold > 1 ? "s" : ""}.`;
+    case "streak":
+      return `Treina em ${achievement.threshold} dias seguidos.`;
+    case "fullMonthTrained":
+      return "Treina em todos os dias de um mês de calendário.";
+    case "activeWeekend":
+      return "Treina no sábado e no domingo da mesma semana.";
+    case "bossDefeated":
+      return `Derrota o Boss do nível ${achievement.level}.`;
+    case "creatureStars":
+      return `Vence uma luta com ${achievement.threshold} estrelas (vida acima de 50% no fim).`;
+    case "allMiniBossesThreeStars":
+      return "Consegue 3 estrelas em todos os mini-bosses.";
+    case "allBossesThreeStars":
+      return "Consegue 3 estrelas em todos os bosses.";
+    case "allCreaturesDefeated":
+      return "Derrota todos os mini-bosses e bosses pelo menos uma vez.";
+    case "leaderboardRank":
+      return "Chega ao 1º lugar do leaderboard (fica desbloqueada para sempre).";
+    case "monthlyMedal":
+      return "Atribuída automaticamente ao top 3 do leaderboard desse mês.";
+    case "pace":
+      return `Percorre ${formatDistanceKm(achievement.distanceM)} em menos de ${Math.round(achievement.maxSeconds / 60)} minutos.`;
+    case "personalRecord":
+      return "Bate o teu próprio recorde de ritmo numa sessão (a partir da 2ª sessão).";
+    default:
+      return "";
+  }
+}
+
+function formatAchievementProgressText(achievement, progress, unlocked) {
+  if (unlocked) return "Desbloqueada!";
+  if (achievement.type === "sessionDistance" || achievement.type === "lifetimeDistance") {
+    return `Progresso: ${formatDistanceKm(progress.current)} / ${formatDistanceKm(progress.target)}`;
+  }
+  if (progress.target > 1) {
+    return `Progresso: ${Math.round(progress.current)} / ${progress.target}`;
+  }
+  return "Ainda não desbloqueada.";
+}
+
+function openAchievementDetail(achievement) {
+  const unlocked = isAchievementUnlocked(achievement.id);
+  const progress = getAchievementProgress(achievement);
+
+  document.getElementById("achievement-detail-icon").textContent = achievement.icon;
+  document.getElementById("achievement-detail-name").textContent = achievement.name;
+  document.getElementById("achievement-detail-description").textContent = getAchievementDescription(achievement);
+  document.getElementById("achievement-detail-progress").textContent = formatAchievementProgressText(achievement, progress, unlocked);
+
+  document.getElementById("achievement-detail-modal").classList.remove("hidden");
+}
+
+function closeAchievementDetail() {
+  document.getElementById("achievement-detail-modal").classList.add("hidden");
+}
+
+document.getElementById("btn-close-achievement-detail").addEventListener("click", closeAchievementDetail);
+document.getElementById("achievement-detail-modal").addEventListener("click", (event) => {
+  if (event.target.id === "achievement-detail-modal") closeAchievementDetail();
+});
+
 function createAchievementItemEl(achievement) {
   const unlocked = isAchievementUnlocked(achievement.id);
 
   const item = document.createElement("div");
   item.className = "achievement-item " + (unlocked ? "unlocked" : "locked");
+  item.addEventListener("click", () => openAchievementDetail(achievement));
 
   const icon = document.createElement("div");
   icon.className = "achievement-icon";
