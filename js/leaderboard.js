@@ -137,7 +137,7 @@ async function renderMedalHistory() {
   });
 }
 
-async function renderLeaderboardCard() {
+async function renderLeaderboardCardNow() {
   const top = await renderLeaderboardInto(leaderboardListEl, "lifetime_distance_m");
 
   // Permanente: uma vez alcancado o #1 geral, a conquista fica desbloqueada
@@ -150,6 +150,20 @@ async function renderLeaderboardCard() {
 
   await renderLeaderboardInto(leaderboardListMonthlyEl, "monthly_distance_m", formatMonthKey(new Date()), true);
   await renderMedalHistory();
+}
+
+// renderLeaderboardCard() e chamado de varios pontos (login, depois de
+// sincronizar progresso, depois do fecho mensal) sem que os chamadores se
+// coordenem entre si. Sem isto, duas chamadas sobrepostas podiam intercalar
+// (uma a limpar a lista enquanto a outra ainda estava a acrescentar a linha
+// "···" + a propria posicao), duplicando visualmente uma entrada. Encadear
+// tudo numa fila garante que cada chamada so comeca depois da anterior
+// terminar (com dados sempre atuais no momento em que corre de facto).
+let leaderboardRenderQueue = Promise.resolve();
+
+function renderLeaderboardCard() {
+  leaderboardRenderQueue = leaderboardRenderQueue.then(renderLeaderboardCardNow, renderLeaderboardCardNow);
+  return leaderboardRenderQueue;
 }
 
 function showLeaderboardTab(tab) {

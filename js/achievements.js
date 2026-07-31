@@ -23,6 +23,7 @@ const CATEGORY_BY_TYPE = {
   allCreaturesDefeated: "Combate",
   leaderboardRank: "Liderança",
   monthlyMedal: "Liderança",
+  monthlyMedalPending: "Liderança",
   pace: "Ritmo",
   personalRecord: "Ritmo",
 };
@@ -52,7 +53,7 @@ const STATIC_ACHIEVEMENTS = [
   { id: "combat_all_minibosses_3star", name: "Mestre dos Mini-Bosses", icon: "🌟", type: "allMiniBossesThreeStars" },
   { id: "combat_all_bosses_3star", name: "Lenda dos Bosses", icon: "🌟", type: "allBossesThreeStars" },
   { id: "combat_all_defeated", name: "Todas as criaturas derrotadas", icon: "👑", type: "allCreaturesDefeated" },
-  { id: "leaderboard_rank1", name: "Nº 1 do Leaderboard", icon: "🥇", type: "leaderboardRank" },
+  { id: "leaderboard_rank1", name: "Geral", icon: "🥇", type: "leaderboardRank" },
   { id: "pace_5km_25min", name: "5km em menos de 25 min", icon: "⚡", type: "pace", distanceM: 5000, maxSeconds: 25 * 60 },
   { id: "pace_10km_50min", name: "10km em menos de 50 min", icon: "⚡", type: "pace", distanceM: 10000, maxSeconds: 50 * 60 },
   { id: "pace_5km_20min", name: "5km em menos de 20 min", icon: "⚡", type: "pace", distanceM: 5000, maxSeconds: 20 * 60 },
@@ -82,10 +83,14 @@ const MEDAL_LABEL_BY_TYPE = { gold: "Ouro", silver: "Prata", bronze: "Bronze" };
 const MEDAL_ICON_BY_TYPE = { gold: "🥇", silver: "🥈", bronze: "🥉" };
 const MONTHLY_MEDAL_ID_PATTERN = /^medal_(gold|silver|bronze)_(\d{4})_(\d{2})$/;
 
-// So aparecem depois de ganhas (js/monthly-medals.js e que as desbloqueia) -
-// nao ha "meta" fixa para mostrar antes, ja que depende dos outros jogadores.
+// Medalhas ja ganhas aparecem depois de desbloqueadas (js/monthly-medals.js
+// e que as desbloqueia), com a cor/posicao real. Enquanto o mes corrente
+// ainda esta a decorrer, mostra tambem um "placeholder" bloqueado (cinzento,
+// com 1 2 3 em vez de um numero fixo) - so no fim do mes e que se sabe se o
+// jogador fica em 1º/2º/3º (ou fora do podio, caso em que o placeholder
+// simplesmente desaparece no mes seguinte sem nunca desbloquear).
 function generateMonthlyMedalAchievements() {
-  return Object.keys(getUnlockedAchievements())
+  const wonMedals = Object.keys(getUnlockedAchievements())
     .map((id) => ({ id, match: id.match(MONTHLY_MEDAL_ID_PATTERN) }))
     .filter((entry) => entry.match)
     .map(({ id, match }) => {
@@ -97,6 +102,22 @@ function generateMonthlyMedalAchievements() {
         type: "monthlyMedal",
       };
     });
+
+  const currentMonthKey = formatMonthKey(new Date());
+  const currentMonthAlreadyWon = ["gold", "silver", "bronze"].some(
+    (medal) => isAchievementUnlocked(medalAchievementId(medal, currentMonthKey))
+  );
+
+  if (currentMonthAlreadyWon) return wonMedals;
+
+  const [year, month] = currentMonthKey.split("-");
+  const pending = {
+    id: `medal_pending_${currentMonthKey.replace("-", "_")}`,
+    name: `Medalha mensal — ${month}/${year}`,
+    icon: "1 2 3",
+    type: "monthlyMedalPending",
+  };
+  return [...wonMedals, pending];
 }
 
 function getAllAchievements() {
@@ -222,7 +243,8 @@ function getAchievementProgress(achievement) {
     case "activeWeekend":
     case "leaderboardRank":
     case "personalRecord":
-    case "monthlyMedal": {
+    case "monthlyMedal":
+    case "monthlyMedalPending": {
       // Eventos binarios sem "progresso" numerico derivavel a qualquer
       // momento (dependem de historico que so e verificado quando os dados
       // relevantes chegam) - o proprio desbloqueio acontece fora deste
@@ -369,9 +391,11 @@ function getAchievementDescription(achievement) {
     case "allCreaturesDefeated":
       return "Derrota todos os mini-bosses e bosses pelo menos uma vez.";
     case "leaderboardRank":
-      return "Chega ao 1º lugar do leaderboard (fica desbloqueada para sempre).";
+      return "Chega ao 1º lugar do leaderboard geral (fica desbloqueada para sempre).";
     case "monthlyMedal":
       return "Atribuída automaticamente ao top 3 do leaderboard desse mês.";
+    case "monthlyMedalPending":
+      return "Ainda por decidir - só no fim do mês se sabe se ficas em 1º, 2º ou 3º lugar do leaderboard mensal (ou fora do pódio).";
     case "pace":
       return `Percorre ${formatDistanceKm(achievement.distanceM)} em menos de ${Math.round(achievement.maxSeconds / 60)} minutos.`;
     case "personalRecord":
@@ -383,6 +407,7 @@ function getAchievementDescription(achievement) {
 
 function formatAchievementProgressText(achievement, progress, unlocked) {
   if (unlocked) return "Desbloqueada!";
+  if (achievement.type === "monthlyMedalPending") return "Só se sabe no fim do mês.";
   if (achievement.type === "sessionDistance" || achievement.type === "lifetimeDistance") {
     return `Progresso: ${formatDistanceKm(progress.current)} / ${formatDistanceKm(progress.target)}`;
   }
