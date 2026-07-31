@@ -190,6 +190,10 @@ async function bootstrapAfterLogin(user) {
 
   try {
     await checkMonthlyRollover();
+    // Se o mes acabou de virar para este jogador, o leaderboard mensal
+    // renderizado acima (antes do rollover) ainda mostraria a distancia
+    // zerada/antiga - renderiza de novo para refletir o mes corrente.
+    renderLeaderboardCard();
   } catch (err) {
     console.error("Falha ao verificar medalhas mensais:", err);
   }

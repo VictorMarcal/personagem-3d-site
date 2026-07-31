@@ -707,6 +707,10 @@ main {
   text-align: center;
 }
 
+.leaderboard-tabs {
+  margin-bottom: 0.75rem;
+}
+
 .leaderboard-list {
   display: flex;
   flex-direction: column;
@@ -748,6 +752,17 @@ main {
   text-align: center;
   color: #666;
   font-size: 0.8rem;
+}
+
+.leaderboard-month-header {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #999;
+  margin-top: 0.6rem;
+}
+
+.leaderboard-month-header:first-child {
+  margin-top: 0;
 }
 
 .profile-summary-list {
