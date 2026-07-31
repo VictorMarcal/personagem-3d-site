@@ -382,11 +382,40 @@ function renderAchievementsSummary() {
   });
 }
 
+// Agrupa por categoria (CATEGORY_BY_TYPE), preservando CATEGORY_ORDER;
+// tipos sem categoria conhecida caem em "Outros" no fim.
+function groupAchievementsByCategory(list) {
+  const grouped = new Map();
+  CATEGORY_ORDER.forEach((category) => grouped.set(category, []));
+
+  list.forEach((achievement) => {
+    const category = CATEGORY_BY_TYPE[achievement.type] || "Outros";
+    if (!grouped.has(category)) grouped.set(category, []);
+    grouped.get(category).push(achievement);
+  });
+
+  return grouped;
+}
+
+// So o popup completo fica organizado por categorias - o resumo pequeno
+// (5 conquistas) fica plano, ja que agrupar tao poucos itens em varias
+// secções ficaria esparso e contraria o objetivo de relance rápido.
 function renderAchievementsFull() {
   const gridEl = document.getElementById("achievements-grid-full");
   gridEl.innerHTML = "";
-  getAllAchievements().forEach((achievement) => {
-    gridEl.appendChild(createAchievementItemEl(achievement));
+
+  groupAchievementsByCategory(getAllAchievements()).forEach((items, category) => {
+    if (items.length === 0) return;
+
+    const title = document.createElement("h3");
+    title.className = "achievement-category-title";
+    title.textContent = category;
+    gridEl.appendChild(title);
+
+    const sectionGrid = document.createElement("div");
+    sectionGrid.className = "achievements-grid";
+    items.forEach((achievement) => sectionGrid.appendChild(createAchievementItemEl(achievement)));
+    gridEl.appendChild(sectionGrid);
   });
 }
 

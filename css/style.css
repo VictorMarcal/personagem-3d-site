@@ -350,6 +350,24 @@ main {
   gap: 0.5rem;
 }
 
+#achievements-grid-full {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.achievement-category-title {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.achievement-category-title:first-child {
+  margin-top: 0;
+}
+
 .achievement-item {
   display: flex;
   flex-direction: column;
