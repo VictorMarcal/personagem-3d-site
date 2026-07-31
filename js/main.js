@@ -192,6 +192,29 @@ canvas.addEventListener("pointercancel", () => {
   isDragging = false;
 });
 
+// Numero flutuante por cima da cabeca de um modelo 3D (personagem ou
+// monstro) - usado na luta (dano) e fora dela (recuperacao de vida ao
+// longo do tempo). So precisa de projetar a posicao uma vez (nao a cada
+// frame) porque, tanto na luta como fora dela, a camara e as posicoes dos
+// modelos ficam fixas enquanto o numero esta visivel - so a vida muda.
+function showFloatingCombatText(targetHead, amount) {
+  const worldPos = targetHead.getWorldPosition(new THREE.Vector3());
+  const ndc = worldPos.project(camera);
+
+  const rect = canvas.getBoundingClientRect();
+  const x = (ndc.x * 0.5 + 0.5) * rect.width;
+  const y = (-ndc.y * 0.5 + 0.5) * rect.height;
+
+  const el = document.createElement("div");
+  el.className = "floating-combat-text " + (amount < 0 ? "damage" : "heal");
+  el.textContent = (amount > 0 ? "+" : "") + (Number.isInteger(amount) ? amount : amount.toFixed(1));
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+
+  viewer.appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
 // Controlado por js/profile.js: poupa GPU/bateria no telemovel enquanto a
 // aba Perfil esta visivel, sem parar o loop de todo (mais simples do que
 // cancelar/reiniciar o requestAnimationFrame).

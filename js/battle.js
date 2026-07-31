@@ -26,38 +26,19 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Variacao aleatoria aplicada ao dano bruto (antes do piso minimo, para o
-// piso continuar a ser mesmo o minimo absoluto mesmo com a pior sorte) -
-// DAMAGE_VARIANCE_MIN=0.8 significa que o dano final roda entre 80% e
-// 100% do valor calculado (ex: base 20 -> entre 16 e 20).
+// Variacao aleatoria aplicada ao valor final (depois do piso minimo) - se
+// fosse antes do piso, builds com defesa forte (dano bruto sempre abaixo
+// do piso) acabavam sempre com o mesmo numero exato, sem variacao nenhuma
+// visivel. Aplicada depois, ha sempre alguma variacao, venha o dano base
+// do calculo bruto ou do piso. DAMAGE_VARIANCE_MIN=0.8 significa que o
+// dano final roda entre 80% e 100% do valor base (ex: base 20 -> 16-20).
 function computeBattleDamage(attackerAtaque, defenderDefesa) {
   const raw = attackerAtaque - getBattleDefensePercent() * defenderDefesa;
   const floor = getBattleFloorPercent() * attackerAtaque;
+  const baseDamage = Math.max(floor, raw);
   const varianceMin = getDamageVarianceMin();
   const variance = varianceMin + Math.random() * (1 - varianceMin);
-  return Math.round(Math.max(floor, raw * variance));
-}
-
-// Numero flutuante por cima da cabeca do modelo 3D atingido. So precisa de
-// projetar a posicao uma vez (nao a cada frame) porque a camara e as
-// posicoes de personagem/monstro ficam fixas durante toda a luta - so a
-// vida muda. targetHead e o mesh da cabeca (js/main.js: head/monsterHead).
-function showFloatingCombatText(targetHead, amount) {
-  const worldPos = targetHead.getWorldPosition(new THREE.Vector3());
-  const ndc = worldPos.project(camera);
-
-  const rect = canvas.getBoundingClientRect();
-  const x = (ndc.x * 0.5 + 0.5) * rect.width;
-  const y = (-ndc.y * 0.5 + 0.5) * rect.height;
-
-  const el = document.createElement("div");
-  el.className = "floating-combat-text " + (amount < 0 ? "damage" : "heal");
-  el.textContent = (amount > 0 ? "+" : "") + Math.round(amount);
-  el.style.left = `${x}px`;
-  el.style.top = `${y}px`;
-
-  viewerEl.appendChild(el);
-  setTimeout(() => el.remove(), 1000);
+  return Math.round(baseDamage * variance);
 }
 
 function updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp) {

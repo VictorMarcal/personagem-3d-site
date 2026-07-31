@@ -159,7 +159,15 @@ let hpTickerIntervalId = null;
 function updateHpTicker(maxHp) {
   const isFull = getCurrentHp(maxHp) >= maxHp;
   if (!isFull && hpTickerIntervalId === null) {
-    hpTickerIntervalId = setInterval(renderStatsHud, 1000);
+    hpTickerIntervalId = setInterval(() => {
+      renderStatsHud();
+      // So faz sentido mostrar o "+X" por cima da cabeca fora de combate -
+      // durante uma luta o personagem esta noutra posicao (battle-fullscreen)
+      // e a recuperacao ja nao avanca de qualquer forma.
+      if (!battleInProgress) {
+        showFloatingCombatText(head, computeRecoveryPercent(getEquipLevel("vida")));
+      }
+    }, 1000);
   } else if (isFull && hpTickerIntervalId !== null) {
     clearInterval(hpTickerIntervalId);
     hpTickerIntervalId = null;
