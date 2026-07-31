@@ -42,6 +42,14 @@ async function renderLeaderboardCard() {
     leaderboardListEl.appendChild(createLeaderboardRowEl(row, index + 1, row.user_id === currentUserId));
   });
 
+  // Permanente: uma vez alcancado o #1, a conquista fica desbloqueada
+  // mesmo que o jogador caia no ranking depois (unlockAchievement ja e
+  // idempotente/so desbloqueia uma vez).
+  if (top.length > 0 && top[0].user_id === currentUserId) {
+    unlockAchievement("leaderboard_rank1", Date.now());
+    renderAchievementsSummary();
+  }
+
   const isOwnInTop = top.some((row) => row.user_id === currentUserId);
   if (isOwnInTop || !currentUserId) return;
 

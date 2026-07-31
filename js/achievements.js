@@ -276,6 +276,68 @@ function checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds) {
   renderAchievementsSummary();
 }
 
+// --- Conquistas de frequencia (dependem de training_sessions, so podem --
+// --- ser verificadas quando esses dados chegam - ver js/auth.js e --------
+// --- js/profile.js) --------------------------------------------------------
+
+// Maior sequencia de dias distintos treinados, recalculada do zero a cada
+// verificacao (nao uma sequencia "atual" que se perderia ao parar).
+function computeLongestStreakDays(sessions) {
+  const dayKeys = [...new Set(sessions.map((s) => formatDayKey(new Date(s.started_at))))].sort();
+  let longest = 0;
+  let current = 0;
+  let prevEpochDay = null;
+
+  dayKeys.forEach((key) => {
+    const [y, m, d] = key.split("-").map(Number);
+    const epochDay = Math.floor(Date.UTC(y, m - 1, d) / 86400000);
+    current = prevEpochDay !== null && epochDay === prevEpochDay + 1 ? current + 1 : 1;
+    longest = Math.max(longest, current);
+    prevEpochDay = epochDay;
+  });
+
+  return longest;
+}
+
+function hasTrainedFullCalendarMonth(sessions) {
+  const dayKeys = [...new Set(sessions.map((s) => formatDayKey(new Date(s.started_at))))];
+  const countByMonth = new Map();
+  dayKeys.forEach((key) => {
+    const monthKey = key.slice(0, 7);
+    countByMonth.set(monthKey, (countByMonth.get(monthKey) || 0) + 1);
+  });
+
+  return [...countByMonth.entries()].some(([monthKey, count]) => {
+    const [y, m] = monthKey.split("-").map(Number);
+    return count === new Date(y, m, 0).getDate();
+  });
+}
+
+// Sabado E domingo da mesma semana ISO, ambos com treino
+function hasActiveWeekend(sessions) {
+  const dayKeys = new Set(sessions.map((s) => formatDayKey(new Date(s.started_at))));
+  return sessions.some((s) => {
+    const weekStart = getStartOfIsoWeek(new Date(s.started_at));
+    const sat = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 5);
+    const sun = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6);
+    return dayKeys.has(formatDayKey(sat)) && dayKeys.has(formatDayKey(sun));
+  });
+}
+
+// Chamado sempre que a lista completa de sessoes de treino do jogador
+// esta disponivel (login, ou abertura da aba Perfil) - atualiza a cache
+// local da sequencia e desbloqueia os eventos binarios diretamente, depois
+// reavalia tudo (checkAndUnlockAchievements sem args apanha a sequencia
+// via a cache que acabou de ser atualizada).
+function checkFrequencyAchievementsFromSessions(sessions) {
+  updateBestStreakDaysIfBetter(computeLongestStreakDays(sessions));
+
+  if (hasTrainedFullCalendarMonth(sessions)) unlockAchievement("month_full", Date.now());
+  if (hasActiveWeekend(sessions)) unlockAchievement("weekend_warrior", Date.now());
+
+  checkAndUnlockAchievements();
+}
+
 function createAchievementItemEl(achievement) {
   const unlocked = isAchievementUnlocked(achievement.id);
 

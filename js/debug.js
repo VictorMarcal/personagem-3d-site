@@ -157,6 +157,7 @@ function tickSimDistance() {
   const deltaM = elapsedSeconds * factor;
 
   addToLifetimeDistance(deltaM);
+  addToMonthlyDistance(deltaM);
   simSessionDistanceM += deltaM;
   const simSessionDurationSeconds = (Date.now() - simSessionStartTime) / 1000;
   checkAndUnlockAchievements(simSessionDistanceM, simSessionDurationSeconds);
@@ -249,6 +250,10 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEY_CURRENT_HP);
   localStorage.removeItem(STORAGE_KEY_HP_LAST_UPDATE);
   localStorage.removeItem(STORAGE_KEY_SESSION_QUEUE);
+  localStorage.removeItem(STORAGE_KEY_BEST_PACE_MPS);
+  localStorage.removeItem(STORAGE_KEY_BEST_STREAK_DAYS);
+  localStorage.removeItem(STORAGE_KEY_MONTHLY_DISTANCE_M);
+  localStorage.removeItem(STORAGE_KEY_MONTH_REFERENCE);
 
   // O historico de treinos (aba Perfil) vive numa tabela a parte
   // (training_sessions) - sem isto o reset local nao mexia nele e o

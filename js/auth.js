@@ -174,6 +174,26 @@ async function bootstrapAfterLogin(user) {
 
   applyAdminGate();
 
+  // Unica busca dedicada so para conquistas: sequencias/mes completo/fim-
+  // de-semana ativo dependem do historico completo de sessoes, que de
+  // outra forma so seria verificado se a aba Perfil fosse aberta.
+  try {
+    const { data: sessions } = await supabaseClient
+      .from("training_sessions")
+      .select("started_at, distance_m, duration_seconds")
+      .eq("user_id", user.id)
+      .order("started_at");
+    if (sessions) checkFrequencyAchievementsFromSessions(sessions);
+  } catch (err) {
+    console.error("Falha ao verificar conquistas de frequência:", err);
+  }
+
+  try {
+    await checkMonthlyRollover();
+  } catch (err) {
+    console.error("Falha ao verificar medalhas mensais:", err);
+  }
+
   if (localStorage.getItem(SYNC_PENDING_KEY) === "true") {
     queueProgressSync();
   }

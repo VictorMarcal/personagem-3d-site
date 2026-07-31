@@ -222,6 +222,7 @@ function stopTraining() {
   }
 
   addToLifetimeDistance(totalDistanceM);
+  addToMonthlyDistance(totalDistanceM);
   incrementTotalTrainingsCompleted();
   checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds);
 

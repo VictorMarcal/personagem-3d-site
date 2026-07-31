@@ -397,4 +397,5 @@ async function renderProfileTab() {
   renderSelectedWeekChart();
   renderSelectedMonthChart();
   renderAllMonthsChart(sessions);
+  checkFrequencyAchievementsFromSessions(sessions);
 }
