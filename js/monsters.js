@@ -1,11 +1,31 @@
 // Duas camadas de criaturas: Mini-Bosses a cada MINIBOSS_LEVEL_STEP niveis,
-// Bosses a cada BOSS_LEVEL_STEP (sem monstros "normais" entre elas). Ambas
-// usam a mesma formula de status dos equipamentos (computeStatValue,
-// definida em equipment.js), com base no nivel a que pertencem - sem
-// tratamento especial de dificuldade, so o intervalo e diferente. Niveis de
-// boss tem prioridade sobre mini-boss (nunca ha sobreposicao). Passos/
+// Bosses a cada BOSS_LEVEL_STEP (sem monstros "normais" entre elas). Niveis
+// de boss tem prioridade sobre mini-boss (nunca ha sobreposicao). Passos/
 // limites ajustaveis no card de Debug (js/debug.js).
+//
+// Cada criatura tem tambem um arquetipo (CREATURE_ARCHETYPES) que multiplica
+// os 3 status base (computeStatValue, de equipment.js) de forma desigual -
+// em vez de todos os monstros crescerem sempre na mesma proporcao, uns sao
+// mais "tanque" (muita Vida/Defesa, pouco Ataque), outros mais agressivos
+// (muito Ataque, pouca Defesa), etc. Isto obriga a variar a build consoante
+// o adversario, em vez de uma unica distribuicao de pontos servir sempre
+// para todos (testado por simulacao antes de implementar).
 const monstersListEl = document.getElementById("monsters-list");
+
+const CREATURE_ARCHETYPES = [
+  { name: "Equilibrado", mult: { vida: 1.0, ataque: 1.0, defesa: 1.0 } },
+  { name: "Tanque", mult: { vida: 1.2, ataque: 0.85, defesa: 1.2 } },
+  { name: "Glass Cannon", mult: { vida: 0.8, ataque: 1.35, defesa: 0.7 } },
+  { name: "Bruiser", mult: { vida: 1.05, ataque: 1.15, defesa: 0.85 } },
+  { name: "Fortaleza", mult: { vida: 0.95, ataque: 0.85, defesa: 1.45 } },
+];
+
+// Ataque/Defesa continuam desconhecidos ate se lutar (ver renderMonsters) -
+// o arquetipo tambem nao e mostrado ao jogador, so se sente a diferenca a
+// lutar, na mesma logica de misterio ja usada para os outros status.
+function computeCreatureStatValue(type, creature) {
+  return Math.round(computeStatValue(type, creature.level) * creature.archetype.mult[type]);
+}
 
 // STORAGE_KEY_DEFEATED_CREATURES esta definida em js/storage-keys.js
 
@@ -50,6 +70,9 @@ function generateCreatures() {
   }
 
   creatures.sort((a, b) => a.level - b.level || (a.isBoss ? 1 : -1));
+  creatures.forEach((creature, index) => {
+    creature.archetype = CREATURE_ARCHETYPES[index % CREATURE_ARCHETYPES.length];
+  });
   return creatures;
 }
 
@@ -183,7 +206,7 @@ function renderMonsters() {
     const unlocked = isCreatureUnlocked(creature, creatures, index);
     const defeated = isCreatureDefeated(creature.level);
     const encountered = isCreatureEncountered(creature.level);
-    const vidaValue = computeStatValue("vida", creature.level);
+    const vidaValue = computeCreatureStatValue("vida", creature);
 
     const item = document.createElement("div");
     item.className =

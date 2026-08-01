@@ -41,8 +41,14 @@ function getStoredNumber(key, defaultValue) {
   return raw === null ? defaultValue : Number(raw) || defaultValue;
 }
 
+// Oferta inicial de 3 pontos (so para quem nunca teve esta chave guardada -
+// jogadores existentes com um valor ja gravado, mesmo que 0, nao sao
+// afetados). Compensa o mini-boss de nivel 5 ser dificil de vencer so com
+// os pontos ganhos a subir de nivel.
+const STARTING_UNSPENT_POINTS = 3;
+
 function getUnspentPoints() {
-  return getStoredNumber(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, 0);
+  return getStoredNumber(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, STARTING_UNSPENT_POINTS);
 }
 
 function getEquipLevel(type) {

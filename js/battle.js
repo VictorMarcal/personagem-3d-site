@@ -68,9 +68,9 @@ async function startBattle(creature) {
   const playerAtaque = computeStatValue("ataque", getEquipLevel("ataque"));
   const playerDefesa = computeStatValue("defesa", getEquipLevel("defesa"));
 
-  const monsterMaxHp = computeStatValue("vida", creature.level);
-  const monsterAtaque = computeStatValue("ataque", creature.level);
-  const monsterDefesa = computeStatValue("defesa", creature.level);
+  const monsterMaxHp = computeCreatureStatValue("vida", creature);
+  const monsterAtaque = computeCreatureStatValue("ataque", creature);
+  const monsterDefesa = computeCreatureStatValue("defesa", creature);
 
   let playerHp = getCurrentHp(playerMaxHp);
   let monsterHp = monsterMaxHp;
