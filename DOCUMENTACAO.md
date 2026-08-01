@@ -27,13 +27,13 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/storage-keys.js` | Constantes de chaves de `localStorage` do progresso (`personagem.*`) — centralizadas porque `auth.js` precisa delas antes dos ficheiros que historicamente as declaravam |
 | `js/auth.js` | Login Google (Supabase Auth), popup de escolha de nome, gate do card de Debug, orquestração do arranque pós-login |
 | `js/progress-sync.js` | Migração/hidratação do progresso local ↔ Supabase, sincronização contínua (`queueProgressSync`) |
-| `js/leaderboard.js` | Renderização do card de leaderboard |
+| `js/leaderboard.js` | Card de leaderboard: abas Geral/Mensal/Histórico, fila de renderização anti-corrida |
 | `js/main.js` | Cena 3D (Three.js): personagem, equipamentos, monstro placeholder, câmara, rotação por arraste, raycasting de equipamento |
 | `js/debug.js` | Centraliza **todas** as variáveis afináveis do jogo + ferramentas de debug (reset, simulador de distância) |
-| `js/equipment.js` | Stats do personagem, níveis de equipamento, fórmula de valor de status, upgrade |
+| `js/equipment.js` | Stats do personagem, níveis de equipamento, fórmula de valor de status, upgrade, pontos de status |
 | `js/experience.js` | Curva de nível do personagem, cálculo de progresso |
-| `js/monsters.js` | Geração de monstros/bosses, regra de desbloqueio, renderização do carrossel "Batalhas" |
-| `js/achievements.js` | Sistema de conquistas, categorias, conquistas de frequência/combate/liderança |
+| `js/monsters.js` | Geração de monstros/bosses (incl. arquétipos de status), regra de desbloqueio, renderização do carrossel "Batalhas" |
+| `js/achievements.js` | Sistema de conquistas, categorias, conquistas de frequência/combate/liderança (incl. os 12 cartões de medalha mensal) |
 | `js/monthly-medals.js` | Contador de distância mensal, corte/rollover de mês, medalhas Ouro/Prata/Bronze |
 | `js/battle.js` | Lógica de combate por turnos, popup fullscreen de batalha |
 | `js/training.js` | GPS, tracking de distância, sessões de treino, filtros de ruído, fila local de sessões pendentes para `training_sessions` |
@@ -42,7 +42,11 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — corre-se manualmente no SQL Editor do Supabase, não é lido pelo site |
 
 Ordem de carregamento dos scripts (importa por causa de dependências entre módulos):
-`storage-keys → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → achievements → monthly-medals → battle → training → profile → orientation`
+`storage-keys → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → monthly-medals → battle → training → profile → achievements → orientation`
+
+`achievements.js` carrega **depois** de `monthly-medals.js` e `profile.js` porque os 12 cartões de medalha mensal (secção 10) dependem de `MONTH_NAMES_PT` (definido em `profile.js`) já estar disponível quando `achievements.js` corre a sua própria renderização inicial no fim do ficheiro.
+
+**Cache do navegador**: todos os `<script src="js/*.js">` locais levam um parâmetro `?v=YYYYMMDD` (ex: `?v=20260731e`). Sem isto, o browser (e por vezes o CDN do GitHub Pages) pode continuar a servir uma versão em cache de um ficheiro `.js` mesmo depois de um novo `git push`, fazendo funcionalidades novas parecerem "mortas" (botões que não fazem nada) até um hard-refresh manual. Sobe-se a data sempre que algum `js/*.js` muda.
 
 ## 4. Sistema de treino (GPS)
 
@@ -73,14 +77,16 @@ Escolhida para não ser nem linear nem exponencial — os incrementos crescem, m
 
 ## 6. Pontos de status
 
+- **Oferta inicial de `STARTING_UNSPENT_POINTS = 3` pontos** (`js/equipment.js`): valor por omissão devolvido só quando a chave de pontos nunca foi gravada (jogadores já existentes, mesmo com 0 pontos gravados, não são afetados retroativamente). Adicionada porque, sem ela, o primeiro mini-boss (nível 5) era matematicamente quase impossível de vencer só com os pontos ganhos a subir de nível até aí — validado por simulação antes de implementar (ver secção 8)
 - `LEVEL_UP_POINTS = 1` ponto por cada nível de personagem subido (substituiu o antigo sistema de "quartos": 4 pontos distribuídos a cada 25% de progresso dentro do nível)
 - Pontos só contam com base em **distância confirmada** (nunca a sessão de treino em curso, que pode ainda ser perdida)
-- **Bónus por derrotar criaturas** (só na primeira derrota — re-lutar não dá pontos outra vez), escalado pela vida do jogador restante no momento da vitória — quanto mais apertada a luta, menos pontos:
-  - ≥ 50% de vida → pontuação máxima
-  - 25%–49% de vida → pontuação máxima − 1
-  - < 25% de vida → pontuação máxima − 2 (nunca abaixo de 0)
+- **Bónus por derrotar criaturas**, escalado pelas estrelas da vitória (secção 8) — quanto mais apertada a luta, menos pontos:
+  - 3 estrelas → pontuação máxima
+  - 2 estrelas → pontuação máxima − 1
+  - 1 estrela → pontuação máxima − 2 (nunca abaixo de 0)
   - `MINIBOSS_MAX_POINTS = 3`, `BOSS_MAX_POINTS = 5`
-- Com os valores de produção, até ao nível 100 (assumindo todas as 10 mini-bosses + 10 bosses derrotados com vida acima de 50%): 99 pontos de nível + até 30 de mini-bosses (10 × 3) + até 50 de bosses (10 × 5) = **até 179 pontos no máximo** — a forma como se luta (arriscar vs jogar seguro) é relevante para a pontuação
+- **Re-lutar e melhorar as estrelas paga sempre a diferença** (`computeBonusPointsForStars`, comparado com as estrelas anteriores antes de `markCreatureDefeated` as atualizar): ganhar 1ª vez com 1 estrela dá 1 ponto (mini-boss); re-lutar depois e subir para 3 estrelas dá **mais 2** (a diferença até ao máximo de 3), nunca a mesma vitória paga duas vezes nem se perde pontos ao sair pior numa re-luta. Corrigido depois de um bug em que só a primeira vitória de sempre pagava bónus, independentemente das estrelas de re-lutas seguintes
+- Com os valores de produção, até ao nível 100 (assumindo todas as 10 mini-bosses + 10 bosses derrotados sempre com 3 estrelas): 3 iniciais + 99 pontos de nível + até 30 de mini-bosses (10 × 3) + até 50 de bosses (10 × 5) = **até 182 pontos no máximo** — a forma como se luta (arriscar vs jogar seguro) é relevante para a pontuação
 
 ## 7. Fórmula de valor dos equipamentos
 
@@ -118,8 +124,19 @@ Mostrado no HUD como "Recuperação: X/s". Não afeta nada durante a luta em si 
 - Níveis múltiplos de 10 ficam reservados exclusivamente para bosses (nunca um mini-boss no mesmo nível de um boss)
 - **Nomes próprios** (`MINIBOSS_NAMES`/`BOSS_NAMES` em `js/monsters.js`): tema de "obstáculos mentais ao progresso" (Inércia, Preguiça, Rotina, Conforto, Ego, Platô...), cada mini-boss é uma forma "menor" do boss correspondente (ex: Lethling → Lethargor, Senhor da Inércia). Atribuídos por posição na sequência (o 1º mini-boss/boss gerado leva o 1º nome); se o nível máximo for aumentado no Debug para além dos 10 nomes de cada tipo, os extra caem num nome genérico "Mini-Boss/Boss Nível X"
 - **Regra de desbloqueio**: puramente sequencial por combate — a primeira criatura já começa desbloqueada, cada seguinte só desbloqueia depois da anterior ser derrotada. O nível do personagem **não** é um requisito (a dificuldade vem só dos status da criatura, que escalam com o nível dela)
-- Podem ser **re-lutados** depois de derrotados ("Lutar novamente"), mas os pontos de bónus (secção 6) só são dados na primeira derrota
+- Podem ser **re-lutados** depois de derrotados ("Lutar novamente"); melhorar as estrelas numa re-luta paga a diferença de pontos em falta (secção 6)
 - **Estrelas** (1-3) por criatura derrotada, com base na vida do jogador restante no fim da luta (mesmos limiares dos pontos de bónus — secção 6): guarda-se sempre o **melhor resultado** de sempre, uma re-luta pior nunca faz perder estrelas já conquistadas. Sempre visíveis no card (cinza antes de conquistadas)
+- **Arquétipos de status** (`CREATURE_ARCHETYPES`, `js/monsters.js`): em vez de todas as criaturas crescerem sempre na mesma proporção de Vida/Ataque/Defesa (o que tornava "investir tudo em Ataque" sempre a melhor build, sem exceção), cada uma das 20 criaturas recebe um multiplicador desigual por status, atribuído ciclicamente pela posição na sequência ordenada por nível:
+
+  | Arquétipo | Vida | Ataque | Defesa |
+  |---|---:|---:|---:|
+  | Equilibrado | ×1.00 | ×1.00 | ×1.00 |
+  | Tanque | ×1.20 | ×0.85 | ×1.20 |
+  | Glass Cannon | ×0.80 | ×1.35 | ×0.70 |
+  | Bruiser | ×1.05 | ×1.15 | ×0.85 |
+  | Fortaleza | ×0.95 | ×0.85 | ×1.45 |
+
+  `computeCreatureStatValue(type, creature)` aplica o multiplicador do arquétipo por cima do valor base (`computeStatValue`, secção 7), arredondado. O arquétipo **não é mostrado ao jogador** — só se sente a diferença ao lutar, na mesma lógica de mistério já usada para Ataque/Defesa. Multiplicadores calibrados por simulação (não analítico): valores mais extremos testados inicialmente (ex: Tanque ×1.4/×0.7/×1.3) criavam lutas literalmente impossíveis de vencer com o orçamento de pontos disponível nesse nível; os valores finais foram suavizados até nenhuma combinação de criatura/nível ficar sem pelo menos uma divisão de pontos vencedora
 - **Vida escondida ("`****`") até entrar em combate**: o card de cada criatura só mostra "Vida: ****" até o jogador entrar em batalha com ela pela primeira vez (ganhando ou perdendo) — só depois revela o valor real (`isCreatureEncountered`, `STORAGE_KEY_ENCOUNTERED_CREATURES`). Ataque e Defesa nunca são mostrados no card, ficam sempre desconhecidos (mistério deliberado)
 - Card "Batalhas": mostra só uma janela de **5 criaturas em carrossel horizontal**, sempre centrada na próxima por derrotar (nunca a lista inteira)
 
@@ -157,8 +174,13 @@ Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem 
 - `fullMonthTrained` / `activeWeekend` — treinar todos os dias de um mês civil / sábado e domingo da mesma semana ISO
 - `bossDefeated` — gerado automaticamente por boss (sincronizado com a lista de monstros)
 - `creatureStars` / `allMiniBossesThreeStars` / `allBossesThreeStars` / `allCreaturesDefeated` — baseadas nas estrelas por criatura (secção 8)
-- `leaderboardRank` — "Nº 1 do Leaderboard", desbloqueia ao ver o próprio `user_id` no topo, fica **permanente** mesmo caindo depois no ranking
-- `monthlyMedal` — medalhas Ouro/Prata/Bronze mensais; só aparecem na lista depois de ganhas (não há "meta" fixa para mostrar antes, depende dos outros jogadores)
+- `leaderboardRank` — **"Geral"**, desbloqueia ao ver o próprio `user_id` no topo do leaderboard geral (secção 14), fica **permanente** mesmo caindo depois no ranking
+- Medalha mensal — **12 cartões fixos, um por mês de calendário** (Janeiro a Dezembro, `generateMonthlyMedalAchievements` em `js/achievements.js`), ao contrário das outras conquistas dinâmicas: sempre visíveis, nunca "aparecem do nada". Para cada mês, procura-se em qualquer ano se já foi ganha uma medalha `monthly_medals` (secção 14) nesse mês de calendário — a mais recente, se houver mais que uma:
+  - **Já ganha** (`monthlyMedal`): mostra a medalha real (🥇/🥈/🥉) e o ano em que foi ganha (ex: "Julho 2026")
+  - **Mês corrente, ainda por decidir** (`monthlyMedalPending`): bloqueado, ícone das 3 medalhas juntas (🥇🥈🥉) — só no fecho do mês (`js/monthly-medals.js`) se sabe a cor final
+  - **Mês futuro, ainda não chegou este ano** (`monthlyMedalFuture`): mesmo ícone bloqueado, sem alegar falhanço
+  - **Mês já passado sem pódio** (`monthlyMedalMissed`): mesmo ícone bloqueado, fica assim até ganhar esse mês de calendário nalgum ano
+  - `isAchievementUnlocked` tem um caso especial para o id sintético `medal_month_MM` — não é gravado diretamente por `unlockAchievement` como as outras conquistas, é derivado a cada leitura a partir dos ids reais `medal_<cor>_<ano>_<mes>`
 - `pace` — distância + tempo limite; `personalRecord` — bater o próprio recorde de ritmo (só a partir da 2ª sessão)
 
 Cada conquista tem ícone (emoji como placeholder), nome e um destaque visual verde quando desbloqueada (sem barra de progresso — foi removida a pedido).
@@ -167,7 +189,7 @@ Cada conquista tem ícone (emoji como placeholder), nome e um destaque visual ve
 
 **Importante**: o simulador de distância por tempo (Debug) trata o tempo simulado como uma sessão de treino real para efeitos de conquistas — sem isto, conquistas de distância nunca desbloqueariam ao testar via simulador.
 
-**Medalhas mensais — modelo de confiança**: quem fizer login primeiro depois da virada do mês publica a "fotografia" do top 3 desse mês em `monthly_medals`, potencialmente creditando outros jogadores. A política de RLS `monthly_medals_insert_authenticated` deixa qualquer jogador autenticado inserir uma linha para qualquer `user_id` — não há Edge Functions/service role neste projeto. Protegido só por `unique(month, medal)` e ausência de UPDATE/DELETE. Aceitável para um grupo pequeno de amigos de confiança; não usar assim num contexto público. Limitação aceite: só existe um "slot" de mês anterior por jogador — quem não faz login durante 2+ meses seguidos perde o registo do(s) mês(es) saltado(s).
+**Medalhas mensais — modelo de confiança**: quem fizer login primeiro depois da virada do mês publica a "fotografia" do top 3 desse mês em `monthly_medals`, potencialmente creditando outros jogadores. A política de RLS `monthly_medals_insert_authenticated` deixa qualquer jogador autenticado inserir uma linha para qualquer `user_id` — não há Edge Functions/service role neste projeto. Protegido só por `unique(month, medal)` e ausência de UPDATE/DELETE. Aceitável para um grupo pequeno de amigos de confiança; não usar assim num contexto público. Limitação aceite: só existe um "slot" de mês anterior por jogador — quem não faz login durante 2+ meses seguidos perde o registo do(s) mês(es) saltado(s). `monthly_medals` é lida por dois sítios independentes: os 12 cartões fixos de conquista (acima) e a aba "Histórico" do leaderboard (secção 14).
 
 ## 11. Debug
 
@@ -181,6 +203,8 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - Fórmula de combate (`BATTLE_DEFENSE_PERCENT`, `BATTLE_FLOOR_PERCENT`, `DAMAGE_VARIANCE_MIN`)
 - **Simulador de distância por tempo**: liga/desliga um timer que soma `segundos × fator` à distância vitalícia, fator ajustável em tempo real — para testar níveis altos sem andar de verdade
 - **Reset de personagem**: apaga nível, status, pontos, monstros derrotados, conquistas e o histórico de treinos (`training_sessions` no Supabase, usado pela aba Perfil) — com confirmação
+
+`STARTING_UNSPENT_POINTS` (secção 6) e `CREATURE_ARCHETYPES` (secção 8) **não** estão no card de Debug — ao contrário dos outros valores acima, ficam hardcoded no código (`js/equipment.js`/`js/monsters.js`), não em `localStorage`. Mudar exige editar e fazer deploy, não só ajustar um input.
 
 ## 12. UI / UX
 
@@ -197,6 +221,8 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **`100dvh` em vez de `100vh`**: lida melhor com a barra de endereço móvel que aparece/desaparece
 - **Emojis como ícones de conquistas**: placeholder deliberado, consistente com o resto do site (cápsulas, caixas coloridas) — substituível por ícones customizados no estilo "flat, duas cores" mais tarde
 - **Um `.hidden { display: none; }` genérico no CSS**: adicionado depois de um bug em que elementos de batalha ficavam sempre visíveis por faltar a regra CSS correspondente à classe
+- **`?v=YYYYMMDD` nos `<script src>` locais**: ver secção 3 — sem isto, cache do navegador/CDN podia fazer uma funcionalidade nova parecer "morta" (botão sem efeito) depois de um deploy, mesmo com o código já correto no repositório
+- **`.leaderboard-list.hidden` em vez de depender só de `.hidden`**: `.hidden` e `.leaderboard-list` (que define `display: flex`) têm a mesma especificidade CSS; como `.leaderboard-list` vem depois no ficheiro, ganhava sempre ao `.hidden`, e as 3 abas do leaderboard apareciam todas empilhadas ao mesmo tempo, independentemente de qual estava selecionada. Regra semelhante à de `#battle-hud.hidden`, já existente por um motivo parecido
 
 ## 14. Contas e Leaderboard (Supabase)
 
@@ -205,6 +231,11 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância vitalícia, pontos, níveis de equipamento, monstros derrotados, conquistas). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
 - `treino.*` (checkpoint de sessão GPS em curso) e `debug.*` (afinação de jogo) **nunca** são sincronizados — ficam sempre só locais
 - Sincronização contínua via `queueProgressSync()` (debounce ~400ms, snapshot completo, seguro para reenviar) chamada a seguir a cada mutação de progresso existente
+- **Card de Leaderboard com 3 abas** (`js/leaderboard.js`), mesmo aspeto visual em todas (`#N`, nome, distância — sem ícones de medalha nas linhas, essas ficam só na conquista mensal e no Histórico):
+  - **Geral**: top 10 por `lifetime_distance_m`, mais a posição do próprio jogador com um "···" separador se não estiver no top 10
+  - **Mensal**: top 10 por `monthly_distance_m`, com um filtro extra `.eq("month_reference", mêsAtual)` — sem isto, jogadores que ainda não fizeram login desde a virada do mês apareceriam com a distância do mês anterior, presa na sua linha até ao próximo login deles
+  - **Histórico**: lista os meses já fechados (tabela `monthly_medals`), mais recente primeiro, com o ouro/prata/bronze de cada um — usa os mesmos dados das conquistas mensais fixas (secção 10)
+  - `renderLeaderboardCard()` é chamado de vários pontos (login, sync de progresso, fecho mensal) sem coordenação entre si; para duas chamadas sobrepostas nunca intercalarem e duplicarem visualmente uma linha, todas as chamadas passam por uma **fila de promessas** (`leaderboardRenderQueue`) que garante execução sequencial, nunca em paralelo
 - **`leaderboard`**: tabela pública de leitura (top 10 + posição do próprio jogador se não estiver no top 10), cada jogador só escreve a sua própria linha (RLS)
 - **Debug é admin-only**: flag `is_admin` em `profiles`, alterável só manualmente via SQL Editor — nunca exposta a nenhum caminho do cliente (fronteira real de segurança são as políticas RLS, não a UI escondida)
 - Falhas de rede a meio do arranque pós-login não travam o resto do jogo — cada passo (perfil, migração/hidratação, nome, leaderboard) tem o seu próprio `try/catch`, para os cartões de Monstros/Conquistas nunca ficarem vazios por causa de um erro noutro passo
@@ -230,3 +261,4 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - Se convertida para app: PWA é o caminho mais simples (quase nenhuma alteração de código); Capacitor permite lojas de apps com esforço moderado; reescrita nativa exigiria substituir Three.js por um motor 3D nativo
 - Gráficos SVG mostram sempre o rótulo (dia/mês) por baixo de cada barra, mas o **valor exato** só está disponível no `<title>` nativo do browser ao passar o rato — não funciona por toque em mobile
 - Medalhas mensais dependem de confiança entre jogadores (qualquer jogador autenticado pode publicar a medalha de outro — ver secção 10); só 1 "slot" de mês anterior por jogador, perde-se o registo de meses saltados sem login
+- Multiplicadores dos arquétipos de monstro (secção 8) foram calibrados por **simulação de Monte Carlo** (milhares de combates simulados por combinação de nível/arquétipo/divisão de pontos), não por uma fórmula analítica fechada — servem para garantir que nenhuma luta fica impossível com os valores de produção atuais, mas podem precisar de reajuste se `LEVEL_UP_POINTS`, `MINIBOSS_MAX_POINTS`/`BOSS_MAX_POINTS` ou as curvas de status (secção 7) mudarem no Debug
