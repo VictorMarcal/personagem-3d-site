@@ -96,13 +96,13 @@ function awardPointsIfNeeded(lifetimeM) {
   queueProgressSync();
 }
 
-// Pontuacao por derrotar uma criatura depende da vida do jogador no
-// momento da vitoria (quanto mais apertada a luta, menos pontos):
-// >=50% vida = pontuacao maxima, 25-49% = maxima-1, <25% = maxima-2
-// (nunca abaixo de 0).
-function computeBonusPoints(maxPoints, playerHpPercent) {
-  if (playerHpPercent >= 50) return maxPoints;
-  if (playerHpPercent >= 25) return Math.max(0, maxPoints - 1);
+// Pontuacao por derrotar uma criatura depende das estrelas da vitoria
+// (que por sua vez dependem da vida do jogador no fim - ver
+// computeStarsForHp em js/monsters.js): 3 estrelas = pontuacao maxima,
+// 2 estrelas = maxima-1, 1 estrela = maxima-2 (nunca abaixo de 0).
+function computeBonusPointsForStars(maxPoints, stars) {
+  if (stars >= 3) return maxPoints;
+  if (stars === 2) return Math.max(0, maxPoints - 1);
   return Math.max(0, maxPoints - 2);
 }
 

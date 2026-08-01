@@ -123,14 +123,21 @@ async function startBattle(creature) {
   }
 
   if (won) {
-    const firstDefeat = !isCreatureDefeated(creature.level);
+    // Estrelas antes desta vitoria (0 se nunca derrotada) - guardado antes
+    // de markCreatureDefeated atualizar o mapa, para podermos comparar.
+    const previousStars = isCreatureDefeated(creature.level) ? getCreatureStars(creature.level) : 0;
     const stars = computeStarsForHp(playerHpPercentAtWin);
     markCreatureDefeated(creature.level, stars);
 
-    if (firstDefeat) {
+    // So paga a diferenca de pontos: se ja tinhas 1 estrela (1 ponto) e
+    // agora consegues 3 (3 pontos), recebes so os 2 que faltavam - nunca
+    // paga a mesma vitoria duas vezes nem tira pontos se sair pior.
+    if (stars > previousStars) {
       const maxPoints = creature.isBoss ? getBossMaxPoints() : creature.isMiniBoss ? getMiniBossMaxPoints() : 0;
       if (maxPoints > 0) {
-        awardBonusPoints(computeBonusPoints(maxPoints, playerHpPercentAtWin));
+        const previousPoints = previousStars > 0 ? computeBonusPointsForStars(maxPoints, previousStars) : 0;
+        const newPoints = computeBonusPointsForStars(maxPoints, stars);
+        awardBonusPoints(newPoints - previousPoints);
       }
     }
 
