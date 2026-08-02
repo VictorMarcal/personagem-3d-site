@@ -11,6 +11,11 @@ const btnNavPerfil = document.getElementById("btn-nav-perfil");
 const viewJogoEl = document.getElementById("view-jogo");
 const viewPerfilEl = document.getElementById("view-perfil");
 
+// Mesma funcao/confirmacao ja usada no botao equivalente do Debug
+// (js/debug.js) - so admins veem o Debug, mas repor o proprio personagem
+// e util para qualquer jogador, por isso fica tambem aqui, fora do gate.
+document.getElementById("btn-reset-character-profile").addEventListener("click", resetCharacterAndDistance);
+
 function toNum(value) {
   return Number(value) || 0;
 }
