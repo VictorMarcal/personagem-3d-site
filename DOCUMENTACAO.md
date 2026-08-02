@@ -25,6 +25,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `index.html` | Estrutura da página, todos os elementos de UI |
 | `css/style.css` | Todo o estilo (tema escuro, mobile-first) |
 | `js/storage-keys.js` | Constantes de chaves de `localStorage` do progresso (`personagem.*`) — centralizadas porque `auth.js` precisa delas antes dos ficheiros que historicamente as declaravam |
+| `js/tab-lock.js` | Bloqueio entre abas/janelas do mesmo dispositivo (treino e luta) — ver secções 4 e 9 |
 | `js/auth.js` | Login Google (Supabase Auth), popup de escolha de nome, gate do card de Debug, orquestração do arranque pós-login |
 | `js/progress-sync.js` | Migração/hidratação do progresso local ↔ Supabase, sincronização contínua (`queueProgressSync`) |
 | `js/leaderboard.js` | Card de leaderboard: abas Geral/Mensal/Histórico, fila de renderização anti-corrida |
@@ -42,7 +43,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — corre-se manualmente no SQL Editor do Supabase, não é lido pelo site |
 
 Ordem de carregamento dos scripts (importa por causa de dependências entre módulos):
-`storage-keys → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → monthly-medals → battle → training → profile → achievements → orientation`
+`storage-keys → tab-lock → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → monthly-medals → battle → training → profile → achievements → orientation`
 
 `achievements.js` carrega **depois** de `monthly-medals.js` e `profile.js` porque os 12 cartões de medalha mensal (secção 10) dependem de `MONTH_NAMES_PT` (definido em `profile.js`) já estar disponível quando `achievements.js` corre a sua própria renderização inicial no fim do ficheiro.
 
@@ -54,9 +55,12 @@ Ordem de carregamento dos scripts (importa por causa de dependências entre mód
 - **Filtros anti-ruído** (todos ajustáveis no Debug):
   - `MAX_ACCURACY_M = 20` — ignora leituras de GPS pouco precisas
   - `MIN_MOVEMENT_M = 3` — ignora "deriva" de GPS parado
-  - `MAX_SPEED_KMH = 30` — ignora saltos irreais (permite bicicleta, rejeita erro de GPS/veículo mais rápido)
+  - `MAX_SPEED_KMH = 20` — ignora saltos irreais (sem bicicleta por agora, só andar/correr; rejeita também erro de GPS/veículo). Era 30 antes (permitia bicicleta) — baixado a pedido para excluir bicicleta deliberadamente
+- **Aviso de velocidade** (`#speed-warning`, `js/training.js`): enquanto uma leitura de GPS excede `MAX_SPEED_KMH`, mostra um aviso persistente ("distância não está a contar") — só desaparece quando uma leitura seguinte volta a ficar dentro do limite (não é um toast com temporizador). Quando um segmento é rejeitado por velocidade, a âncora de posição não avança (mantém-se a última posição válida), então a leitura seguinte é comparada contra ela com mais tempo decorrido - normaliza a velocidade calculada e tende a aceitar de novo assim que o jogador voltar a um ritmo normal
+- **Distância anulada por velocidade**: soma vitalícia (`STORAGE_KEY_DISCARDED_SPEED_M`, sincronizada em `player_progress.discarded_speed_distance_m`) de quanto ficou de fora por exceder o limite - nunca conta para XP/leaderboard, só serve para o jogador ver o total. Mostrada no card Resumo da aba Perfil (secção 15)
 - Sessão persiste em `localStorage` (checkpoint a cada 10s + save imediato no `pagehide`) e **retoma automaticamente** após um refresh acidental
 - Ao parar um treino: soma a distância à experiência vitalícia, incrementa contagem de treinos, atualiza melhor distância de sessão, verifica conquistas
+- **Bloqueio entre abas** (`js/tab-lock.js`, secção 9 tem os detalhes do mecanismo): só uma aba do mesmo dispositivo pode ter um treino ativo de cada vez - a segunda fica com um alerta e não arranca um GPS watch próprio. Corrige um bug real em que duas abas do mesmo telemóvel, cada uma com o seu próprio `totalDistanceM` em memória, contavam a mesma distância percorrida em separado e somavam-na em dobro ao progresso vitalício partilhado
 
 ## 5. Curva de nível do personagem
 
@@ -160,6 +164,7 @@ A variação aleatória aplica-se **depois** do piso mínimo, não antes. Foi te
 - **Dano flutuante**: cada acerto mostra um número a subir e desvanecer por cima da cabeça de quem foi atingido (`showFloatingCombatText`, `js/main.js`), projetado a partir da posição 3D real da cabeça (`head`/`monsterHead`) para o ecrã — só precisa de projetar uma vez por acerto, já que a câmara e as posições ficam fixas durante toda a luta
 - **Vida do jogador persiste entre lutas** — não recomeça cheia automaticamente. Recupera com o tempo real decorrido (secção 7, Recuperação), calculado sob demanda (valor guardado + segundos passados × Recuperação, sem timer a correr em segundo plano). Lutar com vida parcial é uma escolha do jogador, não há bloqueio — a recuperação simplesmente não avança durante a luta em si (só volta a contar a partir do valor com que se fica no fim, ganhando ou perdendo). É um mecanismo anti-spam de batalhas, só local (não sincroniza entre dispositivos). Fora de combate, o mesmo número flutuante ("+0.2" etc.) aparece por cima da cabeça do personagem a cada segundo enquanto a vida não estiver completa
 - Vitória contra um boss marca-o como derrotado e desbloqueia o próximo da sequência
+- **Bloqueio entre abas** (`js/tab-lock.js`): impede duas abas do mesmo dispositivo lutarem em simultâneo, cada uma a pagar o bónus de "primeira derrota"/estrelas em separado. Mecanismo genérico partilhado com o treino (secção 4): cada aba tem um id aleatório próprio (`TAB_ID`), guarda um bloqueio em `localStorage` com esse id + um heartbeat (`Date.now()`); uma aba só consegue reclamar o bloqueio se não houver outro id "vivo" a segurá-lo (heartbeat com menos de `TAB_LOCK_STALE_MS = 15000` ms) — uma aba fechada/crashada sem libertar o bloqueio expira sozinha ao fim desse tempo, em vez de ficar presa para sempre
 
 ## 10. Conquistas
 
@@ -223,12 +228,13 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **Um `.hidden { display: none; }` genérico no CSS**: adicionado depois de um bug em que elementos de batalha ficavam sempre visíveis por faltar a regra CSS correspondente à classe
 - **`?v=YYYYMMDD` nos `<script src>` locais**: ver secção 3 — sem isto, cache do navegador/CDN podia fazer uma funcionalidade nova parecer "morta" (botão sem efeito) depois de um deploy, mesmo com o código já correto no repositório
 - **`.leaderboard-list.hidden` em vez de depender só de `.hidden`**: `.hidden` e `.leaderboard-list` (que define `display: flex`) têm a mesma especificidade CSS; como `.leaderboard-list` vem depois no ficheiro, ganhava sempre ao `.hidden`, e as 3 abas do leaderboard apareciam todas empilhadas ao mesmo tempo, independentemente de qual estava selecionada. Regra semelhante à de `#battle-hud.hidden`, já existente por um motivo parecido
+- **Bloqueio entre abas via `localStorage` + heartbeat, não `BroadcastChannel`**: mais simples (um só mecanismo, sem duas formas de comunicação a coexistir) e cobre também o caso de uma segunda aba abrir **depois** de o treino/luta já ter começado na primeira (que não teria recebido uma mensagem de broadcast anterior à sua própria existência) - a segunda aba só precisa de ler o estado atual do bloqueio, não de "ouvir" um evento passado
 
 ## 14. Contas e Leaderboard (Supabase)
 
 - **Login obrigatório com Google** — sem modo convidado; `#auth-modal` cobre o ecrã todo até haver sessão confirmada
 - Depois do primeiro login, popup pede o **nome da personagem** (nunca o nome real da conta Google) — nomes são **únicos** (índice único case-insensitive em `profiles.display_name`, erro `23505` tratado no popup)
-- **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância vitalícia, pontos, níveis de equipamento, monstros derrotados, conquistas). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
+- **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância vitalícia, pontos, níveis de equipamento, monstros derrotados, conquistas, distância anulada por velocidade). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
 - `treino.*` (checkpoint de sessão GPS em curso) e `debug.*` (afinação de jogo) **nunca** são sincronizados — ficam sempre só locais
 - Sincronização contínua via `queueProgressSync()` (debounce ~400ms, snapshot completo, seguro para reenviar) chamada a seguir a cada mutação de progresso existente
 - **Card de Leaderboard com 3 abas** (`js/leaderboard.js`), mesmo aspeto visual em todas (`#N`, nome, distância — sem ícones de medalha nas linhas, essas ficam só na conquista mensal e no Histórico):
@@ -248,9 +254,10 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **Captura fiável**: ao contrário do progresso (snapshot substituível), uma sessão é um evento discreto — fica numa fila local (`personagem.filaSessoesTreino`) até ser confirmada no Supabase, com `client_id` + índice único para o reenvio nunca duplicar. Retry no evento `online` e no arranque seguinte
 - **Tudo agregado no cliente** (sem views/RPC no Postgres) — busca todas as sessões do próprio jogador e reduz em JS; volume trivial para um grupo de amigos
 - **Semana** = semana ISO (começa à segunda); **mês** = mês de calendário; ambos em hora local
-- Conteúdo da aba: status/equipamento (dados já existentes, só leitura), histórico agrupado por mês (últimos 24 meses com treino, dias dentro de cada mês), distância total e sessão mais longa da semana/mês atual, dias distintos treinados (base para as conquistas de sequência), e três gráficos **SVG desenhados à mão** (sem biblioteca nova): evolução da semana atual e do mês atual (uma barra por dia, com setas ‹ › para recuar até à semana/mês do primeiro treino de sempre) e evolução de todos os meses (uma barra por mês, incluindo meses vazios)
+- Conteúdo da aba: status/equipamento (dados já existentes, só leitura), histórico agrupado por mês (últimos 24 meses com treino, dias dentro de cada mês, cada dia mostra também a **velocidade média** desse dia — `distância ÷ duração`), distância total e sessão mais longa da semana/mês atual, dias distintos treinados (base para as conquistas de sequência), e três gráficos **SVG desenhados à mão** (sem biblioteca nova): evolução da semana atual e do mês atual (uma barra por dia, com setas ‹ › para recuar até à semana/mês do primeiro treino de sempre) e evolução de todos os meses (uma barra por mês, incluindo meses vazios)
+- **Card Resumo** (`renderProfileSummary`): distância total e sessão mais longa da semana/mês atual, dias distintos treinados, **Recorde de distância** (`getBestSessionDistanceM()` — a maior distância numa única sessão de sempre, já existia para as conquistas de distância, só passou a aparecer aqui também), **Recorde de velocidade** (`getBestPaceMps()` — o mesmo valor já usado pela conquista `pace_personal_record`, convertido para km/h), e **distância anulada por excesso de velocidade** (secção 4)
 - Cada barra mostra sempre um **rótulo visível por baixo** (dia da semana, dia do mês, ou abreviatura do mês no gráfico de todos os meses) — o valor exato continua só no `<title>` nativo ao passar o rato (não funciona por toque em mobile), mas identificar qual barra é qual já não depende disso
-- **Todas as distâncias mostradas ao jogador são em km** (`formatDistanceKm()`, js/experience.js) — os dados continuam guardados/calculados em metros, só a apresentação muda
+- **Todas as distâncias mostradas ao jogador são em km** (`formatDistanceKm()`, js/experience.js) e **velocidades em km/h** (`formatSpeedKmh()`, js/experience.js) — os dados continuam guardados/calculados em metros e m/s, só a apresentação muda
 
 ## 16. Limitações conhecidas / possíveis próximos passos
 
@@ -262,3 +269,4 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - Gráficos SVG mostram sempre o rótulo (dia/mês) por baixo de cada barra, mas o **valor exato** só está disponível no `<title>` nativo do browser ao passar o rato — não funciona por toque em mobile
 - Medalhas mensais dependem de confiança entre jogadores (qualquer jogador autenticado pode publicar a medalha de outro — ver secção 10); só 1 "slot" de mês anterior por jogador, perde-se o registo de meses saltados sem login
 - Multiplicadores dos arquétipos de monstro (secção 8) foram calibrados por **simulação de Monte Carlo** (milhares de combates simulados por combinação de nível/arquétipo/divisão de pontos), não por uma fórmula analítica fechada — servem para garantir que nenhuma luta fica impossível com os valores de produção atuais, mas podem precisar de reajuste se `LEVEL_UP_POINTS`, `MINIBOSS_MAX_POINTS`/`BOSS_MAX_POINTS` ou as curvas de status (secção 7) mudarem no Debug
+- **Duplicação entre abas do mesmo dispositivo (corrigido, mas houve um caso real)**: antes do bloqueio de abas (secções 4 e 9) existir, um jogador com duas abas do telemóvel abertas ao mesmo tempo acabou com a distância vitalícia e os pontos de status muito acima do que devia ser possível (cada aba contava a mesma distância/vitória em separado, cada uma escrevendo aditivamente no mesmo `localStorage`/Supabase). Corrigido a dois níveis: o mecanismo de bloqueio evita que volte a acontecer; os dados desse jogador foram corrigidos manualmente no Supabase (SQL direto, fora do site) recalculando os pontos legítimos a partir do `defeated_creatures` real dele. **Continua a existir um limite estrutural não resolvido**: o modelo de sincronização é "a última escrita ganha" por dispositivo — duas abas em **dispositivos diferentes** (não só o mesmo telemóvel) ainda poderiam, em teoria, duplicar progresso da mesma forma; o bloqueio atual só protege contra abas do mesmo dispositivo (o mesmo `localStorage`)
