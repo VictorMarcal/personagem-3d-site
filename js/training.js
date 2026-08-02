@@ -196,6 +196,7 @@ function beginWatch() {
   saveIntervalId = setInterval(() => {
     persistAccumulatedTraining();
     updateXPDisplay(totalDistanceM);
+    refreshTabLock(STORAGE_KEY_TRAINING_TAB_LOCK);
   }, SAVE_INTERVAL_MS);
 }
 
@@ -214,6 +215,14 @@ function showStartScreen() {
 function startTraining() {
   if (!("geolocation" in navigator)) {
     alert("Geolocalização não suportada neste navegador.");
+    return;
+  }
+
+  // Impede duas abas do mesmo telemovel/navegador terem um treino ativo em
+  // simultaneo - cada uma contaria a mesma distancia GPS em separado e
+  // somava-a em dobro ao progresso partilhado.
+  if (!claimTabLock(STORAGE_KEY_TRAINING_TAB_LOCK)) {
+    alert("Já tens um treino ativo noutro separador ou janela. Fecha-o antes de começar um novo aqui.");
     return;
   }
 
@@ -266,6 +275,7 @@ function stopTraining() {
   renderMonsters(); // pode ter desbloqueado monstros novos
 
   clearPersistedTraining();
+  releaseTabLock(STORAGE_KEY_TRAINING_TAB_LOCK);
   showStartScreen();
 }
 
@@ -273,6 +283,11 @@ function stopTraining() {
 function resumeTrainingIfNeeded() {
   if (localStorage.getItem(STORAGE_KEYS.active) !== "true") return;
   if (!("geolocation" in navigator)) return;
+
+  // Se outra aba viva ja estiver a tratar deste treino (ex: esta aba so
+  // reabriu uma pagina antiga em segundo plano), nao arranca aqui tambem um
+  // segundo GPS watch a contar a mesma coisa outra vez.
+  if (!claimTabLock(STORAGE_KEY_TRAINING_TAB_LOCK)) return;
 
   totalDistanceM = Number(localStorage.getItem(STORAGE_KEYS.distanciaAcumuladaM)) || 0;
   const savedPosition = localStorage.getItem(STORAGE_KEYS.ultimaPosicao);

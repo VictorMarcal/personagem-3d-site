@@ -54,6 +54,15 @@ function updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp) {
 
 async function startBattle(creature) {
   if (battleInProgress) return;
+
+  // Impede duas abas do mesmo telemovel/navegador lutarem contra o mesmo
+  // monstro em simultaneo - cada uma pagaria o bonus de "primeira derrota"
+  // em separado, duplicando pontos.
+  if (!claimTabLock(STORAGE_KEY_BATTLE_TAB_LOCK)) {
+    alert("Já tens uma luta em curso noutro separador ou janela.");
+    return;
+  }
+
   battleInProgress = true;
 
   // Entrar em combate revela a Vida da criatura no card, ganhe ou perca
@@ -95,6 +104,7 @@ async function startBattle(creature) {
 
   while (round < BATTLE_MAX_ROUNDS) {
     round += 1;
+    refreshTabLock(STORAGE_KEY_BATTLE_TAB_LOCK);
 
     const dmgToMonster = computeBattleDamage(playerAtaque, monsterDefesa);
     monsterHp -= dmgToMonster;
@@ -153,6 +163,7 @@ async function startBattle(creature) {
 
   btnBattleBack.classList.remove("hidden");
   battleInProgress = false;
+  releaseTabLock(STORAGE_KEY_BATTLE_TAB_LOCK);
 }
 
 function endBattle() {

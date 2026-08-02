@@ -50,3 +50,9 @@ const STORAGE_KEY_MONTH_REFERENCE = "personagem.mesReferencia";
 // js/training.js) - nunca conta para a experiencia/leaderboard, so serve
 // para o jogador ver quanto ficou de fora por ir depressa demais.
 const STORAGE_KEY_DISCARDED_SPEED_M = "personagem.distanciaAnuladaVelocidadeM";
+
+// Bloqueios entre abas do mesmo dispositivo (ver js/tab-lock.js) - evitam
+// duas abas terem um treino ou uma luta ativos ao mesmo tempo, cada uma a
+// contar/pagar a mesma coisa em separado.
+const STORAGE_KEY_TRAINING_TAB_LOCK = "treino.lockAba";
+const STORAGE_KEY_BATTLE_TAB_LOCK = "personagem.lockBatalhaAba";
