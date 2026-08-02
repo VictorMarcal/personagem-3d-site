@@ -37,16 +37,22 @@ const btnHudUpgradeByType = {
 
 let selectedEquipType = null;
 
+// CUIDADO: nao trocar por "Number(raw) || defaultValue" - 0 e um valor
+// legitimo (ex: 0 pontos por gastar) mas e "falsy" em JS, o que fazia
+// qualquer valor guardado como 0 ser lido de volta como o defaultValue,
+// criando um ciclo infinito de pontos "fantasma" sempre que chegavam a 0.
 function getStoredNumber(key, defaultValue) {
   const raw = localStorage.getItem(key);
-  return raw === null ? defaultValue : Number(raw) || defaultValue;
+  if (raw === null) return defaultValue;
+  const parsed = Number(raw);
+  return Number.isNaN(parsed) ? defaultValue : parsed;
 }
 
-// Oferta inicial de 3 pontos (so para quem nunca teve esta chave guardada -
+// Oferta inicial de 4 pontos (so para quem nunca teve esta chave guardada -
 // jogadores existentes com um valor ja gravado, mesmo que 0, nao sao
 // afetados). Compensa o mini-boss de nivel 5 ser dificil de vencer so com
 // os pontos ganhos a subir de nivel.
-const STARTING_UNSPENT_POINTS = 3;
+const STARTING_UNSPENT_POINTS = 4;
 
 function getUnspentPoints() {
   return getStoredNumber(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, STARTING_UNSPENT_POINTS);
