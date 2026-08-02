@@ -23,6 +23,7 @@ const statVidaValueEl = document.getElementById("stat-vida-value");
 const statAtaqueValueEl = document.getElementById("stat-ataque-value");
 const statDefesaValueEl = document.getElementById("stat-defesa-value");
 const statRecuperacaoValueEl = document.getElementById("stat-recuperacao-value");
+const hudUnspentPointsValueEl = document.getElementById("hud-unspent-points-value");
 const hudLevelVidaEl = document.getElementById("hud-level-vida");
 const hudLevelAtaqueEl = document.getElementById("hud-level-ataque");
 const hudLevelDefesaEl = document.getElementById("hud-level-defesa");
@@ -144,6 +145,7 @@ function renderStatsHud() {
   statAtaqueValueEl.textContent = computeStatValue("ataque", getEquipLevel("ataque"));
   statDefesaValueEl.textContent = computeStatValue("defesa", getEquipLevel("defesa"));
   statRecuperacaoValueEl.textContent = computeRecoveryPercent(getEquipLevel("vida")).toFixed(1);
+  hudUnspentPointsValueEl.textContent = getUnspentPoints();
 
   hudLevelVidaEl.textContent = getEquipLevel("vida");
   hudLevelAtaqueEl.textContent = getEquipLevel("ataque");
