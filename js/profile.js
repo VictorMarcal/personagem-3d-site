@@ -127,6 +127,9 @@ function renderProfileSummary(sessions) {
   addSummaryRow(listEl, "Distância total este mês", formatDistanceKm(monthTotal));
   addSummaryRow(listEl, "Sessão mais longa este mês", formatDistanceKm(monthMax));
   addSummaryRow(listEl, "Dias distintos treinados", `${distinctDays}`);
+  addSummaryRow(listEl, "Recorde de distância", formatDistanceKm(getBestSessionDistanceM()));
+  addSummaryRow(listEl, "Recorde de velocidade", formatSpeedKmh(getBestPaceMps()));
+  addSummaryRow(listEl, "Distância anulada por excesso de velocidade", formatDistanceKm(getDiscardedSpeedDistanceM()));
 }
 
 // --- Historico agrupado por mes, com os dias dentro de cada mes ---------
@@ -178,8 +181,9 @@ function renderProfileHistory(sessions) {
       const label = document.createElement("span");
       label.textContent = entry.count > 1 ? `${entry.dayKey} (${entry.count} treinos)` : entry.dayKey;
 
+      const avgSpeedMps = entry.duration > 0 ? entry.distance / entry.duration : 0;
       const value = document.createElement("span");
-      value.textContent = `${formatDistanceKm(entry.distance)} · ${Math.round(entry.duration / 60)} min`;
+      value.textContent = `${formatDistanceKm(entry.distance)} · ${Math.round(entry.duration / 60)} min · ${formatSpeedKmh(avgSpeedMps)}`;
 
       row.append(label, value);
       listEl.appendChild(row);

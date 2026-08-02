@@ -192,6 +192,11 @@ create policy "monthly_medals_insert_authenticated" on public.monthly_medals
 -- so estas mostram a Vida revelada no card (ver js/monsters.js, js/battle.js).
 alter table public.player_progress add column if not exists encountered_creatures integer[] not null default '{}';
 
+-- Migracao: soma vitalicia de distancia descartada por exceder MAX_SPEED_KMH
+-- (ver js/training.js) - nunca conta para XP/leaderboard, so para o jogador
+-- ver quanto ficou de fora (aba Perfil, card Resumo).
+alter table public.player_progress add column if not exists discarded_speed_distance_m numeric not null default 0;
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

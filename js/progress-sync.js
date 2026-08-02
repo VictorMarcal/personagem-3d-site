@@ -24,6 +24,7 @@ function readLocalProgressSnapshot() {
     total_trainings_completed: getTotalTrainingsCompleted(),
     best_pace_mps: getBestPaceMps(),
     best_streak_days: getBestStreakDays(),
+    discarded_speed_distance_m: getDiscardedSpeedDistanceM(),
   };
 }
 
@@ -121,4 +122,5 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEY_TOTAL_TRAININGS, String(progress.total_trainings_completed));
   localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS, String(progress.best_pace_mps || 0));
   localStorage.setItem(STORAGE_KEY_BEST_STREAK_DAYS, String(progress.best_streak_days || 0));
+  localStorage.setItem(STORAGE_KEY_DISCARDED_SPEED_M, String(progress.discarded_speed_distance_m || 0));
 }

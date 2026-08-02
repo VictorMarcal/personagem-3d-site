@@ -23,7 +23,9 @@ const DEBUG_DEFAULTS = {
   levelUpPoints: 1,
   maxAccuracyM: 20,
   minMovementM: 3,
-  maxSpeedKmh: 30,
+  // Sem bicicleta por agora - 20 km/h so deixa passar andar/correr (ver
+  // js/training.js para o aviso mostrado ao jogador quando e ultrapassado).
+  maxSpeedKmh: 20,
   miniBossLevelStep: 5,
   bossLevelStep: 10,
   maxLevelToGenerate: 100,
@@ -258,6 +260,7 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEY_MONTHLY_DISTANCE_M);
   localStorage.removeItem(STORAGE_KEY_MONTH_REFERENCE);
   localStorage.removeItem(STORAGE_KEY_ENCOUNTERED_CREATURES);
+  localStorage.removeItem(STORAGE_KEY_DISCARDED_SPEED_M);
 
   // O historico de treinos (aba Perfil) vive numa tabela a parte
   // (training_sessions) - sem isto o reset local nao mexia nele e o

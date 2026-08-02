@@ -3,6 +3,7 @@ const trainingScreen = document.getElementById("training-screen");
 const btnStart = document.getElementById("btn-start-treino");
 const btnStop = document.getElementById("btn-stop-treino");
 const distanceEl = document.getElementById("training-distance");
+const speedWarningEl = document.getElementById("speed-warning");
 
 const EARTH_RADIUS_M = 6371000;
 const SAVE_INTERVAL_MS = 10000;
@@ -36,6 +37,31 @@ let lastPosition = null;
 let watchId = null;
 let saveIntervalId = null;
 let sessionStartTime = null; // usado para conquistas de ritmo (ex: 5km em menos de 25 min)
+
+// Soma vitalicia (nao so desta sessao) de distancia descartada por exceder
+// MAX_SPEED_KMH - nunca conta para XP/leaderboard, so para o jogador ver
+// quanto ficou de fora. Sincronizada com o Supabase como o resto do
+// progresso (ver js/progress-sync.js).
+function getDiscardedSpeedDistanceM() {
+  return Number(localStorage.getItem(STORAGE_KEY_DISCARDED_SPEED_M)) || 0;
+}
+
+function addToDiscardedSpeedDistance(deltaM) {
+  if (deltaM <= 0) return;
+  localStorage.setItem(STORAGE_KEY_DISCARDED_SPEED_M, String(getDiscardedSpeedDistanceM() + deltaM));
+  queueProgressSync();
+}
+
+// Aviso persistente enquanto a velocidade estiver acima do limite - so
+// desaparece quando uma leitura seguinte volta a ficar dentro do limite
+// (nao e um toast com temporizador).
+function showSpeedWarning() {
+  speedWarningEl.classList.remove("hidden");
+}
+
+function hideSpeedWarning() {
+  speedWarningEl.classList.add("hidden");
+}
 
 function updateDistanceDisplay() {
   distanceEl.textContent = formatDistanceKm(totalDistanceM);
@@ -139,9 +165,14 @@ function onPositionUpdate(position) {
     const speedMps = deltaSeconds > 0 ? segmentM / deltaSeconds : Infinity;
 
     if (speedMps > getMaxSpeedMps()) {
-      return; // salto irreal (erro de GPS ou veiculo), mantem a ancora e ignora
+      // Salto irreal (erro de GPS, bicicleta ou veiculo) - mantem a ancora
+      // e ignora, mas guarda quanto ficou de fora e avisa o jogador.
+      addToDiscardedSpeedDistance(segmentM);
+      showSpeedWarning();
+      return;
     }
 
+    hideSpeedWarning();
     totalDistanceM += segmentM;
     updateDistanceDisplay();
   }
@@ -171,11 +202,13 @@ function beginWatch() {
 function showTrainingScreen() {
   startScreen.classList.add("hidden");
   trainingScreen.classList.remove("hidden");
+  hideSpeedWarning();
 }
 
 function showStartScreen() {
   trainingScreen.classList.add("hidden");
   startScreen.classList.remove("hidden");
+  hideSpeedWarning();
 }
 
 function startTraining() {

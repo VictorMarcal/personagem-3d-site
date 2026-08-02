@@ -18,6 +18,12 @@ function formatDistanceKm(meters) {
   return `${(meters / 1000).toFixed(2)} km`;
 }
 
+// Velocidade guardada/calculada sempre em m/s (ex: best_pace_mps) - so a
+// apresentacao converte para km/h.
+function formatSpeedKmh(metersPerSecond) {
+  return `${(metersPerSecond * 3.6).toFixed(1)} km/h`;
+}
+
 // Chamado quando um treino e efetivamente parado, para tornar a distancia
 // da sessao permanente (a experiencia do personagem nunca reseta)
 function addToLifetimeDistance(deltaM) {

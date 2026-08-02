@@ -45,3 +45,8 @@ const STORAGE_KEY_BEST_PACE_MPS = "personagem.melhorRitmoMps";
 // (js/monthly-medals.js).
 const STORAGE_KEY_MONTHLY_DISTANCE_M = "personagem.distanciaMesAtual";
 const STORAGE_KEY_MONTH_REFERENCE = "personagem.mesReferencia";
+
+// Soma vitalicia de distancia descartada por exceder MAX_SPEED_KMH (ver
+// js/training.js) - nunca conta para a experiencia/leaderboard, so serve
+// para o jogador ver quanto ficou de fora por ir depressa demais.
+const STORAGE_KEY_DISCARDED_SPEED_M = "personagem.distanciaAnuladaVelocidadeM";
