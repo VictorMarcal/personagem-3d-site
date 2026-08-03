@@ -203,7 +203,7 @@ Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem 
 - `fullMonthTrained` / `activeWeekend` — treinar todos os dias de um mês civil / sábado e domingo da mesma semana ISO
 - `bossDefeated` — gerado automaticamente por boss (sincronizado com a lista de monstros)
 - `creatureStars` / `allMiniBossesThreeStars` / `allBossesThreeStars` / `allCreaturesDefeated` — baseadas nas estrelas por criatura (secção 8)
-- `leaderboardRank` — **"Geral"**, desbloqueia ao ver o próprio `user_id` no topo do leaderboard geral (secção 14), fica **permanente** mesmo caindo depois no ranking
+- **Removida (2026-08-03): `leaderboardRank` ("Geral")** — desbloqueava ao ver o próprio `user_id` no topo do leaderboard geral (secção 14) e ficava permanente mesmo caindo depois no ranking. Deixou de existir a pedido; `renderLeaderboardCardNow()` (`js/leaderboard.js`) já não a atribui, e o registo órfão foi limpo do `unlocked_achievements` de quem já a tinha
 - Medalha mensal — **12 cartões fixos, um por mês de calendário** (Janeiro a Dezembro, `generateMonthlyMedalAchievements` em `js/achievements.js`), ao contrário das outras conquistas dinâmicas: sempre visíveis, nunca "aparecem do nada". Para cada mês, procura-se em qualquer ano se já foi ganha uma medalha `monthly_medals` (secção 14) nesse mês de calendário — a mais recente, se houver mais que uma:
   - **Já ganha** (`monthlyMedal`): mostra a medalha real (🥇/🥈/🥉) e o ano em que foi ganha (ex: "Julho 2026")
   - **Mês corrente, ainda por decidir** (`monthlyMedalPending`): bloqueado, ícone das 3 medalhas juntas (🥇🥈🥉) — só no fecho do mês (`js/monthly-medals.js`) se sabe a cor final
