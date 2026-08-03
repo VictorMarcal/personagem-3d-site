@@ -215,6 +215,17 @@ update public.training_sessions set effective_distance_m = distance_m where effe
 alter table public.training_sessions alter column effective_distance_m set not null;
 alter table public.training_sessions alter column effective_distance_m set default 0;
 
+-- Migracao: recorde de distancia de sessao e de ritmo, separados por modo
+-- de treino (js/achievements.js generateSessionDistanceAchievements/
+-- PACE_ACHIEVEMENTS - conquistas separadas por Caminhar/Correr/Bicicleta,
+-- pedido explicitamente). best_session_distance_m/best_pace_mps (colunas
+-- ja existentes, sem sufixo) continuam a representar especificamente
+-- Correr - Caminhar/Bicicleta comecam do zero nestas colunas novas.
+alter table public.player_progress add column if not exists best_session_distance_m_caminhar numeric not null default 0;
+alter table public.player_progress add column if not exists best_session_distance_m_bicicleta numeric not null default 0;
+alter table public.player_progress add column if not exists best_pace_mps_caminhar numeric not null default 0;
+alter table public.player_progress add column if not exists best_pace_mps_bicicleta numeric not null default 0;
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

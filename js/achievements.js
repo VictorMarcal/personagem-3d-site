@@ -32,11 +32,6 @@ const CATEGORY_BY_TYPE = {
 const CATEGORY_ORDER = ["Distância", "Frequência", "Combate", "Liderança", "Ritmo"];
 
 const STATIC_ACHIEVEMENTS = [
-  { id: "dist_1km", name: "1 km seguido", icon: "🏃", type: "sessionDistance", threshold: 1000 },
-  { id: "dist_5km", name: "5 km seguidos", icon: "🏃", type: "sessionDistance", threshold: 5000 },
-  { id: "dist_10km", name: "10 km seguidos", icon: "🏃", type: "sessionDistance", threshold: 10000 },
-  { id: "dist_half_marathon", name: "Meia Maratona", icon: "🥈", type: "sessionDistance", threshold: 21097 },
-  { id: "dist_marathon", name: "Maratonista", icon: "🏅", type: "sessionDistance", threshold: 42195 },
   { id: "dist_lifetime_50km", name: "50 km vitalícios", icon: "🌍", type: "lifetimeDistance", threshold: 50000 },
   { id: "dist_lifetime_100km", name: "100 km vitalícios", icon: "🌍", type: "lifetimeDistance", threshold: 100000 },
   { id: "dist_lifetime_500km", name: "500 km vitalícios", icon: "🌍", type: "lifetimeDistance", threshold: 500000 },
@@ -56,12 +51,79 @@ const STATIC_ACHIEVEMENTS = [
   { id: "combat_all_bosses_3star", name: "Lenda dos Bosses", icon: "🌟", type: "allBossesThreeStars" },
   { id: "combat_all_defeated", name: "Todas as criaturas derrotadas", icon: "👑", type: "allCreaturesDefeated" },
   { id: "leaderboard_rank1", name: "Geral", icon: "🥇", type: "leaderboardRank" },
-  { id: "pace_5km_25min", name: "5km em menos de 25 min", icon: "⚡", type: "pace", distanceM: 5000, maxSeconds: 25 * 60 },
-  { id: "pace_10km_50min", name: "10km em menos de 50 min", icon: "⚡", type: "pace", distanceM: 10000, maxSeconds: 50 * 60 },
-  { id: "pace_5km_20min", name: "5km em menos de 20 min", icon: "⚡", type: "pace", distanceM: 5000, maxSeconds: 20 * 60 },
-  { id: "pace_10km_45min", name: "10km em menos de 45 min", icon: "⚡", type: "pace", distanceM: 10000, maxSeconds: 45 * 60 },
-  { id: "pace_personal_record", name: "Recorde pessoal de ritmo", icon: "🚀", type: "personalRecord" },
 ];
+
+// Conquistas de distância de sessão e de ritmo separadas por modo de
+// treino (Caminhar/Correr/Bicicleta) - ver secção 10 da documentação.
+// Distância vitalícia e frequência (acima) ficam combinadas entre modos
+// deliberadamente, so estas duas (sessão única e ritmo) fazem sentido
+// separadas, já que dependem diretamente do modo dessa sessão.
+const ACHIEVEMENT_TRAINING_MODES = ["correr", "caminhar", "bicicleta"];
+const MODE_ICON_PT = { correr: "🏃", caminhar: "🚶", bicicleta: "🚴" };
+// Frase para encaixar em descrições ("... numa sessão ${frase}.") - a
+// label curta (MODE_LABEL_PT) ja existe em js/training.js (carrega antes
+// deste ficheiro).
+const MODE_ACTIVITY_PHRASE_PT = { correr: "a correr", caminhar: "a caminhar", bicicleta: "de bicicleta" };
+
+// Mesmos limiares para os 3 modos porque comparam distância EFETIVA (já
+// com o multiplicador de justiça de esforço aplicado - secção 4.1), não a
+// distância real - "Maratonista de Bicicleta" exige o mesmo esforço que
+// "Maratonista" a Correr, só que fisicamente é preciso pedalar muito mais
+// para lá chegar. Correr reaproveita os ids/nomes já existentes (sem
+// sufixo) para não perder conquistas já desbloqueadas por jogadores
+// existentes - Caminhar/Bicicleta são ids novos.
+const SESSION_DISTANCE_THRESHOLDS = [
+  { key: "dist_1km", name: "1 km seguido", threshold: 1000 },
+  { key: "dist_5km", name: "5 km seguidos", threshold: 5000 },
+  { key: "dist_10km", name: "10 km seguidos", threshold: 10000 },
+  { key: "dist_half_marathon", name: "Meia Maratona", threshold: 21097 },
+  { key: "dist_marathon", name: "Maratonista", threshold: 42195 },
+];
+
+function generateSessionDistanceAchievements() {
+  const achievements = [];
+  SESSION_DISTANCE_THRESHOLDS.forEach((base) => {
+    ACHIEVEMENT_TRAINING_MODES.forEach((mode) => {
+      achievements.push({
+        id: mode === "correr" ? base.key : `${base.key}_${mode}`,
+        name: `${base.name} (${MODE_LABEL_PT[mode]})`,
+        icon: MODE_ICON_PT[mode],
+        type: "sessionDistance",
+        threshold: base.threshold,
+        mode,
+      });
+    });
+  });
+  return achievements;
+}
+
+// Ao contrário da distância, o ritmo é sobre velocidade REAL, não faz
+// sentido comparar por distância efetiva - por isso cada modo tem os seus
+// próprios limiares, calibrados à velocidade típica desse modo (Compendium
+// of Physical Activities, mesma fonte da secção 4.1): Correr mantém os
+// limiares já existentes (~12-15 km/h, ritmo de corrida recreativa);
+// Caminhar usa ritmo de marcha rápida/atlética (~6-7.5 km/h); Bicicleta
+// usa ritmo moderado a veloz (~20-27 km/h).
+const PACE_ACHIEVEMENTS = [
+  { id: "pace_5km_25min", name: "5km em menos de 25 min (Correr)", icon: MODE_ICON_PT.correr, type: "pace", mode: "correr", distanceM: 5000, maxSeconds: 25 * 60 },
+  { id: "pace_10km_50min", name: "10km em menos de 50 min (Correr)", icon: MODE_ICON_PT.correr, type: "pace", mode: "correr", distanceM: 10000, maxSeconds: 50 * 60 },
+  { id: "pace_5km_20min", name: "5km em menos de 20 min (Correr)", icon: MODE_ICON_PT.correr, type: "pace", mode: "correr", distanceM: 5000, maxSeconds: 20 * 60 },
+  { id: "pace_10km_45min", name: "10km em menos de 45 min (Correr)", icon: MODE_ICON_PT.correr, type: "pace", mode: "correr", distanceM: 10000, maxSeconds: 45 * 60 },
+  { id: "pace_5km_50min_caminhar", name: "5km em menos de 50 min (Caminhar)", icon: MODE_ICON_PT.caminhar, type: "pace", mode: "caminhar", distanceM: 5000, maxSeconds: 50 * 60 },
+  { id: "pace_5km_40min_caminhar", name: "5km em menos de 40 min (Caminhar)", icon: MODE_ICON_PT.caminhar, type: "pace", mode: "caminhar", distanceM: 5000, maxSeconds: 40 * 60 },
+  { id: "pace_10km_30min_bicicleta", name: "10km em menos de 30 min (Bicicleta)", icon: MODE_ICON_PT.bicicleta, type: "pace", mode: "bicicleta", distanceM: 10000, maxSeconds: 30 * 60 },
+  { id: "pace_20km_45min_bicicleta", name: "20km em menos de 45 min (Bicicleta)", icon: MODE_ICON_PT.bicicleta, type: "pace", mode: "bicicleta", distanceM: 20000, maxSeconds: 45 * 60 },
+];
+
+// pace_personal_record (Correr) mantém o id já existente, sem sufixo, pela
+// mesma razão das conquistas de distância acima.
+const PERSONAL_RECORD_ACHIEVEMENTS = ACHIEVEMENT_TRAINING_MODES.map((mode) => ({
+  id: mode === "correr" ? "pace_personal_record" : `pace_personal_record_${mode}`,
+  name: `Recorde pessoal de ritmo (${MODE_LABEL_PT[mode]})`,
+  icon: MODE_ICON_PT[mode],
+  type: "personalRecord",
+  mode,
+}));
 
 // Uma conquista por boss, gerada a partir dos mesmos parametros de
 // js/monsters.js (incluindo BOSS_NAMES, definido la), para se manterem
@@ -140,16 +202,34 @@ function generateMonthlyMedalAchievements() {
 }
 
 function getAllAchievements() {
-  return [...STATIC_ACHIEVEMENTS, ...generateBossAchievements(), ...generateMonthlyMedalAchievements()];
+  return [
+    ...STATIC_ACHIEVEMENTS,
+    ...generateSessionDistanceAchievements(),
+    ...PACE_ACHIEVEMENTS,
+    ...PERSONAL_RECORD_ACHIEVEMENTS,
+    ...generateBossAchievements(),
+    ...generateMonthlyMedalAchievements(),
+  ];
 }
 
-function getBestSessionDistanceM() {
-  return Number(localStorage.getItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M)) || 0;
+const BEST_SESSION_DISTANCE_KEY_BY_MODE = {
+  correr: STORAGE_KEY_BEST_SESSION_DISTANCE_M,
+  caminhar: STORAGE_KEY_BEST_SESSION_DISTANCE_M_CAMINHAR,
+  bicicleta: STORAGE_KEY_BEST_SESSION_DISTANCE_M_BICICLETA,
+};
+
+// Sem mode: devolve o melhor de sempre entre os 3 (usado pelo card Resumo
+// da aba Perfil, que mostra "o teu recorde", nao um recorde por modo). Com
+// mode: devolve o recorde so desse modo (usado pelas conquistas de
+// distancia de sessao, ja separadas por modo - ver generateSessionDistanceAchievements).
+function getBestSessionDistanceM(mode) {
+  if (mode) return Number(localStorage.getItem(BEST_SESSION_DISTANCE_KEY_BY_MODE[mode])) || 0;
+  return Math.max(...ACHIEVEMENT_TRAINING_MODES.map((m) => getBestSessionDistanceM(m)));
 }
 
-function updateBestSessionDistanceM(sessionDistanceM) {
-  if (sessionDistanceM > getBestSessionDistanceM()) {
-    localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M, String(sessionDistanceM));
+function updateBestSessionDistanceM(sessionDistanceM, mode = "correr") {
+  if (sessionDistanceM > getBestSessionDistanceM(mode)) {
+    localStorage.setItem(BEST_SESSION_DISTANCE_KEY_BY_MODE[mode], String(sessionDistanceM));
     queueProgressSync();
   }
 }
@@ -163,15 +243,24 @@ function incrementTotalTrainingsCompleted() {
   queueProgressSync();
 }
 
-// Melhor ritmo (m/s) de sempre, numa so sessao - usado so para a conquista
-// de recorde pessoal (checkAndUnlockAchievements), nao tem UI propria.
-function getBestPaceMps() {
-  return Number(localStorage.getItem(STORAGE_KEY_BEST_PACE_MPS)) || 0;
+const BEST_PACE_KEY_BY_MODE = {
+  correr: STORAGE_KEY_BEST_PACE_MPS,
+  caminhar: STORAGE_KEY_BEST_PACE_MPS_CAMINHAR,
+  bicicleta: STORAGE_KEY_BEST_PACE_MPS_BICICLETA,
+};
+
+// Melhor ritmo (m/s) de sempre por modo, numa so sessao - usado para a
+// conquista de recorde pessoal por modo (checkAndUnlockAchievements) e
+// para o card Resumo da aba Perfil (sem mode: o melhor de sempre entre
+// os 3, mesmo padrao de getBestSessionDistanceM acima).
+function getBestPaceMps(mode) {
+  if (mode) return Number(localStorage.getItem(BEST_PACE_KEY_BY_MODE[mode])) || 0;
+  return Math.max(...ACHIEVEMENT_TRAINING_MODES.map((m) => getBestPaceMps(m)));
 }
 
-function updateBestPaceMpsIfBetter(paceMps) {
-  if (paceMps > getBestPaceMps()) {
-    localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS, String(paceMps));
+function updateBestPaceMpsIfBetter(paceMps, mode = "correr") {
+  if (paceMps > getBestPaceMps(mode)) {
+    localStorage.setItem(BEST_PACE_KEY_BY_MODE[mode], String(paceMps));
     queueProgressSync();
   }
 }
@@ -227,7 +316,7 @@ function unlockAchievement(id, unlockedAt) {
 function getAchievementProgress(achievement) {
   switch (achievement.type) {
     case "sessionDistance": {
-      const best = getBestSessionDistanceM();
+      const best = getBestSessionDistanceM(achievement.mode);
       return { current: Math.min(best, achievement.threshold), target: achievement.threshold, met: best >= achievement.threshold };
     }
     case "trainingCount": {
@@ -286,35 +375,40 @@ function getAchievementProgress(achievement) {
   }
 }
 
+const PACE_PERSONAL_RECORD_ID_BY_MODE = {
+  correr: "pace_personal_record",
+  caminhar: "pace_personal_record_caminhar",
+  bicicleta: "pace_personal_record_bicicleta",
+};
+
 // Chamado depois de um treino terminar (com dados da sessao) ou de uma
 // batalha ser vencida (sem argumentos, so para reavaliar bosses). mode
-// default "correr" preserva o comportamento anterior (so existia um modo)
-// para chamadas sem sessao (batalhas) ou do simulador de distancia do Debug.
+// default "correr" preserva o comportamento anterior para chamadas sem
+// sessao (batalhas) ou do simulador de distancia do Debug.
 //
 // sessionDistanceM aqui e sempre a distancia EFETIVA (com o multiplicador
 // de justica de esforco do modo ja aplicado, ver js/training.js) - as
-// conquistas de distancia sao assim justas para qualquer modo. As de
-// RITMO (secção "pace" abaixo) sao a excecao: dependem de velocidade real,
-// nao de esforco, por isso ficam limitadas ao modo Correr - de outra forma
-// uma bicicleta desbloqueava-as trivialmente, sem esforco comparavel.
+// conquistas de distancia sao assim justas para qualquer modo, cada uma
+// verificada contra o recorde do PROPRIO modo (secção 10 da documentação).
+// As de RITMO sao sobre velocidade real, nao esforco - cada conquista de
+// ritmo/recorde pessoal so e avaliada/atualizada para o modo a que
+// pertence (achievement.mode), nunca cruzando modos entre si.
 function checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, mode = "correr") {
   const hasSessionData = typeof sessionDistanceM === "number";
   if (hasSessionData) {
-    updateBestSessionDistanceM(sessionDistanceM);
+    updateBestSessionDistanceM(sessionDistanceM, mode);
   }
 
-  const paceEligible = hasSessionData && mode === "correr";
-
-  // Recorde pessoal de ritmo: so pode disparar a partir da 2a sessao (a 1a
-  // so serve para estabelecer o "anterior" a bater) - compara antes de
-  // atualizar o recorde guardado.
-  if (paceEligible && typeof sessionDurationSeconds === "number" && sessionDurationSeconds > 0) {
+  // Recorde pessoal de ritmo (do modo desta sessao): so pode disparar a
+  // partir da 2a sessao NESSE modo (a 1a so serve para estabelecer o
+  // "anterior" a bater) - compara antes de atualizar o recorde guardado.
+  if (hasSessionData && typeof sessionDurationSeconds === "number" && sessionDurationSeconds > 0) {
     const paceMps = sessionDistanceM / sessionDurationSeconds;
-    const previousBestPace = getBestPaceMps();
+    const previousBestPace = getBestPaceMps(mode);
     if (previousBestPace > 0 && paceMps > previousBestPace) {
-      unlockAchievement("pace_personal_record", Date.now());
+      unlockAchievement(PACE_PERSONAL_RECORD_ID_BY_MODE[mode], Date.now());
     }
-    updateBestPaceMpsIfBetter(paceMps);
+    updateBestPaceMpsIfBetter(paceMps, mode);
   }
 
   const now = Date.now();
@@ -323,7 +417,8 @@ function checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, mo
 
     if (achievement.type === "pace") {
       if (
-        paceEligible &&
+        hasSessionData &&
+        mode === achievement.mode &&
         typeof sessionDurationSeconds === "number" &&
         sessionDistanceM >= achievement.distanceM &&
         sessionDurationSeconds <= achievement.maxSeconds
@@ -408,7 +503,7 @@ function checkFrequencyAchievementsFromSessions(sessions) {
 function getAchievementDescription(achievement) {
   switch (achievement.type) {
     case "sessionDistance":
-      return `Percorre ${formatDistanceKm(achievement.threshold)} numa única sessão de treino.`;
+      return `Percorre ${formatDistanceKm(achievement.threshold)} (efetivos) numa única sessão ${MODE_ACTIVITY_PHRASE_PT[achievement.mode]}.`;
     case "lifetimeDistance":
       return `Acumula ${formatDistanceKm(achievement.threshold)} de distância ao longo da tua vida.`;
     case "trainingCount":
@@ -440,9 +535,9 @@ function getAchievementDescription(achievement) {
     case "monthlyMedalFuture":
       return "Ainda não chegámos a esse mês este ano.";
     case "pace":
-      return `Percorre ${formatDistanceKm(achievement.distanceM)} em menos de ${Math.round(achievement.maxSeconds / 60)} minutos.`;
+      return `Percorre ${formatDistanceKm(achievement.distanceM)} em menos de ${Math.round(achievement.maxSeconds / 60)} minutos, ${MODE_ACTIVITY_PHRASE_PT[achievement.mode]}.`;
     case "personalRecord":
-      return "Bate o teu próprio recorde de ritmo numa sessão (a partir da 2ª sessão).";
+      return `Bate o teu próprio recorde de ritmo ${MODE_ACTIVITY_PHRASE_PT[achievement.mode]} (a partir da 2ª sessão nesse modo).`;
     default:
       return "";
   }

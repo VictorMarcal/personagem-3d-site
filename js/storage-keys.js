@@ -19,7 +19,15 @@ const STORAGE_KEY_DEFEATED_CREATURES = "personagem.monstrosDerrotados";
 const STORAGE_KEY_ENCOUNTERED_CREATURES = "personagem.criaturasEncontradas";
 
 const STORAGE_KEY_UNLOCKED_ACHIEVEMENTS = "personagem.conquistasDesbloqueadas";
+
+// Recorde de distancia de sessao, por modo de treino (js/achievements.js
+// generateSessionDistanceAchievements) - Correr reaproveita a chave ja
+// existente sem sufixo (era o unico modo antes de existirem 3), Caminhar/
+// Bicicleta sao registos novos, comecam do zero.
 const STORAGE_KEY_BEST_SESSION_DISTANCE_M = "personagem.melhorDistanciaSessaoM";
+const STORAGE_KEY_BEST_SESSION_DISTANCE_M_CAMINHAR = "personagem.melhorDistanciaSessaoM.caminhar";
+const STORAGE_KEY_BEST_SESSION_DISTANCE_M_BICICLETA = "personagem.melhorDistanciaSessaoM.bicicleta";
+
 const STORAGE_KEY_TOTAL_TRAININGS = "personagem.totalTreinosConcluidos";
 
 // Fila de sessoes de treino ainda nao confirmadas no Supabase (ver
@@ -38,7 +46,12 @@ const STORAGE_KEY_HP_LAST_UPDATE = "personagem.vidaUltimaAtualizacao";
 // leaderboard), para as conquistas dependentes disso poderem ser lidas de
 // forma sincrona pelo checkAndUnlockAchievements() como tudo o resto.
 const STORAGE_KEY_BEST_STREAK_DAYS = "personagem.melhorSequenciaDias";
+
+// Melhor ritmo (m/s), tambem por modo de treino (mesmo padrao do recorde
+// de distancia de sessao acima) - Correr reaproveita a chave ja existente.
 const STORAGE_KEY_BEST_PACE_MPS = "personagem.melhorRitmoMps";
+const STORAGE_KEY_BEST_PACE_MPS_CAMINHAR = "personagem.melhorRitmoMps.caminhar";
+const STORAGE_KEY_BEST_PACE_MPS_BICICLETA = "personagem.melhorRitmoMps.bicicleta";
 
 // Contador de distancia do mes de calendario corrente, espelha
 // leaderboard.monthly_distance_m - usado pelas medalhas mensais

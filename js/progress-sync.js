@@ -20,9 +20,17 @@ function readLocalProgressSnapshot() {
     defeated_creatures: getDefeatedCreaturesMap(),
     encountered_creatures: getEncounteredLevels(),
     unlocked_achievements: getUnlockedAchievements(),
-    best_session_distance_m: getBestSessionDistanceM(),
+    // best_session_distance_m/best_pace_mps (sem mode) continuam a
+    // representar especificamente Correr - Caminhar/Bicicleta tem as suas
+    // proprias colunas (ver conquistas de distancia/ritmo por modo,
+    // secção 10 da documentação).
+    best_session_distance_m: getBestSessionDistanceM("correr"),
+    best_session_distance_m_caminhar: getBestSessionDistanceM("caminhar"),
+    best_session_distance_m_bicicleta: getBestSessionDistanceM("bicicleta"),
     total_trainings_completed: getTotalTrainingsCompleted(),
-    best_pace_mps: getBestPaceMps(),
+    best_pace_mps: getBestPaceMps("correr"),
+    best_pace_mps_caminhar: getBestPaceMps("caminhar"),
+    best_pace_mps_bicicleta: getBestPaceMps("bicicleta"),
     best_streak_days: getBestStreakDays(),
     discarded_speed_distance_m: getDiscardedSpeedDistanceM(),
   };
@@ -130,8 +138,12 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEY_ENCOUNTERED_CREATURES, JSON.stringify(progress.encountered_creatures || []));
   localStorage.setItem(STORAGE_KEY_UNLOCKED_ACHIEVEMENTS, JSON.stringify(progress.unlocked_achievements || {}));
   localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M, String(progress.best_session_distance_m));
+  localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M_CAMINHAR, String(progress.best_session_distance_m_caminhar || 0));
+  localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M_BICICLETA, String(progress.best_session_distance_m_bicicleta || 0));
   localStorage.setItem(STORAGE_KEY_TOTAL_TRAININGS, String(progress.total_trainings_completed));
   localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS, String(progress.best_pace_mps || 0));
+  localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS_CAMINHAR, String(progress.best_pace_mps_caminhar || 0));
+  localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS_BICICLETA, String(progress.best_pace_mps_bicicleta || 0));
   localStorage.setItem(STORAGE_KEY_BEST_STREAK_DAYS, String(progress.best_streak_days || 0));
   localStorage.setItem(STORAGE_KEY_DISCARDED_SPEED_M, String(progress.discarded_speed_distance_m || 0));
 }
