@@ -21,7 +21,6 @@ const CATEGORY_BY_TYPE = {
   allMiniBossesThreeStars: "Combate",
   allBossesThreeStars: "Combate",
   allCreaturesDefeated: "Combate",
-  leaderboardRank: "Liderança",
   monthlyMedal: "Liderança",
   monthlyMedalPending: "Liderança",
   monthlyMedalMissed: "Liderança",
@@ -50,7 +49,6 @@ const STATIC_ACHIEVEMENTS = [
   { id: "combat_all_minibosses_3star", name: "Mestre dos Mini-Bosses", icon: "🌟", type: "allMiniBossesThreeStars" },
   { id: "combat_all_bosses_3star", name: "Lenda dos Bosses", icon: "🌟", type: "allBossesThreeStars" },
   { id: "combat_all_defeated", name: "Todas as criaturas derrotadas", icon: "👑", type: "allCreaturesDefeated" },
-  { id: "leaderboard_rank1", name: "Geral", icon: "🥇", type: "leaderboardRank" },
 ];
 
 // Conquistas de distância de sessão e de ritmo separadas por modo de
@@ -356,7 +354,6 @@ function getAchievementProgress(achievement) {
     case "pace":
     case "fullMonthTrained":
     case "activeWeekend":
-    case "leaderboardRank":
     case "personalRecord":
     case "monthlyMedal":
     case "monthlyMedalPending":
@@ -524,8 +521,6 @@ function getAchievementDescription(achievement) {
       return "Consegue 3 estrelas em todos os bosses.";
     case "allCreaturesDefeated":
       return "Derrota todos os mini-bosses e bosses pelo menos uma vez.";
-    case "leaderboardRank":
-      return "Chega ao 1º lugar do leaderboard geral (fica desbloqueada para sempre).";
     case "monthlyMedal":
       return "Atribuída automaticamente ao top 3 do leaderboard mensal desse mês.";
     case "monthlyMedalPending":

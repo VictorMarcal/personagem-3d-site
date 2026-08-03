@@ -136,16 +136,7 @@ async function renderMedalHistory() {
 }
 
 async function renderLeaderboardCardNow() {
-  const top = await renderLeaderboardInto(leaderboardListEl, "lifetime_distance_m");
-
-  // Permanente: uma vez alcancado o #1 geral, a conquista fica desbloqueada
-  // mesmo que o jogador caia no ranking depois (unlockAchievement ja e
-  // idempotente/so desbloqueia uma vez).
-  if (top && top.length > 0 && top[0].user_id === currentUserId) {
-    unlockAchievement("leaderboard_rank1", Date.now());
-    renderAchievementsSummary();
-  }
-
+  await renderLeaderboardInto(leaderboardListEl, "lifetime_distance_m");
   await renderLeaderboardInto(leaderboardListMonthlyEl, "monthly_distance_m", formatMonthKey(new Date()));
   await renderMedalHistory();
 }
