@@ -50,7 +50,28 @@ async function checkMonthlyRollover() {
     .eq("user_id", currentUserId)
     .maybeSingle();
 
-  if (!own || own.month_reference === currentMonthKey) {
+  if (!own) {
+    renderAchievementsSummary();
+    return;
+  }
+
+  // Sincroniza a distancia mensal local com o servidor (leaderboard e' a
+  // fonte de verdade para isto, tal como player_progress e' para o resto do
+  // progresso - ver js/progress-sync.js). Corrige um bug real: sem isto,
+  // uma alteracao feita diretamente no servidor (ex: reset manual de um
+  // jogador) nunca chegava ao localStorage - hydrateLocalStorageFromProgress
+  // so le player_progress, nunca leaderboard - e o proximo sync deste
+  // cliente empurrava o valor local antigo de volta por cima, desfazendo a
+  // alteracao em silencio (visto num jogador: reset a zero no servidor,
+  // mas o leaderboard mensal continuava a mostrar o valor antigo). Mesma
+  // guarda de SYNC_PENDING_KEY que js/auth.js ja usa para player_progress -
+  // nao sobrescreve uma mutacao local ainda por confirmar.
+  if (localStorage.getItem(SYNC_PENDING_KEY) !== "true") {
+    localStorage.setItem(STORAGE_KEY_MONTHLY_DISTANCE_M, String(own.monthly_distance_m || 0));
+    setMonthReference(own.month_reference || currentMonthKey);
+  }
+
+  if (own.month_reference === currentMonthKey) {
     renderAchievementsSummary();
     return;
   }
