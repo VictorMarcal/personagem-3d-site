@@ -11,7 +11,23 @@
 // uma aba fechada/crashada liberta o bloqueio ao fim de TAB_LOCK_STALE_MS,
 // para nunca ficar preso para sempre por uma aba que desapareceu sem
 // libertar corretamente).
-const TAB_ID = crypto.randomUUID();
+//
+// Guardado em sessionStorage (nao gerado de novo a cada carregamento):
+// sessionStorage sobrevive a um refresh da MESMA aba mas comeca vazio numa
+// aba genuinamente nova - sem isto, um simples F5 na aba com o treino ativo
+// gerava um TAB_ID novo, que via o bloqueio deixado por si propria (antes
+// do refresh, com heartbeat ainda recente) como pertencendo a "outra aba
+// viva" e recusava-se a retomar - o treino em curso parecia perdido (a
+// pagina voltava ao ecra inicial) ate o bloqueio expirar sozinho.
+const TAB_ID_SESSION_KEY = "personagem.tabId";
+const TAB_ID = (function getOrCreateTabId() {
+  let id = sessionStorage.getItem(TAB_ID_SESSION_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem(TAB_ID_SESSION_KEY, id);
+  }
+  return id;
+})();
 const TAB_LOCK_STALE_MS = 15000;
 
 function claimTabLock(storageKey) {
