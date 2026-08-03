@@ -5,6 +5,31 @@
 **Repositório:** [VictorMarcal/personagem-3d-site](https://github.com/VictorMarcal/personagem-3d-site)
 **Site publicado:** https://victormarcal.github.io/personagem-3d-site/ (GitHub Pages)
 
+## ⚠️ Ações pendentes (por confirmar/aplicar)
+
+> Ler isto primeiro ao retomar o projeto numa conversa nova. Remover cada item (ou a secção toda) assim que confirmado feito - não é para ficar aqui para sempre, só até o trabalho estar mesmo concluído.
+
+- [ ] **Migração SQL 1 - modo de treino + distância efetiva** (`training_sessions.mode`, `training_sessions.effective_distance_m`). Já está em `supabase/schema.sql`, por correr manualmente no SQL Editor do Supabase - **não sei se já foi corrida**. Para confirmar: `select column_name from information_schema.columns where table_name = 'training_sessions';` - se `mode` e `effective_distance_m` aparecerem, já está feita.
+  ```sql
+  alter table public.training_sessions add column if not exists mode text not null default 'correr';
+  alter table public.training_sessions add column if not exists effective_distance_m numeric;
+  update public.training_sessions set effective_distance_m = distance_m where effective_distance_m is null;
+  alter table public.training_sessions alter column effective_distance_m set not null;
+  alter table public.training_sessions alter column effective_distance_m set default 0;
+  ```
+- [ ] **Migração SQL 2 - recordes de distância/ritmo por modo** (`player_progress.best_session_distance_m_caminhar/_bicicleta`, `best_pace_mps_caminhar/_bicicleta`). Também já em `supabase/schema.sql`, por correr - **não sei se já foi corrida**. Para confirmar: `select column_name from information_schema.columns where table_name = 'player_progress';`
+  ```sql
+  alter table public.player_progress add column if not exists best_session_distance_m_caminhar numeric not null default 0;
+  alter table public.player_progress add column if not exists best_session_distance_m_bicicleta numeric not null default 0;
+  alter table public.player_progress add column if not exists best_pace_mps_caminhar numeric not null default 0;
+  alter table public.player_progress add column if not exists best_pace_mps_bicicleta numeric not null default 0;
+  ```
+- [ ] **Ligar o Claude Code ao Supabase via MCP** (para deixar de ser preciso copiar/colar SQL manualmente): `.mcp.json` já criado na raiz do repo (aponta para o projeto `vnqjaepjfqlhgmlrhzlr`, token vem de uma variável de ambiente, não está no ficheiro). Falta, do lado do Victor:
+  1. Instalar Node.js (nodejs.org, versão LTS) - confirmado que não estava instalado em 2026-08-03
+  2. Gerar um Personal Access Token novo em supabase.com/dashboard/account/tokens (um token anterior foi exposto numa captura de ecrã partilhada nesta conversa - **deve ser revogado**, nunca reutilizar)
+  3. Guardar o token como variável de ambiente do Windows: `setx SUPABASE_ACCESS_TOKEN "<token>"` (num PowerShell novo, depois de instalar o Node)
+  4. Fechar e reabrir a app do Claude Code por completo
+
 ## 1. O que é
 
 Um site que transforma distância percorrida na vida real (GPS) em progressão de um personagem 3D estilo RPG: sobe de nível, ganha pontos de status, evolui equipamento (armadura/arma/escudo), desbloqueia e derrota monstros/bosses em duelos por turnos, e desbloqueia conquistas.
