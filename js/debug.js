@@ -149,7 +149,10 @@ function renderDebugCharacterInfo() {
 // Recalcula tudo o que depende das variaveis afinaveis, depois de
 // guardar/repor ou de um reset de personagem
 function refreshAllAfterConfigChange() {
-  updateXPDisplay(typeof totalDistanceM === "number" ? totalDistanceM : 0);
+  // Distancia EFETIVA (nao a real) - mesma logica de js/training.js
+  // beginWatch(), para a barra de nivel nunca mostrar uma previa otimista
+  // se este for chamado a meio de um treino ativo (ex: guardar no Debug).
+  updateXPDisplay(typeof totalDistanceM === "number" ? getEffectiveDistanceM(totalDistanceM, selectedTrainingMode) : 0);
   renderStatsHud();
   renderMonsters();
   renderDebugCharacterInfo();

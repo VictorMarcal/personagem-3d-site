@@ -252,10 +252,14 @@ function beginWatch() {
     timeout: 15000,
   });
 
-  updateXPDisplay(totalDistanceM);
+  // A barra/progresso de nivel usa a distancia EFETIVA (com o multiplicador
+  // do modo ja aplicado), nunca a real diretamente - tem de refletir ao
+  // vivo exatamente o que vai ser creditado no fim da sessao (secção 4.1),
+  // nao uma previa otimista baseada na distancia real.
+  updateXPDisplay(getEffectiveDistanceM(totalDistanceM, selectedTrainingMode));
   saveIntervalId = setInterval(() => {
     persistAccumulatedTraining();
-    updateXPDisplay(totalDistanceM);
+    updateXPDisplay(getEffectiveDistanceM(totalDistanceM, selectedTrainingMode));
     refreshTabLock(STORAGE_KEY_TRAINING_TAB_LOCK);
   }, SAVE_INTERVAL_MS);
 }
