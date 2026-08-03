@@ -81,8 +81,9 @@ Escolhida para não ser nem linear nem exponencial — os incrementos crescem, m
 
 ## 6. Pontos de status
 
-- **Oferta inicial de `STARTING_UNSPENT_POINTS = 3` pontos** (`js/equipment.js`): valor por omissão devolvido só quando a chave de pontos nunca foi gravada (jogadores já existentes, mesmo com 0 pontos gravados, não são afetados retroativamente). Adicionada porque, sem ela, o primeiro mini-boss (nível 5) era matematicamente quase impossível de vencer só com os pontos ganhos a subir de nível até aí — validado por simulação antes de implementar (ver secção 8)
+- **Oferta inicial de `STARTING_UNSPENT_POINTS = 4` pontos** (`js/equipment.js`): valor por omissão devolvido só quando a chave de pontos nunca foi gravada (jogadores já existentes, mesmo com 0 pontos gravados, não são afetados retroativamente). Adicionada porque, sem ela, o primeiro mini-boss (nível 5) era matematicamente quase impossível de vencer só com os pontos ganhos a subir de nível até aí — validado por simulação antes de implementar (ver secção 8). Testado primeiro com 3, subido para 4 depois de testes reais
 - `LEVEL_UP_POINTS = 1` ponto por cada nível de personagem subido (substituiu o antigo sistema de "quartos": 4 pontos distribuídos a cada 25% de progresso dentro do nível)
+- **Mostrado no HUD do personagem** ("Pontos para distribuir: N", `js/equipment.js` `renderStatsHud`) - antes só se percebia que havia pontos pelos botões "+" aparecerem, sem nenhum número explícito
 - Pontos só contam com base em **distância confirmada** (nunca a sessão de treino em curso, que pode ainda ser perdida)
 - **Bónus por derrotar criaturas**, escalado pelas estrelas da vitória (secção 8) — quanto mais apertada a luta, menos pontos:
   - 3 estrelas → pontuação máxima
@@ -90,7 +91,7 @@ Escolhida para não ser nem linear nem exponencial — os incrementos crescem, m
   - 1 estrela → pontuação máxima − 2 (nunca abaixo de 0)
   - `MINIBOSS_MAX_POINTS = 3`, `BOSS_MAX_POINTS = 5`
 - **Re-lutar e melhorar as estrelas paga sempre a diferença** (`computeBonusPointsForStars`, comparado com as estrelas anteriores antes de `markCreatureDefeated` as atualizar): ganhar 1ª vez com 1 estrela dá 1 ponto (mini-boss); re-lutar depois e subir para 3 estrelas dá **mais 2** (a diferença até ao máximo de 3), nunca a mesma vitória paga duas vezes nem se perde pontos ao sair pior numa re-luta. Corrigido depois de um bug em que só a primeira vitória de sempre pagava bónus, independentemente das estrelas de re-lutas seguintes
-- Com os valores de produção, até ao nível 100 (assumindo todas as 10 mini-bosses + 10 bosses derrotados sempre com 3 estrelas): 3 iniciais + 99 pontos de nível + até 30 de mini-bosses (10 × 3) + até 50 de bosses (10 × 5) = **até 182 pontos no máximo** — a forma como se luta (arriscar vs jogar seguro) é relevante para a pontuação
+- Com os valores de produção, até ao nível 100 (assumindo todas as 10 mini-bosses + 10 bosses derrotados sempre com 3 estrelas): 4 iniciais + 99 pontos de nível + até 30 de mini-bosses (10 × 3) + até 50 de bosses (10 × 5) = **até 183 pontos no máximo** — a forma como se luta (arriscar vs jogar seguro) é relevante para a pontuação
 
 ## 7. Fórmula de valor dos equipamentos
 
@@ -207,7 +208,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - Geração de criaturas (`MINIBOSS_LEVEL_STEP`, `BOSS_LEVEL_STEP`, `MAX_LEVEL_TO_GENERATE`)
 - Fórmula de combate (`BATTLE_DEFENSE_PERCENT`, `BATTLE_FLOOR_PERCENT`, `DAMAGE_VARIANCE_MIN`)
 - **Simulador de distância por tempo**: liga/desliga um timer que soma `segundos × fator` à distância vitalícia, fator ajustável em tempo real — para testar níveis altos sem andar de verdade
-- **Reset de personagem**: apaga nível, status, pontos, monstros derrotados, conquistas e o histórico de treinos (`training_sessions` no Supabase, usado pela aba Perfil) — com confirmação
+- **Reset de personagem**: apaga nível, status, pontos, monstros derrotados, conquistas e o histórico de treinos (`training_sessions` no Supabase, usado pela aba Perfil) — com confirmação. O mesmo botão (`resetCharacterAndDistance`) está também disponível a **qualquer jogador** (não só admins) ao fundo da aba Perfil, numa secção "Zona de Perigo" — não repõe nada relacionado com medalhas mensais (`monthly_medals`), que é uma tabela partilhada e imutável mesmo para o próprio dono (secção 10); um jogador que já tenha ganho uma medalha volta a "reclamá-la" automaticamente no login seguinte (`claimOwnMedals`, `js/monthly-medals.js`), mesmo depois de um reset
 
 `STARTING_UNSPENT_POINTS` (secção 6) e `CREATURE_ARCHETYPES` (secção 8) **não** estão no card de Debug — ao contrário dos outros valores acima, ficam hardcoded no código (`js/equipment.js`/`js/monsters.js`), não em `localStorage`. Mudar exige editar e fazer deploy, não só ajustar um input.
 
@@ -229,6 +230,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **`?v=YYYYMMDD` nos `<script src>` locais**: ver secção 3 — sem isto, cache do navegador/CDN podia fazer uma funcionalidade nova parecer "morta" (botão sem efeito) depois de um deploy, mesmo com o código já correto no repositório
 - **`.leaderboard-list.hidden` em vez de depender só de `.hidden`**: `.hidden` e `.leaderboard-list` (que define `display: flex`) têm a mesma especificidade CSS; como `.leaderboard-list` vem depois no ficheiro, ganhava sempre ao `.hidden`, e as 3 abas do leaderboard apareciam todas empilhadas ao mesmo tempo, independentemente de qual estava selecionada. Regra semelhante à de `#battle-hud.hidden`, já existente por um motivo parecido
 - **Bloqueio entre abas via `localStorage` + heartbeat, não `BroadcastChannel`**: mais simples (um só mecanismo, sem duas formas de comunicação a coexistir) e cobre também o caso de uma segunda aba abrir **depois** de o treino/luta já ter começado na primeira (que não teria recebido uma mensagem de broadcast anterior à sua própria existência) - a segunda aba só precisa de ler o estado atual do bloqueio, não de "ouvir" um evento passado
+- **`getStoredNumber` nunca usa `Number(raw) || defaultValue`**: `0` é um valor legítimo (ex: pontos por gastar depois de gastar tudo) mas é "falsy" em JavaScript, então esse padrão fazia qualquer valor guardado como `0` ser lido de volta como o `defaultValue` em vez do zero real. Bug crítico real: um jogador ficava num ciclo infinito de pontos "fantasma" sempre que chegava a 0 (a próxima leitura fingia que ainda tinha os pontos da oferta inicial, permitindo gastar mais do que devia, repetidamente). Corrigido para `raw === null ? defaultValue : (Number.isNaN(parsed) ? defaultValue : parsed)` — o mesmo padrão que `getDebugValue` (`js/debug.js`) já usava corretamente desde o início
 
 ## 14. Contas e Leaderboard (Supabase)
 
@@ -258,6 +260,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **Card Resumo** (`renderProfileSummary`): distância total e sessão mais longa da semana/mês atual, dias distintos treinados, **Recorde de distância** (`getBestSessionDistanceM()` — a maior distância numa única sessão de sempre, já existia para as conquistas de distância, só passou a aparecer aqui também), **Recorde de velocidade** (`getBestPaceMps()` — o mesmo valor já usado pela conquista `pace_personal_record`, convertido para km/h), e **distância anulada por excesso de velocidade** (secção 4)
 - Cada barra mostra sempre um **rótulo visível por baixo** (dia da semana, dia do mês, ou abreviatura do mês no gráfico de todos os meses) — o valor exato continua só no `<title>` nativo ao passar o rato (não funciona por toque em mobile), mas identificar qual barra é qual já não depende disso
 - **Todas as distâncias mostradas ao jogador são em km** (`formatDistanceKm()`, js/experience.js) e **velocidades em km/h** (`formatSpeedKmh()`, js/experience.js) — os dados continuam guardados/calculados em metros e m/s, só a apresentação muda
+- **"Zona de Perigo"** (secção final da aba): botão de repor personagem e distância, igual ao do Debug mas disponível a qualquer jogador (secção 11)
 
 ## 16. Limitações conhecidas / possíveis próximos passos
 
