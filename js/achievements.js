@@ -287,17 +287,28 @@ function getAchievementProgress(achievement) {
 }
 
 // Chamado depois de um treino terminar (com dados da sessao) ou de uma
-// batalha ser vencida (sem argumentos, so para reavaliar bosses)
-function checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds) {
+// batalha ser vencida (sem argumentos, so para reavaliar bosses). mode
+// default "correr" preserva o comportamento anterior (so existia um modo)
+// para chamadas sem sessao (batalhas) ou do simulador de distancia do Debug.
+//
+// sessionDistanceM aqui e sempre a distancia EFETIVA (com o multiplicador
+// de justica de esforco do modo ja aplicado, ver js/training.js) - as
+// conquistas de distancia sao assim justas para qualquer modo. As de
+// RITMO (secção "pace" abaixo) sao a excecao: dependem de velocidade real,
+// nao de esforco, por isso ficam limitadas ao modo Correr - de outra forma
+// uma bicicleta desbloqueava-as trivialmente, sem esforco comparavel.
+function checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, mode = "correr") {
   const hasSessionData = typeof sessionDistanceM === "number";
   if (hasSessionData) {
     updateBestSessionDistanceM(sessionDistanceM);
   }
 
+  const paceEligible = hasSessionData && mode === "correr";
+
   // Recorde pessoal de ritmo: so pode disparar a partir da 2a sessao (a 1a
   // so serve para estabelecer o "anterior" a bater) - compara antes de
   // atualizar o recorde guardado.
-  if (hasSessionData && typeof sessionDurationSeconds === "number" && sessionDurationSeconds > 0) {
+  if (paceEligible && typeof sessionDurationSeconds === "number" && sessionDurationSeconds > 0) {
     const paceMps = sessionDistanceM / sessionDurationSeconds;
     const previousBestPace = getBestPaceMps();
     if (previousBestPace > 0 && paceMps > previousBestPace) {
@@ -312,7 +323,7 @@ function checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds) {
 
     if (achievement.type === "pace") {
       if (
-        hasSessionData &&
+        paceEligible &&
         typeof sessionDurationSeconds === "number" &&
         sessionDistanceM >= achievement.distanceM &&
         sessionDurationSeconds <= achievement.maxSeconds

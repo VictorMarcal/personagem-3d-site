@@ -45,6 +45,10 @@ function formatMonthKey(date) {
   return `${y}-${m}`;
 }
 
+// So para apresentacao (histórico) - distinto do mapa de sufixos de chave
+// de js/debug.js, apesar dos valores coincidirem hoje.
+const MODE_LABEL_PT = { caminhar: "Caminhar", correr: "Correr", bicicleta: "Bicicleta" };
+
 const MONTH_NAMES_PT = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
@@ -156,10 +160,15 @@ function renderProfileHistory(sessions) {
   sessions.forEach((s) => {
     const date = new Date(s.started_at);
     const key = formatDayKey(date);
-    const entry = byDay.get(key) || { date, distance: 0, duration: 0, count: 0 };
+    const entry = byDay.get(key) || { date, distance: 0, effectiveDistance: 0, duration: 0, count: 0, modes: new Set() };
     entry.distance += toNum(s.distance_m);
+    // Sessoes anteriores a esta funcionalidade nao tem effective_distance_m
+    // (coluna nova) - cai para distance_m, que e o que valia para XP nessa
+    // altura (so existia um "modo" implicito, sem multiplicador).
+    entry.effectiveDistance += toNum(s.effective_distance_m != null ? s.effective_distance_m : s.distance_m);
     entry.duration += toNum(s.duration_seconds);
     entry.count += 1;
+    if (s.mode) entry.modes.add(s.mode);
     byDay.set(key, entry);
   });
 
@@ -183,12 +192,24 @@ function renderProfileHistory(sessions) {
       const row = document.createElement("div");
       row.className = "profile-history-row";
 
+      const modesArray = [...entry.modes];
+      const modeLabel = modesArray.length === 1 ? MODE_LABEL_PT[modesArray[0]] || "" : modesArray.length > 1 ? "Misto" : "";
+      const labelSuffix = [entry.count > 1 ? `${entry.count} treinos` : null, modeLabel || null].filter(Boolean).join(", ");
+
       const label = document.createElement("span");
-      label.textContent = entry.count > 1 ? `${entry.dayKey} (${entry.count} treinos)` : entry.dayKey;
+      label.textContent = labelSuffix ? `${entry.dayKey} (${labelSuffix})` : entry.dayKey;
+
+      // So mostra a distancia efetiva separada quando difere da real (ex:
+      // sessoes de bicicleta, com o multiplicador de justica de esforco) -
+      // em caminhar/correr seria sempre repetir o mesmo numero.
+      const showsEffective = Math.round(entry.effectiveDistance) !== Math.round(entry.distance);
+      const distanceText = showsEffective
+        ? `${formatDistanceKm(entry.distance)} (${formatDistanceKm(entry.effectiveDistance)} efetivos)`
+        : formatDistanceKm(entry.distance);
 
       const avgSpeedMps = entry.duration > 0 ? entry.distance / entry.duration : 0;
       const value = document.createElement("span");
-      value.textContent = `${formatDistanceKm(entry.distance)} · ${Math.round(entry.duration / 60)} min · ${formatSpeedKmh(avgSpeedMps)}`;
+      value.textContent = `${distanceText} · ${Math.round(entry.duration / 60)} min · ${formatSpeedKmh(avgSpeedMps)}`;
 
       row.append(label, value);
       listEl.appendChild(row);
@@ -392,7 +413,7 @@ async function renderProfileTab() {
 
   const { data: sessions, error } = await supabaseClient
     .from("training_sessions")
-    .select("started_at, distance_m, duration_seconds")
+    .select("started_at, distance_m, effective_distance_m, mode, duration_seconds")
     .eq("user_id", currentUserId)
     .order("started_at");
 

@@ -91,11 +91,19 @@
 
       <p class="training-label">Distância percorrida (treino atual)</p>
       <p id="training-distance" class="training-distance">0 m</p>
+      <p id="training-effective-distance-row" class="training-effective-distance-row hidden">
+        Distância efetiva (XP): <span id="training-effective-distance">0 m</span>
+      </p>
       <p id="speed-warning" class="speed-warning hidden">⚠️ Velocidade acima do limite — esta distância não está a contar</p>
     </section>
 
     <section id="training-panel">
       <div id="start-screen" class="panel-screen">
+        <div id="mode-selector" class="mode-selector">
+          <button id="btn-mode-caminhar" class="mode-btn" type="button">🚶 Caminhar</button>
+          <button id="btn-mode-correr" class="mode-btn active" type="button">🏃 Correr</button>
+          <button id="btn-mode-bicicleta" class="mode-btn" type="button">🚴 Bicicleta</button>
+        </div>
         <button id="btn-start-treino" class="btn-primary">Iniciar Treino</button>
       </div>
 
@@ -194,8 +202,23 @@
         <label>MIN_MOVEMENT_M <span class="debug-hint">movimento mín. para contar (m)</span>
           <input type="number" id="dbg-minMovementM" step="1">
         </label>
-        <label>MAX_SPEED_KMH <span class="debug-hint">velocidade máx. aceite (km/h)</span>
-          <input type="number" id="dbg-maxSpeedKmh" step="1">
+        <label>MAX_SPEED_KMH_CAMINHAR <span class="debug-hint">velocidade máx. aceite a caminhar (km/h)</span>
+          <input type="number" id="dbg-maxSpeedKmhCaminhar" step="1">
+        </label>
+        <label>MAX_SPEED_KMH_CORRER <span class="debug-hint">velocidade máx. aceite a correr (km/h)</span>
+          <input type="number" id="dbg-maxSpeedKmhCorrer" step="1">
+        </label>
+        <label>MAX_SPEED_KMH_BICICLETA <span class="debug-hint">velocidade máx. aceite de bicicleta (km/h)</span>
+          <input type="number" id="dbg-maxSpeedKmhBicicleta" step="1">
+        </label>
+        <label>XP_MULTIPLIER_CAMINHAR <span class="debug-hint">fração da distância que conta para XP a caminhar</span>
+          <input type="number" id="dbg-xpMultiplierCaminhar" step="0.01">
+        </label>
+        <label>XP_MULTIPLIER_CORRER <span class="debug-hint">fração da distância que conta para XP a correr</span>
+          <input type="number" id="dbg-xpMultiplierCorrer" step="0.01">
+        </label>
+        <label>XP_MULTIPLIER_BICICLETA <span class="debug-hint">fração da distância que conta para XP de bicicleta</span>
+          <input type="number" id="dbg-xpMultiplierBicicleta" step="0.01">
         </label>
         <label>MINIBOSS_LEVEL_STEP <span class="debug-hint">intervalo de mini-bosses (níveis)</span>
           <input type="number" id="dbg-miniBossLevelStep" step="1">
@@ -297,28 +320,28 @@
 
   <footer class="site-footer">
     <p>&copy; 2026 Personagem 3D</p>
-    <p id="site-version" class="site-version">v1.0.0</p>
+    <p id="site-version" class="site-version">v1.1.0</p>
   </footer>
 
   <!-- ?v=YYYYMMDD nos scripts locais abaixo: sobe esta data sempre que
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260803a"></script>
-  <script src="js/tab-lock.js?v=20260803a"></script>
-  <script src="js/auth.js?v=20260803a"></script>
-  <script src="js/progress-sync.js?v=20260803a"></script>
-  <script src="js/leaderboard.js?v=20260803a"></script>
-  <script src="js/main.js?v=20260803a"></script>
-  <script src="js/debug.js?v=20260803a"></script>
-  <script src="js/equipment.js?v=20260803a"></script>
-  <script src="js/experience.js?v=20260803a"></script>
-  <script src="js/monsters.js?v=20260803a"></script>
-  <script src="js/monthly-medals.js?v=20260803a"></script>
-  <script src="js/battle.js?v=20260803a"></script>
-  <script src="js/training.js?v=20260803a"></script>
-  <script src="js/profile.js?v=20260803a"></script>
-  <script src="js/achievements.js?v=20260803a"></script>
-  <script src="js/orientation.js?v=20260803a"></script>
+  <script src="js/storage-keys.js?v=20260803b"></script>
+  <script src="js/tab-lock.js?v=20260803b"></script>
+  <script src="js/auth.js?v=20260803b"></script>
+  <script src="js/progress-sync.js?v=20260803b"></script>
+  <script src="js/leaderboard.js?v=20260803b"></script>
+  <script src="js/main.js?v=20260803b"></script>
+  <script src="js/debug.js?v=20260803b"></script>
+  <script src="js/equipment.js?v=20260803b"></script>
+  <script src="js/experience.js?v=20260803b"></script>
+  <script src="js/monsters.js?v=20260803b"></script>
+  <script src="js/monthly-medals.js?v=20260803b"></script>
+  <script src="js/battle.js?v=20260803b"></script>
+  <script src="js/training.js?v=20260803b"></script>
+  <script src="js/profile.js?v=20260803b"></script>
+  <script src="js/achievements.js?v=20260803b"></script>
+  <script src="js/orientation.js?v=20260803b"></script>
 </body>
 </html>

@@ -242,6 +242,29 @@ main {
   display: none;
 }
 
+.mode-selector {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.mode-btn {
+  border: 1px solid #2a2a30;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #1f1f26;
+  color: #888;
+  cursor: pointer;
+}
+
+.mode-btn.active {
+  background: #4a90d9;
+  border-color: #4a90d9;
+  color: #fff;
+}
+
 .btn-primary,
 .btn-secondary {
   border: none;
@@ -271,6 +294,12 @@ main {
 .training-distance {
   font-size: 2rem;
   font-weight: 700;
+}
+
+.training-effective-distance-row {
+  margin-top: 0.15rem;
+  font-size: 0.85rem;
+  color: #999;
 }
 
 .speed-warning {

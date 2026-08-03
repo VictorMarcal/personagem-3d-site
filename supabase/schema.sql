@@ -197,6 +197,24 @@ alter table public.player_progress add column if not exists encountered_creature
 -- ver quanto ficou de fora (aba Perfil, card Resumo).
 alter table public.player_progress add column if not exists discarded_speed_distance_m numeric not null default 0;
 
+-- Migracao: modo de treino (caminhar/correr/bicicleta) e distancia efetiva
+-- por sessao, apos o multiplicador de "justica de esforco" entre modos
+-- (ver js/debug.js getXpMultiplier e secção 4 da documentação).
+-- distance_m continua a ser a distancia real percorrida (GPS), imutavel
+-- como sempre; effective_distance_m e a distancia que contou de facto para
+-- XP/pontos/leaderboard/conquistas nesse momento - guardada explicitamente
+-- (em vez de recalculada a partir do multiplicador atual) para o historico
+-- nunca mudar retroativamente se os multiplicadores forem afinados mais
+-- tarde no Debug.
+alter table public.training_sessions add column if not exists mode text not null default 'correr';
+alter table public.training_sessions add column if not exists effective_distance_m numeric;
+-- Sessoes anteriores a esta funcionalidade so tinham um modo implicito, sem
+-- multiplicador (equivalente a correr, fator 1.0) - o proprio distance_m
+-- ja era o valor todo creditado para XP nessa altura.
+update public.training_sessions set effective_distance_m = distance_m where effective_distance_m is null;
+alter table public.training_sessions alter column effective_distance_m set not null;
+alter table public.training_sessions alter column effective_distance_m set default 0;
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

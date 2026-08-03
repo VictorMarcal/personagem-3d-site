@@ -18,7 +18,50 @@ const STORAGE_KEYS = {
   distanciaAcumuladaM: "treino.distanciaAcumuladaM",
   ultimaPosicao: "treino.ultimaPosicao",
   inicioSessao: "treino.inicioSessao",
+  // Modo escolhido (caminhar/correr/bicicleta, ver js/debug.js) - guardado
+  // mesmo fora de um treino ativo, para lembrar a ultima escolha como
+  // default; guardado TAMBEM enquanto o treino decorre, para um
+  // resumeTrainingIfNeeded() apos um refresh continuar a usar o limite de
+  // velocidade certo (secção 4.1 da documentação).
+  modoAtivo: "treino.modoAtivo",
 };
+
+// Fixo para toda a duracao de uma sessao (nao muda a meio - os botoes de
+// escolha ficam dentro do #start-screen, por isso ficam escondidos assim
+// que o treino comeca).
+const DEFAULT_TRAINING_MODE = "correr";
+let selectedTrainingMode = localStorage.getItem(STORAGE_KEYS.modoAtivo) || DEFAULT_TRAINING_MODE;
+
+const modeButtonEls = {
+  caminhar: document.getElementById("btn-mode-caminhar"),
+  correr: document.getElementById("btn-mode-correr"),
+  bicicleta: document.getElementById("btn-mode-bicicleta"),
+};
+
+function updateModeButtonsUI() {
+  Object.entries(modeButtonEls).forEach(([mode, btn]) => {
+    btn.classList.toggle("active", mode === selectedTrainingMode);
+  });
+}
+
+function setTrainingMode(mode) {
+  selectedTrainingMode = mode;
+  localStorage.setItem(STORAGE_KEYS.modoAtivo, mode);
+  updateModeButtonsUI();
+}
+
+Object.entries(modeButtonEls).forEach(([mode, btn]) => {
+  btn.addEventListener("click", () => setTrainingMode(mode));
+});
+
+updateModeButtonsUI();
+
+// Distancia "efetiva" (com o multiplicador de justica de esforco do modo
+// ja aplicado) - e esta que conta para XP/pontos/leaderboard/conquistas,
+// nunca a distancia real diretamente (ver js/debug.js getXpMultiplier).
+function getEffectiveDistanceM(rawM, mode) {
+  return rawM * getXpMultiplier(mode);
+}
 
 function haversineDistance(lat1, lon1, lat2, lon2) {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -63,8 +106,19 @@ function hideSpeedWarning() {
   speedWarningEl.classList.add("hidden");
 }
 
+const effectiveDistanceRowEl = document.getElementById("training-effective-distance-row");
+const effectiveDistanceEl = document.getElementById("training-effective-distance");
+
 function updateDistanceDisplay() {
   distanceEl.textContent = formatDistanceKm(totalDistanceM);
+
+  // So mostra a linha "efetiva" quando difere da real (multiplicador != 1)
+  // - em Correr as duas seriam sempre o mesmo numero, so ruido visual.
+  const multiplier = getXpMultiplier(selectedTrainingMode);
+  effectiveDistanceRowEl.classList.toggle("hidden", multiplier === 1);
+  if (multiplier !== 1) {
+    effectiveDistanceEl.textContent = formatDistanceKm(getEffectiveDistanceM(totalDistanceM, selectedTrainingMode));
+  }
 }
 
 // Treino acumulado: copia persistida em localStorage, salva a cada 10s
@@ -164,7 +218,7 @@ function onPositionUpdate(position) {
     const deltaSeconds = (timestamp - lastPosition.timestamp) / 1000;
     const speedMps = deltaSeconds > 0 ? segmentM / deltaSeconds : Infinity;
 
-    if (speedMps > getMaxSpeedMps()) {
+    if (speedMps > getMaxSpeedMps(selectedTrainingMode)) {
       // Salto irreal (erro de GPS, bicicleta ou veiculo) - mantem a ancora
       // e ignora, mas guarda quanto ficou de fora e avisa o jogador.
       addToDiscardedSpeedDistance(segmentM);
@@ -250,6 +304,7 @@ function stopTraining() {
   }
 
   const sessionDistanceM = totalDistanceM;
+  const sessionEffectiveDistanceM = getEffectiveDistanceM(sessionDistanceM, selectedTrainingMode);
   const sessionEndTime = Date.now();
   const sessionDurationSeconds = sessionStartTime ? (sessionEndTime - sessionStartTime) / 1000 : null;
 
@@ -259,14 +314,20 @@ function stopTraining() {
       started_at: new Date(sessionStartTime).toISOString(),
       ended_at: new Date(sessionEndTime).toISOString(),
       distance_m: sessionDistanceM,
+      effective_distance_m: sessionEffectiveDistanceM,
+      mode: selectedTrainingMode,
       duration_seconds: sessionDurationSeconds,
     });
   }
 
-  addToLifetimeDistance(totalDistanceM);
-  addToMonthlyDistance(totalDistanceM);
+  // Distancia EFETIVA (com o multiplicador de justica de esforco ja
+  // aplicado) e que conta para XP/pontos/leaderboard/conquistas - a real
+  // (GPS) fica so no historico da sessao acima, para o jogador ver o que
+  // percorreu de facto.
+  addToLifetimeDistance(sessionEffectiveDistanceM);
+  addToMonthlyDistance(sessionEffectiveDistanceM);
   incrementTotalTrainingsCompleted();
-  checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds);
+  checkAndUnlockAchievements(sessionEffectiveDistanceM, sessionDurationSeconds, selectedTrainingMode);
 
   totalDistanceM = 0;
   lastPosition = null;
