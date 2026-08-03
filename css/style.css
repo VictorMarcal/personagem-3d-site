@@ -919,15 +919,27 @@ main {
 
 .profile-chart {
   display: flex;
-  align-items: flex-end;
-  gap: 2px;
+  align-items: flex-start;
   width: 100%;
   height: 120px;
   margin-bottom: 1rem;
+}
+
+.profile-chart-yaxis {
+  flex-shrink: 0;
+}
+
+/* So esta parte tem scroll horizontal - o eixo dos YY (.profile-chart-yaxis)
+   fica sempre visivel, mesmo com muitas barras (ex: "todos os meses" ou um
+   mes de 31 dias) */
+.profile-chart-scroll {
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
 }
 
-.profile-chart svg {
+.profile-chart-yaxis svg,
+.profile-chart-scroll svg {
   display: block;
 }
 

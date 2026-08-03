@@ -215,29 +215,66 @@ function renderProfileHistory(sessions) {
 
 // --- Graficos (SVG desenhado a mao, sem biblioteca) ----------------------
 
-function buildBarChartSvg(entries) {
+// Alturas partilhadas entre o eixo dos YY e as barras, para as linhas de
+// grelha e os rotulos de km baterem certo com o topo real de cada barra.
+const CHART_HEIGHT = 100;
+const CHART_LABEL_HEIGHT = 14;
+const CHART_TOTAL_HEIGHT = CHART_HEIGHT + CHART_LABEL_HEIGHT;
+const CHART_YAXIS_WIDTH = 42;
+// 3 marcas (topo/meio/zero) - suficiente para dar escala sem sobrecarregar
+// um grafico ja pequeno; posicoes fixas em px (independentes do maxValue).
+const CHART_YAXIS_TICK_FRACTIONS = [1, 0.5, 0];
+
+// Eixo dos YY: coluna fixa (nao acompanha o scroll horizontal das barras -
+// ver .profile-chart-yaxis/.profile-chart-scroll em css/style.css), para
+// os rotulos de km ficarem sempre visiveis mesmo com muitas barras (ex: o
+// grafico "todos os meses" ou um mes com 31 dias).
+function buildYAxisSvg(maxValue) {
+  const labels = CHART_YAXIS_TICK_FRACTIONS.map((fraction) => {
+    const y = CHART_HEIGHT * (1 - fraction);
+    const value = maxValue * fraction;
+    return `<text x="${CHART_YAXIS_WIDTH - 4}" y="${y + 3}" text-anchor="end" font-size="8" fill="#888">${formatDistanceKm(value)}</text>`;
+  }).join("");
+
+  return `<svg viewBox="0 0 ${CHART_YAXIS_WIDTH} ${CHART_TOTAL_HEIGHT}" width="${CHART_YAXIS_WIDTH}" height="${CHART_TOTAL_HEIGHT}" xmlns="http://www.w3.org/2000/svg">${labels}</svg>`;
+}
+
+function buildBarChartSvg(entries, maxValue) {
   const barWidth = 14;
   const gap = 4;
-  const chartHeight = 100;
-  const labelHeight = 14;
-  const totalHeight = chartHeight + labelHeight;
-  const maxValue = Math.max(1, ...entries.map((e) => e.value));
   const width = Math.max(1, entries.length * (barWidth + gap) - gap);
+
+  // Linhas de grelha tenues, alinhadas com as marcas do eixo dos YY, para
+  // ser facil ler a que valor corresponde o topo de cada barra.
+  const gridLines = CHART_YAXIS_TICK_FRACTIONS.map((fraction) => {
+    const y = CHART_HEIGHT * (1 - fraction);
+    return `<line x1="0" y1="${y}" x2="${width}" y2="${y}" stroke="#2a2a30" stroke-width="1" />`;
+  }).join("");
 
   const bars = entries
     .map((entry, i) => {
-      const barHeight = Math.max(1, Math.round((entry.value / maxValue) * chartHeight));
+      const barHeight = Math.max(1, Math.round((entry.value / maxValue) * CHART_HEIGHT));
       const x = i * (barWidth + gap);
-      const y = chartHeight - barHeight;
+      const y = CHART_HEIGHT - barHeight;
       const labelX = x + barWidth / 2;
       return (
         `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="#4a90d9" rx="2"><title>${entry.label}: ${formatDistanceKm(entry.value)}</title></rect>` +
-        `<text x="${labelX}" y="${chartHeight + labelHeight - 3}" text-anchor="middle" font-size="8" fill="#888">${entry.label}</text>`
+        `<text x="${labelX}" y="${CHART_HEIGHT + CHART_LABEL_HEIGHT - 3}" text-anchor="middle" font-size="8" fill="#888">${entry.label}</text>`
       );
     })
     .join("");
 
-  return `<svg viewBox="0 0 ${width} ${totalHeight}" width="${width}" height="${totalHeight}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
+  return `<svg viewBox="0 0 ${width} ${CHART_TOTAL_HEIGHT}" width="${width}" height="${CHART_TOTAL_HEIGHT}" xmlns="http://www.w3.org/2000/svg">${gridLines}${bars}</svg>`;
+}
+
+// Junta o eixo (fixo) com as barras (scroll horizontal) - container.innerHTML
+// e substituido por isto em vez de so pelas barras, nas 3 chamadas abaixo.
+function buildChartWithAxis(entries) {
+  const maxValue = Math.max(1, ...entries.map((e) => e.value));
+  return (
+    `<div class="profile-chart-yaxis">${buildYAxisSvg(maxValue)}</div>` +
+    `<div class="profile-chart-scroll">${buildBarChartSvg(entries, maxValue)}</div>`
+  );
 }
 
 function sumDistanceInRange(sessions, start, end) {
@@ -291,7 +328,7 @@ function renderWeekChart(sessions, weekCursor) {
     entries.push({ label: WEEKDAY_NAMES_PT[i], value: sumDistanceInRange(sessions, dayStart, dayEnd) });
   }
 
-  container.innerHTML = buildBarChartSvg(entries);
+  container.innerHTML = buildChartWithAxis(entries);
 }
 
 function renderSelectedWeekChart() {
@@ -350,7 +387,7 @@ function renderMonthChart(sessions, monthCursor) {
     entries.push({ label: String(day), value: sumDistanceInRange(sessions, dayStart, dayEnd) });
   }
 
-  container.innerHTML = buildBarChartSvg(entries);
+  container.innerHTML = buildChartWithAxis(entries);
 }
 
 function renderSelectedMonthChart() {
@@ -397,7 +434,7 @@ function renderAllMonthsChart(sessions) {
     cursor = monthEnd;
   }
 
-  container.innerHTML = buildBarChartSvg(entries);
+  container.innerHTML = buildChartWithAxis(entries);
 }
 
 // --- Orquestrador ---------------------------------------------------------
