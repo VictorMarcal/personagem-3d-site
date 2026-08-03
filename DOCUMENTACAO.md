@@ -79,18 +79,22 @@ Antes de existirem modos distintos, o limite de velocidade (`MAX_SPEED_KMH = 20`
 
 ```
 incremento(n) = round(LEVEL_BASE × n^LEVEL_EXP)
-LEVEL_BASE = 500, LEVEL_EXP = 1.3
+LEVEL_BASE = 1000, LEVEL_EXP = 1.3
 ```
 
 Escolhida para não ser nem linear nem exponencial — os incrementos crescem, mas a taxa de crescimento desacelera.
 
+**Mostrado ao jogador como XP, não como distância** (`xp-progress-text`, `js/experience.js`): `1 XP = 1 metro` (ex: 1 km percorrido/efetivo = 1000 XP) — só nesta barra de progresso de nível; todas as outras distâncias do jogo continuam mostradas em km. A barra usa sempre a distância **efetiva** (secção 4.1), nunca a real diretamente, incluindo ao vivo durante um treino em curso.
+
+**`LEVEL_BASE` subiu de 500 para 1000** a pedido explícito, para o primeiro nível passar a exigir exatamente 1 km (1000 XP) em vez de 0,5 km. Como o nível de qualquer jogador é sempre recalculado ao vivo a partir da distância vitalícia (nunca guardado por si só), esta mudança **é retroativa**: duplica a distância necessária em todos os níveis (o incremento é proporcional a `LEVEL_BASE`), não só no primeiro — o nível "efetivo" de qualquer jogador com progresso existente desce ao aplicar esta alteração.
+
 | Nível | Distância p/ subir | Total acumulado |
 |---:|---:|---:|
-| 1→2 | 500 m | 500 m |
-| 5→6 | 1.118 m | 10.900 m |
-| 10→11 | 3.162 m | 38.475 m |
-| 16→17 | ~5.809 m | ~118.771 m |
-| — | — | **~8.560 km até ao nível 100** |
+| 1→2 | 1.000 XP | 1.000 XP |
+| 5→6 | 8.103 XP | ~21.800 XP |
+| 10→11 | 19.953 XP | ~96.900 XP |
+| 16→17 | ~36.758 XP | ~274.300 XP |
+| — | — | **~17.110 km até ao nível 100** |
 
 ## 6. Pontos de status
 
