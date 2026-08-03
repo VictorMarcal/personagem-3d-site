@@ -5,7 +5,13 @@
 // equipment.js/experience.js/monsters.js porque estes chamam os
 // getters logo na primeira renderizacao.
 const DEBUG_DEFAULTS = {
-  levelBase: 500,
+  // Nivel 1: 1000 XP (= 1km) para subir - pedido explicitamente a subir de
+  // 500 (0.5km) para o primeiro nivel "arredondar" para 1km/1000 XP.
+  // Duplica a distancia necessaria em TODOS os niveis (o formulario e
+  // proporcional a LEVEL_BASE), nao so no primeiro - efeito retroativo em
+  // qualquer jogador com progresso existente (o nivel e sempre recalculado
+  // ao vivo a partir da distancia vitalicia, nunca guardado por si so).
+  levelBase: 1000,
   levelExp: 1.3,
   statBaseVida: 100,
   statFlatVida: 4,

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260803f">
+  <link rel="stylesheet" href="css/style.css?v=20260803g">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -87,7 +87,7 @@
       <div class="xp-bar-track">
         <div id="xp-bar-fill" class="xp-bar-fill"></div>
       </div>
-      <p id="xp-progress-text">0 / 500 m</p>
+      <p id="xp-progress-text">0 / 1000 XP</p>
 
       <p class="training-label">Distância percorrida (treino atual)</p>
       <p id="training-distance" class="training-distance">0 m</p>
@@ -164,7 +164,7 @@
       <h2 class="card-title">Debug</h2>
 
       <div class="debug-vars">
-        <label>LEVEL_BASE <span class="debug-hint">distância base p/ nível</span>
+        <label>LEVEL_BASE <span class="debug-hint">XP base p/ nível (1 XP = 1 metro)</span>
           <input type="number" id="dbg-levelBase" step="1">
         </label>
         <label>LEVEL_EXP <span class="debug-hint">expoente da curva de nível</span>
@@ -327,28 +327,28 @@
 
   <footer class="site-footer">
     <p>&copy; 2026 Personagem 3D</p>
-    <p id="site-version" class="site-version">v1.1.3</p>
+    <p id="site-version" class="site-version">v1.2.0</p>
   </footer>
 
   <!-- ?v=YYYYMMDD nos scripts locais abaixo: sobe esta data sempre que
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260803f"></script>
-  <script src="js/tab-lock.js?v=20260803f"></script>
-  <script src="js/auth.js?v=20260803f"></script>
-  <script src="js/progress-sync.js?v=20260803f"></script>
-  <script src="js/leaderboard.js?v=20260803f"></script>
-  <script src="js/main.js?v=20260803f"></script>
-  <script src="js/debug.js?v=20260803f"></script>
-  <script src="js/equipment.js?v=20260803f"></script>
-  <script src="js/experience.js?v=20260803f"></script>
-  <script src="js/monsters.js?v=20260803f"></script>
-  <script src="js/monthly-medals.js?v=20260803f"></script>
-  <script src="js/battle.js?v=20260803f"></script>
-  <script src="js/training.js?v=20260803f"></script>
-  <script src="js/profile.js?v=20260803f"></script>
-  <script src="js/achievements.js?v=20260803f"></script>
-  <script src="js/orientation.js?v=20260803f"></script>
+  <script src="js/storage-keys.js?v=20260803g"></script>
+  <script src="js/tab-lock.js?v=20260803g"></script>
+  <script src="js/auth.js?v=20260803g"></script>
+  <script src="js/progress-sync.js?v=20260803g"></script>
+  <script src="js/leaderboard.js?v=20260803g"></script>
+  <script src="js/main.js?v=20260803g"></script>
+  <script src="js/debug.js?v=20260803g"></script>
+  <script src="js/equipment.js?v=20260803g"></script>
+  <script src="js/experience.js?v=20260803g"></script>
+  <script src="js/monsters.js?v=20260803g"></script>
+  <script src="js/monthly-medals.js?v=20260803g"></script>
+  <script src="js/battle.js?v=20260803g"></script>
+  <script src="js/training.js?v=20260803g"></script>
+  <script src="js/profile.js?v=20260803g"></script>
+  <script src="js/achievements.js?v=20260803g"></script>
+  <script src="js/orientation.js?v=20260803g"></script>
 </body>
 </html>
