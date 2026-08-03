@@ -217,13 +217,21 @@ function renderProfileHistory(sessions) {
 
 // Alturas partilhadas entre o eixo dos YY e as barras, para as linhas de
 // grelha e os rotulos de km baterem certo com o topo real de cada barra.
+// CHART_TOP_PADDING da espaco para o texto do valor mais alto (topo) nao
+// ficar cortado no limite superior do SVG - sem isto, o "ascender" da
+// fonte (acima da linha de base) ficava fora do viewBox e era cortado.
+const CHART_TOP_PADDING = 10;
 const CHART_HEIGHT = 100;
 const CHART_LABEL_HEIGHT = 14;
-const CHART_TOTAL_HEIGHT = CHART_HEIGHT + CHART_LABEL_HEIGHT;
+const CHART_TOTAL_HEIGHT = CHART_TOP_PADDING + CHART_HEIGHT + CHART_LABEL_HEIGHT;
 const CHART_YAXIS_WIDTH = 42;
 // 3 marcas (topo/meio/zero) - suficiente para dar escala sem sobrecarregar
 // um grafico ja pequeno; posicoes fixas em px (independentes do maxValue).
 const CHART_YAXIS_TICK_FRACTIONS = [1, 0.5, 0];
+
+function chartTickY(fraction) {
+  return CHART_TOP_PADDING + CHART_HEIGHT * (1 - fraction);
+}
 
 // Eixo dos YY: coluna fixa (nao acompanha o scroll horizontal das barras -
 // ver .profile-chart-yaxis/.profile-chart-scroll em css/style.css), para
@@ -231,7 +239,7 @@ const CHART_YAXIS_TICK_FRACTIONS = [1, 0.5, 0];
 // grafico "todos os meses" ou um mes com 31 dias).
 function buildYAxisSvg(maxValue) {
   const labels = CHART_YAXIS_TICK_FRACTIONS.map((fraction) => {
-    const y = CHART_HEIGHT * (1 - fraction);
+    const y = chartTickY(fraction);
     const value = maxValue * fraction;
     return `<text x="${CHART_YAXIS_WIDTH - 4}" y="${y + 3}" text-anchor="end" font-size="8" fill="#888">${formatDistanceKm(value)}</text>`;
   }).join("");
@@ -247,7 +255,7 @@ function buildBarChartSvg(entries, maxValue) {
   // Linhas de grelha tenues, alinhadas com as marcas do eixo dos YY, para
   // ser facil ler a que valor corresponde o topo de cada barra.
   const gridLines = CHART_YAXIS_TICK_FRACTIONS.map((fraction) => {
-    const y = CHART_HEIGHT * (1 - fraction);
+    const y = chartTickY(fraction);
     return `<line x1="0" y1="${y}" x2="${width}" y2="${y}" stroke="#2a2a30" stroke-width="1" />`;
   }).join("");
 
@@ -255,11 +263,11 @@ function buildBarChartSvg(entries, maxValue) {
     .map((entry, i) => {
       const barHeight = Math.max(1, Math.round((entry.value / maxValue) * CHART_HEIGHT));
       const x = i * (barWidth + gap);
-      const y = CHART_HEIGHT - barHeight;
+      const y = CHART_TOP_PADDING + (CHART_HEIGHT - barHeight);
       const labelX = x + barWidth / 2;
       return (
         `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="#4a90d9" rx="2"><title>${entry.label}: ${formatDistanceKm(entry.value)}</title></rect>` +
-        `<text x="${labelX}" y="${CHART_HEIGHT + CHART_LABEL_HEIGHT - 3}" text-anchor="middle" font-size="8" fill="#888">${entry.label}</text>`
+        `<text x="${labelX}" y="${CHART_TOP_PADDING + CHART_HEIGHT + CHART_LABEL_HEIGHT - 3}" text-anchor="middle" font-size="8" fill="#888">${entry.label}</text>`
       );
     })
     .join("");
