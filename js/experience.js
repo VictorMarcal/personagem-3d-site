@@ -24,6 +24,15 @@ function formatSpeedKmh(metersPerSecond) {
   return `${(metersPerSecond * 3.6).toFixed(1)} km/h`;
 }
 
+// XP (1 XP = 1 metro, ex: 1km = 1000 XP) - mesma convencao da barra de
+// nivel (secção 5 da documentação), usada tambem no leaderboard: os
+// valores ja sao distancia EFETIVA (com o multiplicador de justica de
+// esforco aplicado), por isso mostra-los como "pontos" de XP em vez de km
+// reforca que representam esforco, nao quilometros reais percorridos.
+function formatXP(meters) {
+  return `${Math.round(meters)} XP`;
+}
+
 // Chamado quando um treino e efetivamente parado, para tornar a distancia
 // da sessao permanente (a experiencia do personagem nunca reseta)
 function addToLifetimeDistance(deltaM) {

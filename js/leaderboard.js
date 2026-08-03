@@ -27,7 +27,7 @@ function createLeaderboardRowEl(row, rank, isOwn, distanceM) {
 
   const distEl = document.createElement("span");
   distEl.className = "leaderboard-distance";
-  distEl.textContent = formatDistanceKm(distanceM);
+  distEl.textContent = formatXP(distanceM);
 
   el.append(rankEl, nameEl, distEl);
   return el;
@@ -127,7 +127,7 @@ async function renderMedalHistory() {
 
         const distEl = document.createElement("span");
         distEl.className = "leaderboard-distance";
-        distEl.textContent = formatDistanceKm(m.distance_m);
+        distEl.textContent = formatXP(m.distance_m);
 
         el.append(rankEl, nameEl, distEl);
         leaderboardListHistoryEl.appendChild(el);
