@@ -45,10 +45,6 @@ function formatMonthKey(date) {
   return `${y}-${m}`;
 }
 
-// So para apresentacao (histórico) - distinto do mapa de sufixos de chave
-// de js/debug.js, apesar dos valores coincidirem hoje.
-const MODE_LABEL_PT = { caminhar: "Caminhar", correr: "Correr", bicicleta: "Bicicleta" };
-
 const MONTH_NAMES_PT = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",

@@ -38,6 +38,12 @@ const modeButtonEls = {
   bicicleta: document.getElementById("btn-mode-bicicleta"),
 };
 
+// Para apresentacao (popup de contagem decrescente, historico do Perfil) -
+// distinto do mapa de sufixos de chave de js/debug.js (TRAINING_MODE_KEY_SUFFIX),
+// apesar dos valores coincidirem hoje. Declarado aqui (carrega antes de
+// js/profile.js) para nao duplicar o identificador global.
+const MODE_LABEL_PT = { caminhar: "Caminhar", correr: "Correr", bicicleta: "Bicicleta" };
+
 function updateModeButtonsUI() {
   Object.entries(modeButtonEls).forEach(([mode, btn]) => {
     btn.classList.toggle("active", mode === selectedTrainingMode);
@@ -266,6 +272,42 @@ function showStartScreen() {
   hideSpeedWarning();
 }
 
+// Popup de contagem decrescente (5s) mostrado entre carregar em "Iniciar
+// Treino" e o GPS realmente comecar a contar - da tempo ao jogador para se
+// preparar/comecar a mexer-se, e lembra a conversao km->XP do modo
+// escolhido (relevante sobretudo em Caminhar/Bicicleta, onde difere de 1:1).
+const trainingCountdownModalEl = document.getElementById("training-countdown-modal");
+const trainingCountdownNumberEl = document.getElementById("training-countdown-number");
+const trainingCountdownMessageEl = document.getElementById("training-countdown-message");
+const TRAINING_COUNTDOWN_SECONDS = 5;
+let trainingCountdownIntervalId = null;
+
+function getModeXpExplanationText(mode) {
+  const multiplier = getXpMultiplier(mode);
+  const label = MODE_LABEL_PT[mode];
+  if (multiplier === 1) return `${label}: 1 km percorrido = 1 km de XP.`;
+  return `${label}: 1 km percorrido = ${multiplier.toFixed(2)} km de XP (esforço equivalente menor que correr a mesma distância).`;
+}
+
+function showTrainingCountdown() {
+  let secondsLeft = TRAINING_COUNTDOWN_SECONDS;
+  trainingCountdownMessageEl.textContent = getModeXpExplanationText(selectedTrainingMode);
+  trainingCountdownNumberEl.textContent = String(secondsLeft);
+  trainingCountdownModalEl.classList.remove("hidden");
+
+  trainingCountdownIntervalId = setInterval(() => {
+    secondsLeft -= 1;
+    if (secondsLeft <= 0) {
+      clearInterval(trainingCountdownIntervalId);
+      trainingCountdownIntervalId = null;
+      trainingCountdownModalEl.classList.add("hidden");
+      beginTrainingSession();
+      return;
+    }
+    trainingCountdownNumberEl.textContent = String(secondsLeft);
+  }, 1000);
+}
+
 function startTraining() {
   if (!("geolocation" in navigator)) {
     alert("Geolocalização não suportada neste navegador.");
@@ -274,12 +316,19 @@ function startTraining() {
 
   // Impede duas abas do mesmo telemovel/navegador terem um treino ativo em
   // simultaneo - cada uma contaria a mesma distancia GPS em separado e
-  // somava-a em dobro ao progresso partilhado.
+  // somava-a em dobro ao progresso partilhado. Reclamado ja aqui (antes da
+  // contagem decrescente), nao so no fim dela, para bloquear logo uma
+  // segunda aba que tente comecar durante esses 5s.
   if (!claimTabLock(STORAGE_KEY_TRAINING_TAB_LOCK)) {
     alert("Já tens um treino ativo noutro separador ou janela. Fecha-o antes de começar um novo aqui.");
     return;
   }
 
+  showTrainingCountdown();
+}
+
+// So corre depois da contagem decrescente terminar (showTrainingCountdown).
+function beginTrainingSession() {
   totalDistanceM = 0;
   lastPosition = null;
   sessionStartTime = Date.now();

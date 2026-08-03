@@ -728,6 +728,27 @@ main {
   display: none;
 }
 
+#training-countdown-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 980;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+#training-countdown-modal.hidden {
+  display: none;
+}
+
+.training-countdown-number {
+  font-size: 4rem;
+  font-weight: 800;
+  color: #4a90d9;
+}
+
 .auth-box {
   display: flex;
   flex-direction: column;
