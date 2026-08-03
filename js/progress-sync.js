@@ -60,8 +60,19 @@ async function syncProgressToSupabase() {
 
 // Debounce de ~400ms: uma rajada de mutacoes (ex: fim de um treino) so
 // gera um pedido de rede, com o estado final consolidado.
+//
+// SYNC_PENDING_KEY e marcado aqui, de imediato e de forma otimista - ANTES
+// do debounce sequer disparar - e nao so dentro de syncProgressToSupabase
+// quando a rede falha. Sem isto, uma mutacao seguida de um refresh/fecho da
+// aba antes dos 400ms (ou da rede) completarem nunca chegava a marcar nada
+// como pendente; no arranque seguinte, bootstrapAfterLogin() (js/auth.js)
+// hidratava o localStorage a partir do Supabase e apagava essa mutacao em
+// silencio, sem qualquer erro visivel - o jogador simplesmente via os
+// pontos/nivel voltarem atras. Removido de volta so depois de uma
+// sincronizacao com sucesso (syncProgressToSupabase abaixo).
 function queueProgressSync() {
   if (!currentUserId || !readyForSync) return;
+  localStorage.setItem(SYNC_PENDING_KEY, "true");
   if (syncTimeoutId) clearTimeout(syncTimeoutId);
   syncTimeoutId = setTimeout(syncProgressToSupabase, 400);
 }

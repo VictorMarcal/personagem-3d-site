@@ -144,6 +144,12 @@ async function bootstrapAfterLogin(user) {
     const progress = await fetchProgress(user.id);
     if (!progress) {
       await migrateLocalProgressToSupabase(user.id, profile.display_name);
+    } else if (localStorage.getItem(SYNC_PENDING_KEY) === "true") {
+      // Ha uma mutacao local por confirmar no Supabase (ver queueProgressSync,
+      // js/progress-sync.js) - hidratar aqui apagaria essa mutacao em
+      // silencio, sobrepondo-a com um estado do servidor mais antigo. Em vez
+      // disso confia-se no local (mais recente) e tenta-se reenviar mais
+      // abaixo, assim que readyForSync ficar true.
     } else {
       hydrateLocalStorageFromProgress(progress);
     }
