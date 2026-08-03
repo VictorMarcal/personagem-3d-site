@@ -676,6 +676,12 @@ main {
   border-top: 1px solid #2a2a30;
 }
 
+.site-version {
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  color: #555;
+}
+
 #auth-modal,
 #name-picker-modal {
   position: fixed;
