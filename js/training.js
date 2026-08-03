@@ -201,6 +201,12 @@ window.addEventListener("online", () => {
   flushTrainingSessionQueue();
 });
 
+// Leituras seguidas acima do limite de velocidade antes de uma serem
+// tratadas como violacao real (aviso + soma ao descartado) - um pico
+// isolado de ruido de GPS e ignorado em silencio (nem conta, nem descarta).
+const SPEED_VIOLATION_GRACE_READINGS = 2;
+let consecutiveSpeedViolations = 0;
+
 function onPositionUpdate(position) {
   const { latitude, longitude, accuracy } = position.coords;
   const timestamp = position.timestamp;
@@ -225,13 +231,26 @@ function onPositionUpdate(position) {
     const speedMps = deltaSeconds > 0 ? segmentM / deltaSeconds : Infinity;
 
     if (speedMps > getMaxSpeedMps(selectedTrainingMode)) {
-      // Salto irreal (erro de GPS, bicicleta ou veiculo) - mantem a ancora
-      // e ignora, mas guarda quanto ficou de fora e avisa o jogador.
-      addToDiscardedSpeedDistance(segmentM);
-      showSpeedWarning();
+      // A ancora avanca SEMPRE a partir daqui (linha lastPosition = ... no
+      // fim da funcao, ja fora deste bloco) - mesmo numa rejeicao. Antes
+      // ficava presa na ultima posicao valida; se o ritmo real do jogador
+      // se mantivesse perto do limite do modo (facil em Caminhar, cujo teto
+      // de 7 km/h esta perto do ritmo normal de uma caminhada), a distancia
+      // entre a ancora (cada vez mais antiga) e a posicao atual so crescia -
+      // nunca baixava o suficiente para a velocidade calculada voltar a
+      // ficar dentro do limite. Bola de neve real: quase tudo acabava
+      // descartado numa sessao inteira, em qualquer um dos 3 modos (mesmo
+      // codigo partilhado).
+      consecutiveSpeedViolations += 1;
+      if (consecutiveSpeedViolations >= SPEED_VIOLATION_GRACE_READINGS) {
+        addToDiscardedSpeedDistance(segmentM);
+        showSpeedWarning();
+      }
+      lastPosition = { latitude, longitude, timestamp };
       return;
     }
 
+    consecutiveSpeedViolations = 0;
     hideSpeedWarning();
     totalDistanceM += segmentM;
     updateDistanceDisplay();
