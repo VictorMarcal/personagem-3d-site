@@ -6,7 +6,12 @@ const distanceEl = document.getElementById("training-distance");
 const speedWarningEl = document.getElementById("speed-warning");
 
 const EARTH_RADIUS_M = 6371000;
-const SAVE_INTERVAL_MS = 10000;
+// Baixado de 10s para 5s (2026-08-03): TAB_LOCK_STALE_MS (js/tab-lock.js) e
+// de 15000ms - com o antigo intervalo de 10s so havia 5s de margem antes do
+// bloqueio entre abas poder expirar por engano (ex: browser a atrasar
+// temporizadores com o ecra bloqueado/aba em segundo plano). Com 5s, a
+// margem passa a ser de 10s, o dobro.
+const SAVE_INTERVAL_MS = 5000;
 
 // Filtros contra ruido/erros de GPS: ignora leituras pouco precisas,
 // movimentos pequenos demais para serem deslocamento real (parado, o GPS
