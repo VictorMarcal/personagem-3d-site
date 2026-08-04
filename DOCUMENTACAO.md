@@ -113,36 +113,51 @@ Escolhida para não ser nem linear nem exponencial — os incrementos crescem, m
   - `MINIBOSS_MAX_POINTS = 3`, `BOSS_MAX_POINTS = 5`
 - **Re-lutar e melhorar as estrelas paga sempre a diferença** (`computeBonusPointsForStars`, comparado com as estrelas anteriores antes de `markCreatureDefeated` as atualizar): ganhar 1ª vez com 1 estrela dá 1 ponto (mini-boss); re-lutar depois e subir para 3 estrelas dá **mais 2** (a diferença até ao máximo de 3), nunca a mesma vitória paga duas vezes nem se perde pontos ao sair pior numa re-luta. Corrigido depois de um bug em que só a primeira vitória de sempre pagava bónus, independentemente das estrelas de re-lutas seguintes
 - Com os valores de produção, até ao nível 100 (assumindo todas as 10 mini-bosses + 10 bosses derrotados sempre com 3 estrelas): 4 iniciais + 99 pontos de nível + até 30 de mini-bosses (10 × 3) + até 50 de bosses (10 × 5) = **até 183 pontos no máximo** — a forma como se luta (arriscar vs jogar seguro) é relevante para a pontuação
+- **Distribuídos entre 4 status investíveis** (secção 7): Energia, Força, Resistência, Foco — cada ponto sobe em 1 o nível do status escolhido, sem limite máximo
 
-## 7. Fórmula de valor dos equipamentos
+## 7. Fórmula de valor dos status
 
-Depois de testar uma curva de potência pura (`valor = base × nível^exp`) e descobrir que ela **garante matematicamente** incrementos decrescentes (o que parecia "pouco gratificante"), adotou-se uma fórmula recursiva aditiva:
+**Monstros** (inalterado desde a criação, `computeStatValue` em `js/equipment.js` — usado só por `computeCreatureStatValue`, `js/monsters.js`): depois de testar uma curva de potência pura (`valor = base × nível^exp`) e descobrir que ela **garante matematicamente** incrementos decrescentes (o que parecia "pouco gratificante"), adotou-se uma fórmula recursiva aditiva:
 
 ```
 Valor(1) = STAT_BASE
 Valor(n) = round(Valor(n-1) + STAT_FLAT + n × STAT_PERCENT)
 ```
 
-Isto garante que o incremento **nunca decresce** (na verdade cresce sempre um pouco), evitando o problema da curva de potência.
+Valores de produção (nota: Ataque e Defesa foram **trocados** entre si — ver secção 9): Vida base 100/flat 4/perc 89% (~4.990 no nível 100); Ataque base 50/flat 2/perc 45% (~2.523, curva original da Defesa); Defesa base 10/flat 2/perc 16% (~1.016, curva original do Ataque). Todos os 9 parâmetros continuam ajustáveis no card de Debug.
 
-**Valores de produção** (nota: Ataque e Defesa foram **trocados** entre si — ver secção 9):
-
-| Status | Base | Flat | % | Valor no nível 100 |
-|---|---:|---:|---:|---:|
-| Vida | 100 | 4 | 89% | ~4.990 |
-| Ataque | 50 | 2 | 45% | ~2.523 (curva original da Defesa) |
-| Defesa | 10 | 2 | 16% | ~1.016 (curva original do Ataque) |
-
-Todos os 9 parâmetros (base/flat/% × 3 status) são ajustáveis independentemente no card de Debug.
-
-**Recuperação de Vida** (novo 4º status, só da Armadura): fórmula linear simples, não recursiva, em pontos de vida por segundo real —
+**Jogador** (sistema novo, substitui por completo o antigo esquema de 3 níveis de equipamento + Recuperação linear — os monstros **não** foram tocados por esta mudança): 4 status investíveis com pontos (`nivelEnergia/Forca/Resistencia/Foco`, `js/equipment.js`), cada um alimentando um ou mais dos 6 status finais mostrados no HUD/Perfil. Equipamento é, por agora, um **bónus fixo** ("equipamento básico") somado ao valor do status — ainda não existe um sistema de melhoria de equipamento por moedas (fica para um passo futuro; os valores de bónus fixo abaixo são o que seria hoje o "equipamento inicial" de cada peça):
 
 ```
-Recuperação (pontos/s) = STAT_RECOVERY_BASE + NívelArmadura × 0.10
-STAT_RECOVERY_BASE = 0.1
+Vida    = PLAYER_BASE_VIDA    + EQUIP_BASICO_VIDA    + round(Energia^ENERGIA_EXP)
+Ataque  = PLAYER_BASE_ATAQUE  + EQUIP_BASICO_ATAQUE  + round(Força^FORCA_EXP)
+Defesa  = PLAYER_BASE_DEFESA  + EQUIP_BASICO_DEFESA  + round(Resistência^RESISTENCIA_EXP)
+
+PLAYER_BASE_VIDA = 100, PLAYER_BASE_ATAQUE = 10, PLAYER_BASE_DEFESA = 10
+EQUIP_BASICO_VIDA = 10 (Armadura), EQUIP_BASICO_ATAQUE = 8 (Espada), EQUIP_BASICO_DEFESA = 12 (Escudo)
+ENERGIA_EXP = 1.8, FORCA_EXP = 1.5, RESISTENCIA_EXP = 1.2
 ```
 
-Mostrado no HUD como "Recuperação: X/s". Não afeta nada durante a luta em si — é o ritmo a que a vida do jogador recupera fora de combate (ver secção 9, Sistema de duelos).
+Foco não tem peça de equipamento 3D própria (só o botão "+" do HUD), mas cada equipamento dá-lhe também um bónus fixo (`EQUIP_BASICO_FOCO`, 0 na produção atual — os 3 bónus somam-se ao nível investido para dar o Foco total usado nas 3 fórmulas seguintes):
+
+```
+FocoTotal = Foco + EQUIP_BASICO_FOCO
+
+Destreza (%)      = DESTREZA_BASE      + FocoTotal^DESTREZA_EXP
+Letalidade (%)    = LETALIDADE_BASE    + FocoTotal^LETALIDADE_EXP
+Regeneração (v/s) = REGENERACAO_BASE   + FocoTotal^REGENERACAO_EXP
+
+DESTREZA_BASE = 2, DESTREZA_EXP = 0.56
+LETALIDADE_BASE = 1, LETALIDADE_EXP = 0.639
+REGENERACAO_BASE = 0.2, REGENERACAO_EXP = 0.8
+```
+
+- **Destreza**: chance de esquivar por completo um ataque recebido (ver secção 9) — testada primeiro, antes de qualquer cálculo de dano
+- **Letalidade**: chance de acertar um crítico ao atacar (ver secção 9) — só testada se não houve esquiva do lado do defensor
+- **Regeneração**: pontos de vida recuperados por segundo real fora de combate (mesmo papel que a antiga "Recuperação" de secção 7, agora alimentada por Foco em vez do nível da Armadura)
+- Todos os parâmetros acima (bases, expoentes, bónus fixos de equipamento) são ajustáveis no card de Debug
+- **Porquê expoente sobre o nível em vez de base elevada ao nível**: a primeira tentativa (`base^Energia`, base > 1) explodia para valores astronómicos por volta do nível 100 (~4×10^17); uma segunda tentativa com base < 1 (`0.5^Energia`) colapsava para ~0 pelo mesmo motivo inverso. A fórmula final (`Energia^expoente`, expoente modesto entre 1 e 2) cresce de forma suave e controlada em qualquer nível razoável
+- Mostrado no HUD/Perfil como "Vida", "Ataque", "Defesa", "Destreza", "Letalidade", "Regeneração" (os 6 status finais) + "Energia/Força/Resistência/Foco: nível N" (os 4 status investíveis) — todos persistidos no Supabase (`player_progress.nivel_energia/forca/resistencia/foco`, secção 14)
 
 ## 8. Mini-Bosses e Bosses
 
@@ -170,7 +185,10 @@ Mostrado no HUD como "Recuperação: X/s". Não afeta nada durante a luta em si 
 
 - Botão "Batalhar" em cada monstro desbloqueado → abre um **popup fullscreen** (o `#viewer` 3D torna-se `position: fixed` a cobrir o ecrã todo, câmara afasta-se, personagem à esquerda, monstro placeholder de cor diferente à direita)
 - Turnos automáticos, jogador ataca sempre primeiro: Ataque(jogador) → Defesa(monstro) → Ataque(monstro) → Defesa(jogador) → repete
-- **Fórmula de dano** (com piso mínimo para nunca dar zero/negativo, o que causaria ciclos infinitos):
+- **Esquiva e crítico** (secção 7, só o jogador tem estas mecânicas — monstros têm Destreza/Letalidade fixas em 0, nunca esquivam nem dão crítico): a cada ataque, testa-se primeiro **esquiva** do defensor (`rollDodge`, chance = Destreza dele); se não esquivou, testa-se **crítico** do atacante (`rollCritico`, chance = Letalidade dele); só se nenhum dos dois ocorreu é que se aplica a fórmula de dano normal abaixo
+  - Esquiva bem-sucedida: dano = 0, luta segue sem alterar as barras de vida
+  - Crítico: dano = `round(Ataque_atacante × LETALIDADE_MULTIPLICADOR)`, **ignora Defesa por completo** e **não tem variação aleatória** — sempre o mesmo valor exato para o mesmo Ataque (`LETALIDADE_MULTIPLICADOR = 1.5`, ajustável no Debug)
+- **Fórmula de dano normal** (com piso mínimo para nunca dar zero/negativo, o que causaria ciclos infinitos):
 
 ```
 Bruto = Ataque_atacante − BATTLE_DEFENSE_PERCENT × Defesa_defensor
@@ -184,7 +202,7 @@ A variação aleatória aplica-se **depois** do piso mínimo, não antes. Foi te
 
 - **Porquê a troca de curvas Ataque/Defesa**: com as curvas originais (Defesa maior que Ataque), o dano dava sempre negativo em qualquer nível/build. Trocar as curvas resolveu a maior parte dos casos, mas builds extremos (100% investidos numa só stat) ainda podiam ficar presos em impasses ou derrotas garantidas — daí a necessidade do piso mínimo.
 - **Dano flutuante**: cada acerto mostra um número a subir e desvanecer por cima da cabeça de quem foi atingido (`showFloatingCombatText`, `js/main.js`), projetado a partir da posição 3D real da cabeça (`head`/`monsterHead`) para o ecrã — só precisa de projetar uma vez por acerto, já que a câmara e as posições ficam fixas durante toda a luta
-- **Vida do jogador persiste entre lutas** — não recomeça cheia automaticamente. Recupera com o tempo real decorrido (secção 7, Recuperação), calculado sob demanda (valor guardado + segundos passados × Recuperação, sem timer a correr em segundo plano). Lutar com vida parcial é uma escolha do jogador, não há bloqueio — a recuperação simplesmente não avança durante a luta em si (só volta a contar a partir do valor com que se fica no fim, ganhando ou perdendo). É um mecanismo anti-spam de batalhas, só local (não sincroniza entre dispositivos). Fora de combate, o mesmo número flutuante ("+0.2" etc.) aparece por cima da cabeça do personagem a cada segundo enquanto a vida não estiver completa
+- **Vida do jogador persiste entre lutas** — não recomeça cheia automaticamente. Recupera com o tempo real decorrido (secção 7, Regeneração), calculado sob demanda (valor guardado + segundos passados × Regeneração, sem timer a correr em segundo plano). Lutar com vida parcial é uma escolha do jogador, não há bloqueio — a recuperação simplesmente não avança durante a luta em si (só volta a contar a partir do valor com que se fica no fim, ganhando ou perdendo). É um mecanismo anti-spam de batalhas, só local (não sincroniza entre dispositivos). Fora de combate, o mesmo número flutuante ("+0.2" etc.) aparece por cima da cabeça do personagem a cada segundo enquanto a vida não estiver completa
 - Vitória contra um boss marca-o como derrotado e desbloqueia o próximo da sequência
 - **Bloqueio entre abas** (`js/tab-lock.js`): impede duas abas do mesmo dispositivo lutarem em simultâneo, cada uma a pagar o bónus de "primeira derrota"/estrelas em separado. Mecanismo genérico partilhado com o treino (secção 4): cada aba tem um id próprio (`TAB_ID`), guarda um bloqueio em `localStorage` com esse id + um heartbeat (`Date.now()`); uma aba só consegue reclamar o bloqueio se não houver outro id "vivo" a segurá-lo (heartbeat com menos de `TAB_LOCK_STALE_MS = 15000` ms) — uma aba fechada/crashada sem libertar o bloqueio expira sozinha ao fim desse tempo, em vez de ficar presa para sempre
   - **`TAB_ID` guardado em `sessionStorage`, não gerado de novo a cada carregamento**: sobrevive a um refresh (F5) da mesma aba, mas começa vazio numa aba genuinamente nova (isolamento de `sessionStorage` por aba é garantia do próprio browser). Corrige um bug crítico real: com `TAB_ID = crypto.randomUUID()` a cada carregamento, um simples refresh da aba com um treino ou uma luta em curso gerava um id novo, que via o bloqueio deixado por si própria (antes do refresh, com heartbeat ainda recente) como pertencendo a "outra aba viva" e recusava-se a retomar — a aba voltava ao ecrã inicial como se a atividade nunca tivesse começado, mesmo com os dados ainda intactos em `localStorage` (só ficavam "presos" até o bloqueio expirar sozinho ao fim de 15s)
@@ -227,7 +245,8 @@ Cada conquista tem ícone (emoji como placeholder), nome e um destaque visual ve
 Card com todos os valores públicos ajustáveis em tempo real (sem precisar de editar código):
 
 - Curva de nível (`LEVEL_BASE`, `LEVEL_EXP`)
-- Curvas de status × 3 (`STAT_BASE/FLAT/PERCENT` para Vida, Ataque, Defesa) + `STAT_RECOVERY_BASE`
+- Curvas de status de monstro × 3 (`STAT_BASE/FLAT/PERCENT` para Vida, Ataque, Defesa — secção 7)
+- Fórmulas de status do jogador (secção 7): `PLAYER_BASE_VIDA/ATAQUE/DEFESA`, `EQUIP_BASICO_VIDA/ATAQUE/DEFESA/FOCO`, `ENERGIA/FORCA/RESISTENCIA_EXP`, `DESTREZA/LETALIDADE/REGENERACAO_BASE` e respetivos expoentes, `LETALIDADE_MULTIPLICADOR`
 - Pontos (`LEVEL_UP_POINTS`, `MINIBOSS_MAX_POINTS`, `BOSS_MAX_POINTS`)
 - Filtros de GPS (`MAX_ACCURACY_M`, `MIN_MOVEMENT_M`, `MAX_SPEED_KMH_CAMINHAR/CORRER/BICICLETA`) e multiplicadores de XP por modo (`XP_MULTIPLIER_CAMINHAR/CORRER/BICICLETA` - secção 4.1)
 - Geração de criaturas (`MINIBOSS_LEVEL_STEP`, `BOSS_LEVEL_STEP`, `MAX_LEVEL_TO_GENERATE`)
@@ -241,8 +260,8 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 
 - Mobile-first; página com scroll (deixou de ser "uma tela só" quando o conteúdo cresceu)
 - Aviso para rodar o dispositivo aparece só em ecrãs touch em modo paisagem (deteção via JS: `matchMedia` + `maxTouchPoints`, não só CSS)
-- HUD do personagem sobreposto ao visualizador 3D: nível, os 4 status (Vida mostrada como `atual/máximo`, atualizada ao vivo a cada segundo enquanto estiver a recuperar — para sozinho ao chegar ao máximo), e o nível de cada equipamento com botão **"+"** que só aparece quando há pontos disponíveis
-- Equipamento pode ser evoluído de duas formas: a) tocar na peça no modelo 3D (espada=Ataque, escudo=Defesa, corpo=Vida/Armadura) b) botão "+" no HUD
+- HUD do personagem sobreposto ao visualizador 3D: nível, os 6 status finais (Vida mostrada como `atual/máximo`, atualizada ao vivo a cada segundo enquanto estiver a recuperar — para sozinho ao chegar ao máximo; Ataque/Defesa/Destreza/Letalidade/Regeneração), e o nível de cada um dos 4 status investíveis (Energia/Força/Resistência/Foco) com botão **"+"** próprio que só aparece quando há pontos disponíveis
+- Status investíveis podem subir de duas formas: a) tocar na peça de equipamento correspondente no modelo 3D (corpo=Energia/Armadura, espada=Força, escudo=Resistência — Foco não tem peça 3D própria) b) botão "+" no HUD
 - Personagem gira por arraste/toque (câmara fixa); toque curto sem arrastar seleciona equipamento (raycasting Three.js)
 
 ## 13. Decisões de design relevantes (porquês)
@@ -262,7 +281,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 
 - **Login obrigatório com Google** — sem modo convidado; `#auth-modal` cobre o ecrã todo até haver sessão confirmada
 - Depois do primeiro login, popup pede o **nome da personagem** (nunca o nome real da conta Google) — nomes são **únicos** (índice único case-insensitive em `profiles.display_name`, erro `23505` tratado no popup)
-- **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância vitalícia, pontos, níveis de equipamento, monstros derrotados, conquistas, distância anulada por velocidade). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
+- **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância vitalícia, pontos, níveis dos 4 status investíveis — `nivel_energia/forca/resistencia/foco`, secção 7 —, monstros derrotados, conquistas, distância anulada por velocidade). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
 - `treino.*` (checkpoint de sessão GPS em curso) e `debug.*` (afinação de jogo) **nunca** são sincronizados — ficam sempre só locais
 - Sincronização contínua via `queueProgressSync()` (debounce ~400ms, snapshot completo, seguro para reenviar) chamada a seguir a cada mutação de progresso existente
 - **`SYNC_PENDING_KEY` (`sync.pendingPush`) é marcado de imediato em `queueProgressSync()`, antes do debounce sequer disparar** — não só dentro de `syncProgressToSupabase()` quando a rede falha. Corrige um bug crítico real de perda silenciosa de progresso: sem isto, uma mutação (ex: subir um equipamento) seguida de um refresh/fecho da aba dentro dos ~400ms (ou antes da rede confirmar) nunca chegava a marcar nada como pendente; no arranque seguinte, `hydrateLocalStorageFromProgress()` sobrescrevia esse progresso local (mais recente, nunca confirmado) com o estado mais antigo do Supabase — sem erro nenhum visível, o jogador só via os pontos/nível voltarem atrás. Agora `bootstrapAfterLogin()` (`js/auth.js`) verifica este flag **antes** de hidratar: se houver uma mutação por confirmar, hidratar é ignorado (confia-se no local, mais recente) e tenta-se reenviar em vez disso, assim que `readyForSync` ficar `true`
