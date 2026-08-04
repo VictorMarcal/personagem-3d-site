@@ -126,43 +126,41 @@ Valor(n) = round(Valor(n-1) + STAT_FLAT + n × STAT_PERCENT)
 
 Valores de produção (nota: Ataque e Defesa foram **trocados** entre si — ver secção 9): Vida base 100/flat 4/perc 89% (~4.990 no nível 100); Ataque base 50/flat 2/perc 45% (~2.523, curva original da Defesa); Defesa base 10/flat 2/perc 16% (~1.016, curva original do Ataque). Todos os 9 parâmetros continuam ajustáveis no card de Debug.
 
-**Jogador** (sistema novo, substitui por completo o antigo esquema de 3 níveis de equipamento + Recuperação linear — os monstros **não** foram tocados por esta mudança): 3 status investíveis com pontos (`nivelEnergia/Forca/Resistencia`, `js/equipment.js`), cada um alimentando **dois** dos 6 status finais mostrados no HUD/Perfil — o seu status primário (Vida/Ataque/Defesa) e um status secundário (Regeneração/Letalidade/Destreza). Equipamento é, por agora, um **bónus fixo** ("equipamento básico") somado ao valor de cada um destes — ainda não existe um sistema de melhoria de equipamento por moedas (fica para um passo futuro):
+**Jogador** (sistema novo, substitui por completo o antigo esquema de 3 níveis de equipamento + Recuperação linear — os monstros **não** foram tocados por esta mudança): 3 status investíveis com pontos (`nivelEnergia/Forca/Resistencia`, `js/equipment.js`), cada um alimentando **dois** dos 6 status finais mostrados no HUD/Perfil — o seu status primário (Vida/Ataque/Defesa) e um status secundário (Regeneração/Letalidade/Destreza). O bónus de equipamento em cada fórmula vem sempre do **tier atual da peça correspondente** (Armadura/Escudo/Arma — ver "Tabela de 10 níveis por peça" abaixo, todas as 3 idênticas em estrutura):
 
 ```
-Vida    = PLAYER_BASE_VIDA    + EQUIP_BASICO_VIDA    + round(Energia^ENERGIA_EXP)
-Ataque  = PLAYER_BASE_ATAQUE  + arma.ataque[Lv]       + round(Força^FORCA_EXP)
-Defesa  = PLAYER_BASE_DEFESA  + EQUIP_BASICO_DEFESA   + round(Resistência^RESISTENCIA_EXP)
+Vida    = PLAYER_BASE_VIDA    + armadura.vida[Lv]    + round(Energia^ENERGIA_EXP)
+Ataque  = PLAYER_BASE_ATAQUE  + arma.ataque[Lv]      + round(Força^FORCA_EXP)
+Defesa  = PLAYER_BASE_DEFESA  + escudo.defesa[Lv]    + round(Resistência^RESISTENCIA_EXP)
 
 PLAYER_BASE_VIDA = 100, PLAYER_BASE_ATAQUE = 10, PLAYER_BASE_DEFESA = 10
-EQUIP_BASICO_VIDA = 10 (Armadura), EQUIP_BASICO_DEFESA = 12 (Escudo)
 ENERGIA_EXP = 1.8, FORCA_EXP = 1.5, RESISTENCIA_EXP = 1.2
 ```
 
-Cada um dos 3 status investíveis alimenta também, com o **mesmo nível**, uma segunda fórmula — o bónus de equipamento aqui é uma **segunda** peça de informação da mesma peça (ex: a Arma dá o seu valor a Ataque acima E um bónus a Letalidade abaixo), não confundir com `EQUIP_BASICO_*` acima:
+Cada um dos 3 status investíveis alimenta também, com o **mesmo nível**, uma segunda fórmula — o bónus de equipamento aqui é uma **segunda** peça de informação da mesma peça (ex: a Arma dá o seu valor a Ataque acima E um bónus a Letalidade abaixo):
 
 ```
-Regeneração (v/s) = REGENERACAO_BASE + (Energia     + EQUIP_BONUS_REGENERACAO)^REGENERACAO_EXP   (bónus vem da Armadura)
-Letalidade (%)    = LETALIDADE_BASE  + (Força       + arma.bonusForca[Lv])^LETALIDADE_EXP        (bónus vem da Arma)
-Destreza (%)      = DESTREZA_BASE   + (Resistência  + EQUIP_BONUS_DESTREZA)^DESTREZA_EXP         (bónus vem do Escudo)
+Regeneração (v/s) = REGENERACAO_BASE + (Energia     + armadura.bonusEnergia[Lv])^REGENERACAO_EXP   (bónus vem da Armadura)
+Letalidade (%)    = LETALIDADE_BASE  + (Força       + arma.bonusForca[Lv])^LETALIDADE_EXP           (bónus vem da Arma)
+Destreza (%)      = DESTREZA_BASE   + (Resistência  + escudo.bonusResistencia[Lv])^DESTREZA_EXP     (bónus vem do Escudo)
 
 DESTREZA_BASE = 2, DESTREZA_EXP = 0.56
 LETALIDADE_BASE = 1, LETALIDADE_EXP = 0.639
 REGENERACAO_BASE = 0.2, REGENERACAO_EXP = 0.8
-EQUIP_BONUS_DESTREZA = EQUIP_BONUS_REGENERACAO = 0 (produção atual - Escudo/Armadura ainda "básicos" fixos)
 ```
 
-**Arma — tabela de 10 níveis** (2026-08-04, `WEAPON_TIERS` em `js/equipment.js`, substitui o antigo `EQUIP_BASICO_ATAQUE`/`EQUIP_BONUS_LETALIDADE` fixos): ao contrário do Escudo e da Armadura (ainda com um bónus fixo único), a Arma já tem 10 tiers diferentes, desbloqueados automaticamente ao nível de personagem 1, 10, 20, ... 90 (passos de 10, alinhados com os bosses da secção 8) — `getCurrentWeaponTierIndex()` devolve sempre o índice do tier mais alto já alcançado. Cada tier tem os seus próprios valores de Ataque, bónus de Força e custo em moedas, um conjunto por **nível de melhoria** (Lv1 a Lv9 — a mesma arma pode ainda ser melhorada dentro do seu tier, gastando moedas — ver "Sistema de moedas" abaixo):
+**Tabela de 10 níveis por peça** (Arma desde 2026-08-04, Escudo/Armadura estendidas ao mesmo modelo no mesmo dia — `WEAPON_TIERS`/`SHIELD_TIERS`/`ARMOR_TIERS` em `js/equipment.js`, substituem os antigos `EQUIP_BASICO_VIDA/DEFESA`/`EQUIP_BONUS_DESTREZA/REGENERACAO` fixos): as 3 peças têm 10 tiers cada, desbloqueados automaticamente ao nível de personagem 1, 10, 20, ... 90 (passos de 10, alinhados com os bosses da secção 8) — `getCurrentWeaponTierIndex()`/`getCurrentShieldTierIndex()`/`getCurrentArmorTierIndex()` (finas funções wrapper sobre o genérico `getTierIndexForLevel(tiers, nível)`) devolvem sempre o índice do tier mais alto já alcançado. Cada tier tem os seus próprios valores de status primário, bónus secundário e custo em moedas, um conjunto por **nível de melhoria** (Lv1 a Lv9 — a mesma peça pode ainda ser melhorada dentro do seu tier, gastando moedas — ver "Sistema de moedas" abaixo):
 
 ```
-arma.ataque[Lv]     = WEAPON_TIERS[tier].ataque[Lv-1]
-arma.bonusForca[Lv] = WEAPON_TIERS[tier].bonusForca[Lv-1]
-arma.custo[Lv]      = WEAPON_TIERS[tier].custo[Lv-1]   // preco do PASSO Lv-1 -> Lv (custo[0] = 0, Lv1 vem de graca)
+peça.primário[Lv]   = TIERS[tier].<vida|ataque|defesa>[Lv-1]
+peça.secundário[Lv] = TIERS[tier].<bonusEnergia|bonusForca|bonusResistencia>[Lv-1]
+peça.custo[Lv]      = TIERS[tier].custo[Lv-1]   // preco do PASSO Lv-1 -> Lv (custo[0] = 0, Lv1 vem de graca)
 ```
 
-- **O nível de melhoria de cada arma é guardado por tier, para sempre** (`getWeaponUpgradeLevelsMap()`, mapa `{ tierIndex: nível }`, `player_progress.nivel_melhoria_armas` no Supabase) — decisão explícita: subir de nível de personagem e desbloquear a arma seguinte **não** apaga o investimento feito na anterior, mesmo que deixe de ser usada
-- Valores de produção (Ataque/bónus de Força/custo) preenchidos pelo jogador num ficheiro de trabalho (`armas_tabela.csv`/`armas_tabela.xlsx`, fora do repositório) e copiados para `WEAPON_TIERS` — não calibrados por fórmula, à mão como os arquétipos de criatura (secção 8). O custo é **incremental** (por passo), não acumulado desde o Lv1
-- **Dependência circular de carregamento**: `getCurrentWeaponTierIndex()` (`js/equipment.js`) precisa do nível de personagem, calculado por `getLevelInfo`/`getLifetimeDistanceM` (`js/experience.js`) — mas `experience.js` só carrega **depois** de `equipment.js` no `index.html` (que por sua vez já precisa de `awardPointsIfNeeded`, de `equipment.js`, no arranque de `experience.js` — dependência circular nos dois sentidos). Um `typeof getLevelInfo !== "function"` protege a primeiríssima chamada de `renderStatsHud()` (no fundo de `equipment.js`, antes de `experience.js` ter carregado) devolvendo o tier 0 por omissão; corrige-se sozinho instantes depois, quando `bootstrapAfterLogin()` (`js/auth.js`) chama `refreshAllAfterConfigChange()` já com tudo carregado — o mesmo padrão de guard já usado em `js/main.js` (`typeof battleInProgress`)
-- **Popup de evolução** (clicar na espada no modelo 3D, `js/main.js` `raycastEquipmentAt`): mostra o tier atual, o nível de melhoria (Lv N/9), Ataque/bónus de Força atuais e do próximo nível (com a diferença entre eles), o custo em moedas e um botão para evoluir (desativado se faltarem moedas, escondido se já estiver no Lv9). Só a Arma tem este popup — Escudo/Armadura continuam com o fluxo antigo de clicar → botão pequeno → gastar **pontos** (não moedas) em Resistência/Energia, já que ainda não têm a sua própria tabela de tiers
+- **O nível de melhoria de cada peça é guardado por tier, para sempre, e por tipo de equipamento** (`getWeaponUpgradeLevelsMap()`/`getShieldUpgradeLevelsMap()`/`getArmorUpgradeLevelsMap()`, cada um um mapa `{ tierIndex: nível }`, `player_progress.nivel_melhoria_armas/escudos/armaduras` no Supabase) — decisão explícita: subir de nível de personagem e desbloquear a peça seguinte **não** apaga o investimento feito na anterior, mesmo que deixe de ser usada. Todos os getters/setters de tier/melhoria/custo são genéricos (`getTierIndexForLevel`, `getEquipUpgradeLevelsMap`, `getEquipUpgradeLevel`, `setEquipUpgradeLevel`, `getEquipUpgradeCost`), com finas funções por tipo (`getWeaponUpgradeLevel`, `getShieldUpgradeLevel`, etc.) só para preservar os nomes já usados no resto do código
+- Valores de produção (primário/secundário/custo das 3 peças) preenchidos pelo jogador num ficheiro de trabalho ("Livro da Forja", fora do repositório) e copiados para `WEAPON_TIERS`/`SHIELD_TIERS`/`ARMOR_TIERS` — não calibrados por fórmula, à mão como os arquétipos de criatura (secção 8). O custo é **incremental** (por passo), não acumulado desde o Lv1
+- **Dependência circular de carregamento**: `getCurrentWeaponTierIndex()` (`js/equipment.js`, e o mesmo para Escudo/Armadura) precisa do nível de personagem, calculado por `getLevelInfo`/`getLifetimeDistanceM` (`js/experience.js`) — mas `experience.js` só carrega **depois** de `equipment.js` no `index.html` (que por sua vez já precisa de `awardPointsIfNeeded`, de `equipment.js`, no arranque de `experience.js` — dependência circular nos dois sentidos). Um `typeof getLevelInfo !== "function"` protege a primeiríssima chamada de `renderStatsHud()` (no fundo de `equipment.js`, antes de `experience.js` ter carregado) devolvendo o tier 0 por omissão; corrige-se sozinho instantes depois, quando `bootstrapAfterLogin()` (`js/auth.js`) chama `refreshAllAfterConfigChange()` já com tudo carregado — o mesmo padrão de guard já usado em `js/main.js` (`typeof battleInProgress`)
+- **Popup de evolução** (clicar na espada/escudo/corpo no modelo 3D, `js/main.js` `raycastEquipmentAt`): mostra o tier atual, o nível de melhoria (Lv N/9), o status primário/bónus secundário atuais e do próximo nível (com a diferença entre eles), o custo em moedas e um botão para evoluir (desativado se faltarem moedas, escondido se já estiver no Lv9). As 3 peças usam o mesmo popup genérico, gerado por uma fábrica só (`createEquipmentUpgradeController(config)`, `js/equipment.js`) instanciada uma vez por peça (`weaponUpgradeController`/`shieldUpgradeController`/`armorUpgradeController`) — mesmo HTML/CSS (`.equip-upgrade-*`), só os IDs/textos/ícone mudam por peça
 
 **Sistema de moedas** (2026-08-04, `js/equipment.js` — segunda "moeda" do jogo, distinta dos pontos de status): oferta inicial de `STARTING_MOEDAS = 100` (mesmo padrão de `STARTING_UNSPENT_POINTS`, só conta para quem nunca teve a chave gravada), mostrada no HUD do personagem ("Moedas: N"). Três fontes de ganho, uma de gasto:
 
@@ -174,7 +172,7 @@ arma.custo[Lv]      = WEAPON_TIERS[tier].custo[Lv-1]   // preco do PASSO Lv-1 ->
   ```
   (mini-boss nível 5 → 5-15, nível 95 → 50-60; boss nível 10 → 100-150, nível 100 → 550-600)
 - **Desbloquear uma conquista** (`js/achievements.js` `unlockAchievement`, dentro do mesmo bloqueio que já impede pagar a mesma conquista duas vezes): tabela `ACHIEVEMENT_COIN_REWARD` com um valor por cada uma das ~54 conquistas normais (2 a 100 moedas, escalado por dificuldade relativa dentro de cada categoria — secção 10), preenchida pelo jogador num ficheiro de trabalho (`conquistas_moedas.csv`, fora do repositório). Medalhas mensais são a exceção: os ids reais são `medal_<cor>_<ano>_<mes>` (um por mês/ano, secção 10), por isso são pagas por uma tabela à parte (`MONTHLY_MEDAL_COIN_REWARD`, Bronze 20/Prata 50/Ouro 100) que casa por padrão (`MONTHLY_MEDAL_ID_PATTERN`) em vez de por id exato — e, ao contrário das outras conquistas, **pagam de novo a cada mês** em que se ganham (não é um prémio de uma vez só)
-- **Gasto**: só a evolução do nível de melhoria da Arma (popup acima) por agora — Escudo/Armadura ainda não têm essa opção
+- **Gasto**: evolução do nível de melhoria de qualquer uma das 3 peças (popup acima)
 
 - **Destreza**: chance de esquivar por completo um ataque recebido (ver secção 9) — testada primeiro, antes de qualquer cálculo de dano
 - **Letalidade**: chance de acertar um crítico ao atacar (ver secção 9) — só testada se não houve esquiva do lado do defensor
@@ -272,7 +270,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 
 - Curva de nível (`LEVEL_BASE`, `LEVEL_EXP`)
 - Curvas de status de monstro × 3 (`STAT_BASE/FLAT/PERCENT` para Vida, Ataque, Defesa — secção 7)
-- Fórmulas de status do jogador (secção 7): `PLAYER_BASE_VIDA/ATAQUE/DEFESA`, `EQUIP_BASICO_VIDA/DEFESA`, `ENERGIA/FORCA/RESISTENCIA_EXP`, `DESTREZA/LETALIDADE/REGENERACAO_BASE` e respetivos expoentes, `EQUIP_BONUS_DESTREZA/REGENERACAO`, `LETALIDADE_MULTIPLICADOR` — `WEAPON_TIERS` (Ataque/bónus de Força da Arma) **não** está no Debug, fica hardcoded em `js/equipment.js` (ver secção 7)
+- Fórmulas de status do jogador (secção 7): `PLAYER_BASE_VIDA/ATAQUE/DEFESA`, `ENERGIA/FORCA/RESISTENCIA_EXP`, `DESTREZA/LETALIDADE/REGENERACAO_BASE` e respetivos expoentes, `LETALIDADE_MULTIPLICADOR` — `WEAPON_TIERS`/`SHIELD_TIERS`/`ARMOR_TIERS` (status primário/bónus secundário/custo das 3 peças) **não** estão no Debug, ficam hardcoded em `js/equipment.js` (ver secção 7)
 - Pontos (`LEVEL_UP_POINTS`, `MINIBOSS_MAX_POINTS`, `BOSS_MAX_POINTS`)
 - Filtros de GPS (`MAX_ACCURACY_M`, `MIN_MOVEMENT_M`, `MAX_SPEED_KMH_CAMINHAR/CORRER/BICICLETA`) e multiplicadores de XP por modo (`XP_MULTIPLIER_CAMINHAR/CORRER/BICICLETA` - secção 4.1)
 - Geração de criaturas (`MINIBOSS_LEVEL_STEP`, `BOSS_LEVEL_STEP`, `MAX_LEVEL_TO_GENERATE`)
@@ -287,7 +285,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - Mobile-first; página com scroll (deixou de ser "uma tela só" quando o conteúdo cresceu)
 - Aviso para rodar o dispositivo aparece só em ecrãs touch em modo paisagem (deteção via JS: `matchMedia` + `maxTouchPoints`, não só CSS)
 - HUD do personagem sobreposto ao visualizador 3D: nível, os 6 status finais (Vida mostrada como `atual/máximo`, atualizada ao vivo a cada segundo enquanto estiver a recuperar — para sozinho ao chegar ao máximo; Ataque/Defesa/Destreza/Letalidade/Regeneração), e o nível de cada um dos 3 status investíveis (Energia/Força/Resistência) com botão **"+"** próprio que só aparece quando há pontos disponíveis
-- Status investíveis podem subir de duas formas: a) tocar na peça de equipamento correspondente no modelo 3D (corpo=Energia/Armadura, espada=Força, escudo=Resistência) b) botão "+" no HUD
+- Status investíveis (Energia/Força/Resistência) só sobem pelo botão **"+"** do HUD, gasta pontos. Tocar na peça de equipamento correspondente no modelo 3D (corpo=Armadura, espada=Arma, escudo=Escudo) abre o popup de evolução dessa peça (Lv de melhoria, gasta moedas — secção 7), fluxo totalmente separado do dos pontos
 - Personagem gira por arraste/toque (câmara fixa); toque curto sem arrastar seleciona equipamento (raycasting Three.js)
 
 ## 13. Decisões de design relevantes (porquês)
@@ -307,7 +305,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 
 - **Login obrigatório com Google** — sem modo convidado; `#auth-modal` cobre o ecrã todo até haver sessão confirmada
 - Depois do primeiro login, popup pede o **nome da personagem** (nunca o nome real da conta Google) — nomes são **únicos** (índice único case-insensitive em `profiles.display_name`, erro `23505` tratado no popup)
-- **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância vitalícia, pontos, níveis dos 3 status investíveis — `nivel_energia/forca/resistencia`, secção 7 —, moedas e nível de melhoria de cada arma — `moedas`/`nivel_melhoria_armas`, secção 7 —, monstros derrotados, conquistas, distância anulada por velocidade). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
+- **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância vitalícia, pontos, níveis dos 3 status investíveis — `nivel_energia/forca/resistencia`, secção 7 —, moedas e nível de melhoria de cada peça — `moedas`/`nivel_melhoria_armas/escudos/armaduras`, secção 7 —, monstros derrotados, conquistas, distância anulada por velocidade). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
 - `treino.*` (checkpoint de sessão GPS em curso) e `debug.*` (afinação de jogo) **nunca** são sincronizados — ficam sempre só locais
 - Sincronização contínua via `queueProgressSync()` (debounce ~400ms, snapshot completo, seguro para reenviar) chamada a seguir a cada mutação de progresso existente
 - **`SYNC_PENDING_KEY` (`sync.pendingPush`) é marcado de imediato em `queueProgressSync()`, antes do debounce sequer disparar** — não só dentro de `syncProgressToSupabase()` quando a rede falha. Corrige um bug crítico real de perda silenciosa de progresso: sem isto, uma mutação (ex: subir um equipamento) seguida de um refresh/fecho da aba dentro dos ~400ms (ou antes da rede confirmar) nunca chegava a marcar nada como pendente; no arranque seguinte, `hydrateLocalStorageFromProgress()` sobrescrevia esse progresso local (mais recente, nunca confirmado) com o estado mais antigo do Supabase — sem erro nenhum visível, o jogador só via os pontos/nível voltarem atrás. Agora `bootstrapAfterLogin()` (`js/auth.js`) verifica este flag **antes** de hidratar: se houver uma mutação por confirmar, hidratar é ignorado (confia-se no local, mais recente) e tenta-se reenviar em vez disso, assim que `readyForSync` ficar `true`
@@ -349,7 +347,6 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **Eixo dos YY** (`buildYAxisSvg`, `js/profile.js`): 3 marcas (topo/meio/zero) em km, calculadas a partir do mesmo `maxValue` das barras — sem isto era preciso adivinhar a que distância correspondia a altura de cada barra. É uma coluna **fixa**, separada do SVG das barras (`.profile-chart-yaxis` / `.profile-chart-scroll` em `css/style.css`) — só a zona das barras tem scroll horizontal, para o eixo continuar visível mesmo com muitas barras (ex: "todos os meses" ou um mês de 31 dias). Linhas de grelha ténues nas barras, nas mesmas 3 alturas, ligam visualmente cada marca do eixo ao topo das barras correspondentes
   - **`CHART_TOP_PADDING = 10`px**: espaço extra no topo do SVG só para o texto da marca mais alta do eixo (`fraction=1`) - sem isto, o "ascender" da fonte (a parte do texto acima da linha de base) ficava fora do `viewBox` e era cortado/ilegível, já que a marca do topo fica exatamente em `y=0`
 - Medalhas mensais dependem de confiança entre jogadores (qualquer jogador autenticado pode publicar a medalha de outro — ver secção 10); só 1 "slot" de mês anterior por jogador, perde-se o registo de meses saltados sem login
-- **Sistema de moedas só cobre a Arma**: Escudo e Armadura continuam com um bónus fixo único (`EQUIP_BASICO_DEFESA`/`EQUIP_BASICO_VIDA`), sem tiers nem melhoria própria ainda — só a Arma tem tiers por nível de personagem + melhoria por moedas (secção 7)
 - Multiplicadores dos arquétipos de monstro (secção 8) foram calibrados por **simulação de Monte Carlo** (milhares de combates simulados por combinação de nível/arquétipo/divisão de pontos), não por uma fórmula analítica fechada — servem para garantir que nenhuma luta fica impossível com os valores de produção atuais, mas podem precisar de reajuste se `LEVEL_UP_POINTS`, `MINIBOSS_MAX_POINTS`/`BOSS_MAX_POINTS` ou as curvas de status (secção 7) mudarem no Debug
 - **Multiplicador de XP da Bicicleta (secção 4.1) é um valor único fixo (`0.35`), não uma fórmula contínua por velocidade** — na realidade o custo por km da bicicleta varia bastante com o ritmo (de ~28% a ~48% do custo de correr, conforme a velocidade), mas o jogo usa um valor representativo de ritmo moderado para todo o intervalo aceite (`MAX_SPEED_KMH_BICICLETA`), para manter o sistema simples. Um ciclista muito lento é ligeiramente beneficiado e um muito rápido ligeiramente prejudicado face ao valor "justo" real para esse ritmo específico
 - **Modo de treino é fixo para toda a sessão** — não há forma de trocar de Caminhar para Correr (ou Bicicleta) a meio de um treino já em curso sem o parar e recomeçar
