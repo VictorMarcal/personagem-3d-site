@@ -24,6 +24,41 @@ function medalAchievementId(medal, month) {
   return `medal_${medal}_${month.replace("-", "_")}`;
 }
 
+// Busca a linha do leaderboard do jogador e hidrata a distancia mensal
+// LOCAL a partir dela (leaderboard e' a fonte de verdade para isto, tal
+// como player_progress e' para o resto do progresso - ver
+// js/progress-sync.js), mesma guarda de SYNC_PENDING_KEY que o resto do
+// progresso ja usa (nao sobrescreve uma mutacao local ainda por
+// confirmar). Devolve a linha para quem precisar dela sem outro pedido
+// (checkMonthlyRollover abaixo).
+//
+// Chamada logo no arranque do login (js/auth.js bootstrapAfterLogin),
+// ANTES de qualquer passo que possa desbloquear uma conquista ou marcar
+// progresso (checkFrequencyAchievementsFromSessions, claimOwnMedals
+// abaixo, etc.) - qualquer um destes pode chamar queueProgressSync(), que
+// sobe o valor LOCAL de STORAGE_KEY_MONTHLY_DISTANCE_M (nao hidratado
+// ainda = 0/desatualizado) para o leaderboard, apagando em definitivo o
+// valor real do servidor antes de la chegar a ser lido. Bug real
+// encontrado em 2026-08-04 (ao restaurar manualmente uma sessao de
+// treino, o `best_streak_days` a subir disparou um sync a meio do login,
+// antes deste pedido correr, e reverteu a distancia mensal para 0).
+async function hydrateMonthlyDistanceFromServer() {
+  if (!currentUserId) return null;
+
+  const { data: own } = await supabaseClient
+    .from("leaderboard")
+    .select("monthly_distance_m, previous_month_distance_m, month_reference, previous_month_reference")
+    .eq("user_id", currentUserId)
+    .maybeSingle();
+
+  if (own && localStorage.getItem(SYNC_PENDING_KEY) !== "true") {
+    localStorage.setItem(STORAGE_KEY_MONTHLY_DISTANCE_M, String(own.monthly_distance_m || 0));
+    setMonthReference(own.month_reference || formatMonthKey(new Date()));
+  }
+
+  return own;
+}
+
 // Chamado uma vez por login (js/auth.js). So faz trabalho de verdade
 // quando o mes de calendario mudou desde a ultima vez que este jogador
 // fez login - senao so reclama medalhas que outra pessoa possa ja ter
@@ -42,33 +77,19 @@ async function checkMonthlyRollover() {
     });
   };
 
-  await claimOwnMedals();
+  // Hidrata a distancia mensal ANTES de claimOwnMedals - este tambem pode
+  // desbloquear conquistas e disparar um sync (ver nota em
+  // hydrateMonthlyDistanceFromServer acima). Normalmente ja foi chamada
+  // mais cedo em bootstrapAfterLogin, mas repetir aqui e barato e garante
+  // que checkMonthlyRollover nunca decide um rollover com dados desatualizados
+  // mesmo chamada sozinha (ex: testes).
+  const own = await hydrateMonthlyDistanceFromServer();
 
-  const { data: own } = await supabaseClient
-    .from("leaderboard")
-    .select("monthly_distance_m, previous_month_distance_m, month_reference, previous_month_reference")
-    .eq("user_id", currentUserId)
-    .maybeSingle();
+  await claimOwnMedals();
 
   if (!own) {
     renderAchievementsSummary();
     return;
-  }
-
-  // Sincroniza a distancia mensal local com o servidor (leaderboard e' a
-  // fonte de verdade para isto, tal como player_progress e' para o resto do
-  // progresso - ver js/progress-sync.js). Corrige um bug real: sem isto,
-  // uma alteracao feita diretamente no servidor (ex: reset manual de um
-  // jogador) nunca chegava ao localStorage - hydrateLocalStorageFromProgress
-  // so le player_progress, nunca leaderboard - e o proximo sync deste
-  // cliente empurrava o valor local antigo de volta por cima, desfazendo a
-  // alteracao em silencio (visto num jogador: reset a zero no servidor,
-  // mas o leaderboard mensal continuava a mostrar o valor antigo). Mesma
-  // guarda de SYNC_PENDING_KEY que js/auth.js ja usa para player_progress -
-  // nao sobrescreve uma mutacao local ainda por confirmar.
-  if (localStorage.getItem(SYNC_PENDING_KEY) !== "true") {
-    localStorage.setItem(STORAGE_KEY_MONTHLY_DISTANCE_M, String(own.monthly_distance_m || 0));
-    setMonthReference(own.month_reference || currentMonthKey);
   }
 
   if (own.month_reference === currentMonthKey) {

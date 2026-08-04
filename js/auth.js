@@ -157,6 +157,22 @@ async function bootstrapAfterLogin(user) {
     console.error("Falha ao migrar/hidratar progresso:", err);
   }
 
+  // Hidrata a distancia mensal ja aqui, o mais cedo possivel - ANTES de
+  // checkFrequencyAchievementsFromSessions/readyForSync mais abaixo, que
+  // podem desbloquear uma conquista ou atualizar uma sequencia e disparar
+  // queueProgressSync(). Sem isto, esse sync sobe o valor LOCAL da
+  // distancia mensal (ainda por hidratar, tipicamente 0/desatualizado)
+  // para o leaderboard ANTES de checkMonthlyRollover (mais abaixo) ter a
+  // oportunidade de a ler do servidor - apagando o valor real em
+  // definitivo. Bug real encontrado em 2026-08-04 (restaurar uma sessao
+  // de treino a mao fez o best_streak_days subir, disparando um sync a
+  // meio do login que reverteu a distancia mensal para 0).
+  try {
+    await hydrateMonthlyDistanceFromServer();
+  } catch (err) {
+    console.error("Falha ao hidratar distância mensal:", err);
+  }
+
   if (!profile.display_name) {
     try {
       await promptForDisplayName(user.id);
