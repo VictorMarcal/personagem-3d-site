@@ -247,6 +247,33 @@ function checkCoinDropsForDistance(currentTotalDistanceM) {
   }
 }
 
+// Drop de equipamento a treinar (secção 7 da documentação): 5% de chance a
+// cada quilometro REAL de encontrar uma peca (Arma/Escudo/Armadura, ao
+// acaso) com nivel dentro de +/-15 do nivel atual - rollEquipmentDrop
+// (js/equipment.js) trata do sorteio em si, aqui so se garante que corre
+// exatamente uma vez por km cruzado, mesmo padrao/contador separado de
+// checkCoinDropsForDistance acima (equipDropsCheckedKm aqui, simEquipDropsCheckedKm
+// no simulador do Debug - nunca partilhados entre si).
+const EQUIPMENT_DROP_CHANCE_KM = 5;
+
+function rollEquipmentDropsForKm(kmCount) {
+  for (let i = 0; i < kmCount; i++) {
+    const drop = rollEquipmentDrop(EQUIPMENT_DROP_CHANCE_KM);
+    if (drop) showEquipmentDropToast(describeEquipmentDrop(drop));
+  }
+}
+
+let equipDropsCheckedKm = 0;
+
+function checkEquipmentDropsForDistance(currentTotalDistanceM) {
+  const currentKm = Math.floor(currentTotalDistanceM / 1000);
+  const newKm = currentKm - equipDropsCheckedKm;
+  if (newKm > 0) {
+    rollEquipmentDropsForKm(newKm);
+    equipDropsCheckedKm = currentKm;
+  }
+}
+
 function onPositionUpdate(position) {
   const { latitude, longitude, accuracy } = position.coords;
   const timestamp = position.timestamp;
@@ -295,6 +322,7 @@ function onPositionUpdate(position) {
     totalDistanceM += segmentM;
     updateDistanceDisplay();
     checkCoinDropsForDistance(totalDistanceM);
+    checkEquipmentDropsForDistance(totalDistanceM);
   }
 
   lastPosition = { latitude, longitude, timestamp };
@@ -397,6 +425,7 @@ function beginTrainingSession() {
   lastPosition = null;
   sessionStartTime = Date.now();
   coinsCheckedKm = 0;
+  equipDropsCheckedKm = 0;
   updateDistanceDisplay();
   showTrainingScreen();
 
@@ -469,8 +498,9 @@ function resumeTrainingIfNeeded() {
   lastPosition = savedPosition ? JSON.parse(savedPosition) : null;
   sessionStartTime = Number(localStorage.getItem(STORAGE_KEYS.inicioSessao)) || Date.now();
   // Nao re-testa km ja percorridos antes do refresh - so os km novos a
-  // partir daqui contam para moedas.
+  // partir daqui contam para moedas/drops de equipamento.
   coinsCheckedKm = Math.floor(totalDistanceM / 1000);
+  equipDropsCheckedKm = Math.floor(totalDistanceM / 1000);
 
   updateDistanceDisplay();
   showTrainingScreen();

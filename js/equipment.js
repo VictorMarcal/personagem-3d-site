@@ -163,26 +163,68 @@ const ARMOR_TIERS = [
 
 const EQUIP_MAX_UPGRADE_LEVEL = 9;
 
-function getTierIndexForLevel(tiers, level) {
-  let index = 0;
-  tiers.forEach((candidate, i) => {
-    if (level >= candidate.unlockLevel) index = i;
-  });
-  return index; // 0-based
+// --- Posse e equipamento por peca (2026-08-05) --------------------------
+// Ate aqui, o tier de cada peca era automatico (o mais alto com
+// unlockLevel <= nivel do jogador). Passa a ser LOOT: cada peca so fica
+// "possuida" ao ser encontrada num drop (treino/mini-boss/boss, ver
+// rollEquipmentDrop abaixo), e so uma das possuidas fica "equipada" de
+// cada vez, escolhida pelo jogador no popup - com a regra de que nao pode
+// equipar uma peca com unlockLevel acima do seu nivel atual (pode
+// encontra-la e guarda-la antes disso, so nao a usar ainda).
+function getOwnedTiers(storageKey) {
+  const raw = localStorage.getItem(storageKey);
+  try {
+    const parsed = raw ? JSON.parse(raw) : [0];
+    return Array.isArray(parsed) ? parsed : [0];
+  } catch (e) {
+    return [0];
+  }
+}
+
+function isTierOwned(storageKey, tierIndex) {
+  return getOwnedTiers(storageKey).includes(tierIndex);
+}
+
+// Devolve true se a peca era mesmo nova (false se ja era possuida - nesse
+// caso quem chamou deve converter o drop em moedas, ver rollEquipmentDrop).
+function addOwnedTier(storageKey, tierIndex) {
+  const owned = getOwnedTiers(storageKey);
+  if (owned.includes(tierIndex)) return false;
+  owned.push(tierIndex);
+  localStorage.setItem(storageKey, JSON.stringify(owned));
+  queueProgressSync();
+  return true;
 }
 
 // getLevelInfo/getLifetimeDistanceM sao de js/experience.js, que carrega
-// DEPOIS de equipment.js (que por sua vez awardPointsIfNeeded, chamado por
-// experience.js) - dependencia circular entre os dois ficheiros. O guard
-// abaixo evita um ReferenceError na primeira chamada de renderStatsHud()
-// (no fundo deste ficheiro, antes de experience.js ter carregado); assim
-// que bootstrapAfterLogin() (js/auth.js) chamar refreshAllAfterConfigChange
-// mais tarde, ja com tudo carregado, o valor correto e usado.
-function getCurrentTierIndex(tiers) {
-  if (typeof getLevelInfo !== "function" || typeof getLifetimeDistanceM !== "function") {
-    return 0;
-  }
-  return getTierIndexForLevel(tiers, getLevelInfo(getLifetimeDistanceM()).level);
+// DEPOIS de equipment.js - guard usado so nos sitios que precisam do nivel
+// (equipar uma peca, ou sortear um drop), nunca na leitura da peca ja
+// equipada (essa nao depende do nivel, so da posse - ver getEquippedTierIndex).
+function getCurrentPlayerLevel() {
+  if (typeof getLevelInfo !== "function" || typeof getLifetimeDistanceM !== "function") return 1;
+  return getLevelInfo(getLifetimeDistanceM()).level;
+}
+
+// Tier atualmente equipado - por defeito o 0 (sempre possuido), com
+// proteccao extra caso o valor guardado deixe de estar entre os possuidos
+// (nunca deveria acontecer, dado que setEquippedTierIndex ja valida isso,
+// mas evita um tiers[undefined] nalgum estado antigo/corrompido).
+function getEquippedTierIndex(equippedKey, ownedKey) {
+  const stored = getStoredNumber(equippedKey, 0);
+  return isTierOwned(ownedKey, stored) ? stored : 0;
+}
+
+// Regra 1 (não é possível equipar um equipamento acima do nível atual):
+// so deixa equipar um tier que o jogador ja possua E cujo unlockLevel seja
+// <= ao nivel atual. Devolve false (sem efeito) se alguma condicao falhar.
+function setEquippedTierIndex(equippedKey, ownedKey, tiers, tierIndex) {
+  if (!isTierOwned(ownedKey, tierIndex)) return false;
+  if (tiers[tierIndex].unlockLevel > getCurrentPlayerLevel()) return false;
+
+  localStorage.setItem(equippedKey, String(tierIndex));
+  queueProgressSync();
+  renderStatsHud();
+  return true;
 }
 
 // Nivel de melhoria (1-9) de CADA peca ja desbloqueada, guardado por tier -
@@ -219,25 +261,112 @@ function getEquipUpgradeCost(tiers, tierIndex, currentLevel) {
 }
 
 // --- Arma -----------------------------------------------------------------
-function getCurrentWeaponTierIndex() { return getCurrentTierIndex(WEAPON_TIERS); }
+function getCurrentWeaponTierIndex() { return getEquippedTierIndex(STORAGE_KEY_WEAPON_EQUIPPED_TIER, STORAGE_KEY_WEAPON_OWNED_TIERS); }
+function getWeaponOwnedTiers() { return getOwnedTiers(STORAGE_KEY_WEAPON_OWNED_TIERS); }
+function equipWeaponTier(tierIndex) { return setEquippedTierIndex(STORAGE_KEY_WEAPON_EQUIPPED_TIER, STORAGE_KEY_WEAPON_OWNED_TIERS, WEAPON_TIERS, tierIndex); }
 function getWeaponUpgradeLevelsMap() { return getEquipUpgradeLevelsMap(STORAGE_KEY_WEAPON_UPGRADE_LEVELS); }
 function getWeaponUpgradeLevel(tierIndex) { return getEquipUpgradeLevel(STORAGE_KEY_WEAPON_UPGRADE_LEVELS, tierIndex); }
 function setWeaponUpgradeLevel(tierIndex, level) { setEquipUpgradeLevel(STORAGE_KEY_WEAPON_UPGRADE_LEVELS, tierIndex, level); }
 function getWeaponUpgradeCost(tierIndex, currentLevel) { return getEquipUpgradeCost(WEAPON_TIERS, tierIndex, currentLevel); }
 
 // --- Escudo -----------------------------------------------------------------
-function getCurrentShieldTierIndex() { return getCurrentTierIndex(SHIELD_TIERS); }
+function getCurrentShieldTierIndex() { return getEquippedTierIndex(STORAGE_KEY_SHIELD_EQUIPPED_TIER, STORAGE_KEY_SHIELD_OWNED_TIERS); }
+function getShieldOwnedTiers() { return getOwnedTiers(STORAGE_KEY_SHIELD_OWNED_TIERS); }
+function equipShieldTier(tierIndex) { return setEquippedTierIndex(STORAGE_KEY_SHIELD_EQUIPPED_TIER, STORAGE_KEY_SHIELD_OWNED_TIERS, SHIELD_TIERS, tierIndex); }
 function getShieldUpgradeLevelsMap() { return getEquipUpgradeLevelsMap(STORAGE_KEY_SHIELD_UPGRADE_LEVELS); }
 function getShieldUpgradeLevel(tierIndex) { return getEquipUpgradeLevel(STORAGE_KEY_SHIELD_UPGRADE_LEVELS, tierIndex); }
 function setShieldUpgradeLevel(tierIndex, level) { setEquipUpgradeLevel(STORAGE_KEY_SHIELD_UPGRADE_LEVELS, tierIndex, level); }
 function getShieldUpgradeCost(tierIndex, currentLevel) { return getEquipUpgradeCost(SHIELD_TIERS, tierIndex, currentLevel); }
 
 // --- Armadura -----------------------------------------------------------------
-function getCurrentArmorTierIndex() { return getCurrentTierIndex(ARMOR_TIERS); }
+function getCurrentArmorTierIndex() { return getEquippedTierIndex(STORAGE_KEY_ARMOR_EQUIPPED_TIER, STORAGE_KEY_ARMOR_OWNED_TIERS); }
+function getArmorOwnedTiers() { return getOwnedTiers(STORAGE_KEY_ARMOR_OWNED_TIERS); }
+function equipArmorTier(tierIndex) { return setEquippedTierIndex(STORAGE_KEY_ARMOR_EQUIPPED_TIER, STORAGE_KEY_ARMOR_OWNED_TIERS, ARMOR_TIERS, tierIndex); }
 function getArmorUpgradeLevelsMap() { return getEquipUpgradeLevelsMap(STORAGE_KEY_ARMOR_UPGRADE_LEVELS); }
 function getArmorUpgradeLevel(tierIndex) { return getEquipUpgradeLevel(STORAGE_KEY_ARMOR_UPGRADE_LEVELS, tierIndex); }
 function setArmorUpgradeLevel(tierIndex, level) { setEquipUpgradeLevel(STORAGE_KEY_ARMOR_UPGRADE_LEVELS, tierIndex, level); }
 function getArmorUpgradeCost(tierIndex, currentLevel) { return getEquipUpgradeCost(ARMOR_TIERS, tierIndex, currentLevel); }
+
+// --- Drop de equipamento (treino/mini-boss/boss - secção 7 da documentação) -
+// EQUIPMENT_TYPE_CONFIGS partilhado entre o sorteio de drops abaixo e a
+// migracao/sincronizacao; cada entrada aponta para os arrays/chaves certos
+// sem duplicar logica por tipo.
+const EQUIPMENT_TYPE_CONFIGS = [
+  { tiers: WEAPON_TIERS, ownedKey: STORAGE_KEY_WEAPON_OWNED_TIERS, pieceName: "Arma" },
+  { tiers: SHIELD_TIERS, ownedKey: STORAGE_KEY_SHIELD_OWNED_TIERS, pieceName: "Escudo" },
+  { tiers: ARMOR_TIERS, ownedKey: STORAGE_KEY_ARMOR_OWNED_TIERS, pieceName: "Armadura" },
+];
+
+// Intervalo de niveis elegiveis para um drop: nivel do jogador +/- 15 (regra
+// 2/3/4 da conversa - qualquer tier cujo unlockLevel caia neste intervalo
+// pode calhar no sorteio, mesmo estando acima do nivel atual - so nao pode
+// ser EQUIPADO ja, ver setEquippedTierIndex acima).
+const EQUIPMENT_DROP_LEVEL_RANGE = 15;
+
+function getEligibleTierIndexesForDrop(tiers, playerLevel) {
+  const indexes = [];
+  tiers.forEach((tier, i) => {
+    if (Math.abs(tier.unlockLevel - playerLevel) <= EQUIPMENT_DROP_LEVEL_RANGE) indexes.push(i);
+  });
+  return indexes;
+}
+
+// Valor em moedas de um drop repetido (tier ja possuido) - em vez de nao
+// fazer nada, converte-se na media do custo de melhoria desse tier (custo[0]
+// e sempre 0, o Lv1 vem de graca ao encontrar a peca, por isso exclui-se do
+// calculo). Reaproveita a economia ja calibrada pelo jogador em vez de
+// inventar um novo valor de equilibrio.
+function getDuplicateDropCoinReward(tiers, tierIndex) {
+  const custoSteps = tiers[tierIndex].custo.slice(1);
+  const total = custoSteps.reduce((sum, custo) => sum + custo, 0);
+  return Math.round(total / custoSteps.length);
+}
+
+// Tenta um drop de equipamento: chancePercent em 100 de sequer acontecer
+// (5 = por km de treino real, 7 = mini-boss, 10 = boss); se acontecer,
+// escolhe ao acaso UM dos 3 tipos de peca e depois UM tier ao acaso dentro
+// do intervalo elegivel (acima) - no maximo uma peca por evento. Devolve
+// null se nao dropou nada (falhou a % ou nao ha nenhum tier elegivel nesse
+// nivel), ou um objeto descrevendo o resultado para quem chamou poder
+// avisar o jogador (showEquipmentDropToast).
+function rollEquipmentDrop(chancePercent) {
+  if (Math.random() * 100 >= chancePercent) return null;
+
+  const playerLevel = getCurrentPlayerLevel();
+  const typeConfig = EQUIPMENT_TYPE_CONFIGS[Math.floor(Math.random() * EQUIPMENT_TYPE_CONFIGS.length)];
+  const eligible = getEligibleTierIndexesForDrop(typeConfig.tiers, playerLevel);
+  if (eligible.length === 0) return null;
+
+  const tierIndex = eligible[Math.floor(Math.random() * eligible.length)];
+  const tier = typeConfig.tiers[tierIndex];
+
+  if (isTierOwned(typeConfig.ownedKey, tierIndex)) {
+    const coinReward = getDuplicateDropCoinReward(typeConfig.tiers, tierIndex);
+    addMoedas(coinReward);
+    return { pieceName: typeConfig.pieceName, tier, duplicate: true, coinReward };
+  }
+
+  addOwnedTier(typeConfig.ownedKey, tierIndex);
+  return { pieceName: typeConfig.pieceName, tier, duplicate: false };
+}
+
+// Aviso nao-bloqueante de um drop (novo ou duplicado) - mesmo espirito do
+// numero flutuante de combate (js/main.js showFloatingCombatText), mas fixo
+// no ecra (o treino/luta nao tem uma posicao 3D fixa relevante para isto) e
+// com texto em vez de um numero.
+function showEquipmentDropToast(message) {
+  const el = document.createElement("div");
+  el.className = "equip-drop-toast";
+  el.textContent = message;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function describeEquipmentDrop(drop) {
+  return drop.duplicate
+    ? `${drop.pieceName} de nível ${drop.tier.unlockLevel} repetida — trocada por ${drop.coinReward} moedas`
+    : `Nova peça encontrada: ${drop.pieceName} de nível ${drop.tier.unlockLevel}!`;
+}
 
 function computePlayerAtaque(forcaLevel) {
   const tierIndex = getCurrentWeaponTierIndex();
@@ -420,9 +549,61 @@ function createEquipmentUpgradeController(config) {
   const coinsEl = document.getElementById(`${idPrefix}-upgrade-coins`);
   const confirmBtn = document.getElementById(`btn-${idPrefix}-upgrade-confirm`);
   const closeBtn = document.getElementById(`btn-${idPrefix}-upgrade-close`);
+  const inventoryListEl = document.getElementById(`${idPrefix}-inventory-list`);
+
+  function getEquippedIndex() {
+    return getEquippedTierIndex(config.equippedKey, config.ownedKey);
+  }
+
+  // Lista as 10 pecas do tipo (possuida+equipada, possuida mas por equipar
+  // - bloqueada se o nivel ainda nao chegar la, ou por encontrar) - regra 1
+  // (nao equipar acima do nivel atual) reflete-se aqui escondendo o botao
+  // "Equipar" nesse caso, nunca so na validacao de setEquippedTierIndex.
+  function renderInventory(equippedIndex, playerLevel) {
+    inventoryListEl.innerHTML = "";
+    config.tiers.forEach((tier, tierIndex) => {
+      const owned = isTierOwned(config.ownedKey, tierIndex);
+      const isEquipped = tierIndex === equippedIndex;
+      const lockedByLevel = tier.unlockLevel > playerLevel;
+
+      const row = document.createElement("div");
+      row.className = "equip-inventory-row" + (isEquipped ? " equipped" : owned ? " owned" : " unknown");
+
+      const levelEl = document.createElement("span");
+      levelEl.className = "equip-inventory-level";
+      levelEl.textContent = `Nível ${tier.unlockLevel}`;
+      row.appendChild(levelEl);
+
+      if (!owned) {
+        const statusEl = document.createElement("span");
+        statusEl.className = "equip-inventory-status";
+        statusEl.textContent = "Por encontrar";
+        row.appendChild(statusEl);
+      } else if (isEquipped) {
+        const statusEl = document.createElement("span");
+        statusEl.className = "equip-inventory-status equip-inventory-equipped-badge";
+        statusEl.textContent = "Equipado";
+        row.appendChild(statusEl);
+      } else if (lockedByLevel) {
+        const statusEl = document.createElement("span");
+        statusEl.className = "equip-inventory-status";
+        statusEl.textContent = `Nível ${tier.unlockLevel} necessário`;
+        row.appendChild(statusEl);
+      } else {
+        const equipBtn = document.createElement("button");
+        equipBtn.type = "button";
+        equipBtn.className = "btn-secondary equip-inventory-equip-btn";
+        equipBtn.textContent = "Equipar";
+        equipBtn.dataset.tierIndex = String(tierIndex);
+        row.appendChild(equipBtn);
+      }
+
+      inventoryListEl.appendChild(row);
+    });
+  }
 
   function render() {
-    const tierIndex = getCurrentTierIndex(config.tiers);
+    const tierIndex = getEquippedIndex();
     const tier = config.tiers[tierIndex];
     const level = getEquipUpgradeLevel(config.storageKey, tierIndex);
     const coins = getMoedas();
@@ -447,6 +628,8 @@ function createEquipmentUpgradeController(config) {
       confirmBtn.disabled = coins < cost;
       confirmBtn.textContent = coins < cost ? "Moedas insuficientes" : `Evoluir ${config.pieceNameLower} (${cost} moedas)`;
     }
+
+    renderInventory(tierIndex, getCurrentPlayerLevel());
   }
 
   function open() {
@@ -459,7 +642,7 @@ function createEquipmentUpgradeController(config) {
   }
 
   function upgrade() {
-    const tierIndex = getCurrentTierIndex(config.tiers);
+    const tierIndex = getEquippedIndex();
     const level = getEquipUpgradeLevel(config.storageKey, tierIndex);
     const cost = getEquipUpgradeCost(config.tiers, tierIndex, level);
     if (cost === undefined) return; // ja no nivel maximo
@@ -475,10 +658,19 @@ function createEquipmentUpgradeController(config) {
     render();
   }
 
+  function equip(tierIndex) {
+    config.equipFn(tierIndex);
+    render();
+  }
+
   confirmBtn.addEventListener("click", upgrade);
   closeBtn.addEventListener("click", close);
   modalEl.addEventListener("click", (event) => {
     if (event.target.id === `${idPrefix}-upgrade-modal`) close();
+  });
+  inventoryListEl.addEventListener("click", (event) => {
+    if (event.target.dataset.tierIndex === undefined) return;
+    equip(Number(event.target.dataset.tierIndex));
   });
 
   return { open, close, render };
@@ -488,6 +680,9 @@ const weaponUpgradeController = createEquipmentUpgradeController({
   idPrefix: "weapon",
   tiers: WEAPON_TIERS,
   storageKey: STORAGE_KEY_WEAPON_UPGRADE_LEVELS,
+  ownedKey: STORAGE_KEY_WEAPON_OWNED_TIERS,
+  equippedKey: STORAGE_KEY_WEAPON_EQUIPPED_TIER,
+  equipFn: equipWeaponTier,
   primaryKey: "ataque",
   secondaryKey: "bonusForca",
   primaryIdSuffix: "ataque",
@@ -500,6 +695,9 @@ const shieldUpgradeController = createEquipmentUpgradeController({
   idPrefix: "shield",
   tiers: SHIELD_TIERS,
   storageKey: STORAGE_KEY_SHIELD_UPGRADE_LEVELS,
+  ownedKey: STORAGE_KEY_SHIELD_OWNED_TIERS,
+  equippedKey: STORAGE_KEY_SHIELD_EQUIPPED_TIER,
+  equipFn: equipShieldTier,
   primaryKey: "defesa",
   secondaryKey: "bonusResistencia",
   primaryIdSuffix: "defesa",
@@ -512,6 +710,9 @@ const armorUpgradeController = createEquipmentUpgradeController({
   idPrefix: "armor",
   tiers: ARMOR_TIERS,
   storageKey: STORAGE_KEY_ARMOR_UPGRADE_LEVELS,
+  ownedKey: STORAGE_KEY_ARMOR_OWNED_TIERS,
+  equippedKey: STORAGE_KEY_ARMOR_EQUIPPED_TIER,
+  equipFn: equipArmorTier,
   primaryKey: "vida",
   secondaryKey: "bonusEnergia",
   primaryIdSuffix: "vida",

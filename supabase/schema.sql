@@ -270,6 +270,23 @@ alter table public.leaderboard add column if not exists unlocked_achievements js
 alter table public.player_progress add column if not exists nivel_melhoria_escudos jsonb not null default '{}';
 alter table public.player_progress add column if not exists nivel_melhoria_armaduras jsonb not null default '{}';
 
+-- Migracao (2026-08-05): tiers deixam de desbloquear automaticamente por
+-- nivel de personagem - passam a ser LOOT (drop por km de treino, mini-boss
+-- ou boss, secção 7 da documentação). tiers_possuidos_* guarda a lista de
+-- indices de tier ja encontrados por peca (array jsonb, ex: [0,2,5]);
+-- tier_equipado_* guarda qual desses possuidos esta equipado (so pode ser
+-- um <= o nivel atual do jogador - regra 1). Default [0]/0: tier de nivel 1
+-- comeca sempre possuido/equipado, tanto para contas novas como para as ja
+-- existentes (ambos os jogadores reais estavam no nivel 2 no momento desta
+-- migracao, logo so tinham mesmo direito ao tier 0 - sem necessidade de
+-- backfill manual).
+alter table public.player_progress add column if not exists tiers_possuidos_armas jsonb not null default '[0]';
+alter table public.player_progress add column if not exists tiers_possuidos_escudos jsonb not null default '[0]';
+alter table public.player_progress add column if not exists tiers_possuidos_armaduras jsonb not null default '[0]';
+alter table public.player_progress add column if not exists tier_equipado_arma smallint not null default 0;
+alter table public.player_progress add column if not exists tier_equipado_escudo smallint not null default 0;
+alter table public.player_progress add column if not exists tier_equipado_armadura smallint not null default 0;
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

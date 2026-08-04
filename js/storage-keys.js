@@ -37,6 +37,18 @@ const STORAGE_KEY_WEAPON_UPGRADE_LEVELS = "personagem.nivelMelhoriaArmas";
 const STORAGE_KEY_SHIELD_UPGRADE_LEVELS = "personagem.nivelMelhoriaEscudos";
 const STORAGE_KEY_ARMOR_UPGRADE_LEVELS = "personagem.nivelMelhoriaArmaduras";
 
+// Posse/equipamento por peca (2026-08-05 - secção 7 da documentação): os
+// tiers deixam de desbloquear automaticamente por nivel de personagem,
+// passam a ser LOOT (drop por km de treino, mini-boss ou boss). Cada peca
+// guarda a lista de indices de tier ja encontrados (array, ex: [0,2,5]) e
+// qual deles esta equipado (so pode ser um <= o nivel atual - regra 1).
+const STORAGE_KEY_WEAPON_OWNED_TIERS = "personagem.tiersPossuidosArmas";
+const STORAGE_KEY_SHIELD_OWNED_TIERS = "personagem.tiersPossuidosEscudos";
+const STORAGE_KEY_ARMOR_OWNED_TIERS = "personagem.tiersPossuidosArmaduras";
+const STORAGE_KEY_WEAPON_EQUIPPED_TIER = "personagem.tierEquipadoArma";
+const STORAGE_KEY_SHIELD_EQUIPPED_TIER = "personagem.tierEquipadoEscudo";
+const STORAGE_KEY_ARMOR_EQUIPPED_TIER = "personagem.tierEquipadoArmadura";
+
 const STORAGE_KEY_DEFEATED_CREATURES = "personagem.monstrosDerrotados";
 
 // Criaturas com que ja se entrou em combate pelo menos uma vez (ganhando

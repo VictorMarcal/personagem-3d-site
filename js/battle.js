@@ -82,6 +82,25 @@ function awardMonsterCoins(creature) {
   addMoedas(amount);
 }
 
+// Drop de equipamento por derrotar mini-boss/boss (secção 7 da
+// documentação): 7%/10% de chance, mesma regra de nivel +/-15 e "no maximo
+// uma peca por evento" de rollEquipmentDrop (js/equipment.js) - pago em
+// TODA vitoria, tal como as moedas acima.
+const MINIBOSS_EQUIPMENT_DROP_CHANCE = 7;
+const BOSS_EQUIPMENT_DROP_CHANCE = 10;
+
+function awardMonsterEquipmentDrop(creature) {
+  const chancePercent = creature.isBoss
+    ? BOSS_EQUIPMENT_DROP_CHANCE
+    : creature.isMiniBoss
+    ? MINIBOSS_EQUIPMENT_DROP_CHANCE
+    : null;
+  if (chancePercent === null) return;
+
+  const drop = rollEquipmentDrop(chancePercent);
+  if (drop) showEquipmentDropToast(describeEquipmentDrop(drop));
+}
+
 function updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp) {
   const playerPct = Math.max(0, Math.min(100, (playerHp / playerMaxHp) * 100));
   const monsterPct = Math.max(0, Math.min(100, (monsterHp / monsterMaxHp) * 100));
@@ -217,6 +236,7 @@ async function startBattle(creature) {
     }
 
     awardMonsterCoins(creature);
+    awardMonsterEquipmentDrop(creature);
     checkAndUnlockAchievements(); // pode ter desbloqueado uma conquista de boss
     battleResultEl.textContent = `Vitória! Derrotaste ${creature.name}.`;
   } else {
