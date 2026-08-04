@@ -255,6 +255,14 @@ alter table public.player_progress drop column if exists nivel_foco;
 alter table public.player_progress add column if not exists moedas integer not null default 100;
 alter table public.player_progress add column if not exists nivel_melhoria_armas jsonb not null default '{}';
 
+-- Migracao: copia publica das conquistas desbloqueadas na tabela
+-- leaderboard - player_progress e privado (RLS so deixa o dono ler a sua
+-- propria linha), mas o popup de "trofeus" de outro jogador no leaderboard
+-- (js/leaderboard.js) precisa de ler as conquistas de qualquer jogador.
+-- leaderboard ja e a projecao publica intencional (secção 14 da
+-- documentação), por isso a copia vai para aqui, nao para player_progress.
+alter table public.leaderboard add column if not exists unlocked_achievements jsonb not null default '{}';
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

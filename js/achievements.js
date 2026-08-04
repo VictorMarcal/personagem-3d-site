@@ -222,10 +222,16 @@ const MONTHLY_MEDAL_ID_PATTERN = /^medal_(gold|silver|bronze)_(\d{4})_(\d{2})$/;
 // historico. Usado tanto para desenhar o cartao como para saber se esta
 // desbloqueado (js/monthly-medals.js e que desbloqueia o id real
 // medal_<cor>_<ano>_<mes> quando o mes fecha).
-function findWonMedalForMonthNumber(monthNumber) {
+//
+// unlockedMap opcional (default = o proprio jogador, via
+// getUnlockedAchievements()): permite reutilizar toda esta logica para
+// mostrar as conquistas de OUTRO jogador (popup de trofeus no leaderboard,
+// js/leaderboard.js), que vem de leaderboard.unlocked_achievements em vez
+// do localStorage.
+function findWonMedalForMonthNumber(monthNumber, unlockedMap = getUnlockedAchievements()) {
   const monthKey2 = String(monthNumber).padStart(2, "0");
   let best = null;
-  Object.keys(getUnlockedAchievements()).forEach((id) => {
+  Object.keys(unlockedMap).forEach((id) => {
     const match = id.match(MONTHLY_MEDAL_ID_PATTERN);
     if (!match) return;
     const [, medal, year, month] = match;
@@ -240,13 +246,13 @@ function findWonMedalForMonthNumber(monthNumber) {
 // ganha alguma vez nesse mes de calendario; caso contrario fica bloqueado
 // com o icone das 3 medalhas, quer o mes ainda nao tenha chegado, esteja a
 // decorrer (ainda por decidir) ou ja tenha passado sem podio.
-function generateMonthlyMedalAchievements() {
+function generateMonthlyMedalAchievements(unlockedMap = getUnlockedAchievements()) {
   const currentMonthNumber = new Date().getMonth() + 1;
 
   return MONTH_NAMES_PT.map((monthName, index) => {
     const monthNumber = index + 1;
     const monthKey2 = String(monthNumber).padStart(2, "0");
-    const won = findWonMedalForMonthNumber(monthNumber);
+    const won = findWonMedalForMonthNumber(monthNumber, unlockedMap);
 
     if (won) {
       return {
@@ -270,14 +276,14 @@ function generateMonthlyMedalAchievements() {
   });
 }
 
-function getAllAchievements() {
+function getAllAchievements(unlockedMap = getUnlockedAchievements()) {
   return [
     ...STATIC_ACHIEVEMENTS,
     ...generateSessionDistanceAchievements(),
     ...PACE_ACHIEVEMENTS,
     ...PERSONAL_RECORD_ACHIEVEMENTS,
     ...generateBossAchievements(),
-    ...generateMonthlyMedalAchievements(),
+    ...generateMonthlyMedalAchievements(unlockedMap),
   ];
 }
 
@@ -360,15 +366,15 @@ function getUnlockedAchievements() {
   }
 }
 
-function isAchievementUnlocked(id) {
+function isAchievementUnlocked(id, unlockedMap = getUnlockedAchievements()) {
   // Os 12 cartoes fixos de medalha mensal (medal_month_01..12, ver
   // generateMonthlyMedalAchievements) nao sao eles proprios gravados por
   // unlockAchievement - o que fica gravado e o id real por ano/mes
   // (medal_<cor>_<ano>_<mes>), atribuido por js/monthly-medals.js.
   const slotMatch = id.match(/^medal_month_(\d{2})$/);
-  if (slotMatch) return findWonMedalForMonthNumber(Number(slotMatch[1])) !== null;
+  if (slotMatch) return findWonMedalForMonthNumber(Number(slotMatch[1]), unlockedMap) !== null;
 
-  return Object.prototype.hasOwnProperty.call(getUnlockedAchievements(), id);
+  return Object.prototype.hasOwnProperty.call(unlockedMap, id);
 }
 
 // Moedas por desbloquear esta conquista - medalhas mensais (ids reais
@@ -655,12 +661,17 @@ document.getElementById("achievement-detail-modal").addEventListener("click", (e
   if (event.target.id === "achievement-detail-modal") closeAchievementDetail();
 });
 
-function createAchievementItemEl(achievement) {
-  const unlocked = isAchievementUnlocked(achievement.id);
+// unlockedMap/onClick opcionais (defaults = o proprio jogador e o popup de
+// detalhe existente): permitem reutilizar este item também para o popup de
+// trofeus de OUTRO jogador (js/leaderboard.js), sem progresso/detalhe
+// clicavel (nao temos esses dados para outro jogador, so o mapa de
+// desbloqueadas) - passa onClick a null nesse caso.
+function createAchievementItemEl(achievement, unlockedMap = getUnlockedAchievements(), onClick = openAchievementDetail) {
+  const unlocked = isAchievementUnlocked(achievement.id, unlockedMap);
 
   const item = document.createElement("div");
-  item.className = "achievement-item " + (unlocked ? "unlocked" : "locked");
-  item.addEventListener("click", () => openAchievementDetail(achievement));
+  item.className = "achievement-item " + (unlocked ? "unlocked" : "locked") + (onClick ? "" : " read-only");
+  if (onClick) item.addEventListener("click", () => onClick(achievement));
 
   const icon = document.createElement("div");
   icon.className = "achievement-icon";

@@ -442,6 +442,10 @@ main {
   cursor: pointer;
 }
 
+.achievement-item.read-only {
+  cursor: default;
+}
+
 #achievement-detail-modal {
   position: fixed;
   inset: 0;
@@ -587,6 +591,19 @@ main {
 }
 
 #achievements-modal.hidden {
+  display: none;
+}
+
+#player-trophies-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  padding: 1rem;
+  background: #101014;
+  overflow-y: auto;
+}
+
+#player-trophies-modal.hidden {
   display: none;
 }
 
@@ -878,6 +895,14 @@ main {
 
 .leaderboard-name {
   flex: 1;
+}
+
+.leaderboard-name-clickable {
+  cursor: pointer;
+}
+
+.leaderboard-name-clickable:hover {
+  text-decoration: underline;
 }
 
 .leaderboard-level {

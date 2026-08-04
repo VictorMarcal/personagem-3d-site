@@ -22,8 +22,9 @@ function createLeaderboardRowEl(row, rank, isOwn, distanceM) {
   rankEl.textContent = `#${rank}`;
 
   const nameEl = document.createElement("span");
-  nameEl.className = "leaderboard-name";
+  nameEl.className = "leaderboard-name leaderboard-name-clickable";
   nameEl.textContent = row.display_name;
+  nameEl.addEventListener("click", () => openPlayerTrophiesModal(row.display_name, row.unlocked_achievements));
 
   // Nivel vem sempre da distancia VITALICIA (secção 5), nunca da coluna
   // mostrada na aba Mensal (monthly_distance_m reinicia todos os meses,
@@ -51,10 +52,12 @@ function createLeaderboardRowEl(row, rank, isOwn, distanceM) {
 // lifetime_distance_m e sempre pedido, mesmo na aba Mensal (distanceColumn
 // = monthly_distance_m nesse caso) - e a partir dela que o nivel de cada
 // linha e calculado (ver createLeaderboardRowEl), nunca da coluna mostrada.
+// unlocked_achievements tambem e sempre pedido - popup de trofeus ao
+// clicar no nome (openPlayerTrophiesModal abaixo).
 function leaderboardSelectColumns(distanceColumn) {
   return distanceColumn === "lifetime_distance_m"
-    ? "user_id, display_name, lifetime_distance_m"
-    : `user_id, display_name, lifetime_distance_m, ${distanceColumn}`;
+    ? "user_id, display_name, lifetime_distance_m, unlocked_achievements"
+    : `user_id, display_name, lifetime_distance_m, unlocked_achievements, ${distanceColumn}`;
 }
 
 async function renderLeaderboardInto(listEl, distanceColumn, monthKey) {
@@ -151,6 +154,43 @@ async function renderMedalHistory() {
       });
   });
 }
+
+// Popup de trofeus de outro jogador (ou do proprio, clicado no leaderboard) -
+// reutiliza toda a logica de agrupamento/desenho de js/achievements.js, so
+// que a partir de unlocked_achievements do leaderboard (publico) em vez do
+// localStorage do proprio jogador. Sem progresso nem popup de detalhe
+// clicavel (nao temos esses dados de outro jogador) - so desbloqueada/por
+// desbloquear, ver createAchievementItemEl(achievement, unlockedMap, onClick).
+function renderPlayerTrophies(unlockedMap) {
+  const gridEl = document.getElementById("player-trophies-grid");
+  gridEl.innerHTML = "";
+
+  groupAchievementsByCategory(getAllAchievements(unlockedMap)).forEach((items, category) => {
+    if (items.length === 0) return;
+
+    const title = document.createElement("h3");
+    title.className = "achievement-category-title";
+    title.textContent = category;
+    gridEl.appendChild(title);
+
+    const sectionGrid = document.createElement("div");
+    sectionGrid.className = "achievements-grid";
+    items.forEach((achievement) => sectionGrid.appendChild(createAchievementItemEl(achievement, unlockedMap, null)));
+    gridEl.appendChild(sectionGrid);
+  });
+}
+
+function openPlayerTrophiesModal(displayName, unlockedMap) {
+  document.getElementById("player-trophies-name").textContent = displayName;
+  renderPlayerTrophies(unlockedMap || {});
+  document.getElementById("player-trophies-modal").classList.remove("hidden");
+}
+
+function closePlayerTrophiesModal() {
+  document.getElementById("player-trophies-modal").classList.add("hidden");
+}
+
+document.getElementById("btn-close-player-trophies").addEventListener("click", closePlayerTrophiesModal);
 
 async function renderLeaderboardCardNow() {
   await renderLeaderboardInto(leaderboardListEl, "lifetime_distance_m");

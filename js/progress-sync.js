@@ -55,6 +55,10 @@ async function syncProgressToSupabase() {
       lifetime_distance_m: snapshot.lifetime_distance_m,
       monthly_distance_m: getMonthlyDistanceM(),
       month_reference: getMonthReference(),
+      // Copia publica das conquistas (player_progress e privado, RLS so
+      // deixa o dono ler a sua propria linha) - usada pelo popup de
+      // trofeus de outro jogador no leaderboard (js/leaderboard.js).
+      unlocked_achievements: snapshot.unlocked_achievements,
       updated_at: nowIso,
     });
 
@@ -121,6 +125,7 @@ async function migrateLocalProgressToSupabase(userId, existingDisplayName) {
     lifetime_distance_m: snapshot.lifetime_distance_m,
     monthly_distance_m: getMonthlyDistanceM(),
     month_reference: getMonthReference(),
+    unlocked_achievements: snapshot.unlocked_achievements,
   });
 
   return snapshot;
