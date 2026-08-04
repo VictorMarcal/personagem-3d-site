@@ -1,46 +1,61 @@
-// Cada equipamento tem um nivel proprio (comeca em 1 = valor base).
-// O valor do status cresce de forma recursiva e aditiva (nunca decresce
-// de nivel para nivel, ao contrario de uma curva de potencia pura):
-//   Valor(1) = STAT_BASE
-//   Valor(n) = round(Valor(n-1) + STAT_FLAT + n * STAT_PERCENT)
-// Cada status (Vida/Ataque/Defesa) tem a sua propria base/flat/percentagem,
-// ajustaveis independentemente no card de Debug (js/debug.js).
+// Sistema de status do jogador (2026-08-04 - ver secção 6/7 da documentação).
+// 4 status principais (Vida/Ataque/Defesa/Regeneração+Letalidade+Destreza)
+// dependem de 4 status "investidos" com pontos (Energia/Força/Resistência/
+// Foco), mais um bónus fixo do equipamento "básico" atual (ainda sem
+// sistema de moedas para o melhorar/trocar - ver getEquipBasico* em
+// js/debug.js):
+//   Vida    = PLAYER_BASE_VIDA    + equipBasicoVida    + round(Energia^ENERGIA_EXP)
+//   Ataque  = PLAYER_BASE_ATAQUE  + equipBasicoAtaque  + round(Força^FORCA_EXP)
+//   Defesa  = PLAYER_BASE_DEFESA  + equipBasicoDefesa  + round(Resistência^RESISTENCIA_EXP)
+// Foco (próprio + bónus fixo do equipamento) alimenta 3 formulas:
+//   Destreza%    = DESTREZA_BASE    + Foco^DESTREZA_EXP
+//   Letalidade%  = LETALIDADE_BASE  + Foco^LETALIDADE_EXP
+//   Regeneração  = REGEN_BASE       + Foco^REGEN_EXP        (vida/segundo)
+// computeStatValue (fórmula recursiva antiga) mantém-se só para os
+// MONSTROS (js/monsters.js) - não mudaram, ver nota na documentação.
 // STORAGE_KEYS_EQUIPMENT esta definida em js/storage-keys.js
 
-const EQUIP_LEVEL_STORAGE_KEY_BY_TYPE = {
-  vida: STORAGE_KEYS_EQUIPMENT.nivelEquipVida,
-  ataque: STORAGE_KEYS_EQUIPMENT.nivelEquipAtaque,
-  defesa: STORAGE_KEYS_EQUIPMENT.nivelEquipDefesa,
+const INVESTABLE_STAT_STORAGE_KEY_BY_TYPE = {
+  energia: STORAGE_KEYS_EQUIPMENT.nivelEnergia,
+  forca: STORAGE_KEYS_EQUIPMENT.nivelForca,
+  resistencia: STORAGE_KEYS_EQUIPMENT.nivelResistencia,
+  foco: STORAGE_KEYS_EQUIPMENT.nivelFoco,
 };
 
 const STAT_LABEL_BY_TYPE = {
-  vida: "Vida",
-  ataque: "Ataque",
-  defesa: "Defesa",
+  energia: "Energia",
+  forca: "Força",
+  resistencia: "Resistência",
+  foco: "Foco",
 };
 
 const statVidaValueEl = document.getElementById("stat-vida-value");
 const statAtaqueValueEl = document.getElementById("stat-ataque-value");
 const statDefesaValueEl = document.getElementById("stat-defesa-value");
-const statRecuperacaoValueEl = document.getElementById("stat-recuperacao-value");
+const statDestrezaValueEl = document.getElementById("stat-destreza-value");
+const statLetalidadeValueEl = document.getElementById("stat-letalidade-value");
+const statRegeneracaoValueEl = document.getElementById("stat-regeneracao-value");
 const hudUnspentPointsValueEl = document.getElementById("hud-unspent-points-value");
-const hudLevelVidaEl = document.getElementById("hud-level-vida");
-const hudLevelAtaqueEl = document.getElementById("hud-level-ataque");
-const hudLevelDefesaEl = document.getElementById("hud-level-defesa");
+const hudLevelEnergiaEl = document.getElementById("hud-level-energia");
+const hudLevelForcaEl = document.getElementById("hud-level-forca");
+const hudLevelResistenciaEl = document.getElementById("hud-level-resistencia");
+const hudLevelFocoEl = document.getElementById("hud-level-foco");
 const btnUpgradeEquip = document.getElementById("btn-upgrade-equip");
 
 const btnHudUpgradeByType = {
-  vida: document.getElementById("btn-hud-upgrade-vida"),
-  ataque: document.getElementById("btn-hud-upgrade-ataque"),
-  defesa: document.getElementById("btn-hud-upgrade-defesa"),
+  energia: document.getElementById("btn-hud-upgrade-energia"),
+  forca: document.getElementById("btn-hud-upgrade-forca"),
+  resistencia: document.getElementById("btn-hud-upgrade-resistencia"),
+  foco: document.getElementById("btn-hud-upgrade-foco"),
 };
 
 let selectedEquipType = null;
 
 // CUIDADO: nao trocar por "Number(raw) || defaultValue" - 0 e um valor
-// legitimo (ex: 0 pontos por gastar) mas e "falsy" em JS, o que fazia
-// qualquer valor guardado como 0 ser lido de volta como o defaultValue,
-// criando um ciclo infinito de pontos "fantasma" sempre que chegavam a 0.
+// legitimo (ex: 0 pontos por gastar, ou 0 pontos investidos num status)
+// mas e "falsy" em JS, o que fazia qualquer valor guardado como 0 ser lido
+// de volta como o defaultValue, criando um ciclo infinito de pontos
+// "fantasma" sempre que chegavam a 0.
 function getStoredNumber(key, defaultValue) {
   const raw = localStorage.getItem(key);
   if (raw === null) return defaultValue;
@@ -58,10 +73,19 @@ function getUnspentPoints() {
   return getStoredNumber(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, STARTING_UNSPENT_POINTS);
 }
 
-function getEquipLevel(type) {
-  return getStoredNumber(EQUIP_LEVEL_STORAGE_KEY_BY_TYPE[type], 1);
+// Nivel investido em Energia/Forca/Resistencia/Foco - comeca em 0 (nunca
+// investido), ao contrario do antigo nivel de equipamento (comecava em 1,
+// ja que a formula recursiva precisava de um "nivel 1" com o valor base).
+// Aqui 0 pontos = 0 de contributo extra, a base fica so a cargo de
+// PLAYER_BASE_*/equipBasico* (ver cabecalho do ficheiro).
+function getInvestableStatLevel(type) {
+  return getStoredNumber(INVESTABLE_STAT_STORAGE_KEY_BY_TYPE[type], 0);
 }
 
+// Formula recursiva antiga - mantida so para os MONSTROS (computeCreatureStatValue,
+// js/monsters.js), que continuam com as curvas statBase/Flat/Percent de
+// sempre (js/debug.js). O jogador passou a usar computePlayerVida/Ataque/Defesa
+// abaixo, com uma formula diferente.
 function computeStatValue(type, equipLevel) {
   const flat = getStatFlat(type);
   const percent = getStatPercent(type);
@@ -73,13 +97,40 @@ function computeStatValue(type, equipLevel) {
   return value;
 }
 
-// Recuperacao de vida da armadura: formula linear simples (nao recursiva
-// como computeStatValue), aplicada uma vez no inicio de cada batalha
-// (js/battle.js) como bonus percentual sobre a Vida maxima do jogador.
-// Recuperacao = STAT_RECOVERY_BASE + nivelArmadura x 10% (nivel 1 ja conta
-// como 1 nivel, por isso da 20% desde o inicio com a base em 10%).
-function computeRecoveryPercent(armorLevel) {
-  return getStatRecoveryBase() + armorLevel * 0.1;
+function computePlayerVida(energiaLevel) {
+  return Math.round(getPlayerBaseVida() + getEquipBasicoVida() + Math.pow(energiaLevel, getEnergiaExponent()));
+}
+
+function computePlayerAtaque(forcaLevel) {
+  return Math.round(getPlayerBaseAtaque() + getEquipBasicoAtaque() + Math.pow(forcaLevel, getForcaExponent()));
+}
+
+function computePlayerDefesa(resistenciaLevel) {
+  return Math.round(getPlayerBaseDefesa() + getEquipBasicoDefesa() + Math.pow(resistenciaLevel, getResistenciaExponent()));
+}
+
+// Foco total = pontos investidos + bonus fixo somado dos 3 equipamentos
+// (Arma/Escudo/Armadura dao todos um bonus de Foco, alem do seu status
+// principal - ver getEquipBasicoFoco em js/debug.js).
+function computeFocoTotal(focoLevel) {
+  return focoLevel + getEquipBasicoFoco();
+}
+
+// Destreza/Letalidade: formulas "base + Foco^expoente", resultado em pontos
+// percentuais - dividido por 100 para dar a fracao (0-1) usada nas rolagens
+// de combate (js/battle.js).
+function computeDestrezaChance(focoTotal) {
+  return (getDestrezaBase() + Math.pow(focoTotal, getDestrezaExponent())) / 100;
+}
+
+function computeLetalidadeChance(focoTotal) {
+  return (getLetalidadeBase() + Math.pow(focoTotal, getLetalidadeExponent())) / 100;
+}
+
+// Regeneracao: mesma forma, mas o resultado fica em pontos de vida por
+// segundo (nao percentagem) - usada por getCurrentHp abaixo.
+function computeRegeneracaoPerSecond(focoTotal) {
+  return getRegeneracaoBase() + Math.pow(focoTotal, getRegeneracaoExponent());
 }
 
 // Comeca em 1 (nivel inicial) para "subir de nivel" so contar a partir
@@ -116,14 +167,16 @@ function computeBonusPointsForStars(maxPoints, stars) {
 // Vida atual do jogador: persiste entre lutas e recupera com o tempo real
 // decorrido (nao um timer a correr sempre - calculado sob demanda a partir
 // do ultimo valor guardado + segundos passados, padrao comum em jogos
-// idle). Nunca lutou ainda = comeca cheia.
+// idle). Nunca lutou ainda = comeca cheia. A regeneracao vem do Foco
+// (secção 7), nao mais do nivel da Armadura/Energia.
 function getCurrentHp(maxHp) {
   const stored = localStorage.getItem(STORAGE_KEY_CURRENT_HP);
   if (stored === null) return maxHp;
 
   const lastUpdate = Number(localStorage.getItem(STORAGE_KEY_HP_LAST_UPDATE)) || Date.now();
   const elapsedSeconds = Math.max(0, (Date.now() - lastUpdate) / 1000);
-  const recovered = Number(stored) + computeRecoveryPercent(getEquipLevel("vida")) * elapsedSeconds;
+  const focoTotal = computeFocoTotal(getInvestableStatLevel("foco"));
+  const recovered = Number(stored) + computeRegeneracaoPerSecond(focoTotal) * elapsedSeconds;
   return Math.min(maxHp, Math.max(0, recovered));
 }
 
@@ -146,16 +199,24 @@ function awardBonusPoints(amount) {
 }
 
 function renderStatsHud() {
-  const maxHp = computeStatValue("vida", getEquipLevel("vida"));
+  const energiaLevel = getInvestableStatLevel("energia");
+  const forcaLevel = getInvestableStatLevel("forca");
+  const resistenciaLevel = getInvestableStatLevel("resistencia");
+  const focoTotal = computeFocoTotal(getInvestableStatLevel("foco"));
+
+  const maxHp = computePlayerVida(energiaLevel);
   statVidaValueEl.textContent = `${Math.round(getCurrentHp(maxHp))}/${maxHp}`;
-  statAtaqueValueEl.textContent = computeStatValue("ataque", getEquipLevel("ataque"));
-  statDefesaValueEl.textContent = computeStatValue("defesa", getEquipLevel("defesa"));
-  statRecuperacaoValueEl.textContent = computeRecoveryPercent(getEquipLevel("vida")).toFixed(1);
+  statAtaqueValueEl.textContent = computePlayerAtaque(forcaLevel);
+  statDefesaValueEl.textContent = computePlayerDefesa(resistenciaLevel);
+  statDestrezaValueEl.textContent = `${(computeDestrezaChance(focoTotal) * 100).toFixed(1)}%`;
+  statLetalidadeValueEl.textContent = `${(computeLetalidadeChance(focoTotal) * 100).toFixed(1)}%`;
+  statRegeneracaoValueEl.textContent = computeRegeneracaoPerSecond(focoTotal).toFixed(1);
   hudUnspentPointsValueEl.textContent = getUnspentPoints();
 
-  hudLevelVidaEl.textContent = getEquipLevel("vida");
-  hudLevelAtaqueEl.textContent = getEquipLevel("ataque");
-  hudLevelDefesaEl.textContent = getEquipLevel("defesa");
+  hudLevelEnergiaEl.textContent = energiaLevel;
+  hudLevelForcaEl.textContent = forcaLevel;
+  hudLevelResistenciaEl.textContent = resistenciaLevel;
+  hudLevelFocoEl.textContent = getInvestableStatLevel("foco");
 
   const hasPoints = getUnspentPoints() > 0;
   Object.values(btnHudUpgradeByType).forEach((btn) => {
@@ -179,7 +240,8 @@ function updateHpTicker(maxHp) {
       // durante uma luta o personagem esta noutra posicao (battle-fullscreen)
       // e a recuperacao ja nao avanca de qualquer forma.
       if (!battleInProgress) {
-        showFloatingCombatText(head, computeRecoveryPercent(getEquipLevel("vida")));
+        const focoTotal = computeFocoTotal(getInvestableStatLevel("foco"));
+        showFloatingCombatText(head, computeRegeneracaoPerSecond(focoTotal));
       }
     }, 1000);
   } else if (isFull && hpTickerIntervalId !== null) {
@@ -193,8 +255,10 @@ function hideUpgradeButton() {
   selectedEquipType = null;
 }
 
-// Chamado ao clicar/tocar num equipamento no personagem 3D
-// (o raycast que identifica qual foi tocado esta em js/main.js)
+// Chamado ao clicar/tocar num equipamento no personagem 3D (o raycast que
+// identifica qual foi tocado esta em js/main.js) - corpo->Energia,
+// espada->Forca, escudo->Resistencia. Foco nao tem peca 3D propria, so e
+// investido pelo botao "+" do HUD.
 function selectEquipment(type) {
   selectedEquipType = type;
 
@@ -204,13 +268,13 @@ function selectEquipment(type) {
   btnUpgradeEquip.classList.remove("hidden");
 }
 
-// Gasta 1 ponto a subir o nivel de um equipamento; partilhado pelo
+// Gasta 1 ponto a subir o nivel de um status investido; partilhado pelo
 // fluxo de clicar no personagem 3D e pelos botoes "+" do HUD
 function upgradeEquipmentType(type) {
   if (getUnspentPoints() <= 0) return;
 
-  const levelKey = EQUIP_LEVEL_STORAGE_KEY_BY_TYPE[type];
-  localStorage.setItem(levelKey, String(getEquipLevel(type) + 1));
+  const levelKey = INVESTABLE_STAT_STORAGE_KEY_BY_TYPE[type];
+  localStorage.setItem(levelKey, String(getInvestableStatLevel(type) + 1));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(getUnspentPoints() - 1));
   queueProgressSync();
 

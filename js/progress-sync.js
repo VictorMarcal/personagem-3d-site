@@ -13,9 +13,10 @@ function readLocalProgressSnapshot() {
   return {
     lifetime_distance_m: getLifetimeDistanceM(),
     unspent_points: getUnspentPoints(),
-    equip_level_vida: getEquipLevel("vida"),
-    equip_level_ataque: getEquipLevel("ataque"),
-    equip_level_defesa: getEquipLevel("defesa"),
+    nivel_energia: getInvestableStatLevel("energia"),
+    nivel_forca: getInvestableStatLevel("forca"),
+    nivel_resistencia: getInvestableStatLevel("resistencia"),
+    nivel_foco: getInvestableStatLevel("foco"),
     last_awarded_level: getLastAwardedLevel(),
     defeated_creatures: getDefeatedCreaturesMap(),
     encountered_creatures: getEncounteredLevels(),
@@ -130,9 +131,10 @@ async function migrateLocalProgressToSupabase(userId, existingDisplayName) {
 function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEY_LIFETIME_M, String(progress.lifetime_distance_m));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(progress.unspent_points));
-  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEquipVida, String(progress.equip_level_vida));
-  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEquipAtaque, String(progress.equip_level_ataque));
-  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEquipDefesa, String(progress.equip_level_defesa));
+  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEnergia, String(progress.nivel_energia || 0));
+  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelForca, String(progress.nivel_forca || 0));
+  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelResistencia, String(progress.nivel_resistencia || 0));
+  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelFoco, String(progress.nivel_foco || 0));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado, String(progress.last_awarded_level));
   localStorage.setItem(STORAGE_KEY_DEFEATED_CREATURES, JSON.stringify(progress.defeated_creatures || {}));
   localStorage.setItem(STORAGE_KEY_ENCOUNTERED_CREATURES, JSON.stringify(progress.encountered_creatures || []));

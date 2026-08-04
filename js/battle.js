@@ -41,6 +41,22 @@ function computeBattleDamage(attackerAtaque, defenderDefesa) {
   return Math.round(baseDamage * variance);
 }
 
+// Destreza/Letalidade (secção 6/7 e 9 da documentação) - so o JOGADOR as
+// tem por agora, os monstros nao foram atualizados (fora de escopo).
+// rollDodge: chance do DEFENSOR esquivar por completo um ataque, testada
+// antes de computeBattleDamage - uma esquiva nunca chega a chamar a
+// formula de dano, fica sempre em 0. Se nao esquivar, verifica-se depois
+// se e um critico (chance de Letalidade do atacante): nesse caso o dano
+// ignora a Defesa por completo e nao tem variacao aleatoria - e sempre
+// exatamente Ataque x LETALIDADE_MULTIPLICADOR.
+function rollDodge(dodgeChance) {
+  return Math.random() < dodgeChance;
+}
+
+function rollCritico(letalidadeChance) {
+  return Math.random() < letalidadeChance;
+}
+
 function updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp) {
   const playerPct = Math.max(0, Math.min(100, (playerHp / playerMaxHp) * 100));
   const monsterPct = Math.max(0, Math.min(100, (monsterHp / monsterMaxHp) * 100));
@@ -73,13 +89,20 @@ async function startBattle(creature) {
   // por garantia) - lutar com vida parcial e uma escolha do jogador, nao
   // um bloqueio. A recuperacao para de contar assim que a luta comeca
   // (so volta a avancar depois, a partir do valor guardado no fim dela).
-  const playerMaxHp = computeStatValue("vida", getEquipLevel("vida"));
-  const playerAtaque = computeStatValue("ataque", getEquipLevel("ataque"));
-  const playerDefesa = computeStatValue("defesa", getEquipLevel("defesa"));
+  const playerMaxHp = computePlayerVida(getInvestableStatLevel("energia"));
+  const playerAtaque = computePlayerAtaque(getInvestableStatLevel("forca"));
+  const playerDefesa = computePlayerDefesa(getInvestableStatLevel("resistencia"));
+  const playerFocoTotal = computeFocoTotal(getInvestableStatLevel("foco"));
+  const playerDestreza = computeDestrezaChance(playerFocoTotal);
+  const playerLetalidade = computeLetalidadeChance(playerFocoTotal);
 
   const monsterMaxHp = computeCreatureStatValue("vida", creature);
   const monsterAtaque = computeCreatureStatValue("ataque", creature);
   const monsterDefesa = computeCreatureStatValue("defesa", creature);
+  // Monstros nao tem Destreza/Letalidade por agora (fora de escopo) - nunca
+  // esquivam nem dao critico, so o jogador tem estas duas mecanicas.
+  const monsterDestreza = 0;
+  const monsterLetalidade = 0;
 
   let playerHp = getCurrentHp(playerMaxHp);
   let monsterHp = monsterMaxHp;
@@ -106,10 +129,19 @@ async function startBattle(creature) {
     round += 1;
     refreshTabLock(STORAGE_KEY_BATTLE_TAB_LOCK);
 
-    const dmgToMonster = computeBattleDamage(playerAtaque, monsterDefesa);
-    monsterHp -= dmgToMonster;
-    showFloatingCombatText(monsterHead, -dmgToMonster);
-    battleLogEl.textContent = `Atacaste ${creature.name}: -${dmgToMonster} Vida`;
+    if (rollDodge(monsterDestreza)) {
+      battleLogEl.textContent = `${creature.name} esquivou o teu ataque!`;
+    } else if (rollCritico(playerLetalidade)) {
+      const critDmg = Math.round(playerAtaque * getLetalidadeMultiplicador());
+      monsterHp -= critDmg;
+      showFloatingCombatText(monsterHead, -critDmg);
+      battleLogEl.textContent = `Crítico! Atacaste ${creature.name}: -${critDmg} Vida`;
+    } else {
+      const dmgToMonster = computeBattleDamage(playerAtaque, monsterDefesa);
+      monsterHp -= dmgToMonster;
+      showFloatingCombatText(monsterHead, -dmgToMonster);
+      battleLogEl.textContent = `Atacaste ${creature.name}: -${dmgToMonster} Vida`;
+    }
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
     await sleep(BATTLE_ROUND_DELAY_MS);
 
@@ -119,10 +151,19 @@ async function startBattle(creature) {
       break;
     }
 
-    const dmgToPlayer = computeBattleDamage(monsterAtaque, playerDefesa);
-    playerHp -= dmgToPlayer;
-    showFloatingCombatText(head, -dmgToPlayer);
-    battleLogEl.textContent = `${creature.name} atacou-te: -${dmgToPlayer} Vida`;
+    if (rollDodge(playerDestreza)) {
+      battleLogEl.textContent = `Esquivaste do ataque de ${creature.name}!`;
+    } else if (rollCritico(monsterLetalidade)) {
+      const critDmg = Math.round(monsterAtaque * getLetalidadeMultiplicador());
+      playerHp -= critDmg;
+      showFloatingCombatText(head, -critDmg);
+      battleLogEl.textContent = `Crítico! ${creature.name} atacou-te: -${critDmg} Vida`;
+    } else {
+      const dmgToPlayer = computeBattleDamage(monsterAtaque, playerDefesa);
+      playerHp -= dmgToPlayer;
+      showFloatingCombatText(head, -dmgToPlayer);
+      battleLogEl.textContent = `${creature.name} atacou-te: -${dmgToPlayer} Vida`;
+    }
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
     await sleep(BATTLE_ROUND_DELAY_MS);
 

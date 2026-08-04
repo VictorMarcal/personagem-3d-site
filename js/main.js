@@ -56,8 +56,10 @@ head.position.y = 1.9;
 head.castShadow = true;
 character.add(head);
 
-// Equipamentos placeholder, clicaveis para evoluir os status do personagem
-body.userData.equipType = "vida"; // armadura = corpo
+// Equipamentos placeholder, clicaveis para evoluir os status investidos
+// (Energia/Forca/Resistencia - secção 7 da documentação; Foco nao tem
+// peca 3D propria, so o botao "+" do HUD)
+body.userData.equipType = "energia"; // armadura = corpo
 
 const sword = new THREE.Mesh(
   new THREE.BoxGeometry(0.08, 0.9, 0.08),
@@ -66,7 +68,7 @@ const sword = new THREE.Mesh(
 sword.position.set(0.55, 1.1, 0);
 sword.rotation.z = Math.PI / 10;
 sword.castShadow = true;
-sword.userData.equipType = "ataque";
+sword.userData.equipType = "forca";
 character.add(sword);
 
 const shield = new THREE.Mesh(
@@ -76,7 +78,7 @@ const shield = new THREE.Mesh(
 shield.position.set(-0.55, 1.1, 0);
 shield.rotation.x = Math.PI / 2;
 shield.castShadow = true;
-shield.userData.equipType = "defesa";
+shield.userData.equipType = "resistencia";
 character.add(shield);
 
 scene.add(character);

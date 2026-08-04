@@ -226,6 +226,20 @@ alter table public.player_progress add column if not exists best_session_distanc
 alter table public.player_progress add column if not exists best_pace_mps_caminhar numeric not null default 0;
 alter table public.player_progress add column if not exists best_pace_mps_bicicleta numeric not null default 0;
 
+-- Migracao: novo sistema de status do jogador - substitui os 3 niveis de
+-- equipamento (equip_level_vida/ataque/defesa, que so subiam Vida/Ataque/
+-- Defesa em linha reta) por 4 status investiveis (Energia/Forca/
+-- Resistencia/Foco - ver js/equipment.js, secção 7 da documentação). Foco e
+-- novo (Destreza/Letalidade/Regeneração), sem equivalente antigo. Os
+-- monstros nao foram alterados, continuam com o formula antiga.
+alter table public.player_progress add column if not exists nivel_energia integer not null default 0;
+alter table public.player_progress add column if not exists nivel_forca integer not null default 0;
+alter table public.player_progress add column if not exists nivel_resistencia integer not null default 0;
+alter table public.player_progress add column if not exists nivel_foco integer not null default 0;
+alter table public.player_progress drop column if exists equip_level_vida;
+alter table public.player_progress drop column if exists equip_level_ataque;
+alter table public.player_progress drop column if exists equip_level_defesa;
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

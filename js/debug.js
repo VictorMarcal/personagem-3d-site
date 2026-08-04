@@ -25,7 +25,44 @@ const DEBUG_DEFAULTS = {
   statBaseDefesa: 10,
   statFlatDefesa: 2,
   statPercentDefesa: 0.16,
-  statRecoveryBase: 0.1,
+
+  // --- Sistema de status do JOGADOR (2026-08-04) - distinto do sistema
+  // acima (statBase/Flat/Percent), que continua a ser usado so pelos
+  // monstros (computeCreatureStatValue, js/monsters.js - nao mudaram).
+  // Vida/Ataque/Defesa do jogador = base fixa + bonus do equipamento
+  // "basico" (ainda sem sistema de moedas para o melhorar/trocar) +
+  // (nivel do status investido com pontos)^expoente. Formula escolhida
+  // por analise conjunta (ver secção 7 da documentação): expoente > 1 da
+  // uma curva que acelera mas sem explodir como uma exponencial pura
+  // (testado - base^nivel chegava a centenas de quatriloes no nivel 100).
+  playerBaseVida: 100,
+  playerBaseAtaque: 10,
+  playerBaseDefesa: 10,
+  energiaExponent: 1.8,
+  forcaExponent: 1.5,
+  resistenciaExponent: 1.2,
+
+  // Bonus fixo do equipamento "basico" (Espada/Escudo/Armadura Basica) -
+  // valores provisorios ate existir o sistema de moedas para os melhorar
+  // ou trocar por outros itens (secção 7).
+  equipBasicoVida: 10,
+  equipBasicoAtaque: 8,
+  equipBasicoDefesa: 12,
+  equipBasicoFoco: 0,
+
+  // Foco (investido com pontos) alimenta 3 formulas, todas na forma
+  // "base + Foco^expoente", com o resultado em pontos percentuais (exceto
+  // Regeneracao, que fica em pontos de vida/segundo, tal como ja era).
+  destrezaBase: 2,
+  destrezaExponent: 0.56,
+  letalidadeBase: 1,
+  letalidadeExponent: 0.639,
+  // Multiplicador de dano quando um critico acontece - ignora Defesa por
+  // completo e nao tem variacao aleatoria (ao contrario do dano normal).
+  letalidadeMultiplicador: 1.5,
+  regeneracaoBase: 0.2,
+  regeneracaoExponent: 0.8,
+
   levelUpPoints: 1,
   maxAccuracyM: 20,
   minMovementM: 3,
@@ -82,7 +119,25 @@ function getLevelExp() { return getDebugValue("levelExp"); }
 function getStatBase(type) { return getDebugValue("statBase" + STAT_TYPE_KEY_SUFFIX[type]); }
 function getStatFlat(type) { return getDebugValue("statFlat" + STAT_TYPE_KEY_SUFFIX[type]); }
 function getStatPercent(type) { return getDebugValue("statPercent" + STAT_TYPE_KEY_SUFFIX[type]); }
-function getStatRecoveryBase() { return getDebugValue("statRecoveryBase"); }
+
+function getPlayerBaseVida() { return getDebugValue("playerBaseVida"); }
+function getPlayerBaseAtaque() { return getDebugValue("playerBaseAtaque"); }
+function getPlayerBaseDefesa() { return getDebugValue("playerBaseDefesa"); }
+function getEnergiaExponent() { return getDebugValue("energiaExponent"); }
+function getForcaExponent() { return getDebugValue("forcaExponent"); }
+function getResistenciaExponent() { return getDebugValue("resistenciaExponent"); }
+function getEquipBasicoVida() { return getDebugValue("equipBasicoVida"); }
+function getEquipBasicoAtaque() { return getDebugValue("equipBasicoAtaque"); }
+function getEquipBasicoDefesa() { return getDebugValue("equipBasicoDefesa"); }
+function getEquipBasicoFoco() { return getDebugValue("equipBasicoFoco"); }
+function getDestrezaBase() { return getDebugValue("destrezaBase"); }
+function getDestrezaExponent() { return getDebugValue("destrezaExponent"); }
+function getLetalidadeBase() { return getDebugValue("letalidadeBase"); }
+function getLetalidadeExponent() { return getDebugValue("letalidadeExponent"); }
+function getLetalidadeMultiplicador() { return getDebugValue("letalidadeMultiplicador"); }
+function getRegeneracaoBase() { return getDebugValue("regeneracaoBase"); }
+function getRegeneracaoExponent() { return getDebugValue("regeneracaoExponent"); }
+
 function getLevelUpPoints() { return getDebugValue("levelUpPoints"); }
 function getMaxAccuracyM() { return getDebugValue("maxAccuracyM"); }
 function getMinMovementM() { return getDebugValue("minMovementM"); }
@@ -110,7 +165,23 @@ const debugVarInputs = {
   statBaseDefesa: document.getElementById("dbg-statBaseDefesa"),
   statFlatDefesa: document.getElementById("dbg-statFlatDefesa"),
   statPercentDefesa: document.getElementById("dbg-statPercentDefesa"),
-  statRecoveryBase: document.getElementById("dbg-statRecoveryBase"),
+  playerBaseVida: document.getElementById("dbg-playerBaseVida"),
+  playerBaseAtaque: document.getElementById("dbg-playerBaseAtaque"),
+  playerBaseDefesa: document.getElementById("dbg-playerBaseDefesa"),
+  energiaExponent: document.getElementById("dbg-energiaExponent"),
+  forcaExponent: document.getElementById("dbg-forcaExponent"),
+  resistenciaExponent: document.getElementById("dbg-resistenciaExponent"),
+  equipBasicoVida: document.getElementById("dbg-equipBasicoVida"),
+  equipBasicoAtaque: document.getElementById("dbg-equipBasicoAtaque"),
+  equipBasicoDefesa: document.getElementById("dbg-equipBasicoDefesa"),
+  equipBasicoFoco: document.getElementById("dbg-equipBasicoFoco"),
+  destrezaBase: document.getElementById("dbg-destrezaBase"),
+  destrezaExponent: document.getElementById("dbg-destrezaExponent"),
+  letalidadeBase: document.getElementById("dbg-letalidadeBase"),
+  letalidadeExponent: document.getElementById("dbg-letalidadeExponent"),
+  letalidadeMultiplicador: document.getElementById("dbg-letalidadeMultiplicador"),
+  regeneracaoBase: document.getElementById("dbg-regeneracaoBase"),
+  regeneracaoExponent: document.getElementById("dbg-regeneracaoExponent"),
   levelUpPoints: document.getElementById("dbg-levelUpPoints"),
   maxAccuracyM: document.getElementById("dbg-maxAccuracyM"),
   minMovementM: document.getElementById("dbg-minMovementM"),
@@ -132,9 +203,10 @@ const debugVarInputs = {
 
 const debugVarsStatusEl = document.getElementById("debug-vars-status");
 const debugPointsValueEl = document.getElementById("debug-points-value");
-const debugLevelVidaEl = document.getElementById("debug-level-vida");
-const debugLevelAtaqueEl = document.getElementById("debug-level-ataque");
-const debugLevelDefesaEl = document.getElementById("debug-level-defesa");
+const debugLevelEnergiaEl = document.getElementById("debug-level-energia");
+const debugLevelForcaEl = document.getElementById("debug-level-forca");
+const debugLevelResistenciaEl = document.getElementById("debug-level-resistencia");
+const debugLevelFocoEl = document.getElementById("debug-level-foco");
 
 function loadDebugVarInputs() {
   Object.keys(debugVarInputs).forEach((key) => {
@@ -147,9 +219,10 @@ function loadDebugVarInputs() {
 // dentro de handlers, nunca no topo do modulo)
 function renderDebugCharacterInfo() {
   debugPointsValueEl.textContent = getUnspentPoints();
-  debugLevelVidaEl.textContent = getEquipLevel("vida");
-  debugLevelAtaqueEl.textContent = getEquipLevel("ataque");
-  debugLevelDefesaEl.textContent = getEquipLevel("defesa");
+  debugLevelEnergiaEl.textContent = getInvestableStatLevel("energia");
+  debugLevelForcaEl.textContent = getInvestableStatLevel("forca");
+  debugLevelResistenciaEl.textContent = getInvestableStatLevel("resistencia");
+  debugLevelFocoEl.textContent = getInvestableStatLevel("foco");
 }
 
 // Recalcula tudo o que depende das variaveis afinaveis, depois de
@@ -284,6 +357,10 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEquipVida);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEquipAtaque);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEquipDefesa);
+  localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEnergia);
+  localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelForca);
+  localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelResistencia);
+  localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelFoco);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado);
   localStorage.removeItem(STORAGE_KEYS.active);
   localStorage.removeItem(STORAGE_KEYS.distanciaAcumuladaM);
