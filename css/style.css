@@ -175,22 +175,6 @@ main {
   display: none;
 }
 
-.btn-upgrade {
-  position: absolute;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.btn-upgrade.hidden {
-  display: none;
-}
-
-.btn-upgrade:disabled {
-  background: #2a2a30;
-  color: #888;
-  cursor: not-allowed;
-}
 
 #xp-panel {
   display: flex;
@@ -278,6 +262,12 @@ main {
 .btn-primary {
   background: #4a90d9;
   color: #fff;
+}
+
+.btn-primary:disabled {
+  background: #2a2a30;
+  color: #888;
+  cursor: not-allowed;
 }
 
 .btn-secondary {
@@ -488,7 +478,7 @@ main {
   font-size: 2rem;
 }
 
-#weapon-upgrade-modal {
+.equip-upgrade-modal {
   position: fixed;
   inset: 0;
   z-index: 960;
@@ -499,11 +489,11 @@ main {
   background: rgba(0, 0, 0, 0.6);
 }
 
-#weapon-upgrade-modal.hidden {
+.equip-upgrade-modal.hidden {
   display: none;
 }
 
-.weapon-upgrade-box {
+.equip-upgrade-box {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -518,16 +508,16 @@ main {
   text-align: center;
 }
 
-.weapon-upgrade-stats-row {
+.equip-upgrade-stats-row {
   display: flex;
   gap: 1rem;
 }
 
-.weapon-upgrade-stats-row p {
+.equip-upgrade-stats-row p {
   margin: 0;
 }
 
-.weapon-upgrade-next {
+.equip-upgrade-next {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -537,11 +527,11 @@ main {
   width: 100%;
 }
 
-.weapon-upgrade-next.hidden {
+.equip-upgrade-next.hidden {
   display: none;
 }
 
-.weapon-upgrade-next-label {
+.equip-upgrade-next-label {
   margin: 0;
   font-size: 0.75rem;
   color: #9a9aa5;

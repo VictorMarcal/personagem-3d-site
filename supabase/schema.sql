@@ -263,6 +263,13 @@ alter table public.player_progress add column if not exists nivel_melhoria_armas
 -- documentação), por isso a copia vai para aqui, nao para player_progress.
 alter table public.leaderboard add column if not exists unlocked_achievements jsonb not null default '{}';
 
+-- Migracao: mesmo sistema de tiers/melhoria por moedas da Arma (secção 7),
+-- agora tambem para Escudo e Armadura - cada um com o seu proprio mapa de
+-- nivel de melhoria por tier, guardado para sempre (nunca se perde ao
+-- desbloquear a peca seguinte).
+alter table public.player_progress add column if not exists nivel_melhoria_escudos jsonb not null default '{}';
+alter table public.player_progress add column if not exists nivel_melhoria_armaduras jsonb not null default '{}';
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

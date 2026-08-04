@@ -28,11 +28,14 @@ const STORAGE_KEYS_EQUIPMENT = {
 // conquistas; gastas a evoluir o nivel de melhoria da arma atual.
 const STORAGE_KEY_MOEDAS = "personagem.moedas";
 
-// Nivel de melhoria (1-9) de cada arma, guardado por tier e nao so da
-// atual - um jogador nunca perde o investimento feito numa arma anterior
-// so por subir de nivel e desbloquear a seguinte. Mapa { tierIndex: nivel },
-// tiers nunca investidos ficam de fora (default 1 ao ler).
+// Nivel de melhoria (1-9) de cada arma/escudo/armadura, guardado por tier e
+// nao so do atual - um jogador nunca perde o investimento feito numa peca
+// anterior so por subir de nivel e desbloquear a seguinte. Mapa
+// { tierIndex: nivel } por peca, tiers nunca investidos ficam de fora
+// (default 1 ao ler).
 const STORAGE_KEY_WEAPON_UPGRADE_LEVELS = "personagem.nivelMelhoriaArmas";
+const STORAGE_KEY_SHIELD_UPGRADE_LEVELS = "personagem.nivelMelhoriaEscudos";
+const STORAGE_KEY_ARMOR_UPGRADE_LEVELS = "personagem.nivelMelhoriaArmaduras";
 
 const STORAGE_KEY_DEFEATED_CREATURES = "personagem.monstrosDerrotados";
 

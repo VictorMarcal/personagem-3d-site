@@ -162,15 +162,17 @@ function raycastEquipmentAt(clientX, clientY) {
   const hits = raycaster.intersectObjects(equipmentMeshes, false);
   if (hits.length === 0 || !hits[0].object.userData.equipType) return;
 
+  // As 3 pecas tem tabela de tiers/custo por nivel de melhoria (secção 7 da
+  // documentação) - clicar em qualquer uma abre o popup de evolucao com
+  // moedas. Pontos em Energia/Força/Resistência continuam so pelo "+" do
+  // HUD (js/equipment.js btnHudUpgradeByType), nao pelo clique no modelo 3D.
   const equipType = hits[0].object.userData.equipType;
-  // Espada: ja tem tabela de tiers/custo por nivel de melhoria (secção 7 da
-  // documentação), abre o popup de evolucao com moedas em vez do fluxo
-  // antigo de pontos - Escudo/Armadura ainda nao tem tabela propria, ficam
-  // com selectEquipment (investir pontos em Resistencia/Energia).
   if (equipType === "forca") {
     openWeaponUpgradeModal();
-  } else {
-    selectEquipment(equipType);
+  } else if (equipType === "resistencia") {
+    openShieldUpgradeModal();
+  } else if (equipType === "energia") {
+    openArmorUpgradeModal();
   }
 }
 

@@ -42,22 +42,15 @@ const DEBUG_DEFAULTS = {
   forcaExponent: 1.5,
   resistenciaExponent: 1.2,
 
-  // Bonus fixo do equipamento "basico" (Escudo/Armadura Basica) - valores
-  // provisorios ate existir o sistema de moedas para os melhorar ou trocar
-  // por outros itens (secção 7). A Arma ja tem uma tabela propria de 10
-  // niveis (WEAPON_TIERS, js/equipment.js), por isso ja nao tem entrada
-  // aqui - equipBasicoAtaque/equipBonusLetalidade foram removidos.
-  equipBasicoVida: 10,
-  equipBasicoDefesa: 12,
-
   // Destreza/Letalidade/Regeneracao (2026-08-04, sem Foco): cada uma
   // alimentada pelo nivel investido no status correspondente (Resistencia/
-  // Forca/Energia) + o bonus fixo da peca de equipamento que a governa
-  // (Escudo/Arma/Armadura), na forma "base + (nivel + bonus)^expoente",
-  // resultado em pontos percentuais (exceto Regeneracao, em vida/segundo).
+  // Forca/Energia) + o bonus secundario do tier atual da peca de
+  // equipamento que a governa (Escudo/Arma/Armadura - WEAPON_TIERS/
+  // SHIELD_TIERS/ARMOR_TIERS em js/equipment.js), na forma
+  // "base + (nivel + bonus)^expoente", resultado em pontos percentuais
+  // (exceto Regeneracao, em vida/segundo).
   destrezaBase: 2,
   destrezaExponent: 0.56,
-  equipBonusDestreza: 0,
   letalidadeBase: 1,
   letalidadeExponent: 0.639,
   // Multiplicador de dano quando um critico acontece - ignora Defesa por
@@ -65,7 +58,6 @@ const DEBUG_DEFAULTS = {
   letalidadeMultiplicador: 1.5,
   regeneracaoBase: 0.2,
   regeneracaoExponent: 0.8,
-  equipBonusRegeneracao: 0,
 
   levelUpPoints: 1,
   maxAccuracyM: 20,
@@ -130,17 +122,13 @@ function getPlayerBaseDefesa() { return getDebugValue("playerBaseDefesa"); }
 function getEnergiaExponent() { return getDebugValue("energiaExponent"); }
 function getForcaExponent() { return getDebugValue("forcaExponent"); }
 function getResistenciaExponent() { return getDebugValue("resistenciaExponent"); }
-function getEquipBasicoVida() { return getDebugValue("equipBasicoVida"); }
-function getEquipBasicoDefesa() { return getDebugValue("equipBasicoDefesa"); }
 function getDestrezaBase() { return getDebugValue("destrezaBase"); }
 function getDestrezaExponent() { return getDebugValue("destrezaExponent"); }
-function getEquipBonusDestreza() { return getDebugValue("equipBonusDestreza"); }
 function getLetalidadeBase() { return getDebugValue("letalidadeBase"); }
 function getLetalidadeExponent() { return getDebugValue("letalidadeExponent"); }
 function getLetalidadeMultiplicador() { return getDebugValue("letalidadeMultiplicador"); }
 function getRegeneracaoBase() { return getDebugValue("regeneracaoBase"); }
 function getRegeneracaoExponent() { return getDebugValue("regeneracaoExponent"); }
-function getEquipBonusRegeneracao() { return getDebugValue("equipBonusRegeneracao"); }
 
 function getLevelUpPoints() { return getDebugValue("levelUpPoints"); }
 function getMaxAccuracyM() { return getDebugValue("maxAccuracyM"); }
@@ -175,17 +163,13 @@ const debugVarInputs = {
   energiaExponent: document.getElementById("dbg-energiaExponent"),
   forcaExponent: document.getElementById("dbg-forcaExponent"),
   resistenciaExponent: document.getElementById("dbg-resistenciaExponent"),
-  equipBasicoVida: document.getElementById("dbg-equipBasicoVida"),
-  equipBasicoDefesa: document.getElementById("dbg-equipBasicoDefesa"),
   destrezaBase: document.getElementById("dbg-destrezaBase"),
   destrezaExponent: document.getElementById("dbg-destrezaExponent"),
-  equipBonusDestreza: document.getElementById("dbg-equipBonusDestreza"),
   letalidadeBase: document.getElementById("dbg-letalidadeBase"),
   letalidadeExponent: document.getElementById("dbg-letalidadeExponent"),
   letalidadeMultiplicador: document.getElementById("dbg-letalidadeMultiplicador"),
   regeneracaoBase: document.getElementById("dbg-regeneracaoBase"),
   regeneracaoExponent: document.getElementById("dbg-regeneracaoExponent"),
-  equipBonusRegeneracao: document.getElementById("dbg-equipBonusRegeneracao"),
   levelUpPoints: document.getElementById("dbg-levelUpPoints"),
   maxAccuracyM: document.getElementById("dbg-maxAccuracyM"),
   minMovementM: document.getElementById("dbg-minMovementM"),
@@ -381,6 +365,8 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelResistencia);
   localStorage.removeItem(STORAGE_KEY_MOEDAS);
   localStorage.removeItem(STORAGE_KEY_WEAPON_UPGRADE_LEVELS);
+  localStorage.removeItem(STORAGE_KEY_SHIELD_UPGRADE_LEVELS);
+  localStorage.removeItem(STORAGE_KEY_ARMOR_UPGRADE_LEVELS);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado);
   localStorage.removeItem(STORAGE_KEYS.active);
   localStorage.removeItem(STORAGE_KEYS.distanciaAcumuladaM);

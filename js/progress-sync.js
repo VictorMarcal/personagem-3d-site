@@ -18,6 +18,8 @@ function readLocalProgressSnapshot() {
     nivel_resistencia: getInvestableStatLevel("resistencia"),
     moedas: getMoedas(),
     nivel_melhoria_armas: getWeaponUpgradeLevelsMap(),
+    nivel_melhoria_escudos: getShieldUpgradeLevelsMap(),
+    nivel_melhoria_armaduras: getArmorUpgradeLevelsMap(),
     last_awarded_level: getLastAwardedLevel(),
     defeated_creatures: getDefeatedCreaturesMap(),
     encountered_creatures: getEncounteredLevels(),
@@ -142,6 +144,8 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelResistencia, String(progress.nivel_resistencia || 0));
   localStorage.setItem(STORAGE_KEY_MOEDAS, String(progress.moedas != null ? progress.moedas : 100));
   localStorage.setItem(STORAGE_KEY_WEAPON_UPGRADE_LEVELS, JSON.stringify(progress.nivel_melhoria_armas || {}));
+  localStorage.setItem(STORAGE_KEY_SHIELD_UPGRADE_LEVELS, JSON.stringify(progress.nivel_melhoria_escudos || {}));
+  localStorage.setItem(STORAGE_KEY_ARMOR_UPGRADE_LEVELS, JSON.stringify(progress.nivel_melhoria_armaduras || {}));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado, String(progress.last_awarded_level));
   localStorage.setItem(STORAGE_KEY_DEFEATED_CREATURES, JSON.stringify(progress.defeated_creatures || {}));
   localStorage.setItem(STORAGE_KEY_ENCOUNTERED_CREATURES, JSON.stringify(progress.encountered_creatures || []));

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260804j">
+  <link rel="stylesheet" href="css/style.css?v=20260804k">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -59,8 +59,6 @@
         <p>Força Lvl <span id="hud-level-forca">0</span> <button id="btn-hud-upgrade-forca" class="btn-hud-plus hidden">+</button></p>
         <p>Resistência Lvl <span id="hud-level-resistencia">0</span> <button id="btn-hud-upgrade-resistencia" class="btn-hud-plus hidden">+</button></p>
       </div>
-
-      <button id="btn-upgrade-equip" class="btn-primary btn-upgrade hidden">Upgrade</button>
 
       <div id="battle-hud" class="hidden">
         <div class="battle-side">
@@ -159,18 +157,18 @@
       </div>
     </div>
 
-    <div id="weapon-upgrade-modal" class="hidden">
-      <div class="weapon-upgrade-box">
+    <div id="weapon-upgrade-modal" class="equip-upgrade-modal hidden">
+      <div class="equip-upgrade-box">
         <button id="btn-weapon-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
         <div class="achievement-detail-icon">🗡️</div>
         <h3 id="weapon-upgrade-title"></h3>
-        <div class="weapon-upgrade-stats-row">
+        <div class="equip-upgrade-stats-row">
           <p>Ataque: <strong id="weapon-upgrade-current-ataque">0</strong></p>
           <p>Bónus Força: <strong id="weapon-upgrade-current-forca">+0</strong></p>
         </div>
-        <div id="weapon-upgrade-next-row" class="weapon-upgrade-next hidden">
-          <p class="weapon-upgrade-next-label">Próximo nível de melhoria</p>
-          <div class="weapon-upgrade-stats-row">
+        <div id="weapon-upgrade-next-row" class="equip-upgrade-next hidden">
+          <p class="equip-upgrade-next-label">Próximo nível de melhoria</p>
+          <div class="equip-upgrade-stats-row">
             <p>Ataque: <strong id="weapon-upgrade-next-ataque">0</strong></p>
             <p>Bónus Força: <strong id="weapon-upgrade-next-forca">+0</strong></p>
           </div>
@@ -180,6 +178,54 @@
           Custo: <strong id="weapon-upgrade-cost">0</strong> moedas (tens <strong id="weapon-upgrade-coins">0</strong>)
         </p>
         <button id="btn-weapon-upgrade-confirm" class="btn-primary"></button>
+      </div>
+    </div>
+
+    <div id="shield-upgrade-modal" class="equip-upgrade-modal hidden">
+      <div class="equip-upgrade-box">
+        <button id="btn-shield-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
+        <div class="achievement-detail-icon">🛡️</div>
+        <h3 id="shield-upgrade-title"></h3>
+        <div class="equip-upgrade-stats-row">
+          <p>Defesa: <strong id="shield-upgrade-current-defesa">0</strong></p>
+          <p>Bónus Resistência: <strong id="shield-upgrade-current-resistencia">+0</strong></p>
+        </div>
+        <div id="shield-upgrade-next-row" class="equip-upgrade-next hidden">
+          <p class="equip-upgrade-next-label">Próximo nível de melhoria</p>
+          <div class="equip-upgrade-stats-row">
+            <p>Defesa: <strong id="shield-upgrade-next-defesa">0</strong></p>
+            <p>Bónus Resistência: <strong id="shield-upgrade-next-resistencia">+0</strong></p>
+          </div>
+        </div>
+        <p id="shield-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
+        <p id="shield-upgrade-cost-row" class="auth-text">
+          Custo: <strong id="shield-upgrade-cost">0</strong> moedas (tens <strong id="shield-upgrade-coins">0</strong>)
+        </p>
+        <button id="btn-shield-upgrade-confirm" class="btn-primary"></button>
+      </div>
+    </div>
+
+    <div id="armor-upgrade-modal" class="equip-upgrade-modal hidden">
+      <div class="equip-upgrade-box">
+        <button id="btn-armor-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
+        <div class="achievement-detail-icon">🧥</div>
+        <h3 id="armor-upgrade-title"></h3>
+        <div class="equip-upgrade-stats-row">
+          <p>Vida: <strong id="armor-upgrade-current-vida">0</strong></p>
+          <p>Bónus Energia: <strong id="armor-upgrade-current-energia">+0</strong></p>
+        </div>
+        <div id="armor-upgrade-next-row" class="equip-upgrade-next hidden">
+          <p class="equip-upgrade-next-label">Próximo nível de melhoria</p>
+          <div class="equip-upgrade-stats-row">
+            <p>Vida: <strong id="armor-upgrade-next-vida">0</strong></p>
+            <p>Bónus Energia: <strong id="armor-upgrade-next-energia">+0</strong></p>
+          </div>
+        </div>
+        <p id="armor-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
+        <p id="armor-upgrade-cost-row" class="auth-text">
+          Custo: <strong id="armor-upgrade-cost">0</strong> moedas (tens <strong id="armor-upgrade-coins">0</strong>)
+        </p>
+        <button id="btn-armor-upgrade-confirm" class="btn-primary"></button>
       </div>
     </div>
 
@@ -250,20 +296,11 @@
         <label>RESISTENCIA_EXPONENT <span class="debug-hint">expoente de Defesa = Resistência^x</span>
           <input type="number" id="dbg-resistenciaExponent" step="0.01">
         </label>
-        <label>EQUIP_BASICO_VIDA <span class="debug-hint">bónus fixo da Armadura Básica</span>
-          <input type="number" id="dbg-equipBasicoVida" step="1">
-        </label>
-        <label>EQUIP_BASICO_DEFESA <span class="debug-hint">bónus fixo do Escudo Básico</span>
-          <input type="number" id="dbg-equipBasicoDefesa" step="1">
-        </label>
         <label>DESTREZA_BASE <span class="debug-hint">esquiva base, em pontos % (2 = 2%)</span>
           <input type="number" id="dbg-destrezaBase" step="0.1">
         </label>
         <label>DESTREZA_EXPONENT <span class="debug-hint">expoente de Destreza = base + (Resistência+bónus)^x</span>
           <input type="number" id="dbg-destrezaExponent" step="0.01">
-        </label>
-        <label>EQUIP_BONUS_DESTREZA <span class="debug-hint">bónus fixo de Destreza do Escudo Básico</span>
-          <input type="number" id="dbg-equipBonusDestreza" step="1">
         </label>
         <label>LETALIDADE_BASE <span class="debug-hint">crítico base, em pontos % (1 = 1%)</span>
           <input type="number" id="dbg-letalidadeBase" step="0.1">
@@ -279,9 +316,6 @@
         </label>
         <label>REGENERACAO_EXPONENT <span class="debug-hint">expoente de Regeneração = base + (Energia+bónus)^x</span>
           <input type="number" id="dbg-regeneracaoExponent" step="0.01">
-        </label>
-        <label>EQUIP_BONUS_REGENERACAO <span class="debug-hint">bónus fixo de Regeneração da Armadura Básica</span>
-          <input type="number" id="dbg-equipBonusRegeneracao" step="1">
         </label>
         <label>LEVEL_UP_POINTS <span class="debug-hint">pontos de status por nível subido</span>
           <input type="number" id="dbg-levelUpPoints" step="1">
@@ -411,28 +445,28 @@
 
   <footer class="site-footer">
     <p>&copy; 2026 Personagem 3D</p>
-    <p id="site-version" class="site-version">v1.6.2</p>
+    <p id="site-version" class="site-version">v1.7.0</p>
   </footer>
 
   <!-- ?v=YYYYMMDD nos scripts locais abaixo: sobe esta data sempre que
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260804j"></script>
-  <script src="js/tab-lock.js?v=20260804j"></script>
-  <script src="js/auth.js?v=20260804j"></script>
-  <script src="js/progress-sync.js?v=20260804j"></script>
-  <script src="js/leaderboard.js?v=20260804j"></script>
-  <script src="js/main.js?v=20260804j"></script>
-  <script src="js/debug.js?v=20260804j"></script>
-  <script src="js/equipment.js?v=20260804j"></script>
-  <script src="js/experience.js?v=20260804j"></script>
-  <script src="js/monsters.js?v=20260804j"></script>
-  <script src="js/monthly-medals.js?v=20260804j"></script>
-  <script src="js/battle.js?v=20260804j"></script>
-  <script src="js/training.js?v=20260804j"></script>
-  <script src="js/profile.js?v=20260804j"></script>
-  <script src="js/achievements.js?v=20260804j"></script>
-  <script src="js/orientation.js?v=20260804j"></script>
+  <script src="js/storage-keys.js?v=20260804k"></script>
+  <script src="js/tab-lock.js?v=20260804k"></script>
+  <script src="js/auth.js?v=20260804k"></script>
+  <script src="js/progress-sync.js?v=20260804k"></script>
+  <script src="js/leaderboard.js?v=20260804k"></script>
+  <script src="js/main.js?v=20260804k"></script>
+  <script src="js/debug.js?v=20260804k"></script>
+  <script src="js/equipment.js?v=20260804k"></script>
+  <script src="js/experience.js?v=20260804k"></script>
+  <script src="js/monsters.js?v=20260804k"></script>
+  <script src="js/monthly-medals.js?v=20260804k"></script>
+  <script src="js/battle.js?v=20260804k"></script>
+  <script src="js/training.js?v=20260804k"></script>
+  <script src="js/profile.js?v=20260804k"></script>
+  <script src="js/achievements.js?v=20260804k"></script>
+  <script src="js/orientation.js?v=20260804k"></script>
 </body>
 </html>
