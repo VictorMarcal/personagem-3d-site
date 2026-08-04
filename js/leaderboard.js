@@ -159,14 +159,11 @@ async function renderMedalHistory() {
   });
 }
 
-// Popup de trofeus de outro jogador - reutiliza a logica de agrupamento/
-// desenho de js/achievements.js, so que a partir de unlocked_achievements
-// do leaderboard (publico) em vez do localStorage do proprio jogador, e
-// filtrado para mostrar SO as ja desbloqueadas (pedido explicito - nao e
-// uma lista de "por desbloquear" de outro jogador, so os trofeus reais
-// dele). Sem progresso nem popup de detalhe clicavel (nao temos esses
-// dados de outro jogador), ver createAchievementItemEl(achievement,
-// unlockedMap, onClick).
+// Popup de trofeus de outro jogador - so os icones das conquistas ja
+// desbloqueadas (unlocked_achievements do leaderboard, publico, em vez do
+// localStorage do proprio jogador), numa grelha simples, sem categorias
+// nem progresso/popup de detalhe (nao temos esses dados de outro
+// jogador) - ver createAchievementItemEl(achievement, unlockedMap, onClick).
 function renderPlayerTrophies(unlockedMap) {
   const gridEl = document.getElementById("player-trophies-grid");
   gridEl.innerHTML = "";
@@ -178,19 +175,7 @@ function renderPlayerTrophies(unlockedMap) {
     return;
   }
 
-  groupAchievementsByCategory(unlockedOnly).forEach((items, category) => {
-    if (items.length === 0) return;
-
-    const title = document.createElement("h3");
-    title.className = "achievement-category-title";
-    title.textContent = category;
-    gridEl.appendChild(title);
-
-    const sectionGrid = document.createElement("div");
-    sectionGrid.className = "achievements-grid";
-    items.forEach((achievement) => sectionGrid.appendChild(createAchievementItemEl(achievement, unlockedMap, null)));
-    gridEl.appendChild(sectionGrid);
-  });
+  unlockedOnly.forEach((achievement) => gridEl.appendChild(createAchievementItemEl(achievement, unlockedMap, null)));
 }
 
 function openPlayerTrophiesModal(displayName, unlockedMap) {
@@ -204,6 +189,9 @@ function closePlayerTrophiesModal() {
 }
 
 document.getElementById("btn-close-player-trophies").addEventListener("click", closePlayerTrophiesModal);
+document.getElementById("player-trophies-modal").addEventListener("click", (event) => {
+  if (event.target.id === "player-trophies-modal") closePlayerTrophiesModal();
+});
 
 async function renderLeaderboardCardNow() {
   await renderLeaderboardInto(leaderboardListEl, "lifetime_distance_m");

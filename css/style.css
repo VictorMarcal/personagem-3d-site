@@ -598,13 +598,37 @@ main {
   position: fixed;
   inset: 0;
   z-index: 950;
-  padding: 1rem;
-  background: #101014;
-  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.6);
 }
 
 #player-trophies-modal.hidden {
   display: none;
+}
+
+.player-trophies-box {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background: #17171d;
+  border: 1px solid #2a2a30;
+  text-align: center;
+}
+
+.player-trophies-title {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+}
+
+.player-trophies-box .achievements-grid {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .modal-header {
