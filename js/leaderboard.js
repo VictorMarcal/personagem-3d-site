@@ -21,10 +21,14 @@ function createLeaderboardRowEl(row, rank, isOwn, distanceM) {
   rankEl.className = "leaderboard-rank";
   rankEl.textContent = `#${rank}`;
 
+  // So o nome de OUTRO jogador abre o popup de trofeus - no proprio nao
+  // faz sentido (ve sempre os seus troféus no Jogo/Perfil).
   const nameEl = document.createElement("span");
-  nameEl.className = "leaderboard-name leaderboard-name-clickable";
+  nameEl.className = "leaderboard-name" + (isOwn ? "" : " leaderboard-name-clickable");
   nameEl.textContent = row.display_name;
-  nameEl.addEventListener("click", () => openPlayerTrophiesModal(row.display_name, row.unlocked_achievements));
+  if (!isOwn) {
+    nameEl.addEventListener("click", () => openPlayerTrophiesModal(row.display_name, row.unlocked_achievements));
+  }
 
   // Nivel vem sempre da distancia VITALICIA (secção 5), nunca da coluna
   // mostrada na aba Mensal (monthly_distance_m reinicia todos os meses,
@@ -155,17 +159,26 @@ async function renderMedalHistory() {
   });
 }
 
-// Popup de trofeus de outro jogador (ou do proprio, clicado no leaderboard) -
-// reutiliza toda a logica de agrupamento/desenho de js/achievements.js, so
-// que a partir de unlocked_achievements do leaderboard (publico) em vez do
-// localStorage do proprio jogador. Sem progresso nem popup de detalhe
-// clicavel (nao temos esses dados de outro jogador) - so desbloqueada/por
-// desbloquear, ver createAchievementItemEl(achievement, unlockedMap, onClick).
+// Popup de trofeus de outro jogador - reutiliza a logica de agrupamento/
+// desenho de js/achievements.js, so que a partir de unlocked_achievements
+// do leaderboard (publico) em vez do localStorage do proprio jogador, e
+// filtrado para mostrar SO as ja desbloqueadas (pedido explicito - nao e
+// uma lista de "por desbloquear" de outro jogador, so os trofeus reais
+// dele). Sem progresso nem popup de detalhe clicavel (nao temos esses
+// dados de outro jogador), ver createAchievementItemEl(achievement,
+// unlockedMap, onClick).
 function renderPlayerTrophies(unlockedMap) {
   const gridEl = document.getElementById("player-trophies-grid");
   gridEl.innerHTML = "";
 
-  groupAchievementsByCategory(getAllAchievements(unlockedMap)).forEach((items, category) => {
+  const unlockedOnly = getAllAchievements(unlockedMap).filter((a) => isAchievementUnlocked(a.id, unlockedMap));
+
+  if (unlockedOnly.length === 0) {
+    gridEl.innerHTML = '<p class="debug-status">Ainda sem troféus.</p>';
+    return;
+  }
+
+  groupAchievementsByCategory(unlockedOnly).forEach((items, category) => {
     if (items.length === 0) return;
 
     const title = document.createElement("h3");
