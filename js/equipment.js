@@ -1,14 +1,15 @@
 // Sistema de status do jogador (2026-08-04, revisto para remover Foco -
 // ver secção 6/7 da documentação). 3 status "investidos" com pontos
 // (Energia/Força/Resistência), cada um a alimentar diretamente o seu
-// status principal MAIS um status secundário, mais um bónus fixo do
-// equipamento "básico" atual (ainda sem sistema de moedas para o
-// melhorar/trocar - ver getEquipBasico*/getEquipBonus* em js/debug.js):
+// status principal MAIS um status secundário, mais um bónus do
+// equipamento atual (Escudo/Armadura ainda "básicos" fixos, sem sistema de
+// moedas - ver getEquipBasico*/getEquipBonus* em js/debug.js; Arma já tem
+// uma tabela de 10 niveis, ver WEAPON_TIERS abaixo):
 //   Vida       = PLAYER_BASE_VIDA   + equipBasicoVida   + round(Energia^ENERGIA_EXP)
-//   Ataque     = PLAYER_BASE_ATAQUE + equipBasicoAtaque + round(Força^FORCA_EXP)
+//   Ataque     = PLAYER_BASE_ATAQUE + arma.ataque[Lv]   + round(Força^FORCA_EXP)
 //   Defesa     = PLAYER_BASE_DEFESA + equipBasicoDefesa + round(Resistência^RESISTENCIA_EXP)
 //   Regeneração = REGEN_BASE      + (Energia     + equipBonusRegeneracao)^REGEN_EXP       (vida/segundo, bónus vem da Armadura)
-//   Letalidade% = LETALIDADE_BASE + (Força       + equipBonusLetalidade)^LETALIDADE_EXP   (bónus vem da Arma)
+//   Letalidade% = LETALIDADE_BASE + (Força       + arma.bonusForca[Lv])^LETALIDADE_EXP    (bónus vem da Arma)
 //   Destreza%   = DESTREZA_BASE   + (Resistência + equipBonusDestreza)^DESTREZA_EXP       (bónus vem do Escudo)
 // computeStatValue (fórmula recursiva antiga) mantém-se só para os
 // MONSTROS (js/monsters.js) - não mudaram, ver nota na documentação.
@@ -96,8 +97,56 @@ function computePlayerVida(energiaLevel) {
   return Math.round(getPlayerBaseVida() + getEquipBasicoVida() + Math.pow(energiaLevel, getEnergiaExponent()));
 }
 
+// 10 armas, desbloqueadas de 10 em 10 niveis de personagem (1, 10, 20...90),
+// cada uma com o seu proprio valor de Ataque e bonus de Forca (alimenta a
+// Letalidade - ver computeLetalidadeChance abaixo), melhoraveis ate ao
+// nivel de melhoria 9 (indice 8 nos arrays). Valores preenchidos pelo
+// designer em armas_tabela.csv (2026-08-04) - ver secção 7 da documentação.
+const WEAPON_TIERS = [
+  { unlockLevel: 1, ataque: [5, 6, 7, 8, 10, 11, 13, 14, 16], bonusForca: [0, 1, 1, 1, 2, 2, 2, 2, 3] },
+  { unlockLevel: 10, ataque: [11, 12, 14, 16, 17, 19, 21, 22, 24], bonusForca: [1, 1, 2, 2, 2, 3, 3, 3, 4] },
+  { unlockLevel: 20, ataque: [22, 23, 24, 26, 28, 29, 30, 32, 33], bonusForca: [2, 2, 3, 3, 3, 4, 4, 5, 5] },
+  { unlockLevel: 30, ataque: [30, 31, 33, 34, 35, 37, 38, 39, 41], bonusForca: [3, 3, 3, 4, 4, 5, 5, 6, 6] },
+  { unlockLevel: 40, ataque: [37, 38, 40, 42, 43, 45, 46, 47, 49], bonusForca: [4, 5, 5, 5, 6, 6, 6, 7, 7] },
+  { unlockLevel: 50, ataque: [46, 48, 49, 51, 53, 54, 56, 57, 59], bonusForca: [5, 5, 6, 6, 6, 6, 7, 8, 8] },
+  { unlockLevel: 60, ataque: [58, 60, 61, 62, 64, 65, 68, 69, 71], bonusForca: [6, 6, 7, 7, 8, 8, 8, 9, 9] },
+  { unlockLevel: 70, ataque: [66, 69, 70, 72, 73, 74, 76, 77, 79], bonusForca: [7, 7, 8, 8, 8, 9, 9, 10, 10] },
+  { unlockLevel: 80, ataque: [76, 77, 80, 81, 84, 86, 88, 91, 93], bonusForca: [8, 8, 9, 9, 9, 10, 10, 11, 11] },
+  { unlockLevel: 90, ataque: [90, 92, 95, 96, 97, 99, 101, 103, 105], bonusForca: [9, 9, 10, 10, 11, 11, 12, 12, 13] },
+];
+
+// Nivel de melhoria fixo em 1 (Lv1, indice 0) ate existir o sistema de
+// moedas para melhorar equipamento (ainda nao implementado - secção 7/16
+// da documentação) - so a troca de tier (ao subir de nivel) muda o valor
+// por agora.
+const WEAPON_UPGRADE_LEVEL_FIXED = 1;
+
+function getWeaponTierForLevel(level) {
+  let tier = WEAPON_TIERS[0];
+  for (const candidate of WEAPON_TIERS) {
+    if (level >= candidate.unlockLevel) tier = candidate;
+    else break;
+  }
+  return tier;
+}
+
+// getLevelInfo/getLifetimeDistanceM sao de js/experience.js, que carrega
+// DEPOIS de equipment.js (que por sua vez awardPointsIfNeeded, chamado por
+// experience.js) - dependencia circular entre os dois ficheiros. O guard se
+// abaixo evita um ReferenceError na primeira chamada de renderStatsHud()
+// (no fundo deste ficheiro, antes de experience.js ter carregado); assim
+// que bootstrapAfterLogin() (js/auth.js) chamar refreshAllAfterConfigChange
+// mais tarde, ja com tudo carregado, o valor correto e usado.
+function getCurrentWeaponTier() {
+  if (typeof getLevelInfo !== "function" || typeof getLifetimeDistanceM !== "function") {
+    return WEAPON_TIERS[0];
+  }
+  return getWeaponTierForLevel(getLevelInfo(getLifetimeDistanceM()).level);
+}
+
 function computePlayerAtaque(forcaLevel) {
-  return Math.round(getPlayerBaseAtaque() + getEquipBasicoAtaque() + Math.pow(forcaLevel, getForcaExponent()));
+  const weaponAtaque = getCurrentWeaponTier().ataque[WEAPON_UPGRADE_LEVEL_FIXED - 1];
+  return Math.round(getPlayerBaseAtaque() + weaponAtaque + Math.pow(forcaLevel, getForcaExponent()));
 }
 
 function computePlayerDefesa(resistenciaLevel) {
@@ -116,7 +165,8 @@ function computeDestrezaChance(resistenciaLevel) {
 }
 
 function computeLetalidadeChance(forcaLevel) {
-  const total = forcaLevel + getEquipBonusLetalidade();
+  const weaponForcaBonus = getCurrentWeaponTier().bonusForca[WEAPON_UPGRADE_LEVEL_FIXED - 1];
+  const total = forcaLevel + weaponForcaBonus;
   return (getLetalidadeBase() + Math.pow(total, getLetalidadeExponent())) / 100;
 }
 

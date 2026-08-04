@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260804b">
+  <link rel="stylesheet" href="css/style.css?v=20260804c">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -220,9 +220,6 @@
         <label>EQUIP_BASICO_VIDA <span class="debug-hint">bónus fixo da Armadura Básica</span>
           <input type="number" id="dbg-equipBasicoVida" step="1">
         </label>
-        <label>EQUIP_BASICO_ATAQUE <span class="debug-hint">bónus fixo da Arma Básica</span>
-          <input type="number" id="dbg-equipBasicoAtaque" step="1">
-        </label>
         <label>EQUIP_BASICO_DEFESA <span class="debug-hint">bónus fixo do Escudo Básico</span>
           <input type="number" id="dbg-equipBasicoDefesa" step="1">
         </label>
@@ -240,9 +237,6 @@
         </label>
         <label>LETALIDADE_EXPONENT <span class="debug-hint">expoente de Letalidade = base + (Força+bónus)^x</span>
           <input type="number" id="dbg-letalidadeExponent" step="0.01">
-        </label>
-        <label>EQUIP_BONUS_LETALIDADE <span class="debug-hint">bónus fixo de Letalidade da Arma Básica</span>
-          <input type="number" id="dbg-equipBonusLetalidade" step="1">
         </label>
         <label>LETALIDADE_MULTIPLICADOR <span class="debug-hint">dano do crítico = Ataque × x (ignora Defesa)</span>
           <input type="number" id="dbg-letalidadeMultiplicador" step="0.1">
@@ -384,28 +378,28 @@
 
   <footer class="site-footer">
     <p>&copy; 2026 Personagem 3D</p>
-    <p id="site-version" class="site-version">v1.4.1</p>
+    <p id="site-version" class="site-version">v1.4.2</p>
   </footer>
 
   <!-- ?v=YYYYMMDD nos scripts locais abaixo: sobe esta data sempre que
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260804b"></script>
-  <script src="js/tab-lock.js?v=20260804b"></script>
-  <script src="js/auth.js?v=20260804b"></script>
-  <script src="js/progress-sync.js?v=20260804b"></script>
-  <script src="js/leaderboard.js?v=20260804b"></script>
-  <script src="js/main.js?v=20260804b"></script>
-  <script src="js/debug.js?v=20260804b"></script>
-  <script src="js/equipment.js?v=20260804b"></script>
-  <script src="js/experience.js?v=20260804b"></script>
-  <script src="js/monsters.js?v=20260804b"></script>
-  <script src="js/monthly-medals.js?v=20260804b"></script>
-  <script src="js/battle.js?v=20260804b"></script>
-  <script src="js/training.js?v=20260804b"></script>
-  <script src="js/profile.js?v=20260804b"></script>
-  <script src="js/achievements.js?v=20260804b"></script>
-  <script src="js/orientation.js?v=20260804b"></script>
+  <script src="js/storage-keys.js?v=20260804c"></script>
+  <script src="js/tab-lock.js?v=20260804c"></script>
+  <script src="js/auth.js?v=20260804c"></script>
+  <script src="js/progress-sync.js?v=20260804c"></script>
+  <script src="js/leaderboard.js?v=20260804c"></script>
+  <script src="js/main.js?v=20260804c"></script>
+  <script src="js/debug.js?v=20260804c"></script>
+  <script src="js/equipment.js?v=20260804c"></script>
+  <script src="js/experience.js?v=20260804c"></script>
+  <script src="js/monsters.js?v=20260804c"></script>
+  <script src="js/monthly-medals.js?v=20260804c"></script>
+  <script src="js/battle.js?v=20260804c"></script>
+  <script src="js/training.js?v=20260804c"></script>
+  <script src="js/profile.js?v=20260804c"></script>
+  <script src="js/achievements.js?v=20260804c"></script>
+  <script src="js/orientation.js?v=20260804c"></script>
 </body>
 </html>

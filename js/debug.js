@@ -42,11 +42,12 @@ const DEBUG_DEFAULTS = {
   forcaExponent: 1.5,
   resistenciaExponent: 1.2,
 
-  // Bonus fixo do equipamento "basico" (Espada/Escudo/Armadura Basica) -
-  // valores provisorios ate existir o sistema de moedas para os melhorar
-  // ou trocar por outros itens (secção 7).
+  // Bonus fixo do equipamento "basico" (Escudo/Armadura Basica) - valores
+  // provisorios ate existir o sistema de moedas para os melhorar ou trocar
+  // por outros itens (secção 7). A Arma ja tem uma tabela propria de 10
+  // niveis (WEAPON_TIERS, js/equipment.js), por isso ja nao tem entrada
+  // aqui - equipBasicoAtaque/equipBonusLetalidade foram removidos.
   equipBasicoVida: 10,
-  equipBasicoAtaque: 8,
   equipBasicoDefesa: 12,
 
   // Destreza/Letalidade/Regeneracao (2026-08-04, sem Foco): cada uma
@@ -59,7 +60,6 @@ const DEBUG_DEFAULTS = {
   equipBonusDestreza: 0,
   letalidadeBase: 1,
   letalidadeExponent: 0.639,
-  equipBonusLetalidade: 0,
   // Multiplicador de dano quando um critico acontece - ignora Defesa por
   // completo e nao tem variacao aleatoria (ao contrario do dano normal).
   letalidadeMultiplicador: 1.5,
@@ -131,14 +131,12 @@ function getEnergiaExponent() { return getDebugValue("energiaExponent"); }
 function getForcaExponent() { return getDebugValue("forcaExponent"); }
 function getResistenciaExponent() { return getDebugValue("resistenciaExponent"); }
 function getEquipBasicoVida() { return getDebugValue("equipBasicoVida"); }
-function getEquipBasicoAtaque() { return getDebugValue("equipBasicoAtaque"); }
 function getEquipBasicoDefesa() { return getDebugValue("equipBasicoDefesa"); }
 function getDestrezaBase() { return getDebugValue("destrezaBase"); }
 function getDestrezaExponent() { return getDebugValue("destrezaExponent"); }
 function getEquipBonusDestreza() { return getDebugValue("equipBonusDestreza"); }
 function getLetalidadeBase() { return getDebugValue("letalidadeBase"); }
 function getLetalidadeExponent() { return getDebugValue("letalidadeExponent"); }
-function getEquipBonusLetalidade() { return getDebugValue("equipBonusLetalidade"); }
 function getLetalidadeMultiplicador() { return getDebugValue("letalidadeMultiplicador"); }
 function getRegeneracaoBase() { return getDebugValue("regeneracaoBase"); }
 function getRegeneracaoExponent() { return getDebugValue("regeneracaoExponent"); }
@@ -178,14 +176,12 @@ const debugVarInputs = {
   forcaExponent: document.getElementById("dbg-forcaExponent"),
   resistenciaExponent: document.getElementById("dbg-resistenciaExponent"),
   equipBasicoVida: document.getElementById("dbg-equipBasicoVida"),
-  equipBasicoAtaque: document.getElementById("dbg-equipBasicoAtaque"),
   equipBasicoDefesa: document.getElementById("dbg-equipBasicoDefesa"),
   destrezaBase: document.getElementById("dbg-destrezaBase"),
   destrezaExponent: document.getElementById("dbg-destrezaExponent"),
   equipBonusDestreza: document.getElementById("dbg-equipBonusDestreza"),
   letalidadeBase: document.getElementById("dbg-letalidadeBase"),
   letalidadeExponent: document.getElementById("dbg-letalidadeExponent"),
-  equipBonusLetalidade: document.getElementById("dbg-equipBonusLetalidade"),
   letalidadeMultiplicador: document.getElementById("dbg-letalidadeMultiplicador"),
   regeneracaoBase: document.getElementById("dbg-regeneracaoBase"),
   regeneracaoExponent: document.getElementById("dbg-regeneracaoExponent"),
