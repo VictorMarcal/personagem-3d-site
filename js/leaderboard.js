@@ -25,11 +25,19 @@ function createLeaderboardRowEl(row, rank, isOwn, distanceM) {
   nameEl.className = "leaderboard-name";
   nameEl.textContent = row.display_name;
 
+  // Nivel vem sempre da distancia VITALICIA (secção 5), nunca da coluna
+  // mostrada na aba Mensal (monthly_distance_m reinicia todos os meses,
+  // um "nivel" derivado dela nao corresponderia ao nivel real do jogador) -
+  // por isso lifetime_distance_m e sempre pedido a parte (ver renderLeaderboardInto).
+  const levelEl = document.createElement("span");
+  levelEl.className = "leaderboard-level";
+  levelEl.textContent = `Lvl ${getLevelInfo(row.lifetime_distance_m).level}`;
+
   const distEl = document.createElement("span");
   distEl.className = "leaderboard-distance";
   distEl.textContent = formatXP(distanceM);
 
-  el.append(rankEl, nameEl, distEl);
+  el.append(rankEl, nameEl, levelEl, distEl);
   return el;
 }
 
@@ -40,10 +48,19 @@ function createLeaderboardRowEl(row, rank, isOwn, distanceM) {
 // mes anterior, que ainda nao foi resetada na sua linha. Mesmo aspeto do
 // geral em ambas as abas - as medalhas por posicao aparecem so na conquista
 // mensal (js/achievements.js) e no historico abaixo, nao aqui.
+// lifetime_distance_m e sempre pedido, mesmo na aba Mensal (distanceColumn
+// = monthly_distance_m nesse caso) - e a partir dela que o nivel de cada
+// linha e calculado (ver createLeaderboardRowEl), nunca da coluna mostrada.
+function leaderboardSelectColumns(distanceColumn) {
+  return distanceColumn === "lifetime_distance_m"
+    ? "user_id, display_name, lifetime_distance_m"
+    : `user_id, display_name, lifetime_distance_m, ${distanceColumn}`;
+}
+
 async function renderLeaderboardInto(listEl, distanceColumn, monthKey) {
   if (!listEl) return null;
 
-  let query = supabaseClient.from("leaderboard").select(`user_id, display_name, ${distanceColumn}`);
+  let query = supabaseClient.from("leaderboard").select(leaderboardSelectColumns(distanceColumn));
   if (monthKey) query = query.eq("month_reference", monthKey);
   const { data: top, error } = await query.order(distanceColumn, { ascending: false }).limit(10);
 
@@ -60,7 +77,7 @@ async function renderLeaderboardInto(listEl, distanceColumn, monthKey) {
   const isOwnInTop = top.some((row) => row.user_id === currentUserId);
   if (isOwnInTop || !currentUserId) return top;
 
-  let allQuery = supabaseClient.from("leaderboard").select(`user_id, display_name, ${distanceColumn}`);
+  let allQuery = supabaseClient.from("leaderboard").select(leaderboardSelectColumns(distanceColumn));
   if (monthKey) allQuery = allQuery.eq("month_reference", monthKey);
   const { data: allRows } = await allQuery.order(distanceColumn, { ascending: false });
 

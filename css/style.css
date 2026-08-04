@@ -880,6 +880,12 @@ main {
   flex: 1;
 }
 
+.leaderboard-level {
+  color: #999;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
 .leaderboard-distance {
   color: #999;
   font-size: 0.8rem;
