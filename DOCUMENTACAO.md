@@ -113,7 +113,7 @@ Escolhida para não ser nem linear nem exponencial — os incrementos crescem, m
   - `MINIBOSS_MAX_POINTS = 3`, `BOSS_MAX_POINTS = 5`
 - **Re-lutar e melhorar as estrelas paga sempre a diferença** (`computeBonusPointsForStars`, comparado com as estrelas anteriores antes de `markCreatureDefeated` as atualizar): ganhar 1ª vez com 1 estrela dá 1 ponto (mini-boss); re-lutar depois e subir para 3 estrelas dá **mais 2** (a diferença até ao máximo de 3), nunca a mesma vitória paga duas vezes nem se perde pontos ao sair pior numa re-luta. Corrigido depois de um bug em que só a primeira vitória de sempre pagava bónus, independentemente das estrelas de re-lutas seguintes
 - Com os valores de produção, até ao nível 100 (assumindo todas as 10 mini-bosses + 10 bosses derrotados sempre com 3 estrelas): 4 iniciais + 99 pontos de nível + até 30 de mini-bosses (10 × 3) + até 50 de bosses (10 × 5) = **até 183 pontos no máximo** — a forma como se luta (arriscar vs jogar seguro) é relevante para a pontuação
-- **Distribuídos entre 4 status investíveis** (secção 7): Energia, Força, Resistência, Foco — cada ponto sobe em 1 o nível do status escolhido, sem limite máximo
+- **Distribuídos entre 3 status investíveis** (secção 7): Energia, Força, Resistência — cada ponto sobe em 1 o nível do status escolhido, sem limite máximo
 
 ## 7. Fórmula de valor dos status
 
@@ -126,7 +126,7 @@ Valor(n) = round(Valor(n-1) + STAT_FLAT + n × STAT_PERCENT)
 
 Valores de produção (nota: Ataque e Defesa foram **trocados** entre si — ver secção 9): Vida base 100/flat 4/perc 89% (~4.990 no nível 100); Ataque base 50/flat 2/perc 45% (~2.523, curva original da Defesa); Defesa base 10/flat 2/perc 16% (~1.016, curva original do Ataque). Todos os 9 parâmetros continuam ajustáveis no card de Debug.
 
-**Jogador** (sistema novo, substitui por completo o antigo esquema de 3 níveis de equipamento + Recuperação linear — os monstros **não** foram tocados por esta mudança): 4 status investíveis com pontos (`nivelEnergia/Forca/Resistencia/Foco`, `js/equipment.js`), cada um alimentando um ou mais dos 6 status finais mostrados no HUD/Perfil. Equipamento é, por agora, um **bónus fixo** ("equipamento básico") somado ao valor do status — ainda não existe um sistema de melhoria de equipamento por moedas (fica para um passo futuro; os valores de bónus fixo abaixo são o que seria hoje o "equipamento inicial" de cada peça):
+**Jogador** (sistema novo, substitui por completo o antigo esquema de 3 níveis de equipamento + Recuperação linear — os monstros **não** foram tocados por esta mudança): 3 status investíveis com pontos (`nivelEnergia/Forca/Resistencia`, `js/equipment.js`), cada um alimentando **dois** dos 6 status finais mostrados no HUD/Perfil — o seu status primário (Vida/Ataque/Defesa) e um status secundário (Regeneração/Letalidade/Destreza). Equipamento é, por agora, um **bónus fixo** ("equipamento básico") somado ao valor de cada um destes — ainda não existe um sistema de melhoria de equipamento por moedas (fica para um passo futuro):
 
 ```
 Vida    = PLAYER_BASE_VIDA    + EQUIP_BASICO_VIDA    + round(Energia^ENERGIA_EXP)
@@ -138,26 +138,26 @@ EQUIP_BASICO_VIDA = 10 (Armadura), EQUIP_BASICO_ATAQUE = 8 (Espada), EQUIP_BASIC
 ENERGIA_EXP = 1.8, FORCA_EXP = 1.5, RESISTENCIA_EXP = 1.2
 ```
 
-Foco não tem peça de equipamento 3D própria (só o botão "+" do HUD), mas cada equipamento dá-lhe também um bónus fixo (`EQUIP_BASICO_FOCO`, 0 na produção atual — os 3 bónus somam-se ao nível investido para dar o Foco total usado nas 3 fórmulas seguintes):
+Cada um dos 3 status investíveis alimenta também, com o **mesmo nível**, uma segunda fórmula — o bónus de equipamento aqui é uma **segunda** peça de informação da mesma peça (ex: a Arma dá o seu valor a Ataque acima E um bónus a Letalidade abaixo), não confundir com `EQUIP_BASICO_*` acima:
 
 ```
-FocoTotal = Foco + EQUIP_BASICO_FOCO
-
-Destreza (%)      = DESTREZA_BASE      + FocoTotal^DESTREZA_EXP
-Letalidade (%)    = LETALIDADE_BASE    + FocoTotal^LETALIDADE_EXP
-Regeneração (v/s) = REGENERACAO_BASE   + FocoTotal^REGENERACAO_EXP
+Regeneração (v/s) = REGENERACAO_BASE + (Energia     + EQUIP_BONUS_REGENERACAO)^REGENERACAO_EXP   (bónus vem da Armadura)
+Letalidade (%)    = LETALIDADE_BASE  + (Força       + EQUIP_BONUS_LETALIDADE)^LETALIDADE_EXP     (bónus vem da Arma)
+Destreza (%)      = DESTREZA_BASE   + (Resistência  + EQUIP_BONUS_DESTREZA)^DESTREZA_EXP         (bónus vem do Escudo)
 
 DESTREZA_BASE = 2, DESTREZA_EXP = 0.56
 LETALIDADE_BASE = 1, LETALIDADE_EXP = 0.639
 REGENERACAO_BASE = 0.2, REGENERACAO_EXP = 0.8
+EQUIP_BONUS_DESTREZA = EQUIP_BONUS_LETALIDADE = EQUIP_BONUS_REGENERACAO = 0 (produção atual)
 ```
 
 - **Destreza**: chance de esquivar por completo um ataque recebido (ver secção 9) — testada primeiro, antes de qualquer cálculo de dano
 - **Letalidade**: chance de acertar um crítico ao atacar (ver secção 9) — só testada se não houve esquiva do lado do defensor
-- **Regeneração**: pontos de vida recuperados por segundo real fora de combate (mesmo papel que a antiga "Recuperação" de secção 7, agora alimentada por Foco em vez do nível da Armadura)
+- **Regeneração**: pontos de vida recuperados por segundo real fora de combate (mesmo papel que a antiga "Recuperação" da secção 7)
 - Todos os parâmetros acima (bases, expoentes, bónus fixos de equipamento) são ajustáveis no card de Debug
+- **Foco existiu brevemente como 4º status investível** (2026-08-04, revertido no mesmo dia antes de qualquer jogador investir pontos nele): Destreza/Letalidade/Regeneração eram alimentadas por um único "Foco" partilhado em vez de, como agora, cada uma vir diretamente do nível já investido em Resistência/Força/Energia respetivamente — mais simples (3 status em vez de 4) sem perder a mecânica em si
 - **Porquê expoente sobre o nível em vez de base elevada ao nível**: a primeira tentativa (`base^Energia`, base > 1) explodia para valores astronómicos por volta do nível 100 (~4×10^17); uma segunda tentativa com base < 1 (`0.5^Energia`) colapsava para ~0 pelo mesmo motivo inverso. A fórmula final (`Energia^expoente`, expoente modesto entre 1 e 2) cresce de forma suave e controlada em qualquer nível razoável
-- Mostrado no HUD/Perfil como "Vida", "Ataque", "Defesa", "Destreza", "Letalidade", "Regeneração" (os 6 status finais) + "Energia/Força/Resistência/Foco: nível N" (os 4 status investíveis) — todos persistidos no Supabase (`player_progress.nivel_energia/forca/resistencia/foco`, secção 14)
+- Mostrado no HUD/Perfil como "Vida", "Ataque", "Defesa", "Destreza", "Letalidade", "Regeneração" (os 6 status finais) + "Energia/Força/Resistência: nível N" (os 3 status investíveis) — todos persistidos no Supabase (`player_progress.nivel_energia/forca/resistencia`, secção 14)
 
 ## 8. Mini-Bosses e Bosses
 
@@ -246,7 +246,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 
 - Curva de nível (`LEVEL_BASE`, `LEVEL_EXP`)
 - Curvas de status de monstro × 3 (`STAT_BASE/FLAT/PERCENT` para Vida, Ataque, Defesa — secção 7)
-- Fórmulas de status do jogador (secção 7): `PLAYER_BASE_VIDA/ATAQUE/DEFESA`, `EQUIP_BASICO_VIDA/ATAQUE/DEFESA/FOCO`, `ENERGIA/FORCA/RESISTENCIA_EXP`, `DESTREZA/LETALIDADE/REGENERACAO_BASE` e respetivos expoentes, `LETALIDADE_MULTIPLICADOR`
+- Fórmulas de status do jogador (secção 7): `PLAYER_BASE_VIDA/ATAQUE/DEFESA`, `EQUIP_BASICO_VIDA/ATAQUE/DEFESA`, `ENERGIA/FORCA/RESISTENCIA_EXP`, `DESTREZA/LETALIDADE/REGENERACAO_BASE` e respetivos expoentes, `EQUIP_BONUS_DESTREZA/LETALIDADE/REGENERACAO`, `LETALIDADE_MULTIPLICADOR`
 - Pontos (`LEVEL_UP_POINTS`, `MINIBOSS_MAX_POINTS`, `BOSS_MAX_POINTS`)
 - Filtros de GPS (`MAX_ACCURACY_M`, `MIN_MOVEMENT_M`, `MAX_SPEED_KMH_CAMINHAR/CORRER/BICICLETA`) e multiplicadores de XP por modo (`XP_MULTIPLIER_CAMINHAR/CORRER/BICICLETA` - secção 4.1)
 - Geração de criaturas (`MINIBOSS_LEVEL_STEP`, `BOSS_LEVEL_STEP`, `MAX_LEVEL_TO_GENERATE`)
@@ -260,8 +260,8 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 
 - Mobile-first; página com scroll (deixou de ser "uma tela só" quando o conteúdo cresceu)
 - Aviso para rodar o dispositivo aparece só em ecrãs touch em modo paisagem (deteção via JS: `matchMedia` + `maxTouchPoints`, não só CSS)
-- HUD do personagem sobreposto ao visualizador 3D: nível, os 6 status finais (Vida mostrada como `atual/máximo`, atualizada ao vivo a cada segundo enquanto estiver a recuperar — para sozinho ao chegar ao máximo; Ataque/Defesa/Destreza/Letalidade/Regeneração), e o nível de cada um dos 4 status investíveis (Energia/Força/Resistência/Foco) com botão **"+"** próprio que só aparece quando há pontos disponíveis
-- Status investíveis podem subir de duas formas: a) tocar na peça de equipamento correspondente no modelo 3D (corpo=Energia/Armadura, espada=Força, escudo=Resistência — Foco não tem peça 3D própria) b) botão "+" no HUD
+- HUD do personagem sobreposto ao visualizador 3D: nível, os 6 status finais (Vida mostrada como `atual/máximo`, atualizada ao vivo a cada segundo enquanto estiver a recuperar — para sozinho ao chegar ao máximo; Ataque/Defesa/Destreza/Letalidade/Regeneração), e o nível de cada um dos 3 status investíveis (Energia/Força/Resistência) com botão **"+"** próprio que só aparece quando há pontos disponíveis
+- Status investíveis podem subir de duas formas: a) tocar na peça de equipamento correspondente no modelo 3D (corpo=Energia/Armadura, espada=Força, escudo=Resistência) b) botão "+" no HUD
 - Personagem gira por arraste/toque (câmara fixa); toque curto sem arrastar seleciona equipamento (raycasting Three.js)
 
 ## 13. Decisões de design relevantes (porquês)
@@ -281,7 +281,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 
 - **Login obrigatório com Google** — sem modo convidado; `#auth-modal` cobre o ecrã todo até haver sessão confirmada
 - Depois do primeiro login, popup pede o **nome da personagem** (nunca o nome real da conta Google) — nomes são **únicos** (índice único case-insensitive em `profiles.display_name`, erro `23505` tratado no popup)
-- **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância vitalícia, pontos, níveis dos 4 status investíveis — `nivel_energia/forca/resistencia/foco`, secção 7 —, monstros derrotados, conquistas, distância anulada por velocidade). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
+- **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância vitalícia, pontos, níveis dos 3 status investíveis — `nivel_energia/forca/resistencia`, secção 7 —, monstros derrotados, conquistas, distância anulada por velocidade). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
 - `treino.*` (checkpoint de sessão GPS em curso) e `debug.*` (afinação de jogo) **nunca** são sincronizados — ficam sempre só locais
 - Sincronização contínua via `queueProgressSync()` (debounce ~400ms, snapshot completo, seguro para reenviar) chamada a seguir a cada mutação de progresso existente
 - **`SYNC_PENDING_KEY` (`sync.pendingPush`) é marcado de imediato em `queueProgressSync()`, antes do debounce sequer disparar** — não só dentro de `syncProgressToSupabase()` quando a rede falha. Corrige um bug crítico real de perda silenciosa de progresso: sem isto, uma mutação (ex: subir um equipamento) seguida de um refresh/fecho da aba dentro dos ~400ms (ou antes da rede confirmar) nunca chegava a marcar nada como pendente; no arranque seguinte, `hydrateLocalStorageFromProgress()` sobrescrevia esse progresso local (mais recente, nunca confirmado) com o estado mais antigo do Supabase — sem erro nenhum visível, o jogador só via os pontos/nível voltarem atrás. Agora `bootstrapAfterLogin()` (`js/auth.js`) verifica este flag **antes** de hidratar: se houver uma mutação por confirmar, hidratar é ignorado (confia-se no local, mais recente) e tenta-se reenviar em vez disso, assim que `readyForSync` ficar `true`
