@@ -141,6 +141,77 @@ function generateBossAchievements() {
   return achievements;
 }
 
+// Moedas por conquista (secção 7 da documentação, 2026-08-04) - valores
+// aceites pelo jogador, escalados por uma estimativa de dificuldade
+// relativa dentro de cada categoria (2 = mais facil, 100 = mais dificil).
+// Medalhas mensais NAO estao aqui (ids reais sao medal_<cor>_<ano>_<mes>,
+// um por mes/ano - ver MONTHLY_MEDAL_COIN_REWARD e getAchievementCoinReward
+// abaixo, que usam MONTHLY_MEDAL_ID_PATTERN para apanhar qualquer um deles).
+const ACHIEVEMENT_COIN_REWARD = {
+  // Distância
+  dist_lifetime_50km: 7,
+  dist_lifetime_100km: 12,
+  dist_lifetime_500km: 51,
+  dist_lifetime_1000km: 100,
+  dist_1km: 4,
+  dist_1km_caminhar: 4,
+  dist_1km_bicicleta: 4,
+  dist_5km: 14,
+  dist_5km_caminhar: 14,
+  dist_5km_bicicleta: 14,
+  dist_10km: 25,
+  dist_10km_caminhar: 25,
+  dist_10km_bicicleta: 25,
+  dist_half_marathon: 51,
+  dist_half_marathon_caminhar: 51,
+  dist_half_marathon_bicicleta: 51,
+  dist_marathon: 100,
+  dist_marathon_caminhar: 100,
+  dist_marathon_bicicleta: 100,
+  // Frequência
+  trainings_1: 4,
+  trainings_5: 12,
+  trainings_10: 22,
+  trainings_25: 51,
+  trainings_50: 100,
+  streak_3: 12,
+  streak_7: 25,
+  streak_30: 100,
+  month_full: 41,
+  weekend_warrior: 17,
+  // Combate
+  combat_first_3star: 17,
+  boss_10: 12,
+  boss_20: 22,
+  boss_30: 32,
+  boss_40: 41,
+  boss_50: 51,
+  boss_60: 61,
+  boss_70: 71,
+  boss_80: 81,
+  boss_90: 90,
+  boss_100: 100,
+  combat_all_minibosses_3star: 85,
+  combat_all_bosses_3star: 90,
+  combat_all_defeated: 100,
+  // Ritmo
+  pace_5km_25min: 31,
+  pace_10km_50min: 36,
+  pace_5km_20min: 61,
+  pace_10km_45min: 65,
+  pace_5km_50min_caminhar: 26,
+  pace_5km_40min_caminhar: 46,
+  pace_10km_30min_bicicleta: 41,
+  pace_20km_45min_bicicleta: 51,
+  pace_personal_record: 31,
+  pace_personal_record_caminhar: 31,
+  pace_personal_record_bicicleta: 31,
+};
+
+// Liderança - medalha mensal, recorrente (paga de novo a cada mes de
+// calendario em que se ganha, nao so uma vez de sempre).
+const MONTHLY_MEDAL_COIN_REWARD = { bronze: 20, silver: 50, gold: 100 };
+
 const MEDAL_LABEL_BY_TYPE = { gold: "Ouro", silver: "Prata", bronze: "Bronze" };
 const MEDAL_ICON_BY_TYPE = { gold: "🥇", silver: "🥈", bronze: "🥉" };
 const MEDAL_ICON_BUNDLE = "🥇🥈🥉";
@@ -300,12 +371,23 @@ function isAchievementUnlocked(id) {
   return Object.prototype.hasOwnProperty.call(getUnlockedAchievements(), id);
 }
 
+// Moedas por desbloquear esta conquista - medalhas mensais (ids reais
+// medal_<cor>_<ano>_<mes>) apanhadas por padrao, o resto por tabela direta.
+function getAchievementCoinReward(id) {
+  const monthlyMatch = id.match(MONTHLY_MEDAL_ID_PATTERN);
+  if (monthlyMatch) return MONTHLY_MEDAL_COIN_REWARD[monthlyMatch[1]] || 0;
+  return ACHIEVEMENT_COIN_REWARD[id] || 0;
+}
+
 function unlockAchievement(id, unlockedAt) {
   const unlocked = getUnlockedAchievements();
   if (unlocked[id] === undefined) {
     unlocked[id] = unlockedAt;
     localStorage.setItem(STORAGE_KEY_UNLOCKED_ACHIEVEMENTS, JSON.stringify(unlocked));
     queueProgressSync();
+
+    const coinReward = getAchievementCoinReward(id);
+    if (coinReward > 0) addMoedas(coinReward);
   }
 }
 

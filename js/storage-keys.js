@@ -23,6 +23,17 @@ const STORAGE_KEYS_EQUIPMENT = {
   nivelEquipDefesa: "personagem.nivelEquipDefesa",
 };
 
+// Moedas (2026-08-04 - secção 7/16 da documentação): oferta inicial de 100,
+// ganhas a treinar, a derrotar mini-bosses/bosses e a desbloquear
+// conquistas; gastas a evoluir o nivel de melhoria da arma atual.
+const STORAGE_KEY_MOEDAS = "personagem.moedas";
+
+// Nivel de melhoria (1-9) de cada arma, guardado por tier e nao so da
+// atual - um jogador nunca perde o investimento feito numa arma anterior
+// so por subir de nivel e desbloquear a seguinte. Mapa { tierIndex: nivel },
+// tiers nunca investidos ficam de fora (default 1 ao ler).
+const STORAGE_KEY_WEAPON_UPGRADE_LEVELS = "personagem.nivelMelhoriaArmas";
+
 const STORAGE_KEY_DEFEATED_CREATURES = "personagem.monstrosDerrotados";
 
 // Criaturas com que ja se entrou em combate pelo menos uma vez (ganhando

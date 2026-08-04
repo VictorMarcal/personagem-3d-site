@@ -212,6 +212,41 @@ window.addEventListener("online", () => {
 const SPEED_VIOLATION_GRACE_READINGS = 2;
 let consecutiveSpeedViolations = 0;
 
+// Moedas encontradas a treinar (secção 7 da documentação): 50% de chance a
+// cada quilometro REAL (nao efetivo - "encontrar" moedas e sobre esforco
+// fisico bruto, nao sobre o modo de treino) de encontrar entre 1 e 20.
+// rollCoinDropsForKm e partilhada com o simulador de distancia do Debug
+// (js/debug.js tickSimDistance) - cada chamador guarda o seu PROPRIO
+// contador de km ja testados (coinsCheckedKm aqui, simCoinsCheckedKm la),
+// nunca partilhado, senao uma sessao real e uma simulada interferiam uma
+// com a outra.
+const COIN_FIND_CHANCE = 0.5;
+const COIN_FIND_MIN = 1;
+const COIN_FIND_MAX = 20;
+
+function rollCoinDropsForKm(kmCount) {
+  for (let i = 0; i < kmCount; i++) {
+    if (Math.random() < COIN_FIND_CHANCE) {
+      const found = Math.floor(Math.random() * (COIN_FIND_MAX - COIN_FIND_MIN + 1)) + COIN_FIND_MIN;
+      addMoedas(found);
+    }
+  }
+}
+
+// coinsCheckedKm guarda quantos km INTEIROS ja foram testados nesta sessao
+// de treino real, para o teste correr exatamente uma vez por km cruzado
+// (mesmo que um so segmento de GPS avance mais que 1km de uma vez).
+let coinsCheckedKm = 0;
+
+function checkCoinDropsForDistance(currentTotalDistanceM) {
+  const currentKm = Math.floor(currentTotalDistanceM / 1000);
+  const newKm = currentKm - coinsCheckedKm;
+  if (newKm > 0) {
+    rollCoinDropsForKm(newKm);
+    coinsCheckedKm = currentKm;
+  }
+}
+
 function onPositionUpdate(position) {
   const { latitude, longitude, accuracy } = position.coords;
   const timestamp = position.timestamp;
@@ -259,6 +294,7 @@ function onPositionUpdate(position) {
     hideSpeedWarning();
     totalDistanceM += segmentM;
     updateDistanceDisplay();
+    checkCoinDropsForDistance(totalDistanceM);
   }
 
   lastPosition = { latitude, longitude, timestamp };
@@ -360,6 +396,7 @@ function beginTrainingSession() {
   totalDistanceM = 0;
   lastPosition = null;
   sessionStartTime = Date.now();
+  coinsCheckedKm = 0;
   updateDistanceDisplay();
   showTrainingScreen();
 
@@ -431,6 +468,9 @@ function resumeTrainingIfNeeded() {
   const savedPosition = localStorage.getItem(STORAGE_KEYS.ultimaPosicao);
   lastPosition = savedPosition ? JSON.parse(savedPosition) : null;
   sessionStartTime = Number(localStorage.getItem(STORAGE_KEYS.inicioSessao)) || Date.now();
+  // Nao re-testa km ja percorridos antes do refresh - so os km novos a
+  // partir daqui contam para moedas.
+  coinsCheckedKm = Math.floor(totalDistanceM / 1000);
 
   updateDistanceDisplay();
   showTrainingScreen();

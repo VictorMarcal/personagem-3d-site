@@ -484,6 +484,67 @@ main {
   font-size: 2rem;
 }
 
+#weapon-upgrade-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 960;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+#weapon-upgrade-modal.hidden {
+  display: none;
+}
+
+.weapon-upgrade-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 320px;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background: #17171d;
+  border: 1px solid #2a2a30;
+  text-align: center;
+}
+
+.weapon-upgrade-stats-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.weapon-upgrade-stats-row p {
+  margin: 0;
+}
+
+.weapon-upgrade-next {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #2a2a30;
+  width: 100%;
+}
+
+.weapon-upgrade-next.hidden {
+  display: none;
+}
+
+.weapon-upgrade-next-label {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #9a9aa5;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .achievement-item {
   display: flex;
   flex-direction: column;

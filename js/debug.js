@@ -266,6 +266,21 @@ let simDistanceIntervalId = null;
 // distancia vitalicia) tambem poderem ser testadas com o simulador
 let simSessionDistanceM = 0;
 let simSessionStartTime = null;
+// Espelha coinsCheckedKm de js/training.js (contador PROPRIO, nunca
+// partilhado - ver rollCoinDropsForKm la) - o simulador substitui uma
+// sessao de treino real (ver nota acima), por isso tambem tem de testar
+// moedas por km, senao isso ficaria impossivel de testar sem andar de
+// verdade.
+let simCoinsCheckedKm = 0;
+
+function checkSimCoinDropsForDistance(currentSessionDistanceM) {
+  const currentKm = Math.floor(currentSessionDistanceM / 1000);
+  const newKm = currentKm - simCoinsCheckedKm;
+  if (newKm > 0) {
+    rollCoinDropsForKm(newKm);
+    simCoinsCheckedKm = currentKm;
+  }
+}
 
 function tickSimDistance() {
   const factor = Number(inputSimFactor.value) || 0;
@@ -275,6 +290,7 @@ function tickSimDistance() {
   addToLifetimeDistance(deltaM);
   addToMonthlyDistance(deltaM);
   simSessionDistanceM += deltaM;
+  checkSimCoinDropsForDistance(simSessionDistanceM);
   const simSessionDurationSeconds = (Date.now() - simSessionStartTime) / 1000;
   checkAndUnlockAchievements(simSessionDistanceM, simSessionDurationSeconds);
 
@@ -285,6 +301,7 @@ function tickSimDistance() {
 function startSimDistance() {
   if (simDistanceIntervalId !== null) return;
   simSessionDistanceM = 0;
+  simCoinsCheckedKm = 0;
   simSessionStartTime = Date.now();
   simDistanceIntervalId = setInterval(tickSimDistance, SIM_DISTANCE_TICK_MS);
   btnToggleSimDistance.textContent = "Parar simulação";
@@ -362,6 +379,8 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEnergia);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelForca);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelResistencia);
+  localStorage.removeItem(STORAGE_KEY_MOEDAS);
+  localStorage.removeItem(STORAGE_KEY_WEAPON_UPGRADE_LEVELS);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado);
   localStorage.removeItem(STORAGE_KEYS.active);
   localStorage.removeItem(STORAGE_KEYS.distanciaAcumuladaM);

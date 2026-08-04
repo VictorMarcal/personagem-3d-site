@@ -57,6 +57,31 @@ function rollCritico(letalidadeChance) {
   return Math.random() < letalidadeChance;
 }
 
+// Moedas por derrotar mini-boss/boss (secção 7 da documentação): intervalo
+// aleatorio que sobe linearmente com o nivel da criatura, +5 por mini-boss
+// (10 em 10 niveis) e +50 por boss (tambem 10 em 10) - formula direta a
+// partir do nivel, sem precisar de um indice separado. Pago em TODA vitoria
+// (nao so a primeira - diferente do bonus de pontos por estrelas acima,
+// que so paga a diferenca; isto e "loot", conta sempre).
+function getMonsterCoinRange(creature) {
+  if (creature.isBoss) {
+    const tierIndex = (creature.level - 10) / 10;
+    return { min: 100 + tierIndex * 50, max: 150 + tierIndex * 50 };
+  }
+  if (creature.isMiniBoss) {
+    const tierIndex = (creature.level - 5) / 10;
+    return { min: 5 + tierIndex * 5, max: 15 + tierIndex * 5 };
+  }
+  return null;
+}
+
+function awardMonsterCoins(creature) {
+  const range = getMonsterCoinRange(creature);
+  if (!range) return;
+  const amount = Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
+  addMoedas(amount);
+}
+
 function updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp) {
   const playerPct = Math.max(0, Math.min(100, (playerHp / playerMaxHp) * 100));
   const monsterPct = Math.max(0, Math.min(100, (monsterHp / monsterMaxHp) * 100));
@@ -191,6 +216,7 @@ async function startBattle(creature) {
       }
     }
 
+    awardMonsterCoins(creature);
     checkAndUnlockAchievements(); // pode ter desbloqueado uma conquista de boss
     battleResultEl.textContent = `Vitória! Derrotaste ${creature.name}.`;
   } else {

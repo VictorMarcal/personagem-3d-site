@@ -160,8 +160,17 @@ function raycastEquipmentAt(clientX, clientY) {
 
   raycaster.setFromCamera(pointerNDC, camera);
   const hits = raycaster.intersectObjects(equipmentMeshes, false);
-  if (hits.length > 0 && hits[0].object.userData.equipType) {
-    selectEquipment(hits[0].object.userData.equipType);
+  if (hits.length === 0 || !hits[0].object.userData.equipType) return;
+
+  const equipType = hits[0].object.userData.equipType;
+  // Espada: ja tem tabela de tiers/custo por nivel de melhoria (secção 7 da
+  // documentação), abre o popup de evolucao com moedas em vez do fluxo
+  // antigo de pontos - Escudo/Armadura ainda nao tem tabela propria, ficam
+  // com selectEquipment (investir pontos em Resistencia/Energia).
+  if (equipType === "forca") {
+    openWeaponUpgradeModal();
+  } else {
+    selectEquipment(equipType);
   }
 }
 

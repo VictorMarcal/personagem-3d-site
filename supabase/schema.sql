@@ -245,6 +245,16 @@ alter table public.player_progress drop column if exists equip_level_defesa;
 -- js/equipment.js, secção 7 da documentação), sem um 4º status separado.
 alter table public.player_progress drop column if exists nivel_foco;
 
+-- Migracao: sistema de moedas (secção 7/16 da documentação) - oferta
+-- inicial de 100, ganhas a treinar (probabilidade por km real), a derrotar
+-- mini-bosses/bosses e a desbloquear conquistas; gastas a evoluir o nivel
+-- de melhoria (1-9) da arma atual. nivel_melhoria_armas guarda o progresso
+-- de TODAS as armas ja desbloqueadas (mapa tierIndex->nivel), nao so a
+-- atual - subir de nivel de personagem e trocar de arma nunca apaga o
+-- investimento feito na anterior.
+alter table public.player_progress add column if not exists moedas integer not null default 100;
+alter table public.player_progress add column if not exists nivel_melhoria_armas jsonb not null default '{}';
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):
