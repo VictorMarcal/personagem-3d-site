@@ -1,16 +1,15 @@
-// Sistema de status do jogador (2026-08-04 - ver secção 6/7 da documentação).
-// 4 status principais (Vida/Ataque/Defesa/Regeneração+Letalidade+Destreza)
-// dependem de 4 status "investidos" com pontos (Energia/Força/Resistência/
-// Foco), mais um bónus fixo do equipamento "básico" atual (ainda sem
-// sistema de moedas para o melhorar/trocar - ver getEquipBasico* em
-// js/debug.js):
-//   Vida    = PLAYER_BASE_VIDA    + equipBasicoVida    + round(Energia^ENERGIA_EXP)
-//   Ataque  = PLAYER_BASE_ATAQUE  + equipBasicoAtaque  + round(Força^FORCA_EXP)
-//   Defesa  = PLAYER_BASE_DEFESA  + equipBasicoDefesa  + round(Resistência^RESISTENCIA_EXP)
-// Foco (próprio + bónus fixo do equipamento) alimenta 3 formulas:
-//   Destreza%    = DESTREZA_BASE    + Foco^DESTREZA_EXP
-//   Letalidade%  = LETALIDADE_BASE  + Foco^LETALIDADE_EXP
-//   Regeneração  = REGEN_BASE       + Foco^REGEN_EXP        (vida/segundo)
+// Sistema de status do jogador (2026-08-04, revisto para remover Foco -
+// ver secção 6/7 da documentação). 3 status "investidos" com pontos
+// (Energia/Força/Resistência), cada um a alimentar diretamente o seu
+// status principal MAIS um status secundário, mais um bónus fixo do
+// equipamento "básico" atual (ainda sem sistema de moedas para o
+// melhorar/trocar - ver getEquipBasico*/getEquipBonus* em js/debug.js):
+//   Vida       = PLAYER_BASE_VIDA   + equipBasicoVida   + round(Energia^ENERGIA_EXP)
+//   Ataque     = PLAYER_BASE_ATAQUE + equipBasicoAtaque + round(Força^FORCA_EXP)
+//   Defesa     = PLAYER_BASE_DEFESA + equipBasicoDefesa + round(Resistência^RESISTENCIA_EXP)
+//   Regeneração = REGEN_BASE      + (Energia     + equipBonusRegeneracao)^REGEN_EXP       (vida/segundo, bónus vem da Armadura)
+//   Letalidade% = LETALIDADE_BASE + (Força       + equipBonusLetalidade)^LETALIDADE_EXP   (bónus vem da Arma)
+//   Destreza%   = DESTREZA_BASE   + (Resistência + equipBonusDestreza)^DESTREZA_EXP       (bónus vem do Escudo)
 // computeStatValue (fórmula recursiva antiga) mantém-se só para os
 // MONSTROS (js/monsters.js) - não mudaram, ver nota na documentação.
 // STORAGE_KEYS_EQUIPMENT esta definida em js/storage-keys.js
@@ -19,14 +18,12 @@ const INVESTABLE_STAT_STORAGE_KEY_BY_TYPE = {
   energia: STORAGE_KEYS_EQUIPMENT.nivelEnergia,
   forca: STORAGE_KEYS_EQUIPMENT.nivelForca,
   resistencia: STORAGE_KEYS_EQUIPMENT.nivelResistencia,
-  foco: STORAGE_KEYS_EQUIPMENT.nivelFoco,
 };
 
 const STAT_LABEL_BY_TYPE = {
   energia: "Energia",
   forca: "Força",
   resistencia: "Resistência",
-  foco: "Foco",
 };
 
 const statVidaValueEl = document.getElementById("stat-vida-value");
@@ -39,14 +36,12 @@ const hudUnspentPointsValueEl = document.getElementById("hud-unspent-points-valu
 const hudLevelEnergiaEl = document.getElementById("hud-level-energia");
 const hudLevelForcaEl = document.getElementById("hud-level-forca");
 const hudLevelResistenciaEl = document.getElementById("hud-level-resistencia");
-const hudLevelFocoEl = document.getElementById("hud-level-foco");
 const btnUpgradeEquip = document.getElementById("btn-upgrade-equip");
 
 const btnHudUpgradeByType = {
   energia: document.getElementById("btn-hud-upgrade-energia"),
   forca: document.getElementById("btn-hud-upgrade-forca"),
   resistencia: document.getElementById("btn-hud-upgrade-resistencia"),
-  foco: document.getElementById("btn-hud-upgrade-foco"),
 };
 
 let selectedEquipType = null;
@@ -73,7 +68,7 @@ function getUnspentPoints() {
   return getStoredNumber(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, STARTING_UNSPENT_POINTS);
 }
 
-// Nivel investido em Energia/Forca/Resistencia/Foco - comeca em 0 (nunca
+// Nivel investido em Energia/Forca/Resistencia - comeca em 0 (nunca
 // investido), ao contrario do antigo nivel de equipamento (comecava em 1,
 // ja que a formula recursiva precisava de um "nivel 1" com o valor base).
 // Aqui 0 pontos = 0 de contributo extra, a base fica so a cargo de
@@ -109,28 +104,27 @@ function computePlayerDefesa(resistenciaLevel) {
   return Math.round(getPlayerBaseDefesa() + getEquipBasicoDefesa() + Math.pow(resistenciaLevel, getResistenciaExponent()));
 }
 
-// Foco total = pontos investidos + bonus fixo somado dos 3 equipamentos
-// (Arma/Escudo/Armadura dao todos um bonus de Foco, alem do seu status
-// principal - ver getEquipBasicoFoco em js/debug.js).
-function computeFocoTotal(focoLevel) {
-  return focoLevel + getEquipBasicoFoco();
+// Destreza/Letalidade/Regeneracao (sem Foco - cada uma alimentada pelo
+// nivel investido no status que a governa + o bonus fixo da peca de
+// equipamento correspondente, ver cabecalho do ficheiro).
+// Destreza/Letalidade: formulas "base + (nivel+bonus)^expoente", resultado
+// em pontos percentuais - dividido por 100 para dar a fracao (0-1) usada
+// nas rolagens de combate (js/battle.js).
+function computeDestrezaChance(resistenciaLevel) {
+  const total = resistenciaLevel + getEquipBonusDestreza();
+  return (getDestrezaBase() + Math.pow(total, getDestrezaExponent())) / 100;
 }
 
-// Destreza/Letalidade: formulas "base + Foco^expoente", resultado em pontos
-// percentuais - dividido por 100 para dar a fracao (0-1) usada nas rolagens
-// de combate (js/battle.js).
-function computeDestrezaChance(focoTotal) {
-  return (getDestrezaBase() + Math.pow(focoTotal, getDestrezaExponent())) / 100;
-}
-
-function computeLetalidadeChance(focoTotal) {
-  return (getLetalidadeBase() + Math.pow(focoTotal, getLetalidadeExponent())) / 100;
+function computeLetalidadeChance(forcaLevel) {
+  const total = forcaLevel + getEquipBonusLetalidade();
+  return (getLetalidadeBase() + Math.pow(total, getLetalidadeExponent())) / 100;
 }
 
 // Regeneracao: mesma forma, mas o resultado fica em pontos de vida por
 // segundo (nao percentagem) - usada por getCurrentHp abaixo.
-function computeRegeneracaoPerSecond(focoTotal) {
-  return getRegeneracaoBase() + Math.pow(focoTotal, getRegeneracaoExponent());
+function computeRegeneracaoPerSecond(energiaLevel) {
+  const total = energiaLevel + getEquipBonusRegeneracao();
+  return getRegeneracaoBase() + Math.pow(total, getRegeneracaoExponent());
 }
 
 // Comeca em 1 (nivel inicial) para "subir de nivel" so contar a partir
@@ -167,16 +161,15 @@ function computeBonusPointsForStars(maxPoints, stars) {
 // Vida atual do jogador: persiste entre lutas e recupera com o tempo real
 // decorrido (nao um timer a correr sempre - calculado sob demanda a partir
 // do ultimo valor guardado + segundos passados, padrao comum em jogos
-// idle). Nunca lutou ainda = comeca cheia. A regeneracao vem do Foco
-// (secção 7), nao mais do nivel da Armadura/Energia.
+// idle). Nunca lutou ainda = comeca cheia. A regeneracao vem da Energia
+// (secção 7).
 function getCurrentHp(maxHp) {
   const stored = localStorage.getItem(STORAGE_KEY_CURRENT_HP);
   if (stored === null) return maxHp;
 
   const lastUpdate = Number(localStorage.getItem(STORAGE_KEY_HP_LAST_UPDATE)) || Date.now();
   const elapsedSeconds = Math.max(0, (Date.now() - lastUpdate) / 1000);
-  const focoTotal = computeFocoTotal(getInvestableStatLevel("foco"));
-  const recovered = Number(stored) + computeRegeneracaoPerSecond(focoTotal) * elapsedSeconds;
+  const recovered = Number(stored) + computeRegeneracaoPerSecond(getInvestableStatLevel("energia")) * elapsedSeconds;
   return Math.min(maxHp, Math.max(0, recovered));
 }
 
@@ -202,21 +195,19 @@ function renderStatsHud() {
   const energiaLevel = getInvestableStatLevel("energia");
   const forcaLevel = getInvestableStatLevel("forca");
   const resistenciaLevel = getInvestableStatLevel("resistencia");
-  const focoTotal = computeFocoTotal(getInvestableStatLevel("foco"));
 
   const maxHp = computePlayerVida(energiaLevel);
   statVidaValueEl.textContent = `${Math.round(getCurrentHp(maxHp))}/${maxHp}`;
   statAtaqueValueEl.textContent = computePlayerAtaque(forcaLevel);
   statDefesaValueEl.textContent = computePlayerDefesa(resistenciaLevel);
-  statDestrezaValueEl.textContent = `${(computeDestrezaChance(focoTotal) * 100).toFixed(1)}%`;
-  statLetalidadeValueEl.textContent = `${(computeLetalidadeChance(focoTotal) * 100).toFixed(1)}%`;
-  statRegeneracaoValueEl.textContent = computeRegeneracaoPerSecond(focoTotal).toFixed(1);
+  statDestrezaValueEl.textContent = `${(computeDestrezaChance(resistenciaLevel) * 100).toFixed(1)}%`;
+  statLetalidadeValueEl.textContent = `${(computeLetalidadeChance(forcaLevel) * 100).toFixed(1)}%`;
+  statRegeneracaoValueEl.textContent = computeRegeneracaoPerSecond(energiaLevel).toFixed(1);
   hudUnspentPointsValueEl.textContent = getUnspentPoints();
 
   hudLevelEnergiaEl.textContent = energiaLevel;
   hudLevelForcaEl.textContent = forcaLevel;
   hudLevelResistenciaEl.textContent = resistenciaLevel;
-  hudLevelFocoEl.textContent = getInvestableStatLevel("foco");
 
   const hasPoints = getUnspentPoints() > 0;
   Object.values(btnHudUpgradeByType).forEach((btn) => {
@@ -240,8 +231,7 @@ function updateHpTicker(maxHp) {
       // durante uma luta o personagem esta noutra posicao (battle-fullscreen)
       // e a recuperacao ja nao avanca de qualquer forma.
       if (!battleInProgress) {
-        const focoTotal = computeFocoTotal(getInvestableStatLevel("foco"));
-        showFloatingCombatText(head, computeRegeneracaoPerSecond(focoTotal));
+        showFloatingCombatText(head, computeRegeneracaoPerSecond(getInvestableStatLevel("energia")));
       }
     }, 1000);
   } else if (isFull && hpTickerIntervalId !== null) {
@@ -257,8 +247,7 @@ function hideUpgradeButton() {
 
 // Chamado ao clicar/tocar num equipamento no personagem 3D (o raycast que
 // identifica qual foi tocado esta em js/main.js) - corpo->Energia,
-// espada->Forca, escudo->Resistencia. Foco nao tem peca 3D propria, so e
-// investido pelo botao "+" do HUD.
+// espada->Forca, escudo->Resistencia.
 function selectEquipment(type) {
   selectedEquipType = type;
 

@@ -235,10 +235,15 @@ alter table public.player_progress add column if not exists best_pace_mps_bicicl
 alter table public.player_progress add column if not exists nivel_energia integer not null default 0;
 alter table public.player_progress add column if not exists nivel_forca integer not null default 0;
 alter table public.player_progress add column if not exists nivel_resistencia integer not null default 0;
-alter table public.player_progress add column if not exists nivel_foco integer not null default 0;
 alter table public.player_progress drop column if exists equip_level_vida;
 alter table public.player_progress drop column if exists equip_level_ataque;
 alter table public.player_progress drop column if exists equip_level_defesa;
+
+-- Migracao: remove o Foco (nivel_foco) - decisao revertida antes de
+-- qualquer jogador investir pontos nele. Destreza/Letalidade/Regeneracao
+-- passam a ser alimentadas diretamente por Resistencia/Forca/Energia (ver
+-- js/equipment.js, secção 7 da documentação), sem um 4º status separado.
+alter table public.player_progress drop column if exists nivel_foco;
 
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication

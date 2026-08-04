@@ -48,20 +48,24 @@ const DEBUG_DEFAULTS = {
   equipBasicoVida: 10,
   equipBasicoAtaque: 8,
   equipBasicoDefesa: 12,
-  equipBasicoFoco: 0,
 
-  // Foco (investido com pontos) alimenta 3 formulas, todas na forma
-  // "base + Foco^expoente", com o resultado em pontos percentuais (exceto
-  // Regeneracao, que fica em pontos de vida/segundo, tal como ja era).
+  // Destreza/Letalidade/Regeneracao (2026-08-04, sem Foco): cada uma
+  // alimentada pelo nivel investido no status correspondente (Resistencia/
+  // Forca/Energia) + o bonus fixo da peca de equipamento que a governa
+  // (Escudo/Arma/Armadura), na forma "base + (nivel + bonus)^expoente",
+  // resultado em pontos percentuais (exceto Regeneracao, em vida/segundo).
   destrezaBase: 2,
   destrezaExponent: 0.56,
+  equipBonusDestreza: 0,
   letalidadeBase: 1,
   letalidadeExponent: 0.639,
+  equipBonusLetalidade: 0,
   // Multiplicador de dano quando um critico acontece - ignora Defesa por
   // completo e nao tem variacao aleatoria (ao contrario do dano normal).
   letalidadeMultiplicador: 1.5,
   regeneracaoBase: 0.2,
   regeneracaoExponent: 0.8,
+  equipBonusRegeneracao: 0,
 
   levelUpPoints: 1,
   maxAccuracyM: 20,
@@ -129,14 +133,16 @@ function getResistenciaExponent() { return getDebugValue("resistenciaExponent");
 function getEquipBasicoVida() { return getDebugValue("equipBasicoVida"); }
 function getEquipBasicoAtaque() { return getDebugValue("equipBasicoAtaque"); }
 function getEquipBasicoDefesa() { return getDebugValue("equipBasicoDefesa"); }
-function getEquipBasicoFoco() { return getDebugValue("equipBasicoFoco"); }
 function getDestrezaBase() { return getDebugValue("destrezaBase"); }
 function getDestrezaExponent() { return getDebugValue("destrezaExponent"); }
+function getEquipBonusDestreza() { return getDebugValue("equipBonusDestreza"); }
 function getLetalidadeBase() { return getDebugValue("letalidadeBase"); }
 function getLetalidadeExponent() { return getDebugValue("letalidadeExponent"); }
+function getEquipBonusLetalidade() { return getDebugValue("equipBonusLetalidade"); }
 function getLetalidadeMultiplicador() { return getDebugValue("letalidadeMultiplicador"); }
 function getRegeneracaoBase() { return getDebugValue("regeneracaoBase"); }
 function getRegeneracaoExponent() { return getDebugValue("regeneracaoExponent"); }
+function getEquipBonusRegeneracao() { return getDebugValue("equipBonusRegeneracao"); }
 
 function getLevelUpPoints() { return getDebugValue("levelUpPoints"); }
 function getMaxAccuracyM() { return getDebugValue("maxAccuracyM"); }
@@ -174,14 +180,16 @@ const debugVarInputs = {
   equipBasicoVida: document.getElementById("dbg-equipBasicoVida"),
   equipBasicoAtaque: document.getElementById("dbg-equipBasicoAtaque"),
   equipBasicoDefesa: document.getElementById("dbg-equipBasicoDefesa"),
-  equipBasicoFoco: document.getElementById("dbg-equipBasicoFoco"),
   destrezaBase: document.getElementById("dbg-destrezaBase"),
   destrezaExponent: document.getElementById("dbg-destrezaExponent"),
+  equipBonusDestreza: document.getElementById("dbg-equipBonusDestreza"),
   letalidadeBase: document.getElementById("dbg-letalidadeBase"),
   letalidadeExponent: document.getElementById("dbg-letalidadeExponent"),
+  equipBonusLetalidade: document.getElementById("dbg-equipBonusLetalidade"),
   letalidadeMultiplicador: document.getElementById("dbg-letalidadeMultiplicador"),
   regeneracaoBase: document.getElementById("dbg-regeneracaoBase"),
   regeneracaoExponent: document.getElementById("dbg-regeneracaoExponent"),
+  equipBonusRegeneracao: document.getElementById("dbg-equipBonusRegeneracao"),
   levelUpPoints: document.getElementById("dbg-levelUpPoints"),
   maxAccuracyM: document.getElementById("dbg-maxAccuracyM"),
   minMovementM: document.getElementById("dbg-minMovementM"),
@@ -206,7 +214,6 @@ const debugPointsValueEl = document.getElementById("debug-points-value");
 const debugLevelEnergiaEl = document.getElementById("debug-level-energia");
 const debugLevelForcaEl = document.getElementById("debug-level-forca");
 const debugLevelResistenciaEl = document.getElementById("debug-level-resistencia");
-const debugLevelFocoEl = document.getElementById("debug-level-foco");
 
 function loadDebugVarInputs() {
   Object.keys(debugVarInputs).forEach((key) => {
@@ -222,7 +229,6 @@ function renderDebugCharacterInfo() {
   debugLevelEnergiaEl.textContent = getInvestableStatLevel("energia");
   debugLevelForcaEl.textContent = getInvestableStatLevel("forca");
   debugLevelResistenciaEl.textContent = getInvestableStatLevel("resistencia");
-  debugLevelFocoEl.textContent = getInvestableStatLevel("foco");
 }
 
 // Recalcula tudo o que depende das variaveis afinaveis, depois de
@@ -360,7 +366,6 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEnergia);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelForca);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelResistencia);
-  localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelFoco);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado);
   localStorage.removeItem(STORAGE_KEYS.active);
   localStorage.removeItem(STORAGE_KEYS.distanciaAcumuladaM);

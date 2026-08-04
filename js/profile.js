@@ -86,21 +86,18 @@ function renderProfileStatusSection() {
   const energiaLevel = getInvestableStatLevel("energia");
   const forcaLevel = getInvestableStatLevel("forca");
   const resistenciaLevel = getInvestableStatLevel("resistencia");
-  const focoLevel = getInvestableStatLevel("foco");
-  const focoTotal = computeFocoTotal(focoLevel);
 
   const profileMaxHp = computePlayerVida(energiaLevel);
   document.getElementById("profile-stat-vida").textContent = `${Math.round(getCurrentHp(profileMaxHp))}/${profileMaxHp}`;
   document.getElementById("profile-stat-ataque").textContent = computePlayerAtaque(forcaLevel);
   document.getElementById("profile-stat-defesa").textContent = computePlayerDefesa(resistenciaLevel);
-  document.getElementById("profile-stat-destreza").textContent = `${(computeDestrezaChance(focoTotal) * 100).toFixed(1)}%`;
-  document.getElementById("profile-stat-letalidade").textContent = `${(computeLetalidadeChance(focoTotal) * 100).toFixed(1)}%`;
-  document.getElementById("profile-stat-regeneracao").textContent = computeRegeneracaoPerSecond(focoTotal).toFixed(1);
+  document.getElementById("profile-stat-destreza").textContent = `${(computeDestrezaChance(resistenciaLevel) * 100).toFixed(1)}%`;
+  document.getElementById("profile-stat-letalidade").textContent = `${(computeLetalidadeChance(forcaLevel) * 100).toFixed(1)}%`;
+  document.getElementById("profile-stat-regeneracao").textContent = computeRegeneracaoPerSecond(energiaLevel).toFixed(1);
 
   document.getElementById("profile-level-energia").textContent = energiaLevel;
   document.getElementById("profile-level-forca").textContent = forcaLevel;
   document.getElementById("profile-level-resistencia").textContent = resistenciaLevel;
-  document.getElementById("profile-level-foco").textContent = focoLevel;
 }
 
 // --- Resumo (semana/mes atual + dias distintos) -------------------------

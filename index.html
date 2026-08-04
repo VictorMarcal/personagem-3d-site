@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260804a">
+  <link rel="stylesheet" href="css/style.css?v=20260804b">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -57,7 +57,6 @@
         <p>Energia Lvl <span id="hud-level-energia">0</span> <button id="btn-hud-upgrade-energia" class="btn-hud-plus hidden">+</button></p>
         <p>Força Lvl <span id="hud-level-forca">0</span> <button id="btn-hud-upgrade-forca" class="btn-hud-plus hidden">+</button></p>
         <p>Resistência Lvl <span id="hud-level-resistencia">0</span> <button id="btn-hud-upgrade-resistencia" class="btn-hud-plus hidden">+</button></p>
-        <p>Foco Lvl <span id="hud-level-foco">0</span> <button id="btn-hud-upgrade-foco" class="btn-hud-plus hidden">+</button></p>
       </div>
 
       <button id="btn-upgrade-equip" class="btn-primary btn-upgrade hidden">Upgrade</button>
@@ -227,20 +226,23 @@
         <label>EQUIP_BASICO_DEFESA <span class="debug-hint">bónus fixo do Escudo Básico</span>
           <input type="number" id="dbg-equipBasicoDefesa" step="1">
         </label>
-        <label>EQUIP_BASICO_FOCO <span class="debug-hint">bónus fixo de Foco (soma dos 3 equipamentos)</span>
-          <input type="number" id="dbg-equipBasicoFoco" step="1">
-        </label>
         <label>DESTREZA_BASE <span class="debug-hint">esquiva base, em pontos % (2 = 2%)</span>
           <input type="number" id="dbg-destrezaBase" step="0.1">
         </label>
-        <label>DESTREZA_EXPONENT <span class="debug-hint">expoente de Destreza = base + Foco^x</span>
+        <label>DESTREZA_EXPONENT <span class="debug-hint">expoente de Destreza = base + (Resistência+bónus)^x</span>
           <input type="number" id="dbg-destrezaExponent" step="0.01">
+        </label>
+        <label>EQUIP_BONUS_DESTREZA <span class="debug-hint">bónus fixo de Destreza do Escudo Básico</span>
+          <input type="number" id="dbg-equipBonusDestreza" step="1">
         </label>
         <label>LETALIDADE_BASE <span class="debug-hint">crítico base, em pontos % (1 = 1%)</span>
           <input type="number" id="dbg-letalidadeBase" step="0.1">
         </label>
-        <label>LETALIDADE_EXPONENT <span class="debug-hint">expoente de Letalidade = base + Foco^x</span>
+        <label>LETALIDADE_EXPONENT <span class="debug-hint">expoente de Letalidade = base + (Força+bónus)^x</span>
           <input type="number" id="dbg-letalidadeExponent" step="0.01">
+        </label>
+        <label>EQUIP_BONUS_LETALIDADE <span class="debug-hint">bónus fixo de Letalidade da Arma Básica</span>
+          <input type="number" id="dbg-equipBonusLetalidade" step="1">
         </label>
         <label>LETALIDADE_MULTIPLICADOR <span class="debug-hint">dano do crítico = Ataque × x (ignora Defesa)</span>
           <input type="number" id="dbg-letalidadeMultiplicador" step="0.1">
@@ -248,8 +250,11 @@
         <label>REGENERACAO_BASE <span class="debug-hint">regeneração base, vida/segundo</span>
           <input type="number" id="dbg-regeneracaoBase" step="0.01">
         </label>
-        <label>REGENERACAO_EXPONENT <span class="debug-hint">expoente de Regeneração = base + Foco^x</span>
+        <label>REGENERACAO_EXPONENT <span class="debug-hint">expoente de Regeneração = base + (Energia+bónus)^x</span>
           <input type="number" id="dbg-regeneracaoExponent" step="0.01">
+        </label>
+        <label>EQUIP_BONUS_REGENERACAO <span class="debug-hint">bónus fixo de Regeneração da Armadura Básica</span>
+          <input type="number" id="dbg-equipBonusRegeneracao" step="1">
         </label>
         <label>LEVEL_UP_POINTS <span class="debug-hint">pontos de status por nível subido</span>
           <input type="number" id="dbg-levelUpPoints" step="1">
@@ -325,7 +330,7 @@
 
       <div id="debug-character-info">
         <p>Pontos disponíveis: <span id="debug-points-value">0</span></p>
-        <p>Status investidos — Energia: <span id="debug-level-energia">0</span> · Força: <span id="debug-level-forca">0</span> · Resistência: <span id="debug-level-resistencia">0</span> · Foco: <span id="debug-level-foco">0</span></p>
+        <p>Status investidos — Energia: <span id="debug-level-energia">0</span> · Força: <span id="debug-level-forca">0</span> · Resistência: <span id="debug-level-resistencia">0</span></p>
       </div>
 
       <hr class="debug-divider">
@@ -339,7 +344,7 @@
         <h2 class="card-title">Status</h2>
         <p>Vida: <span id="profile-stat-vida">0</span> · Ataque: <span id="profile-stat-ataque">0</span> · Defesa: <span id="profile-stat-defesa">0</span></p>
         <p>Destreza: <span id="profile-stat-destreza">0%</span> · Letalidade: <span id="profile-stat-letalidade">0%</span> · Regeneração: <span id="profile-stat-regeneracao">0</span>/s</p>
-        <p>Energia Lvl <span id="profile-level-energia">0</span> · Força Lvl <span id="profile-level-forca">0</span> · Resistência Lvl <span id="profile-level-resistencia">0</span> · Foco Lvl <span id="profile-level-foco">0</span></p>
+        <p>Energia Lvl <span id="profile-level-energia">0</span> · Força Lvl <span id="profile-level-forca">0</span> · Resistência Lvl <span id="profile-level-resistencia">0</span></p>
       </section>
 
       <section class="card" id="profile-summary-card">
@@ -379,28 +384,28 @@
 
   <footer class="site-footer">
     <p>&copy; 2026 Personagem 3D</p>
-    <p id="site-version" class="site-version">v1.4.0</p>
+    <p id="site-version" class="site-version">v1.4.1</p>
   </footer>
 
   <!-- ?v=YYYYMMDD nos scripts locais abaixo: sobe esta data sempre que
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260804a"></script>
-  <script src="js/tab-lock.js?v=20260804a"></script>
-  <script src="js/auth.js?v=20260804a"></script>
-  <script src="js/progress-sync.js?v=20260804a"></script>
-  <script src="js/leaderboard.js?v=20260804a"></script>
-  <script src="js/main.js?v=20260804a"></script>
-  <script src="js/debug.js?v=20260804a"></script>
-  <script src="js/equipment.js?v=20260804a"></script>
-  <script src="js/experience.js?v=20260804a"></script>
-  <script src="js/monsters.js?v=20260804a"></script>
-  <script src="js/monthly-medals.js?v=20260804a"></script>
-  <script src="js/battle.js?v=20260804a"></script>
-  <script src="js/training.js?v=20260804a"></script>
-  <script src="js/profile.js?v=20260804a"></script>
-  <script src="js/achievements.js?v=20260804a"></script>
-  <script src="js/orientation.js?v=20260804a"></script>
+  <script src="js/storage-keys.js?v=20260804b"></script>
+  <script src="js/tab-lock.js?v=20260804b"></script>
+  <script src="js/auth.js?v=20260804b"></script>
+  <script src="js/progress-sync.js?v=20260804b"></script>
+  <script src="js/leaderboard.js?v=20260804b"></script>
+  <script src="js/main.js?v=20260804b"></script>
+  <script src="js/debug.js?v=20260804b"></script>
+  <script src="js/equipment.js?v=20260804b"></script>
+  <script src="js/experience.js?v=20260804b"></script>
+  <script src="js/monsters.js?v=20260804b"></script>
+  <script src="js/monthly-medals.js?v=20260804b"></script>
+  <script src="js/battle.js?v=20260804b"></script>
+  <script src="js/training.js?v=20260804b"></script>
+  <script src="js/profile.js?v=20260804b"></script>
+  <script src="js/achievements.js?v=20260804b"></script>
+  <script src="js/orientation.js?v=20260804b"></script>
 </body>
 </html>

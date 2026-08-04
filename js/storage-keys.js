@@ -8,14 +8,13 @@ const STORAGE_KEYS_EQUIPMENT = {
   pontosDisponiveis: "personagem.pontosDisponiveis",
   ultimoNivelPremiado: "personagem.ultimoNivelPremiado",
   // Status investidos com pontos (2026-08-04, substituem os niveis diretos
-  // de Vida/Ataque/Defesa): Energia->Vida, Forca->Ataque, Resistencia->Defesa,
-  // Foco->Destreza/Letalidade/Regeneracao (secção 6/7 da documentação).
-  // Comecam em 0 (nunca investido), ao contrario dos niveis antigos que
-  // comecavam em 1 - aqui 0 pontos = 0 bonus extra, sem valor de base embutido.
+  // de Vida/Ataque/Defesa): Energia->Vida+Regeneracao, Forca->Ataque+Letalidade,
+  // Resistencia->Defesa+Destreza (secção 6/7 da documentação). Comecam em 0
+  // (nunca investido), ao contrario dos niveis antigos que comecavam em 1 -
+  // aqui 0 pontos = 0 bonus extra, sem valor de base embutido.
   nivelEnergia: "personagem.nivelEnergia",
   nivelForca: "personagem.nivelForca",
   nivelResistencia: "personagem.nivelResistencia",
-  nivelFoco: "personagem.nivelFoco",
   // Antigas (nivelEquipVida/Ataque/Defesa) - mantidas so para nao apagar
   // dados de quem ja tinha pontos investidos; deixam de ser escritas ou
   // lidas pelo sistema novo.

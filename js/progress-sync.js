@@ -16,7 +16,6 @@ function readLocalProgressSnapshot() {
     nivel_energia: getInvestableStatLevel("energia"),
     nivel_forca: getInvestableStatLevel("forca"),
     nivel_resistencia: getInvestableStatLevel("resistencia"),
-    nivel_foco: getInvestableStatLevel("foco"),
     last_awarded_level: getLastAwardedLevel(),
     defeated_creatures: getDefeatedCreaturesMap(),
     encountered_creatures: getEncounteredLevels(),
@@ -134,7 +133,6 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEnergia, String(progress.nivel_energia || 0));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelForca, String(progress.nivel_forca || 0));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelResistencia, String(progress.nivel_resistencia || 0));
-  localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelFoco, String(progress.nivel_foco || 0));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado, String(progress.last_awarded_level));
   localStorage.setItem(STORAGE_KEY_DEFEATED_CREATURES, JSON.stringify(progress.defeated_creatures || {}));
   localStorage.setItem(STORAGE_KEY_ENCOUNTERED_CREATURES, JSON.stringify(progress.encountered_creatures || []));

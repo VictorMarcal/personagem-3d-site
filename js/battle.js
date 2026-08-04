@@ -92,9 +92,8 @@ async function startBattle(creature) {
   const playerMaxHp = computePlayerVida(getInvestableStatLevel("energia"));
   const playerAtaque = computePlayerAtaque(getInvestableStatLevel("forca"));
   const playerDefesa = computePlayerDefesa(getInvestableStatLevel("resistencia"));
-  const playerFocoTotal = computeFocoTotal(getInvestableStatLevel("foco"));
-  const playerDestreza = computeDestrezaChance(playerFocoTotal);
-  const playerLetalidade = computeLetalidadeChance(playerFocoTotal);
+  const playerDestreza = computeDestrezaChance(getInvestableStatLevel("resistencia"));
+  const playerLetalidade = computeLetalidadeChance(getInvestableStatLevel("forca"));
 
   const monsterMaxHp = computeCreatureStatValue("vida", creature);
   const monsterAtaque = computeCreatureStatValue("ataque", creature);
