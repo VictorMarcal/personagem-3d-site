@@ -230,9 +230,14 @@ function showFloatingCombatText(targetHead, amount, variant) {
   const y = (-ndc.y * 0.5 + 0.5) * rect.height + (Math.random() - 0.5) * 2 * FLOATING_COMBAT_TEXT_JITTER_PX;
 
   const resolvedVariant = variant || (amount < 0 ? "damage" : "heal");
+  // Cor do numero segue quem leva o acerto (verde = Victor/jogador, laranja
+  // = monstro - mesma cor das barras de vida em battle.js), nao o tipo de
+  // acerto - so o critico continua a distinguir-se por ser maior (ver
+  // .critico abaixo), 2026-08-06 tema "Campo Aberto".
+  const targetClass = targetHead === head ? "on-player" : "on-monster";
 
   const el = document.createElement("div");
-  el.className = "floating-combat-text " + resolvedVariant;
+  el.className = `floating-combat-text ${resolvedVariant} ${targetClass}`;
   el.textContent =
     resolvedVariant === "miss"
       ? "Miss"

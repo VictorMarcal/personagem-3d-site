@@ -6,7 +6,7 @@
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260806d">
+  <link rel="stylesheet" href="css/style.css?v=20260806e">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -35,7 +35,7 @@
   <header class="site-header">
     <div class="site-title-group">
       <h1>Personagem 3D</h1>
-      <span id="site-version" class="site-version-hero">v1.13.0</span>
+      <span id="site-version" class="site-version-hero">v1.13.1</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -74,8 +74,14 @@
         </div>
 
         <div id="battle-panel" class="hidden">
-          <p id="battle-log" class="battle-log"></p>
+          <p class="battle-stage-caption">modelo 3D · palco de combate</p>
+          <p id="battle-log-headline" class="battle-log-headline"></p>
+          <div id="battle-log-history" class="battle-log-history"></div>
           <p id="battle-result" class="battle-result"></p>
+          <div class="battle-stat-pills">
+            <span class="battle-stat-pill">Destreza <span id="battle-stat-destreza">0%</span></span>
+            <span class="battle-stat-pill">Letalidade <span id="battle-stat-letalidade">0%</span></span>
+          </div>
           <button id="btn-battle-back" class="btn-secondary hidden">Voltar</button>
         </div>
       </div>
@@ -517,22 +523,22 @@
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260806d"></script>
-  <script src="js/tab-lock.js?v=20260806d"></script>
-  <script src="js/auth.js?v=20260806d"></script>
-  <script src="js/progress-sync.js?v=20260806d"></script>
-  <script src="js/leaderboard.js?v=20260806d"></script>
-  <script src="js/main.js?v=20260806d"></script>
-  <script src="js/debug.js?v=20260806d"></script>
-  <script src="js/equipment.js?v=20260806d"></script>
-  <script src="js/experience.js?v=20260806d"></script>
-  <script src="js/monsters.js?v=20260806d"></script>
-  <script src="js/monthly-medals.js?v=20260806d"></script>
-  <script src="js/battle.js?v=20260806d"></script>
-  <script src="js/training.js?v=20260806d"></script>
-  <script src="js/profile.js?v=20260806d"></script>
-  <script src="js/achievements.js?v=20260806d"></script>
-  <script src="js/orientation.js?v=20260806d"></script>
-  <script src="js/nav.js?v=20260806d"></script>
+  <script src="js/storage-keys.js?v=20260806e"></script>
+  <script src="js/tab-lock.js?v=20260806e"></script>
+  <script src="js/auth.js?v=20260806e"></script>
+  <script src="js/progress-sync.js?v=20260806e"></script>
+  <script src="js/leaderboard.js?v=20260806e"></script>
+  <script src="js/main.js?v=20260806e"></script>
+  <script src="js/debug.js?v=20260806e"></script>
+  <script src="js/equipment.js?v=20260806e"></script>
+  <script src="js/experience.js?v=20260806e"></script>
+  <script src="js/monsters.js?v=20260806e"></script>
+  <script src="js/monthly-medals.js?v=20260806e"></script>
+  <script src="js/battle.js?v=20260806e"></script>
+  <script src="js/training.js?v=20260806e"></script>
+  <script src="js/profile.js?v=20260806e"></script>
+  <script src="js/achievements.js?v=20260806e"></script>
+  <script src="js/orientation.js?v=20260806e"></script>
+  <script src="js/nav.js?v=20260806e"></script>
 </body>
 </html>

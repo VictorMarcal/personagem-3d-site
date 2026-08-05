@@ -397,10 +397,13 @@ main {
   animation: floatUpFade 1s ease-out forwards;
 }
 
-.floating-combat-text.damage { color: #f6a06b; }
-.floating-combat-text.critico { color: #ff5c5c; }
+/* Cor pela cor da barra de vida de quem leva o acerto (verde=jogador,
+   laranja=monstro, ver .hp-bar-fill.player/.monster) - o critico so se
+   distingue por ser maior, nao por mudar de cor (2026-08-06). */
+.floating-combat-text.on-player { color: #aebf92; }
+.floating-combat-text.on-monster { color: #f6a06b; }
+.floating-combat-text.critico { font-size: 34px; font-weight: 700; }
 .floating-combat-text.miss { color: #f9f4ed; font-family: var(--font-body); font-style: italic; font-weight: 700; font-size: 20px; }
-.floating-combat-text.heal { color: #aebf92; }
 
 @keyframes floatUpFade {
   from { opacity: 1; margin-top: 0; }
@@ -1036,8 +1039,8 @@ main {
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   width: calc(100% - 32px);
   max-width: 480px;
@@ -1099,9 +1102,36 @@ main {
 
 #battle-panel.hidden { display: none; }
 
-.battle-log {
-  font-size: 14px;
-  color: #c0b6a5;
+/* Legenda por cima do painel de log, a lembrar que o vazio entre o HUD e
+   o painel e onde o modelo 3D dos combatentes aparece (2026-08-06). */
+.battle-stage-caption {
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: #82796a;
+}
+
+/* Ultima linha do combate em destaque (cor/peso conforme o tipo do
+   evento - ver BATTLE_LOG_VARIANT_CLASS em js/battle.js), as anteriores
+   ficam por baixo como historico curto, mais discretas. */
+.battle-log-headline {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  color: #f9f4ed;
+}
+
+.battle-log-headline.critico { color: #f6a06b; }
+.battle-log-headline.miss { font-style: italic; color: #c0b6a5; }
+
+.battle-log-history {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.battle-log-history p {
+  font-size: 13px;
+  color: #82796a;
 }
 
 .battle-result {
@@ -1109,6 +1139,22 @@ main {
   font-family: var(--font-heading);
   font-size: 21px;
   color: #f6a06b;
+}
+
+.battle-stat-pills {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.battle-stat-pill {
+  padding: 5px 13px;
+  border-radius: 999px;
+  background: rgba(249, 244, 237, 0.1);
+  color: #c0b6a5;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 #battle-panel .btn-secondary {

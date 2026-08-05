@@ -10,9 +10,36 @@ const battleMonsterHpTextEl = document.getElementById("battle-monster-hp-text");
 const battleMonsterNameEl = document.getElementById("battle-monster-name");
 
 const battlePanelEl = document.getElementById("battle-panel");
-const battleLogEl = document.getElementById("battle-log");
+const battleLogHeadlineEl = document.getElementById("battle-log-headline");
+const battleLogHistoryEl = document.getElementById("battle-log-history");
 const battleResultEl = document.getElementById("battle-result");
+const battleStatDestrezaEl = document.getElementById("battle-stat-destreza");
+const battleStatLetalidadeEl = document.getElementById("battle-stat-letalidade");
 const btnBattleBack = document.getElementById("btn-battle-back");
+
+// Ultima mensagem em destaque (maior, cor conforme o tipo de evento -
+// "critico"/"miss"/"normal"), as anteriores empilhadas por baixo como
+// historico curto e discreto (2026-08-06, tema "Campo Aberto" - antes so
+// existia uma linha, sempre substituida). Reiniciado a cada luta nova em
+// startBattle, para o historico da luta anterior nunca vazar para a
+// seguinte.
+const BATTLE_LOG_HISTORY_MAX = 3;
+let battleLogHistory = [];
+
+function setBattleLog(text, variant = "normal") {
+  if (battleLogHeadlineEl.textContent) {
+    battleLogHistory.unshift(battleLogHeadlineEl.textContent);
+    battleLogHistory = battleLogHistory.slice(0, BATTLE_LOG_HISTORY_MAX);
+  }
+  battleLogHeadlineEl.textContent = text;
+  battleLogHeadlineEl.className = `battle-log-headline ${variant}`;
+  battleLogHistoryEl.innerHTML = "";
+  battleLogHistory.forEach((line) => {
+    const p = document.createElement("p");
+    p.textContent = line;
+    battleLogHistoryEl.appendChild(p);
+  });
+}
 
 const viewerEl = document.getElementById("viewer");
 const characterHudEl = document.getElementById("character-hud");
@@ -159,11 +186,20 @@ async function startBattle(creature) {
   battleHudEl.classList.remove("hidden");
   battlePanelEl.classList.remove("hidden");
 
+  // Destreza/Letalidade nao mudam durante a luta (fixas no que foi
+  // investido ao entrar), por isso so precisam de ser escritas uma vez.
+  battleStatDestrezaEl.textContent = `${(playerDestreza * 100).toFixed(1)}%`;
+  battleStatLetalidadeEl.textContent = `${(playerLetalidade * 100).toFixed(1)}%`;
+
+  battleLogHistory = [];
+  battleLogHeadlineEl.textContent = "";
+  battleLogHistoryEl.innerHTML = "";
+
   viewerEl.classList.add("battle-fullscreen");
   onResize();
   enterBattleView();
   updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
-  battleLogEl.textContent = "A batalha começou!";
+  setBattleLog("A batalha começou!");
   await sleep(BATTLE_ROUND_DELAY_MS);
 
   let won = false;
@@ -176,17 +212,17 @@ async function startBattle(creature) {
 
     if (rollDodge(monsterDestreza)) {
       showFloatingCombatText(monsterHead, 0, "miss");
-      battleLogEl.textContent = `${creature.name} esquivou o teu ataque!`;
+      setBattleLog(`${creature.name} esquivou o teu ataque!`, "miss");
     } else if (rollCritico(playerLetalidade)) {
       const critDmg = Math.round(playerAtaque * getLetalidadeMultiplicador());
       monsterHp -= critDmg;
       showFloatingCombatText(monsterHead, -critDmg, "critico");
-      battleLogEl.textContent = `Crítico! Atacaste ${creature.name}: -${critDmg} Vida`;
+      setBattleLog(`Crítico! Atacaste ${creature.name}: -${critDmg} Vida`, "critico");
     } else {
       const dmgToMonster = computeBattleDamage(playerAtaque, monsterDefesa);
       monsterHp -= dmgToMonster;
       showFloatingCombatText(monsterHead, -dmgToMonster, "damage");
-      battleLogEl.textContent = `Atacaste ${creature.name}: -${dmgToMonster} Vida`;
+      setBattleLog(`Atacaste ${creature.name}: -${dmgToMonster} Vida`);
     }
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
     await sleep(BATTLE_ROUND_DELAY_MS);
@@ -199,17 +235,17 @@ async function startBattle(creature) {
 
     if (rollDodge(playerDestreza)) {
       showFloatingCombatText(head, 0, "miss");
-      battleLogEl.textContent = `Esquivaste do ataque de ${creature.name}!`;
+      setBattleLog(`Esquivaste do ataque de ${creature.name}!`, "miss");
     } else if (rollCritico(monsterLetalidade)) {
       const critDmg = Math.round(monsterAtaque * getLetalidadeMultiplicador());
       playerHp -= critDmg;
       showFloatingCombatText(head, -critDmg, "critico");
-      battleLogEl.textContent = `Crítico! ${creature.name} atacou-te: -${critDmg} Vida`;
+      setBattleLog(`Crítico! ${creature.name} atacou-te: -${critDmg} Vida`, "critico");
     } else {
       const dmgToPlayer = computeBattleDamage(monsterAtaque, playerDefesa);
       playerHp -= dmgToPlayer;
       showFloatingCombatText(head, -dmgToPlayer, "damage");
-      battleLogEl.textContent = `${creature.name} atacou-te: -${dmgToPlayer} Vida`;
+      setBattleLog(`${creature.name} atacou-te: -${dmgToPlayer} Vida`);
     }
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
     await sleep(BATTLE_ROUND_DELAY_MS);
