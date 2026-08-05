@@ -156,13 +156,16 @@ REGENERACAO_BASE = 0.2, REGENERACAO_EXP = 0.8
 
 ```
 peça.primário(Lv)   = base + round(Lv ^ EQUIP_PRIMARY_EXPONENT)
-peça.secundário(Lv) = round(Lv ^ EQUIP_SECONDARY_EXPONENT)
+peça.secundário(Lv) = round(progresso(Lv) ^ EQUIP_SECONDARY_EXPONENT × EQUIP_SECONDARY_MAX)
+  onde progresso(Lv) = (Lv - 1) / (EQUIP_MAX_LEVEL - 1)     // 0 no Lv1, 1 no Lv99
 peça.custo(Lv)       = round(EQUIP_COST_BASE × Lv ^ EQUIP_COST_EXPONENT)   // custo do PASSO Lv-1 -> Lv; Lv1 e sempre gratis
 
-EQUIP_PRIMARY_EXPONENT = 1.2, EQUIP_SECONDARY_EXPONENT = 0.5
+EQUIP_PRIMARY_EXPONENT = 1.2, EQUIP_SECONDARY_EXPONENT = 0.5, EQUIP_SECONDARY_MAX = 20
 EQUIP_COST_BASE = 10, EQUIP_COST_EXPONENT = 1.5
 base: Arma (Ataque) = 5, Escudo (Defesa) = 2, Armadura (Vida) = 3
 ```
+
+- **Bónus secundário vai de 0 (Lv1) a 20 (Lv99)** (2026-08-05, a pedido): a fórmula normaliza o nível para uma fração 0-1 antes de aplicar o expoente (em vez de aplicar `Lv^expoente` diretamente, que nunca chegaria a exatamente 0 no Lv1 nem a um alvo fixo no Lv máximo) — garante os dois extremos exatos independentemente de `EQUIP_MAX_LEVEL` mudar no futuro
 
 - **Porquê `nível^expoente` e não `base^nível`**: a primeira fórmula proposta (`dano inicial + 1.1^nível`) cresce exponencialmente — no nível 99 já vale ~12.500, muito acima da Defesa de qualquer monstro (~2.500 no nível 100, secção 7) — exatamente o mesmo problema já identificado e evitado nos status do jogador acima (ver "Porquê expoente sobre o nível" mais abaixo). `nível^1.2` cresce sempre, sem nunca explodir: nível 99 fica perto de 250 de bónus, e não perto de 12.500
 - **Sem limite pelo nível de personagem**: a regra herdada do sistema anterior (não podia melhorar-se uma peça acima do nível de personagem atual) existiu só por um dia e foi removida a pedido em 2026-08-05 — a única condição para evoluir uma peça é ter moedas suficientes, até ao nível 99
