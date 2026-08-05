@@ -142,11 +142,12 @@ function computeStatValue(type, equipLevel) {
 // base^nivel cresceria para valores astronomicos por volta do nivel 90,
 // ver secção 7 da documentação):
 //   primario   = base + round(nivel ^ EQUIP_PRIMARY_EXPONENT)
-//   secundario = round(nivel ^ EQUIP_SECONDARY_EXPONENT)
+//   secundario = round((nivel-1)/(EQUIP_MAX_LEVEL-1) ^ EQUIP_SECONDARY_EXPONENT * EQUIP_SECONDARY_MAX)
 //   custo(nivel) = round(EQUIP_COST_BASE * nivel ^ EQUIP_COST_EXPONENT)   (custo do PASSO nivel-1 -> nivel; nivel 1 e sempre gratis)
 const EQUIP_MAX_LEVEL = 99;
 const EQUIP_PRIMARY_EXPONENT = 1.2;
 const EQUIP_SECONDARY_EXPONENT = 0.5;
+const EQUIP_SECONDARY_MAX = 20;
 const EQUIP_COST_BASE = 10;
 const EQUIP_COST_EXPONENT = 1.5;
 
@@ -158,8 +159,14 @@ function computeEquipPrimaryStat(base, level) {
   return base + Math.round(Math.pow(level, EQUIP_PRIMARY_EXPONENT));
 }
 
+// Bonus secundario (2026-08-05, a pedido): vai de 0 no nivel 1 a
+// EQUIP_SECONDARY_MAX (20) no nivel maximo - normaliza o nivel para 0-1
+// antes de aplicar o expoente, em vez de aplicar o expoente diretamente
+// ao nivel (que nunca chegaria exatamente a 0 no Lv1 nem a um alvo fixo
+// no Lv maximo).
 function computeEquipSecondaryStat(level) {
-  return Math.round(Math.pow(level, EQUIP_SECONDARY_EXPONENT));
+  const progress = (level - 1) / (EQUIP_MAX_LEVEL - 1);
+  return Math.round(Math.pow(progress, EQUIP_SECONDARY_EXPONENT) * EQUIP_SECONDARY_MAX);
 }
 
 // Custo em moedas do PASSO para chegar a "level" (vindo de level-1) -
