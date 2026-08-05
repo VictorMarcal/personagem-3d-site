@@ -77,8 +77,11 @@ function updateXPDisplay(liveSessionM = 0) {
   // Mostrado como XP (1 XP = 1 metro, ex: 1km = 1000 XP), nao em km como as
   // restantes distancias do jogo - a barra de nivel e a unica leitura de
   // progresso onde faz sentido falar de "pontos de experiencia", nao de
-  // distancia percorrida.
-  xpProgressTextEl.textContent = `${Math.round(info.distanceIntoLevel)} / ${Math.round(info.distanceForNextLevel)} XP`;
+  // distancia percorrida. Formato "campo aberto" (2026-08-06): XP ja
+  // ganho no nivel atual, mais quanto falta para o proximo, em vez de
+  // "X / Y XP".
+  const remaining = Math.round(info.distanceForNextLevel - info.distanceIntoLevel);
+  xpProgressTextEl.textContent = `${Math.round(info.distanceIntoLevel).toLocaleString("pt-BR")} XP — faltam ${remaining.toLocaleString("pt-BR")} para o Nível ${info.level + 1}`;
   xpBarFillEl.style.width = `${progressPct}%`;
 
   renderDebugCharacterInfo();

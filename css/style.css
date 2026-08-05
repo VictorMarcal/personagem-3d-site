@@ -118,6 +118,31 @@ a:hover { color: var(--accent-600); }
   color: var(--muted-2);
 }
 
+.header-coin-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: transparent;
+  border: 2px solid var(--accent);
+  color: var(--accent-700);
+  font-family: var(--font-heading);
+  font-size: 15px;
+}
+
+/* Visualmente escondido mas continua no DOM - js/auth.js escreve o nome
+   escolhido aqui (applyDisplayNameToHud), o mockup do tema "Campo Aberto"
+   so mostra o nivel no crachá, sem nome por baixo. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* Os botoes Jogo/Perfil antigos continuam no DOM (js/profile.js e
    js/battle.js dependem deles) mas deixam de ser visiveis - a navegacao
    passou para a barra de separadores inferior (#tab-bar, js/nav.js). */
@@ -220,22 +245,36 @@ main {
 
 /* ---------- Visualizador 3D ---------------------------------------------- */
 
-#viewer {
+/* Envolve o #viewer para poder pendurar o crachá de nível e a mini-lista
+   de equipamento a "sair" pelas bordas do palco (position:absolute
+   relativos a este wrapper, nao ao #viewer, que muda de posicionamento
+   por completo durante uma luta - ver .battle-fullscreen abaixo). */
+#viewer-stage {
   position: relative;
   flex-shrink: 0;
-  width: calc(100% - 32px);
+  margin: 20px 16px 0;
+}
+
+#viewer {
+  position: relative;
+  width: 100%;
   height: 56vh;
   min-height: 360px;
-  margin: 4px 16px 0;
-  border-radius: var(--r-lg);
   overflow: hidden;
+  /* Topo em arco: um raio muito maior nos dois cantos de cima do que em
+     baixo, em vez do border-radius uniforme de antes. */
+  border-radius: 50% 50% var(--r-lg) var(--r-lg) / 30% 30% 6% 6%;
   background: linear-gradient(180deg, var(--sage-200) 0%, var(--surface) 100%);
 }
 
 /* So visivel no separador "Personagem" - ou sempre que houver uma luta a
-   decorrer (js/battle.js poe .battle-fullscreen no #viewer). */
-#view-jogo:not([data-pane="personagem"]) #viewer { display: none; }
-#viewer.battle-fullscreen { display: block !important; }
+   decorrer (js/battle.js poe .battle-fullscreen no #viewer). Aplica-se ao
+   wrapper inteiro (#viewer-stage), para o crachá de nível/equipamento
+   escondam com o resto - :has() traz de volta o wrapper quando o #viewer
+   lá dentro fica fullscreen, senao o display:none do wrapper impedia o
+   #viewer de aparecer mesmo com position:fixed. */
+#view-jogo:not([data-pane="personagem"]) #viewer-stage { display: none; }
+#viewer-stage:has(#viewer.battle-fullscreen) { display: block !important; }
 
 #viewer.battle-fullscreen {
   position: fixed;
@@ -266,6 +305,88 @@ main {
   pointer-events: none;
 }
 
+/* ---------- Cracha de nivel e mini-lista de equipamento ------------------- */
+/* Penduram por cima dos cantos do #viewer-stage (position:absolute,
+   metade dentro/metade fora do palco). */
+
+#character-level-badge {
+  position: absolute;
+  top: -18px;
+  left: 20px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  box-shadow: var(--shadow-md);
+}
+
+.level-badge-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#character-level-badge #character-level-value {
+  font-family: var(--font-heading);
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+#equipment-mini-list {
+  position: absolute;
+  top: -14px;
+  right: 16px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.equipment-mini-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  box-shadow: var(--shadow-sm);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.equipment-mini-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  background: var(--sand-300);
+}
+
+.equipment-mini-item.weapon .equipment-mini-icon { background: var(--accent-200); }
+.equipment-mini-item.shield .equipment-mini-icon { background: #dce8f5; }
+.equipment-mini-item.armor .equipment-mini-icon { background: var(--sage-200); }
+
+.viewer-hint {
+  margin: 10px 16px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted-2);
+}
+
+#view-jogo:not([data-pane="personagem"]) > .viewer-hint { display: none; }
+
 .floating-combat-text {
   position: absolute;
   transform: translate(-50%, -100%);
@@ -288,112 +409,95 @@ main {
 
 /* ---------- HUD do personagem -------------------------------------------- */
 
-/* O HUD ocupa a altura toda do palco: identificacao e status em cima,
-   pontos/moedas/status investiveis em baixo - o meio fica livre para o
-   modelo 3D. */
+/* Ja nao fica sobreposto ao 3D - passou a viver no fluxo normal da pagina,
+   por baixo do palco (js/battle.js continua a esconder isto pelo id
+   durante uma luta, sem precisar de mudar). */
 #character-hud {
-  position: absolute;
-  inset: 12px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  gap: 8px;
-  font-size: 12px;
-  pointer-events: none;
-}
-
-#character-hud .hud-title {
-  display: inline-flex;
-  align-self: flex-start;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  padding: 6px 13px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--bg);
-  font-family: var(--font-heading);
-  font-size: 14px;
-  box-shadow: var(--shadow-sm);
-}
-
-/* Os 6 status finais viram fichas legiveis, em vez de linhas de texto
-   soltas por cima do 3D. */
-#character-hud p:not(.hud-title) {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 5px 8px;
-  border-radius: var(--r-sm);
-  background: rgba(249, 244, 237, 0.82);
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1.3;
-  box-shadow: var(--shadow-sm);
-}
-
-#character-hud p:not(.hud-title) span {
-  font-family: var(--font-heading);
-  font-size: 13px;
-  color: var(--text);
+  gap: 12px;
+  margin: 16px;
 }
 
 .hud-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  gap: 8px;
 }
 
-/* Pontos, moedas e os 3 status investiveis: uma unica linha de capsulas
-   ao fundo do palco (rola na horizontal se nao couber, em vez de subir
-   para uma segunda linha por cima da personagem). */
-.hud-invest {
+.hud-grid p {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 5px;
-  margin-top: auto;
-  overflow-x: auto;
-  scrollbar-width: none;
-  pointer-events: auto;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.hud-invest::-webkit-scrollbar { display: none; }
+.hud-grid p span {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  color: var(--text);
+}
 
-#character-hud .hud-invest p:not(.hud-title) {
-  flex: 0 0 auto;
-  flex-direction: row;
+/* Card "N pontos para distribuir": Energia/Força/Resistência em linhas
+   verticais, cada uma com o seu botao "+" a direita (em vez das capsulas
+   horizontais de antes, agora que ja nao precisam de caber por cima do
+   modelo 3D). */
+.invest-card {
+  padding: 16px 18px;
+  border-radius: var(--r-lg);
+  background: var(--accent-100);
+  border: 1px solid var(--accent-300);
+}
+
+.invest-card-title {
+  margin-bottom: 10px;
+  font-family: var(--font-heading);
+  font-size: 17px;
+  color: var(--accent-700);
+}
+
+.invest-row {
+  display: flex;
   align-items: center;
-  gap: 5px;
-  border-radius: 999px;
-  padding: 5px 11px;
-  white-space: nowrap;
+  gap: 10px;
+  padding: 8px 0;
 }
 
-#hud-unspent-points-row {
-  background: var(--accent-200) !important;
-  color: var(--accent-700) !important;
+.invest-row + .invest-row {
+  border-top: 1px solid var(--line);
 }
 
-#hud-unspent-points-row span { color: var(--accent-700) !important; }
+.invest-label {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.invest-value {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  color: var(--text);
+}
 
 .btn-hud-plus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  margin-left: 2px;
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: 999px;
   background: var(--accent);
   color: var(--bg);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
-  pointer-events: auto;
 }
 
 .btn-hud-plus:hover { background: var(--accent-600); }

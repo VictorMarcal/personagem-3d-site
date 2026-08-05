@@ -6,7 +6,7 @@
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260806c">
+  <link rel="stylesheet" href="css/style.css?v=20260806d">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -35,8 +35,9 @@
   <header class="site-header">
     <div class="site-title-group">
       <h1>Personagem 3D</h1>
-      <span id="site-version" class="site-version-hero">v1.12.2</span>
+      <span id="site-version" class="site-version-hero">v1.13.0</span>
     </div>
+    <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
          dependem destes dois botoes. Fica invisivel (.legacy-nav no CSS) - a
          navegacao visivel passou para a barra inferior (#tab-bar, js/nav.js),
@@ -50,13 +51,60 @@
   <main>
     <div id="view-jogo" data-pane="personagem">
 
-    <div id="viewer">
-      <canvas id="viewer-canvas"></canvas>
-      <div id="viewer-loading">Carregando personagem...</div>
+    <div id="viewer-stage">
+      <div id="viewer">
+        <canvas id="viewer-canvas"></canvas>
+        <div id="viewer-loading">Carregando personagem...</div>
+
+        <div id="battle-hud" class="hidden">
+          <div class="battle-side">
+            <p class="battle-name">Personagem</p>
+            <div class="hp-bar-track">
+              <div id="battle-player-hp-fill" class="hp-bar-fill player"></div>
+            </div>
+            <p id="battle-player-hp-text">0 / 0</p>
+          </div>
+          <div class="battle-side">
+            <p id="battle-monster-name" class="battle-name">Monstro</p>
+            <div class="hp-bar-track">
+              <div id="battle-monster-hp-fill" class="hp-bar-fill monster"></div>
+            </div>
+            <p id="battle-monster-hp-text">0 / 0</p>
+          </div>
+        </div>
+
+        <div id="battle-panel" class="hidden">
+          <p id="battle-log" class="battle-log"></p>
+          <p id="battle-result" class="battle-result"></p>
+          <button id="btn-battle-back" class="btn-secondary hidden">Voltar</button>
+        </div>
+      </div>
+
+      <div id="character-level-badge">
+        <span class="level-badge-label">Nível</span>
+        <span id="character-level-value">1</span>
+        <span id="character-hud-name" class="sr-only">Personagem</span>
+      </div>
+
+      <div id="equipment-mini-list">
+        <p class="equipment-mini-item weapon"><span class="equipment-mini-icon">🗡️</span> Arma Lv <span id="hud-weapon-level">1</span></p>
+        <p class="equipment-mini-item shield"><span class="equipment-mini-icon">🛡️</span> Escudo Lv <span id="hud-shield-level">1</span></p>
+        <p class="equipment-mini-item armor"><span class="equipment-mini-icon">🧥</span> Armadura Lv <span id="hud-armor-level">1</span></p>
+      </div>
+    </div>
+
+    <p class="viewer-hint">arrasta para rodar · toca numa peça para evoluir</p>
+
+    <!-- ===== Separador: Personagem ===== -->
+    <div class="pane active" data-pane-name="personagem">
+      <section id="xp-panel">
+        <div class="xp-bar-track">
+          <div id="xp-bar-fill" class="xp-bar-fill"></div>
+        </div>
+        <p id="xp-progress-text">0 XP</p>
+      </section>
 
       <div id="character-hud">
-        <p class="hud-title"><span id="character-hud-name">Personagem</span> Lvl <span id="character-level-value">1</span></p>
-        <div class="hud-top">
         <div class="hud-grid">
           <p>Vida <span id="stat-vida-value">0</span></p>
           <p>Ataque <span id="stat-ataque-value">0</span></p>
@@ -65,48 +113,26 @@
           <p>Letalidade <span id="stat-letalidade-value">0%</span></p>
           <p>Regen. <span id="stat-regeneracao-value">0</span></p>
         </div>
-        </div>
-        <div class="hud-invest">
-          <p id="hud-unspent-points-row">Pontos para distribuir <span id="hud-unspent-points-value">0</span></p>
-          <p>Moedas <span id="hud-moedas-value">0</span></p>
-          <p>Energia <span id="hud-level-energia">0</span> <button id="btn-hud-upgrade-energia" class="btn-hud-plus hidden">+</button></p>
-          <p>Força <span id="hud-level-forca">0</span> <button id="btn-hud-upgrade-forca" class="btn-hud-plus hidden">+</button></p>
-          <p>Resistência <span id="hud-level-resistencia">0</span> <button id="btn-hud-upgrade-resistencia" class="btn-hud-plus hidden">+</button></p>
-        </div>
-      </div>
 
-      <div id="battle-hud" class="hidden">
-        <div class="battle-side">
-          <p class="battle-name">Personagem</p>
-          <div class="hp-bar-track">
-            <div id="battle-player-hp-fill" class="hp-bar-fill player"></div>
+        <div class="invest-card">
+          <p class="invest-card-title"><span id="hud-unspent-points-value">0</span> pontos para distribuir</p>
+          <div class="invest-row">
+            <span class="invest-label">Energia</span>
+            <span class="invest-value" id="hud-level-energia">0</span>
+            <button id="btn-hud-upgrade-energia" class="btn-hud-plus hidden">+</button>
           </div>
-          <p id="battle-player-hp-text">0 / 0</p>
-        </div>
-        <div class="battle-side">
-          <p id="battle-monster-name" class="battle-name">Monstro</p>
-          <div class="hp-bar-track">
-            <div id="battle-monster-hp-fill" class="hp-bar-fill monster"></div>
+          <div class="invest-row">
+            <span class="invest-label">Força</span>
+            <span class="invest-value" id="hud-level-forca">0</span>
+            <button id="btn-hud-upgrade-forca" class="btn-hud-plus hidden">+</button>
           </div>
-          <p id="battle-monster-hp-text">0 / 0</p>
+          <div class="invest-row">
+            <span class="invest-label">Resistência</span>
+            <span class="invest-value" id="hud-level-resistencia">0</span>
+            <button id="btn-hud-upgrade-resistencia" class="btn-hud-plus hidden">+</button>
+          </div>
         </div>
       </div>
-
-      <div id="battle-panel" class="hidden">
-        <p id="battle-log" class="battle-log"></p>
-        <p id="battle-result" class="battle-result"></p>
-        <button id="btn-battle-back" class="btn-secondary hidden">Voltar</button>
-      </div>
-    </div>
-
-    <!-- ===== Separador: Personagem ===== -->
-    <div class="pane active" data-pane-name="personagem">
-      <section id="xp-panel">
-        <div class="xp-bar-track">
-          <div id="xp-bar-fill" class="xp-bar-fill"></div>
-        </div>
-        <p id="xp-progress-text">0 / 1000 XP</p>
-      </section>
 
       <section id="debug-card" class="card hidden">
         <div class="modal-header">
@@ -491,22 +517,22 @@
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260806c"></script>
-  <script src="js/tab-lock.js?v=20260806c"></script>
-  <script src="js/auth.js?v=20260806c"></script>
-  <script src="js/progress-sync.js?v=20260806c"></script>
-  <script src="js/leaderboard.js?v=20260806c"></script>
-  <script src="js/main.js?v=20260806c"></script>
-  <script src="js/debug.js?v=20260806c"></script>
-  <script src="js/equipment.js?v=20260806c"></script>
-  <script src="js/experience.js?v=20260806c"></script>
-  <script src="js/monsters.js?v=20260806c"></script>
-  <script src="js/monthly-medals.js?v=20260806c"></script>
-  <script src="js/battle.js?v=20260806c"></script>
-  <script src="js/training.js?v=20260806c"></script>
-  <script src="js/profile.js?v=20260806c"></script>
-  <script src="js/achievements.js?v=20260806c"></script>
-  <script src="js/orientation.js?v=20260806c"></script>
-  <script src="js/nav.js?v=20260806c"></script>
+  <script src="js/storage-keys.js?v=20260806d"></script>
+  <script src="js/tab-lock.js?v=20260806d"></script>
+  <script src="js/auth.js?v=20260806d"></script>
+  <script src="js/progress-sync.js?v=20260806d"></script>
+  <script src="js/leaderboard.js?v=20260806d"></script>
+  <script src="js/main.js?v=20260806d"></script>
+  <script src="js/debug.js?v=20260806d"></script>
+  <script src="js/equipment.js?v=20260806d"></script>
+  <script src="js/experience.js?v=20260806d"></script>
+  <script src="js/monsters.js?v=20260806d"></script>
+  <script src="js/monthly-medals.js?v=20260806d"></script>
+  <script src="js/battle.js?v=20260806d"></script>
+  <script src="js/training.js?v=20260806d"></script>
+  <script src="js/profile.js?v=20260806d"></script>
+  <script src="js/achievements.js?v=20260806d"></script>
+  <script src="js/orientation.js?v=20260806d"></script>
+  <script src="js/nav.js?v=20260806d"></script>
 </body>
 </html>

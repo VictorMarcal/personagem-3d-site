@@ -33,6 +33,9 @@ const hudMoedasValueEl = document.getElementById("hud-moedas-value");
 const hudLevelEnergiaEl = document.getElementById("hud-level-energia");
 const hudLevelForcaEl = document.getElementById("hud-level-forca");
 const hudLevelResistenciaEl = document.getElementById("hud-level-resistencia");
+const hudWeaponLevelEl = document.getElementById("hud-weapon-level");
+const hudShieldLevelEl = document.getElementById("hud-shield-level");
+const hudArmorLevelEl = document.getElementById("hud-armor-level");
 
 const btnHudUpgradeByType = {
   energia: document.getElementById("btn-hud-upgrade-energia"),
@@ -333,6 +336,10 @@ function renderStatsHud() {
   hudLevelEnergiaEl.textContent = energiaLevel;
   hudLevelForcaEl.textContent = forcaLevel;
   hudLevelResistenciaEl.textContent = resistenciaLevel;
+
+  hudWeaponLevelEl.textContent = getWeaponLevel();
+  hudShieldLevelEl.textContent = getShieldLevel();
+  hudArmorLevelEl.textContent = getArmorLevel();
 
   const hasPoints = getUnspentPoints() > 0;
   Object.values(btnHudUpgradeByType).forEach((btn) => {
