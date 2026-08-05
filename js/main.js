@@ -206,21 +206,37 @@ canvas.addEventListener("pointercancel", () => {
 });
 
 // Numero flutuante por cima da cabeca de um modelo 3D (personagem ou
-// monstro) - usado na luta (dano) e fora dela (recuperacao de vida ao
-// longo do tempo). So precisa de projetar a posicao uma vez (nao a cada
-// frame) porque, tanto na luta como fora dela, a camara e as posicoes dos
-// modelos ficam fixas enquanto o numero esta visivel - so a vida muda.
-function showFloatingCombatText(targetHead, amount) {
+// monstro) - usado na luta (dano/critico/esquiva) e fora dela (recuperacao
+// de vida ao longo do tempo). So precisa de projetar a posicao uma vez (nao
+// a cada frame) porque, tanto na luta como fora dela, a camara e as
+// posicoes dos modelos ficam fixas enquanto o numero esta visivel - so a
+// vida muda.
+//
+// variant e opcional (default deduzido do sinal de amount, como antes -
+// "damage" ou "heal") - a luta (js/battle.js) passa "critico" e "miss"
+// explicitamente, ja que o sinal de amount sozinho nao distingue um acerto
+// normal de um critico, e uma esquiva nao tem valor nenhum (amount = 0).
+// FLOATING_COMBAT_TEXT_JITTER_PX: pequeno deslocamento aleatorio por
+// numero, para varios acertos seguidos no mesmo alvo nao ficarem todos
+// exatamente empilhados na mesma posicao.
+const FLOATING_COMBAT_TEXT_JITTER_PX = 20;
+
+function showFloatingCombatText(targetHead, amount, variant) {
   const worldPos = targetHead.getWorldPosition(new THREE.Vector3());
   const ndc = worldPos.project(camera);
 
   const rect = canvas.getBoundingClientRect();
-  const x = (ndc.x * 0.5 + 0.5) * rect.width;
-  const y = (-ndc.y * 0.5 + 0.5) * rect.height;
+  const x = (ndc.x * 0.5 + 0.5) * rect.width + (Math.random() - 0.5) * 2 * FLOATING_COMBAT_TEXT_JITTER_PX;
+  const y = (-ndc.y * 0.5 + 0.5) * rect.height + (Math.random() - 0.5) * 2 * FLOATING_COMBAT_TEXT_JITTER_PX;
+
+  const resolvedVariant = variant || (amount < 0 ? "damage" : "heal");
 
   const el = document.createElement("div");
-  el.className = "floating-combat-text " + (amount < 0 ? "damage" : "heal");
-  el.textContent = (amount > 0 ? "+" : "") + (Number.isInteger(amount) ? amount : amount.toFixed(1));
+  el.className = "floating-combat-text " + resolvedVariant;
+  el.textContent =
+    resolvedVariant === "miss"
+      ? "Miss"
+      : (amount > 0 ? "+" : "") + (Number.isInteger(amount) ? amount : amount.toFixed(1));
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
 

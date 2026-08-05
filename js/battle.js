@@ -17,7 +17,7 @@ const btnBattleBack = document.getElementById("btn-battle-back");
 const viewerEl = document.getElementById("viewer");
 const characterHudEl = document.getElementById("character-hud");
 
-const BATTLE_ROUND_DELAY_MS = 550;
+const BATTLE_ROUND_DELAY_MS = 800;
 const BATTLE_MAX_ROUNDS = 500; // rede de seguranca, na pratica nunca deve chegar la
 
 let battleInProgress = false;
@@ -174,16 +174,17 @@ async function startBattle(creature) {
     refreshTabLock(STORAGE_KEY_BATTLE_TAB_LOCK);
 
     if (rollDodge(monsterDestreza)) {
+      showFloatingCombatText(monsterHead, 0, "miss");
       battleLogEl.textContent = `${creature.name} esquivou o teu ataque!`;
     } else if (rollCritico(playerLetalidade)) {
       const critDmg = Math.round(playerAtaque * getLetalidadeMultiplicador());
       monsterHp -= critDmg;
-      showFloatingCombatText(monsterHead, -critDmg);
+      showFloatingCombatText(monsterHead, -critDmg, "critico");
       battleLogEl.textContent = `Crítico! Atacaste ${creature.name}: -${critDmg} Vida`;
     } else {
       const dmgToMonster = computeBattleDamage(playerAtaque, monsterDefesa);
       monsterHp -= dmgToMonster;
-      showFloatingCombatText(monsterHead, -dmgToMonster);
+      showFloatingCombatText(monsterHead, -dmgToMonster, "damage");
       battleLogEl.textContent = `Atacaste ${creature.name}: -${dmgToMonster} Vida`;
     }
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
@@ -196,16 +197,17 @@ async function startBattle(creature) {
     }
 
     if (rollDodge(playerDestreza)) {
+      showFloatingCombatText(head, 0, "miss");
       battleLogEl.textContent = `Esquivaste do ataque de ${creature.name}!`;
     } else if (rollCritico(monsterLetalidade)) {
       const critDmg = Math.round(monsterAtaque * getLetalidadeMultiplicador());
       playerHp -= critDmg;
-      showFloatingCombatText(head, -critDmg);
+      showFloatingCombatText(head, -critDmg, "critico");
       battleLogEl.textContent = `Crítico! ${creature.name} atacou-te: -${critDmg} Vida`;
     } else {
       const dmgToPlayer = computeBattleDamage(monsterAtaque, playerDefesa);
       playerHp -= dmgToPlayer;
-      showFloatingCombatText(head, -dmgToPlayer);
+      showFloatingCombatText(head, -dmgToPlayer, "damage");
       battleLogEl.textContent = `${creature.name} atacou-te: -${dmgToPlayer} Vida`;
     }
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);

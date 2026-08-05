@@ -117,7 +117,16 @@ main {
 }
 
 .floating-combat-text.damage {
+  color: #facc15;
+}
+
+.floating-combat-text.critico {
   color: #ff5c5c;
+}
+
+.floating-combat-text.miss {
+  color: #cbd5e1;
+  font-style: italic;
 }
 
 .floating-combat-text.heal {
