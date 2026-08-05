@@ -33,7 +33,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/debug.js` | Centraliza **todas** as variáveis afináveis do jogo + ferramentas de debug (reset, simulador de distância) |
 | `js/equipment.js` | Stats do personagem, níveis de equipamento, fórmula de valor de status, upgrade, pontos de status |
 | `js/experience.js` | Curva de nível do personagem, cálculo de progresso |
-| `js/monsters.js` | Geração de monstros/bosses (incl. arquétipos de status), regra de desbloqueio, renderização do carrossel "Batalhas" |
+| `js/monsters.js` | Geração de monstros/bosses (incl. arquétipos de status), regra de desbloqueio, renderização da lista "Batalhas" |
 | `js/achievements.js` | Sistema de conquistas, categorias, conquistas de frequência/combate/liderança (incl. os 12 cartões de medalha mensal) |
 | `js/monthly-medals.js` | Contador de distância mensal, corte/rollover de mês, medalhas Ouro/Prata/Bronze |
 | `js/battle.js` | Lógica de combate por turnos, popup fullscreen de batalha |
@@ -223,7 +223,7 @@ base: Arma (Ataque) = 5, Escudo (Defesa) = 2, Armadura (Vida) = 3
 
   `computeCreatureStatValue(type, creature)` aplica o multiplicador do arquétipo por cima do valor base (`computeStatValue`, secção 7), arredondado. O arquétipo **não é mostrado ao jogador** — só se sente a diferença ao lutar, na mesma lógica de mistério já usada para Ataque/Defesa. Multiplicadores calibrados por simulação (não analítico): valores mais extremos testados inicialmente (ex: Tanque ×1.4/×0.7/×1.3) criavam lutas literalmente impossíveis de vencer com o orçamento de pontos disponível nesse nível; os valores finais foram suavizados até nenhuma combinação de criatura/nível ficar sem pelo menos uma divisão de pontos vencedora
 - **Vida escondida ("`****`") até entrar em combate**: o card de cada criatura só mostra "Vida: ****" até o jogador entrar em batalha com ela pela primeira vez (ganhando ou perdendo) — só depois revela o valor real (`isCreatureEncountered`, `STORAGE_KEY_ENCOUNTERED_CREATURES`). Ataque e Defesa nunca são mostrados no card, ficam sempre desconhecidos (mistério deliberado)
-- Card "Batalhas": mostra só uma janela de **5 criaturas em carrossel horizontal**, sempre centrada na próxima por derrotar (nunca a lista inteira)
+- Card "Batalhas": **lista vertical com um card por criatura** (2026-08-06, tema "Campo Aberto" — antes era uma janela de 5 criaturas em carrossel horizontal), mostra sempre a lista inteira gerada (por definição, 10 mini-bosses + 10 bosses com os valores padrão de `MINIBOSS_LEVEL_STEP`/`BOSS_LEVEL_STEP`/`MAX_LEVEL_TO_GENERATE` no Debug). Ao entrar na aba ou sempre que a "próxima por derrotar" muda, a página desloca-se (`scrollIntoView`) até centrar esse card
 
 ## 9. Sistema de duelos
 
