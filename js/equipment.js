@@ -141,11 +141,10 @@ function computeStatValue(type, equipLevel) {
 // "Porquê expoente sobre o nível" ja usado nos status do jogador acima -
 // base^nivel cresceria para valores astronomicos por volta do nivel 90,
 // ver secção 7 da documentação):
-//   primario   = base + round(nivel ^ EQUIP_PRIMARY_EXPONENT)
+//   primario   = base + round(nivel ^ expoentePrimarioDaPeca)
 //   secundario = round((nivel-1)/(EQUIP_MAX_LEVEL-1) ^ EQUIP_SECONDARY_EXPONENT * EQUIP_SECONDARY_MAX)
 //   custo(nivel) = round(EQUIP_COST_BASE * nivel ^ EQUIP_COST_EXPONENT)   (custo do PASSO nivel-1 -> nivel; nivel 1 e sempre gratis)
 const EQUIP_MAX_LEVEL = 99;
-const EQUIP_PRIMARY_EXPONENT = 1.2;
 const EQUIP_SECONDARY_EXPONENT = 0.5;
 const EQUIP_SECONDARY_MAX = 20;
 const EQUIP_COST_BASE = 10;
@@ -155,11 +154,14 @@ const WEAPON_BASE_ATAQUE = 5;
 const SHIELD_BASE_DEFESA = 2;
 const ARMOR_BASE_VIDA = 3;
 
-// Arma tem o seu proprio expoente (2026-08-05, a pedido) - cresce mais
-// depressa que Escudo/Armadura, que continuam em EQUIP_PRIMARY_EXPONENT.
-const WEAPON_PRIMARY_EXPONENT = 1.4;
+// Cada peca tem o seu proprio expoente primario (2026-08-05, a pedido) -
+// a Arma cresce mais depressa que o Escudo, que cresce mais depressa que
+// a Armadura (nenhuma partilha um valor "generico" entre si).
+const WEAPON_PRIMARY_EXPONENT = 1.45;
+const SHIELD_PRIMARY_EXPONENT = 1.35;
+const ARMOR_PRIMARY_EXPONENT = 1.05;
 
-function computeEquipPrimaryStat(base, level, exponent = EQUIP_PRIMARY_EXPONENT) {
+function computeEquipPrimaryStat(base, level, exponent) {
   return base + Math.round(Math.pow(level, exponent));
 }
 
@@ -212,7 +214,7 @@ function showGameToast(message, variant) {
 }
 
 function computePlayerVida(energiaLevel) {
-  const armorVida = computeEquipPrimaryStat(ARMOR_BASE_VIDA, getArmorLevel());
+  const armorVida = computeEquipPrimaryStat(ARMOR_BASE_VIDA, getArmorLevel(), ARMOR_PRIMARY_EXPONENT);
   return Math.round(getPlayerBaseVida() + armorVida + Math.pow(energiaLevel, getEnergiaExponent()));
 }
 
@@ -222,7 +224,7 @@ function computePlayerAtaque(forcaLevel) {
 }
 
 function computePlayerDefesa(resistenciaLevel) {
-  const shieldDefesa = computeEquipPrimaryStat(SHIELD_BASE_DEFESA, getShieldLevel());
+  const shieldDefesa = computeEquipPrimaryStat(SHIELD_BASE_DEFESA, getShieldLevel(), SHIELD_PRIMARY_EXPONENT);
   return Math.round(getPlayerBaseDefesa() + shieldDefesa + Math.pow(resistenciaLevel, getResistenciaExponent()));
 }
 
@@ -466,6 +468,7 @@ const weaponUpgradeController = createEquipmentUpgradeController({
 const shieldUpgradeController = createEquipmentUpgradeController({
   idPrefix: "shield",
   base: SHIELD_BASE_DEFESA,
+  primaryExponent: SHIELD_PRIMARY_EXPONENT,
   getLevel: getShieldLevel,
   setLevel: (level) => setEquipLevel(STORAGE_KEY_SHIELD_LEVEL, level),
   primaryIdSuffix: "defesa",
@@ -477,6 +480,7 @@ const shieldUpgradeController = createEquipmentUpgradeController({
 const armorUpgradeController = createEquipmentUpgradeController({
   idPrefix: "armor",
   base: ARMOR_BASE_VIDA,
+  primaryExponent: ARMOR_PRIMARY_EXPONENT,
   getLevel: getArmorLevel,
   setLevel: (level) => setEquipLevel(STORAGE_KEY_ARMOR_LEVEL, level),
   primaryIdSuffix: "vida",
