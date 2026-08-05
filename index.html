@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260805l">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="css/style.css?v=20260806a">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -34,33 +35,44 @@
   <header class="site-header">
     <div class="site-title-group">
       <h1>Personagem 3D</h1>
-      <span id="site-version" class="site-version-hero">v1.11.4</span>
+      <span id="site-version" class="site-version-hero">v1.12.0</span>
     </div>
-    <nav class="nav-tabs">
-      <button id="btn-nav-jogo" class="nav-tab active">Jogo</button>
-      <button id="btn-nav-perfil" class="nav-tab">Perfil</button>
+    <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
+         dependem destes dois botoes. Fica invisivel (.legacy-nav no CSS) - a
+         navegacao visivel passou para a barra inferior (#tab-bar, js/nav.js),
+         que se limita a clicar nestes botoes. -->
+    <nav class="nav-tabs legacy-nav" aria-hidden="true">
+      <button id="btn-nav-jogo" class="nav-tab active" type="button" tabindex="-1">Jogo</button>
+      <button id="btn-nav-perfil" class="nav-tab" type="button" tabindex="-1">Perfil</button>
     </nav>
   </header>
 
   <main>
-    <div id="view-jogo">
+    <div id="view-jogo" data-pane="personagem">
+
     <div id="viewer">
       <canvas id="viewer-canvas"></canvas>
       <div id="viewer-loading">Carregando personagem...</div>
 
       <div id="character-hud">
         <p class="hud-title"><span id="character-hud-name">Personagem</span> Lvl <span id="character-level-value">1</span></p>
-        <p>Vida: <span id="stat-vida-value">0</span></p>
-        <p>Ataque: <span id="stat-ataque-value">0</span></p>
-        <p>Defesa: <span id="stat-defesa-value">0</span></p>
-        <p>Destreza: <span id="stat-destreza-value">0%</span></p>
-        <p>Letalidade: <span id="stat-letalidade-value">0%</span></p>
-        <p>Regeneração: <span id="stat-regeneracao-value">0</span>/s</p>
-        <p id="hud-unspent-points-row">Pontos para distribuir: <span id="hud-unspent-points-value">0</span></p>
-        <p>Moedas: <span id="hud-moedas-value">0</span></p>
-        <p>Energia: <span id="hud-level-energia">0</span> <button id="btn-hud-upgrade-energia" class="btn-hud-plus hidden">+</button></p>
-        <p>Força: <span id="hud-level-forca">0</span> <button id="btn-hud-upgrade-forca" class="btn-hud-plus hidden">+</button></p>
-        <p>Resistência: <span id="hud-level-resistencia">0</span> <button id="btn-hud-upgrade-resistencia" class="btn-hud-plus hidden">+</button></p>
+        <div class="hud-top">
+        <div class="hud-grid">
+          <p>Vida <span id="stat-vida-value">0</span></p>
+          <p>Ataque <span id="stat-ataque-value">0</span></p>
+          <p>Defesa <span id="stat-defesa-value">0</span></p>
+          <p>Destreza <span id="stat-destreza-value">0%</span></p>
+          <p>Letalidade <span id="stat-letalidade-value">0%</span></p>
+          <p>Regen. <span id="stat-regeneracao-value">0</span></p>
+        </div>
+        </div>
+        <div class="hud-invest">
+          <p id="hud-unspent-points-row">Pontos para distribuir <span id="hud-unspent-points-value">0</span></p>
+          <p>Moedas <span id="hud-moedas-value">0</span></p>
+          <p>Energia <span id="hud-level-energia">0</span> <button id="btn-hud-upgrade-energia" class="btn-hud-plus hidden">+</button></p>
+          <p>Força <span id="hud-level-forca">0</span> <button id="btn-hud-upgrade-forca" class="btn-hud-plus hidden">+</button></p>
+          <p>Resistência <span id="hud-level-resistencia">0</span> <button id="btn-hud-upgrade-resistencia" class="btn-hud-plus hidden">+</button></p>
+        </div>
       </div>
 
       <div id="battle-hud" class="hidden">
@@ -87,325 +99,236 @@
       </div>
     </div>
 
-    <section id="xp-panel">
-      <div class="xp-bar-track">
-        <div id="xp-bar-fill" class="xp-bar-fill"></div>
-      </div>
-      <p id="xp-progress-text">0 / 1000 XP</p>
+    <!-- ===== Separador: Personagem ===== -->
+    <div class="pane active" data-pane-name="personagem">
+      <section id="xp-panel">
+        <div class="xp-bar-track">
+          <div id="xp-bar-fill" class="xp-bar-fill"></div>
+        </div>
+        <p id="xp-progress-text">0 / 1000 XP</p>
+      </section>
 
-      <p class="training-label">Distância percorrida (treino atual)</p>
-      <p id="training-distance" class="training-distance">0 m</p>
-      <p id="training-effective-distance-row" class="training-effective-distance-row hidden">
-        Distância efetiva (XP): <span id="training-effective-distance">0 m</span>
-      </p>
+      <section id="debug-card" class="card hidden">
+        <div class="modal-header">
+          <h2 class="card-title">Debug</h2>
+          <button id="btn-toggle-debug-card" class="btn-secondary">Esconder</button>
+        </div>
+
+        <div id="debug-card-body">
+        <div class="debug-vars">
+          <label>LEVEL_BASE <span class="debug-hint">XP base p/ nível (1 XP = 1 metro)</span>
+            <input type="number" id="dbg-levelBase" step="1">
+          </label>
+          <label>LEVEL_EXP <span class="debug-hint">expoente da curva de nível</span>
+            <input type="number" id="dbg-levelExp" step="0.01">
+          </label>
+          <label>STAT_BASE_VIDA <span class="debug-hint">valor base da Vida</span>
+            <input type="number" id="dbg-statBaseVida" step="1">
+          </label>
+          <label>STAT_FLAT_VIDA <span class="debug-hint">bónus fixo por nível de equipamento</span>
+            <input type="number" id="dbg-statFlatVida" step="1">
+          </label>
+          <label>STAT_PERCENT_VIDA <span class="debug-hint">percentagem × nível (ex: 0.89 = 89%)</span>
+            <input type="number" id="dbg-statPercentVida" step="0.01">
+          </label>
+          <label>STAT_BASE_ATAQUE <span class="debug-hint">valor base do Ataque</span>
+            <input type="number" id="dbg-statBaseAtaque" step="1">
+          </label>
+          <label>STAT_FLAT_ATAQUE <span class="debug-hint">bónus fixo por nível de equipamento</span>
+            <input type="number" id="dbg-statFlatAtaque" step="1">
+          </label>
+          <label>STAT_PERCENT_ATAQUE <span class="debug-hint">percentagem × nível (ex: 0.16 = 16%)</span>
+            <input type="number" id="dbg-statPercentAtaque" step="0.01">
+          </label>
+          <label>STAT_BASE_DEFESA <span class="debug-hint">valor base da Defesa</span>
+            <input type="number" id="dbg-statBaseDefesa" step="1">
+          </label>
+          <label>STAT_FLAT_DEFESA <span class="debug-hint">bónus fixo por nível de equipamento</span>
+            <input type="number" id="dbg-statFlatDefesa" step="1">
+          </label>
+          <label>STAT_PERCENT_DEFESA <span class="debug-hint">percentagem × nível (ex: 0.45 = 45%)</span>
+            <input type="number" id="dbg-statPercentDefesa" step="0.01">
+          </label>
+          <label>PLAYER_BASE_VIDA <span class="debug-hint">vida base do jogador (antes de equip./Energia)</span>
+            <input type="number" id="dbg-playerBaseVida" step="1">
+          </label>
+          <label>PLAYER_BASE_ATAQUE <span class="debug-hint">ataque base do jogador (antes de equip./Força)</span>
+            <input type="number" id="dbg-playerBaseAtaque" step="1">
+          </label>
+          <label>PLAYER_BASE_DEFESA <span class="debug-hint">defesa base do jogador (antes de equip./Resistência)</span>
+            <input type="number" id="dbg-playerBaseDefesa" step="1">
+          </label>
+          <label>ENERGIA_EXPONENT <span class="debug-hint">expoente de Vida = Energia^x</span>
+            <input type="number" id="dbg-energiaExponent" step="0.01">
+          </label>
+          <label>FORCA_EXPONENT <span class="debug-hint">expoente de Ataque = Força^x</span>
+            <input type="number" id="dbg-forcaExponent" step="0.01">
+          </label>
+          <label>RESISTENCIA_EXPONENT <span class="debug-hint">expoente de Defesa = Resistência^x</span>
+            <input type="number" id="dbg-resistenciaExponent" step="0.01">
+          </label>
+          <label>DESTREZA_BASE <span class="debug-hint">esquiva base, em pontos % (2 = 2%)</span>
+            <input type="number" id="dbg-destrezaBase" step="0.1">
+          </label>
+          <label>DESTREZA_EXPONENT <span class="debug-hint">expoente de Destreza = base + (Resistência+bónus)^x</span>
+            <input type="number" id="dbg-destrezaExponent" step="0.01">
+          </label>
+          <label>LETALIDADE_BASE <span class="debug-hint">crítico base, em pontos % (1 = 1%)</span>
+            <input type="number" id="dbg-letalidadeBase" step="0.1">
+          </label>
+          <label>LETALIDADE_EXPONENT <span class="debug-hint">expoente de Letalidade = base + (Força+bónus)^x</span>
+            <input type="number" id="dbg-letalidadeExponent" step="0.01">
+          </label>
+          <label>LETALIDADE_MULTIPLICADOR <span class="debug-hint">dano do crítico = Ataque × x (ignora Defesa)</span>
+            <input type="number" id="dbg-letalidadeMultiplicador" step="0.1">
+          </label>
+          <label>REGENERACAO_BASE <span class="debug-hint">regeneração base, vida/segundo</span>
+            <input type="number" id="dbg-regeneracaoBase" step="0.01">
+          </label>
+          <label>REGENERACAO_EXPONENT <span class="debug-hint">expoente de Regeneração = base + (Energia+bónus)^x</span>
+            <input type="number" id="dbg-regeneracaoExponent" step="0.01">
+          </label>
+          <label>LEVEL_UP_POINTS <span class="debug-hint">pontos de status por nível subido</span>
+            <input type="number" id="dbg-levelUpPoints" step="1">
+          </label>
+          <label>MAX_ACCURACY_M <span class="debug-hint">precisão máx. de GPS aceite (m)</span>
+            <input type="number" id="dbg-maxAccuracyM" step="1">
+          </label>
+          <label>MIN_MOVEMENT_M <span class="debug-hint">movimento mín. para contar (m)</span>
+            <input type="number" id="dbg-minMovementM" step="1">
+          </label>
+          <label>MAX_SPEED_KMH_CAMINHAR <span class="debug-hint">velocidade máx. aceite a caminhar (km/h)</span>
+            <input type="number" id="dbg-maxSpeedKmhCaminhar" step="1">
+          </label>
+          <label>MAX_SPEED_KMH_CORRER <span class="debug-hint">velocidade máx. aceite a correr (km/h)</span>
+            <input type="number" id="dbg-maxSpeedKmhCorrer" step="1">
+          </label>
+          <label>MAX_SPEED_KMH_BICICLETA <span class="debug-hint">velocidade máx. aceite de bicicleta (km/h)</span>
+            <input type="number" id="dbg-maxSpeedKmhBicicleta" step="1">
+          </label>
+          <label>XP_MULTIPLIER_CAMINHAR <span class="debug-hint">fração da distância que conta para XP a caminhar</span>
+            <input type="number" id="dbg-xpMultiplierCaminhar" step="0.01">
+          </label>
+          <label>XP_MULTIPLIER_CORRER <span class="debug-hint">fração da distância que conta para XP a correr</span>
+            <input type="number" id="dbg-xpMultiplierCorrer" step="0.01">
+          </label>
+          <label>XP_MULTIPLIER_BICICLETA <span class="debug-hint">fração da distância que conta para XP de bicicleta</span>
+            <input type="number" id="dbg-xpMultiplierBicicleta" step="0.01">
+          </label>
+          <label>MINIBOSS_LEVEL_STEP <span class="debug-hint">intervalo de mini-bosses (níveis)</span>
+            <input type="number" id="dbg-miniBossLevelStep" step="1">
+          </label>
+          <label>BOSS_LEVEL_STEP <span class="debug-hint">intervalo de bosses (níveis)</span>
+            <input type="number" id="dbg-bossLevelStep" step="1">
+          </label>
+          <label>MAX_LEVEL_TO_GENERATE <span class="debug-hint">nível máximo gerado</span>
+            <input type="number" id="dbg-maxLevelToGenerate" step="1">
+          </label>
+          <label>MINIBOSS_MAX_POINTS <span class="debug-hint">pontos máx. por mini-boss (depende da vida restante)</span>
+            <input type="number" id="dbg-miniBossMaxPoints" step="1">
+          </label>
+          <label>BOSS_MAX_POINTS <span class="debug-hint">pontos máx. por boss (depende da vida restante)</span>
+            <input type="number" id="dbg-bossMaxPoints" step="1">
+          </label>
+          <label>BATTLE_DEFENSE_PERCENT <span class="debug-hint">% da defesa subtraída no dano (ex: 0.6 = 60%)</span>
+            <input type="number" id="dbg-battleDefensePercent" step="0.01">
+          </label>
+          <label>BATTLE_FLOOR_PERCENT <span class="debug-hint">dano mínimo, % do próprio ataque</span>
+            <input type="number" id="dbg-battleFloorPercent" step="0.01">
+          </label>
+          <label>DAMAGE_VARIANCE_MIN <span class="debug-hint">variação aleatória do dano (0.8 = entre 80% e 100%)</span>
+            <input type="number" id="dbg-damageVarianceMin" step="0.01">
+          </label>
+        </div>
+
+        <div class="debug-row">
+          <button id="btn-save-debug-vars" class="btn-secondary">Guardar</button>
+          <button id="btn-reset-debug-vars" class="btn-secondary">Repor todos os padrões</button>
+        </div>
+        <p id="debug-vars-status" class="debug-status"></p>
+
+        <hr class="debug-divider">
+
+        <label class="debug-label" for="input-sim-factor">
+          Simular distância pelo tempo (m por segundo real, em vez de GPS)
+        </label>
+        <div class="debug-row">
+          <input type="number" id="input-sim-factor" min="0.1" step="0.1" value="1">
+          <button id="btn-toggle-sim-distance" class="btn-secondary">Iniciar simulação</button>
+        </div>
+        <p id="sim-distance-status" class="debug-status"></p>
+
+        <hr class="debug-divider">
+
+        <div id="debug-character-info">
+          <p>Pontos disponíveis: <span id="debug-points-value">0</span></p>
+          <p>Status investidos — Energia <span id="debug-level-energia">0</span> · Força <span id="debug-level-forca">0</span> · Resistência <span id="debug-level-resistencia">0</span></p>
+        </div>
+
+        <hr class="debug-divider">
+
+        <button id="btn-reset-character" class="btn-secondary btn-danger">Repor personagem e distância</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== Separador: Treino ===== -->
+    <div class="pane" data-pane-name="treino">
+      <section id="training-readout">
+        <p class="training-label">Distância percorrida (treino atual)</p>
+        <p id="training-distance" class="training-distance">0 m</p>
+        <p id="training-effective-distance-row" class="training-effective-distance-row hidden">
+          Distância efetiva (XP): <span id="training-effective-distance">0 m</span>
+        </p>
+      </section>
+
       <p id="speed-warning" class="speed-warning hidden">⚠️ Velocidade acima do limite — esta distância não está a contar</p>
-    </section>
 
-    <section id="training-panel">
-      <div id="start-screen" class="panel-screen">
-        <div id="mode-selector" class="mode-selector">
-          <button id="btn-mode-caminhar" class="mode-btn" type="button">🚶 Caminhar</button>
-          <button id="btn-mode-correr" class="mode-btn active" type="button">🏃 Correr</button>
-          <button id="btn-mode-bicicleta" class="mode-btn" type="button">🚴 Bicicleta</button>
+      <section id="training-panel">
+        <div id="start-screen" class="panel-screen">
+          <div id="mode-selector" class="mode-selector">
+            <button id="btn-mode-caminhar" class="mode-btn" type="button">🚶 Caminhar</button>
+            <button id="btn-mode-correr" class="mode-btn active" type="button">🏃 Correr</button>
+            <button id="btn-mode-bicicleta" class="mode-btn" type="button">🚴 Bicicleta</button>
+          </div>
+          <button id="btn-start-treino" class="btn-primary">Iniciar Treino</button>
         </div>
-        <button id="btn-start-treino" class="btn-primary">Iniciar Treino</button>
-      </div>
 
-      <div id="training-screen" class="panel-screen hidden">
-        <button id="btn-stop-treino" class="btn-secondary">Parar Treino</button>
-      </div>
-    </section>
-
-    <div id="training-countdown-modal" class="hidden">
-      <div class="auth-box">
-        <div id="training-countdown-number" class="training-countdown-number">5</div>
-        <p id="training-countdown-message" class="auth-text"></p>
-      </div>
+        <div id="training-screen" class="panel-screen hidden">
+          <button id="btn-stop-treino" class="btn-secondary">Parar Treino</button>
+        </div>
+      </section>
     </div>
 
-    <section id="monsters-card" class="card">
-      <h2 class="card-title">Batalhas</h2>
-      <div id="monsters-list"></div>
-    </section>
+    <!-- ===== Separador: Batalhas ===== -->
+    <div class="pane" data-pane-name="batalhas">
+      <section id="monsters-card" class="card">
+        <h2 class="card-title">Batalhas</h2>
+        <div id="monsters-list"></div>
+      </section>
+    </div>
 
-    <section id="achievements-card" class="card">
-      <h2 class="card-title">Conquistas</h2>
-      <div id="achievements-summary" class="achievements-grid"></div>
-      <button id="btn-open-achievements" class="btn-secondary btn-view-all">Ver todas</button>
-    </section>
-
-    <div id="achievements-modal" class="modal-overlay hidden">
-      <div class="modal-header">
+    <!-- ===== Separador: Troféus ===== -->
+    <div class="pane" data-pane-name="trofeus">
+      <section id="achievements-card" class="card">
         <h2 class="card-title">Conquistas</h2>
-        <button id="btn-close-achievements" class="btn-secondary">Fechar</button>
-      </div>
-      <div id="achievements-grid-full" class="achievements-grid"></div>
+        <div id="achievements-summary" class="achievements-grid"></div>
+        <button id="btn-open-achievements" class="btn-secondary btn-view-all">Ver todas</button>
+      </section>
+
+      <section id="leaderboard-card" class="card">
+        <h2 class="card-title">Leaderboard</h2>
+        <div class="nav-tabs leaderboard-tabs">
+          <button id="btn-leaderboard-geral" class="nav-tab active" type="button">Geral</button>
+          <button id="btn-leaderboard-mensal" class="nav-tab" type="button">Mensal</button>
+          <button id="btn-leaderboard-historico" class="nav-tab" type="button">Histórico</button>
+        </div>
+        <div id="leaderboard-list" class="leaderboard-list"></div>
+        <div id="leaderboard-list-monthly" class="leaderboard-list hidden"></div>
+        <div id="leaderboard-list-history" class="leaderboard-list hidden"></div>
+      </section>
     </div>
 
-    <div id="player-trophies-modal" class="hidden">
-      <div class="player-trophies-box">
-        <button id="btn-close-player-trophies" class="btn-secondary achievement-detail-close">Fechar</button>
-        <h3 class="player-trophies-title">Troféus de <span id="player-trophies-name"></span></h3>
-        <div id="player-trophies-grid" class="achievements-grid"></div>
-      </div>
-    </div>
-
-    <div id="achievement-detail-modal" class="hidden">
-      <div class="achievement-detail-box">
-        <button id="btn-close-achievement-detail" class="btn-secondary achievement-detail-close">Fechar</button>
-        <div id="achievement-detail-icon" class="achievement-detail-icon"></div>
-        <h3 id="achievement-detail-name"></h3>
-        <p id="achievement-detail-description" class="auth-text"></p>
-        <p id="achievement-detail-progress" class="debug-status"></p>
-      </div>
-    </div>
-
-    <div id="weapon-upgrade-modal" class="equip-upgrade-modal hidden">
-      <div class="equip-upgrade-box">
-        <button id="btn-weapon-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
-        <div class="achievement-detail-icon">🗡️</div>
-        <h3 id="weapon-upgrade-title"></h3>
-        <div class="equip-upgrade-stats-row">
-          <p>Ataque: <strong id="weapon-upgrade-current-ataque">0</strong></p>
-          <p>Bónus Força: <strong id="weapon-upgrade-current-forca">+0</strong></p>
-        </div>
-        <div id="weapon-upgrade-next-row" class="equip-upgrade-next hidden">
-          <p class="equip-upgrade-next-label">Próximo nível de melhoria</p>
-          <div class="equip-upgrade-stats-row">
-            <p>Ataque: <strong id="weapon-upgrade-next-ataque">0</strong></p>
-            <p>Bónus Força: <strong id="weapon-upgrade-next-forca">+0</strong></p>
-          </div>
-        </div>
-        <p id="weapon-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
-        <p id="weapon-upgrade-cost-row" class="auth-text">
-          Custo: <strong id="weapon-upgrade-cost">0</strong> moedas (tens <strong id="weapon-upgrade-coins">0</strong>)
-        </p>
-        <button id="btn-weapon-upgrade-confirm" class="btn-primary"></button>
-      </div>
-    </div>
-
-    <div id="shield-upgrade-modal" class="equip-upgrade-modal hidden">
-      <div class="equip-upgrade-box">
-        <button id="btn-shield-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
-        <div class="achievement-detail-icon">🛡️</div>
-        <h3 id="shield-upgrade-title"></h3>
-        <div class="equip-upgrade-stats-row">
-          <p>Defesa: <strong id="shield-upgrade-current-defesa">0</strong></p>
-          <p>Bónus Resistência: <strong id="shield-upgrade-current-resistencia">+0</strong></p>
-        </div>
-        <div id="shield-upgrade-next-row" class="equip-upgrade-next hidden">
-          <p class="equip-upgrade-next-label">Próximo nível de melhoria</p>
-          <div class="equip-upgrade-stats-row">
-            <p>Defesa: <strong id="shield-upgrade-next-defesa">0</strong></p>
-            <p>Bónus Resistência: <strong id="shield-upgrade-next-resistencia">+0</strong></p>
-          </div>
-        </div>
-        <p id="shield-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
-        <p id="shield-upgrade-cost-row" class="auth-text">
-          Custo: <strong id="shield-upgrade-cost">0</strong> moedas (tens <strong id="shield-upgrade-coins">0</strong>)
-        </p>
-        <button id="btn-shield-upgrade-confirm" class="btn-primary"></button>
-      </div>
-    </div>
-
-    <div id="armor-upgrade-modal" class="equip-upgrade-modal hidden">
-      <div class="equip-upgrade-box">
-        <button id="btn-armor-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
-        <div class="achievement-detail-icon">🧥</div>
-        <h3 id="armor-upgrade-title"></h3>
-        <div class="equip-upgrade-stats-row">
-          <p>Vida: <strong id="armor-upgrade-current-vida">0</strong></p>
-          <p>Bónus Energia: <strong id="armor-upgrade-current-energia">+0</strong></p>
-        </div>
-        <div id="armor-upgrade-next-row" class="equip-upgrade-next hidden">
-          <p class="equip-upgrade-next-label">Próximo nível de melhoria</p>
-          <div class="equip-upgrade-stats-row">
-            <p>Vida: <strong id="armor-upgrade-next-vida">0</strong></p>
-            <p>Bónus Energia: <strong id="armor-upgrade-next-energia">+0</strong></p>
-          </div>
-        </div>
-        <p id="armor-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
-        <p id="armor-upgrade-cost-row" class="auth-text">
-          Custo: <strong id="armor-upgrade-cost">0</strong> moedas (tens <strong id="armor-upgrade-coins">0</strong>)
-        </p>
-        <button id="btn-armor-upgrade-confirm" class="btn-primary"></button>
-      </div>
-    </div>
-
-    <section id="leaderboard-card" class="card">
-      <h2 class="card-title">Leaderboard</h2>
-      <div class="nav-tabs leaderboard-tabs">
-        <button id="btn-leaderboard-geral" class="nav-tab active" type="button">Geral</button>
-        <button id="btn-leaderboard-mensal" class="nav-tab" type="button">Mensal</button>
-        <button id="btn-leaderboard-historico" class="nav-tab" type="button">Histórico</button>
-      </div>
-      <div id="leaderboard-list" class="leaderboard-list"></div>
-      <div id="leaderboard-list-monthly" class="leaderboard-list hidden"></div>
-      <div id="leaderboard-list-history" class="leaderboard-list hidden"></div>
-    </section>
-
-    <section id="debug-card" class="card hidden">
-      <div class="modal-header">
-        <h2 class="card-title">Debug</h2>
-        <button id="btn-toggle-debug-card" class="btn-secondary">Esconder</button>
-      </div>
-
-      <div id="debug-card-body">
-      <div class="debug-vars">
-        <label>LEVEL_BASE <span class="debug-hint">XP base p/ nível (1 XP = 1 metro)</span>
-          <input type="number" id="dbg-levelBase" step="1">
-        </label>
-        <label>LEVEL_EXP <span class="debug-hint">expoente da curva de nível</span>
-          <input type="number" id="dbg-levelExp" step="0.01">
-        </label>
-        <label>STAT_BASE_VIDA <span class="debug-hint">valor base da Vida</span>
-          <input type="number" id="dbg-statBaseVida" step="1">
-        </label>
-        <label>STAT_FLAT_VIDA <span class="debug-hint">bónus fixo por nível de equipamento</span>
-          <input type="number" id="dbg-statFlatVida" step="1">
-        </label>
-        <label>STAT_PERCENT_VIDA <span class="debug-hint">percentagem × nível (ex: 0.89 = 89%)</span>
-          <input type="number" id="dbg-statPercentVida" step="0.01">
-        </label>
-        <label>STAT_BASE_ATAQUE <span class="debug-hint">valor base do Ataque</span>
-          <input type="number" id="dbg-statBaseAtaque" step="1">
-        </label>
-        <label>STAT_FLAT_ATAQUE <span class="debug-hint">bónus fixo por nível de equipamento</span>
-          <input type="number" id="dbg-statFlatAtaque" step="1">
-        </label>
-        <label>STAT_PERCENT_ATAQUE <span class="debug-hint">percentagem × nível (ex: 0.16 = 16%)</span>
-          <input type="number" id="dbg-statPercentAtaque" step="0.01">
-        </label>
-        <label>STAT_BASE_DEFESA <span class="debug-hint">valor base da Defesa</span>
-          <input type="number" id="dbg-statBaseDefesa" step="1">
-        </label>
-        <label>STAT_FLAT_DEFESA <span class="debug-hint">bónus fixo por nível de equipamento</span>
-          <input type="number" id="dbg-statFlatDefesa" step="1">
-        </label>
-        <label>STAT_PERCENT_DEFESA <span class="debug-hint">percentagem × nível (ex: 0.45 = 45%)</span>
-          <input type="number" id="dbg-statPercentDefesa" step="0.01">
-        </label>
-        <label>PLAYER_BASE_VIDA <span class="debug-hint">vida base do jogador (antes de equip./Energia)</span>
-          <input type="number" id="dbg-playerBaseVida" step="1">
-        </label>
-        <label>PLAYER_BASE_ATAQUE <span class="debug-hint">ataque base do jogador (antes de equip./Força)</span>
-          <input type="number" id="dbg-playerBaseAtaque" step="1">
-        </label>
-        <label>PLAYER_BASE_DEFESA <span class="debug-hint">defesa base do jogador (antes de equip./Resistência)</span>
-          <input type="number" id="dbg-playerBaseDefesa" step="1">
-        </label>
-        <label>ENERGIA_EXPONENT <span class="debug-hint">expoente de Vida = Energia^x</span>
-          <input type="number" id="dbg-energiaExponent" step="0.01">
-        </label>
-        <label>FORCA_EXPONENT <span class="debug-hint">expoente de Ataque = Força^x</span>
-          <input type="number" id="dbg-forcaExponent" step="0.01">
-        </label>
-        <label>RESISTENCIA_EXPONENT <span class="debug-hint">expoente de Defesa = Resistência^x</span>
-          <input type="number" id="dbg-resistenciaExponent" step="0.01">
-        </label>
-        <label>DESTREZA_BASE <span class="debug-hint">esquiva base, em pontos % (2 = 2%)</span>
-          <input type="number" id="dbg-destrezaBase" step="0.1">
-        </label>
-        <label>DESTREZA_EXPONENT <span class="debug-hint">expoente de Destreza = base + (Resistência+bónus)^x</span>
-          <input type="number" id="dbg-destrezaExponent" step="0.01">
-        </label>
-        <label>LETALIDADE_BASE <span class="debug-hint">crítico base, em pontos % (1 = 1%)</span>
-          <input type="number" id="dbg-letalidadeBase" step="0.1">
-        </label>
-        <label>LETALIDADE_EXPONENT <span class="debug-hint">expoente de Letalidade = base + (Força+bónus)^x</span>
-          <input type="number" id="dbg-letalidadeExponent" step="0.01">
-        </label>
-        <label>LETALIDADE_MULTIPLICADOR <span class="debug-hint">dano do crítico = Ataque × x (ignora Defesa)</span>
-          <input type="number" id="dbg-letalidadeMultiplicador" step="0.1">
-        </label>
-        <label>REGENERACAO_BASE <span class="debug-hint">regeneração base, vida/segundo</span>
-          <input type="number" id="dbg-regeneracaoBase" step="0.01">
-        </label>
-        <label>REGENERACAO_EXPONENT <span class="debug-hint">expoente de Regeneração = base + (Energia+bónus)^x</span>
-          <input type="number" id="dbg-regeneracaoExponent" step="0.01">
-        </label>
-        <label>LEVEL_UP_POINTS <span class="debug-hint">pontos de status por nível subido</span>
-          <input type="number" id="dbg-levelUpPoints" step="1">
-        </label>
-        <label>MAX_ACCURACY_M <span class="debug-hint">precisão máx. de GPS aceite (m)</span>
-          <input type="number" id="dbg-maxAccuracyM" step="1">
-        </label>
-        <label>MIN_MOVEMENT_M <span class="debug-hint">movimento mín. para contar (m)</span>
-          <input type="number" id="dbg-minMovementM" step="1">
-        </label>
-        <label>MAX_SPEED_KMH_CAMINHAR <span class="debug-hint">velocidade máx. aceite a caminhar (km/h)</span>
-          <input type="number" id="dbg-maxSpeedKmhCaminhar" step="1">
-        </label>
-        <label>MAX_SPEED_KMH_CORRER <span class="debug-hint">velocidade máx. aceite a correr (km/h)</span>
-          <input type="number" id="dbg-maxSpeedKmhCorrer" step="1">
-        </label>
-        <label>MAX_SPEED_KMH_BICICLETA <span class="debug-hint">velocidade máx. aceite de bicicleta (km/h)</span>
-          <input type="number" id="dbg-maxSpeedKmhBicicleta" step="1">
-        </label>
-        <label>XP_MULTIPLIER_CAMINHAR <span class="debug-hint">fração da distância que conta para XP a caminhar</span>
-          <input type="number" id="dbg-xpMultiplierCaminhar" step="0.01">
-        </label>
-        <label>XP_MULTIPLIER_CORRER <span class="debug-hint">fração da distância que conta para XP a correr</span>
-          <input type="number" id="dbg-xpMultiplierCorrer" step="0.01">
-        </label>
-        <label>XP_MULTIPLIER_BICICLETA <span class="debug-hint">fração da distância que conta para XP de bicicleta</span>
-          <input type="number" id="dbg-xpMultiplierBicicleta" step="0.01">
-        </label>
-        <label>MINIBOSS_LEVEL_STEP <span class="debug-hint">intervalo de mini-bosses (níveis)</span>
-          <input type="number" id="dbg-miniBossLevelStep" step="1">
-        </label>
-        <label>BOSS_LEVEL_STEP <span class="debug-hint">intervalo de bosses (níveis)</span>
-          <input type="number" id="dbg-bossLevelStep" step="1">
-        </label>
-        <label>MAX_LEVEL_TO_GENERATE <span class="debug-hint">nível máximo gerado</span>
-          <input type="number" id="dbg-maxLevelToGenerate" step="1">
-        </label>
-        <label>MINIBOSS_MAX_POINTS <span class="debug-hint">pontos máx. por mini-boss (depende da vida restante)</span>
-          <input type="number" id="dbg-miniBossMaxPoints" step="1">
-        </label>
-        <label>BOSS_MAX_POINTS <span class="debug-hint">pontos máx. por boss (depende da vida restante)</span>
-          <input type="number" id="dbg-bossMaxPoints" step="1">
-        </label>
-        <label>BATTLE_DEFENSE_PERCENT <span class="debug-hint">% da defesa subtraída no dano (ex: 0.6 = 60%)</span>
-          <input type="number" id="dbg-battleDefensePercent" step="0.01">
-        </label>
-        <label>BATTLE_FLOOR_PERCENT <span class="debug-hint">dano mínimo, % do próprio ataque</span>
-          <input type="number" id="dbg-battleFloorPercent" step="0.01">
-        </label>
-        <label>DAMAGE_VARIANCE_MIN <span class="debug-hint">variação aleatória do dano (0.8 = entre 80% e 100%)</span>
-          <input type="number" id="dbg-damageVarianceMin" step="0.01">
-        </label>
-      </div>
-
-      <div class="debug-row">
-        <button id="btn-save-debug-vars" class="btn-secondary">Guardar</button>
-        <button id="btn-reset-debug-vars" class="btn-secondary">Repor todos os padrões</button>
-      </div>
-      <p id="debug-vars-status" class="debug-status"></p>
-
-      <hr class="debug-divider">
-
-      <label class="debug-label" for="input-sim-factor">
-        Simular distância pelo tempo (m por segundo real, em vez de GPS)
-      </label>
-      <div class="debug-row">
-        <input type="number" id="input-sim-factor" min="0.1" step="0.1" value="1">
-        <button id="btn-toggle-sim-distance" class="btn-secondary">Iniciar simulação</button>
-      </div>
-      <p id="sim-distance-status" class="debug-status"></p>
-
-      <hr class="debug-divider">
-
-      <div id="debug-character-info">
-        <p>Pontos disponíveis: <span id="debug-points-value">0</span></p>
-        <p>Status investidos — Energia: <span id="debug-level-energia">0</span> · Força: <span id="debug-level-forca">0</span> · Resistência: <span id="debug-level-resistencia">0</span></p>
-      </div>
-
-      <hr class="debug-divider">
-
-      <button id="btn-reset-character" class="btn-secondary btn-danger">Repor personagem e distância</button>
-      </div>
-    </section>
     </div>
 
     <div id="view-perfil" class="hidden">
@@ -451,29 +374,139 @@
     </div>
   </main>
 
-  <footer class="site-footer">
-    <p>&copy; 2026 Personagem 3D</p>
-  </footer>
+  <div id="training-countdown-modal" class="hidden">
+    <div class="auth-box">
+      <div id="training-countdown-number" class="training-countdown-number">5</div>
+      <p id="training-countdown-message" class="auth-text"></p>
+    </div>
+  </div>
+
+  <div id="achievements-modal" class="modal-overlay hidden">
+    <div class="modal-header">
+      <h2 class="card-title">Conquistas</h2>
+      <button id="btn-close-achievements" class="btn-secondary">Fechar</button>
+    </div>
+    <div id="achievements-grid-full" class="achievements-grid"></div>
+  </div>
+
+  <div id="player-trophies-modal" class="hidden">
+    <div class="player-trophies-box">
+      <button id="btn-close-player-trophies" class="btn-secondary achievement-detail-close">Fechar</button>
+      <h3 class="player-trophies-title">Troféus de <span id="player-trophies-name"></span></h3>
+      <div id="player-trophies-grid" class="achievements-grid"></div>
+    </div>
+  </div>
+
+  <div id="achievement-detail-modal" class="hidden">
+    <div class="achievement-detail-box">
+      <button id="btn-close-achievement-detail" class="btn-secondary achievement-detail-close">Fechar</button>
+      <div id="achievement-detail-icon" class="achievement-detail-icon"></div>
+      <h3 id="achievement-detail-name"></h3>
+      <p id="achievement-detail-description" class="auth-text"></p>
+      <p id="achievement-detail-progress" class="debug-status"></p>
+    </div>
+  </div>
+
+  <div id="weapon-upgrade-modal" class="equip-upgrade-modal hidden">
+    <div class="equip-upgrade-box">
+      <button id="btn-weapon-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
+      <div class="achievement-detail-icon">🗡️</div>
+      <h3 id="weapon-upgrade-title"></h3>
+      <div class="equip-upgrade-stats-row">
+        <p>Ataque: <strong id="weapon-upgrade-current-ataque">0</strong></p>
+        <p>Bónus Força: <strong id="weapon-upgrade-current-forca">+0</strong></p>
+      </div>
+      <div id="weapon-upgrade-next-row" class="equip-upgrade-next hidden">
+        <p class="equip-upgrade-next-label">Próximo nível de melhoria</p>
+        <div class="equip-upgrade-stats-row">
+          <p>Ataque: <strong id="weapon-upgrade-next-ataque">0</strong></p>
+          <p>Bónus Força: <strong id="weapon-upgrade-next-forca">+0</strong></p>
+        </div>
+      </div>
+      <p id="weapon-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
+      <p id="weapon-upgrade-cost-row" class="auth-text">
+        Custo: <strong id="weapon-upgrade-cost">0</strong> moedas (tens <strong id="weapon-upgrade-coins">0</strong>)
+      </p>
+      <button id="btn-weapon-upgrade-confirm" class="btn-primary"></button>
+    </div>
+  </div>
+
+  <div id="shield-upgrade-modal" class="equip-upgrade-modal hidden">
+    <div class="equip-upgrade-box">
+      <button id="btn-shield-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
+      <div class="achievement-detail-icon">🛡️</div>
+      <h3 id="shield-upgrade-title"></h3>
+      <div class="equip-upgrade-stats-row">
+        <p>Defesa: <strong id="shield-upgrade-current-defesa">0</strong></p>
+        <p>Bónus Resistência: <strong id="shield-upgrade-current-resistencia">+0</strong></p>
+      </div>
+      <div id="shield-upgrade-next-row" class="equip-upgrade-next hidden">
+        <p class="equip-upgrade-next-label">Próximo nível de melhoria</p>
+        <div class="equip-upgrade-stats-row">
+          <p>Defesa: <strong id="shield-upgrade-next-defesa">0</strong></p>
+          <p>Bónus Resistência: <strong id="shield-upgrade-next-resistencia">+0</strong></p>
+        </div>
+      </div>
+      <p id="shield-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
+      <p id="shield-upgrade-cost-row" class="auth-text">
+        Custo: <strong id="shield-upgrade-cost">0</strong> moedas (tens <strong id="shield-upgrade-coins">0</strong>)
+      </p>
+      <button id="btn-shield-upgrade-confirm" class="btn-primary"></button>
+    </div>
+  </div>
+
+  <div id="armor-upgrade-modal" class="equip-upgrade-modal hidden">
+    <div class="equip-upgrade-box">
+      <button id="btn-armor-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
+      <div class="achievement-detail-icon">🧥</div>
+      <h3 id="armor-upgrade-title"></h3>
+      <div class="equip-upgrade-stats-row">
+        <p>Vida: <strong id="armor-upgrade-current-vida">0</strong></p>
+        <p>Bónus Energia: <strong id="armor-upgrade-current-energia">+0</strong></p>
+      </div>
+      <div id="armor-upgrade-next-row" class="equip-upgrade-next hidden">
+        <p class="equip-upgrade-next-label">Próximo nível de melhoria</p>
+        <div class="equip-upgrade-stats-row">
+          <p>Vida: <strong id="armor-upgrade-next-vida">0</strong></p>
+          <p>Bónus Energia: <strong id="armor-upgrade-next-energia">+0</strong></p>
+        </div>
+      </div>
+      <p id="armor-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
+      <p id="armor-upgrade-cost-row" class="auth-text">
+        Custo: <strong id="armor-upgrade-cost">0</strong> moedas (tens <strong id="armor-upgrade-coins">0</strong>)
+      </p>
+      <button id="btn-armor-upgrade-confirm" class="btn-primary"></button>
+    </div>
+  </div>
+
+  <nav id="tab-bar">
+    <button class="tab-btn active" type="button" data-tab="personagem"><span class="tab-icon">🧍</span>Personagem</button>
+    <button class="tab-btn" type="button" data-tab="treino"><span class="tab-icon">🥾</span>Treino</button>
+    <button class="tab-btn" type="button" data-tab="batalhas"><span class="tab-icon">⚔️</span>Batalhas</button>
+    <button class="tab-btn" type="button" data-tab="trofeus"><span class="tab-icon">🏅</span>Troféus</button>
+    <button class="tab-btn" type="button" data-tab="perfil"><span class="tab-icon">📊</span>Perfil</button>
+  </nav>
 
   <!-- ?v=YYYYMMDD nos scripts locais abaixo: sobe esta data sempre que
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260805l"></script>
-  <script src="js/tab-lock.js?v=20260805l"></script>
-  <script src="js/auth.js?v=20260805l"></script>
-  <script src="js/progress-sync.js?v=20260805l"></script>
-  <script src="js/leaderboard.js?v=20260805l"></script>
-  <script src="js/main.js?v=20260805l"></script>
-  <script src="js/debug.js?v=20260805l"></script>
-  <script src="js/equipment.js?v=20260805l"></script>
-  <script src="js/experience.js?v=20260805l"></script>
-  <script src="js/monsters.js?v=20260805l"></script>
-  <script src="js/monthly-medals.js?v=20260805l"></script>
-  <script src="js/battle.js?v=20260805l"></script>
-  <script src="js/training.js?v=20260805l"></script>
-  <script src="js/profile.js?v=20260805l"></script>
-  <script src="js/achievements.js?v=20260805l"></script>
-  <script src="js/orientation.js?v=20260805l"></script>
+  <script src="js/storage-keys.js?v=20260806a"></script>
+  <script src="js/tab-lock.js?v=20260806a"></script>
+  <script src="js/auth.js?v=20260806a"></script>
+  <script src="js/progress-sync.js?v=20260806a"></script>
+  <script src="js/leaderboard.js?v=20260806a"></script>
+  <script src="js/main.js?v=20260806a"></script>
+  <script src="js/debug.js?v=20260806a"></script>
+  <script src="js/equipment.js?v=20260806a"></script>
+  <script src="js/experience.js?v=20260806a"></script>
+  <script src="js/monsters.js?v=20260806a"></script>
+  <script src="js/monthly-medals.js?v=20260806a"></script>
+  <script src="js/battle.js?v=20260806a"></script>
+  <script src="js/training.js?v=20260806a"></script>
+  <script src="js/profile.js?v=20260806a"></script>
+  <script src="js/achievements.js?v=20260806a"></script>
+  <script src="js/orientation.js?v=20260806a"></script>
+  <script src="js/nav.js?v=20260806a"></script>
 </body>
 </html>
