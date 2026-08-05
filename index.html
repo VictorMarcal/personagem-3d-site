@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260805h">
+  <link rel="stylesheet" href="css/style.css?v=20260805i">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -34,7 +34,7 @@
   <header class="site-header">
     <div class="site-title-group">
       <h1>Personagem 3D</h1>
-      <span id="site-version" class="site-version-hero">v1.11.0</span>
+      <span id="site-version" class="site-version-hero">v1.11.1</span>
     </div>
     <nav class="nav-tabs">
       <button id="btn-nav-jogo" class="nav-tab active">Jogo</button>
@@ -58,9 +58,9 @@
         <p>Regeneração: <span id="stat-regeneracao-value">0</span>/s</p>
         <p id="hud-unspent-points-row">Pontos para distribuir: <span id="hud-unspent-points-value">0</span></p>
         <p>Moedas: <span id="hud-moedas-value">0</span></p>
-        <p>Energia Lvl <span id="hud-level-energia">0</span> <button id="btn-hud-upgrade-energia" class="btn-hud-plus hidden">+</button></p>
-        <p>Força Lvl <span id="hud-level-forca">0</span> <button id="btn-hud-upgrade-forca" class="btn-hud-plus hidden">+</button></p>
-        <p>Resistência Lvl <span id="hud-level-resistencia">0</span> <button id="btn-hud-upgrade-resistencia" class="btn-hud-plus hidden">+</button></p>
+        <p>Energia: <span id="hud-level-energia">0</span> <button id="btn-hud-upgrade-energia" class="btn-hud-plus hidden">+</button></p>
+        <p>Força: <span id="hud-level-forca">0</span> <button id="btn-hud-upgrade-forca" class="btn-hud-plus hidden">+</button></p>
+        <p>Resistência: <span id="hud-level-resistencia">0</span> <button id="btn-hud-upgrade-resistencia" class="btn-hud-plus hidden">+</button></p>
       </div>
 
       <div id="battle-hud" class="hidden">
@@ -398,7 +398,7 @@
 
       <div id="debug-character-info">
         <p>Pontos disponíveis: <span id="debug-points-value">0</span></p>
-        <p>Status investidos — Energia Lvl <span id="debug-level-energia">0</span> · Força Lvl <span id="debug-level-forca">0</span> · Resistência Lvl <span id="debug-level-resistencia">0</span></p>
+        <p>Status investidos — Energia: <span id="debug-level-energia">0</span> · Força: <span id="debug-level-forca">0</span> · Resistência: <span id="debug-level-resistencia">0</span></p>
       </div>
 
       <hr class="debug-divider">
@@ -413,7 +413,7 @@
         <h2 class="card-title">Status</h2>
         <p>Vida: <span id="profile-stat-vida">0</span> · Ataque: <span id="profile-stat-ataque">0</span> · Defesa: <span id="profile-stat-defesa">0</span></p>
         <p>Destreza: <span id="profile-stat-destreza">0%</span> · Letalidade: <span id="profile-stat-letalidade">0%</span> · Regeneração: <span id="profile-stat-regeneracao">0</span>/s</p>
-        <p>Energia Lvl <span id="profile-level-energia">0</span> · Força Lvl <span id="profile-level-forca">0</span> · Resistência Lvl <span id="profile-level-resistencia">0</span></p>
+        <p>Energia: <span id="profile-level-energia">0</span> · Força: <span id="profile-level-forca">0</span> · Resistência: <span id="profile-level-resistencia">0</span></p>
       </section>
 
       <section class="card" id="profile-summary-card">
@@ -459,21 +459,21 @@
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260805h"></script>
-  <script src="js/tab-lock.js?v=20260805h"></script>
-  <script src="js/auth.js?v=20260805h"></script>
-  <script src="js/progress-sync.js?v=20260805h"></script>
-  <script src="js/leaderboard.js?v=20260805h"></script>
-  <script src="js/main.js?v=20260805h"></script>
-  <script src="js/debug.js?v=20260805h"></script>
-  <script src="js/equipment.js?v=20260805h"></script>
-  <script src="js/experience.js?v=20260805h"></script>
-  <script src="js/monsters.js?v=20260805h"></script>
-  <script src="js/monthly-medals.js?v=20260805h"></script>
-  <script src="js/battle.js?v=20260805h"></script>
-  <script src="js/training.js?v=20260805h"></script>
-  <script src="js/profile.js?v=20260805h"></script>
-  <script src="js/achievements.js?v=20260805h"></script>
-  <script src="js/orientation.js?v=20260805h"></script>
+  <script src="js/storage-keys.js?v=20260805i"></script>
+  <script src="js/tab-lock.js?v=20260805i"></script>
+  <script src="js/auth.js?v=20260805i"></script>
+  <script src="js/progress-sync.js?v=20260805i"></script>
+  <script src="js/leaderboard.js?v=20260805i"></script>
+  <script src="js/main.js?v=20260805i"></script>
+  <script src="js/debug.js?v=20260805i"></script>
+  <script src="js/equipment.js?v=20260805i"></script>
+  <script src="js/experience.js?v=20260805i"></script>
+  <script src="js/monsters.js?v=20260805i"></script>
+  <script src="js/monthly-medals.js?v=20260805i"></script>
+  <script src="js/battle.js?v=20260805i"></script>
+  <script src="js/training.js?v=20260805i"></script>
+  <script src="js/profile.js?v=20260805i"></script>
+  <script src="js/achievements.js?v=20260805i"></script>
+  <script src="js/orientation.js?v=20260805i"></script>
 </body>
 </html>
