@@ -156,53 +156,26 @@ function findNextToDefeatIndex(creatures) {
   return index === -1 ? creatures.length - 1 : index;
 }
 
-// Janela de 5 criaturas centrada na proxima por derrotar, ajustada nos
-// limites da lista (inicio/fim) para continuar a mostrar 5 quando possivel
-function getVisibleWindow(creatures, centerIndex, windowSize) {
-  const half = Math.floor(windowSize / 2);
-  let start = centerIndex - half;
-  let end = centerIndex + half;
-
-  if (start < 0) {
-    end += -start;
-    start = 0;
-  }
-  if (end > creatures.length - 1) {
-    start -= end - (creatures.length - 1);
-    end = creatures.length - 1;
-  }
-  start = Math.max(0, start);
-
-  return creatures.slice(start, end + 1).map((creature, i) => ({ creature, index: start + i }));
-}
-
-const VISIBLE_WINDOW_SIZE = 5;
-
-// So mexe no scrollLeft do proprio carrossel (nunca no scroll da
-// pagina) e so quando o "proximo a derrotar" muda de facto - evita que
-// re-renderizacoes frequentes (ex: a cada tick da simulacao de
-// distancia) fiquem a repor a posicao e a "saltar" a pagina
+// So mexe no scroll da pagina e so quando o "proximo a derrotar" muda de
+// facto - evita que re-renderizacoes frequentes (ex: a cada tick da
+// simulacao de distancia) fiquem a repor a posicao e a "saltar" a pagina
 let lastCenteredNextIndex = null;
 
-function centerNextTargetInCarousel() {
+function scrollNextTargetIntoView() {
   const nextTargetEl = monstersListEl.querySelector(".next-target");
   if (!nextTargetEl) return;
-
-  const containerWidth = monstersListEl.clientWidth;
-  const targetLeft = nextTargetEl.offsetLeft;
-  const targetWidth = nextTargetEl.offsetWidth;
-
-  monstersListEl.scrollLeft = targetLeft - containerWidth / 2 + targetWidth / 2;
+  nextTargetEl.scrollIntoView({ block: "center" });
 }
 
+// Lista vertical com um card por criatura (todos os mini-bosses/bosses
+// gerados, sem janela/limite de itens visiveis).
 function renderMonsters() {
   const creatures = generateCreatures();
   const nextIndex = findNextToDefeatIndex(creatures);
-  const visible = getVisibleWindow(creatures, nextIndex, VISIBLE_WINDOW_SIZE);
 
   monstersListEl.innerHTML = "";
 
-  visible.forEach(({ creature, index }) => {
+  creatures.forEach((creature, index) => {
     const unlocked = isCreatureUnlocked(creature, creatures, index);
     const defeated = isCreatureDefeated(creature.level);
     const encountered = isCreatureEncountered(creature.level);
@@ -271,7 +244,7 @@ function renderMonsters() {
   });
 
   if (nextIndex !== lastCenteredNextIndex) {
-    centerNextTargetInCarousel();
+    scrollNextTargetIntoView();
     lastCenteredNextIndex = nextIndex;
   }
 }
