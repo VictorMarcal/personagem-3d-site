@@ -38,13 +38,14 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/monthly-medals.js` | Contador de distância mensal, corte/rollover de mês, medalhas Ouro/Prata/Bronze |
 | `js/battle.js` | Lógica de combate por turnos, popup fullscreen de batalha |
 | `js/training.js` | GPS, tracking de distância, sessões de treino, filtros de ruído, fila local de sessões pendentes para `training_sessions` |
-| `js/profile.js` | Aba de Perfil: navegação Jogo/Perfil, status/equipamento, histórico de treinos, agregados semana/mês, gráficos SVG |
+| `js/profile.js` | Aba de Perfil: status/equipamento, histórico de treinos, agregados semana/mês, gráficos SVG |
 | `js/orientation.js` | Aviso de rodar para retrato em dispositivos touch |
+| `js/nav.js` | Barra de separadores inferior (Personagem/Treino/Batalhas/Troféus/Perfil), tema "Campo Aberto" — ver secção 15 |
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — histórico/registo, não é lido pelo site nem pelo Supabase |
 | `.mcp.json` | Liga o Claude Code ao projeto Supabase via MCP (`--project-ref=vnqjaepjfqlhgmlrhzlr`), token vem de uma variável de ambiente (`SUPABASE_ACCESS_TOKEN`), nunca gravado no ficheiro. Desde 2026-08-03, migrações novas são aplicadas diretamente via este MCP (`apply_migration`) em vez de copiar/colar SQL manualmente no dashboard — `supabase/schema.sql` continua a ser atualizado a cada migração, só como registo/referência |
 
 Ordem de carregamento dos scripts (importa por causa de dependências entre módulos):
-`storage-keys → tab-lock → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → monthly-medals → battle → training → profile → achievements → orientation`
+`storage-keys → tab-lock → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → monthly-medals → battle → training → profile → achievements → orientation → nav`
 
 `achievements.js` carrega **depois** de `monthly-medals.js` e `profile.js` porque os 12 cartões de medalha mensal (secção 10) dependem de `MONTH_NAMES_PT` (definido em `profile.js`) já estar disponível quando `achievements.js` corre a sua própria renderização inicial no fim do ficheiro.
 
@@ -347,7 +348,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 
 ## 15. Aba de Perfil e histórico de treinos
 
-- Navegação sem framework: dois botões no cabeçalho (`Jogo`/`Perfil`) alternam `.hidden` entre dois containers (`#view-jogo`/`#view-perfil`) — mesmo padrão já usado nos modais
+- **Navegação visível: barra de separadores fixa no fundo do ecrã** (`#tab-bar`, `js/nav.js`, tema "Campo Aberto" 2026-08-06) com 5 separadores — Personagem, Treino, Batalhas, Troféus, Perfil. Personagem/Treino/Batalhas/Troféus são 4 `.pane` dentro do mesmo container `#view-jogo` (alternadas via `data-pane-name`/`classList.toggle("active")`, nunca desmontadas do DOM); Perfil continua a ser um container à parte (`#view-perfil`). Os dois botões antigos no cabeçalho (`#btn-nav-jogo`/`#btn-nav-perfil`) continuam no DOM mas invisíveis (`.legacy-nav`, `aria-hidden`) — `js/nav.js` limita-se a clicar neles por baixo dos panos, para `js/profile.js`/`js/battle.js` continuarem a funcionar sem alterações (incluindo o bloqueio de navegação para o Perfil durante uma luta, secção acima). O separador ativo sobrevive a um refresh (`localStorage`, chave `ui.separadorAtivo`, preferência por dispositivo, nunca sincronizada)
 - A cena 3D (`js/main.js`) pausa o `renderer.render(...)` enquanto a aba Perfil está visível (poupa GPU/bateria), sem parar o loop `requestAnimationFrame`
 - **`training_sessions`** (Postgres): uma linha por sessão de treino (`started_at`, `ended_at`, `distance_m`, `effective_distance_m`, `mode`, `duration_seconds`), imutável depois de gravada (sem UPDATE/DELETE). É a peça que faltava para qualquer métrica não-agregada — antes só existiam totais vitalícios. `distance_m` é sempre a distância real (GPS); `effective_distance_m` é a distância já com o multiplicador de justiça de esforço do modo aplicado (secção 4.1) — o histórico/gráficos da aba Perfil usam a real, o resto do jogo usa a efetiva
 - **Captura fiável**: ao contrário do progresso (snapshot substituível), uma sessão é um evento discreto — fica numa fila local (`personagem.filaSessoesTreino`) até ser confirmada no Supabase, com `client_id` + índice único para o reenvio nunca duplicar. Retry no evento `online` e no arranque seguinte
