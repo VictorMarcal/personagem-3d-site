@@ -287,6 +287,19 @@ alter table public.player_progress add column if not exists tier_equipado_arma s
 alter table public.player_progress add column if not exists tier_equipado_escudo smallint not null default 0;
 alter table public.player_progress add column if not exists tier_equipado_armadura smallint not null default 0;
 
+-- Migracao (2026-08-05, mesmo dia - o sistema de tiers/posse/drop acima foi
+-- substituido por um equipamento continuo antes sequer de chegar a
+-- produção real): Arma/Escudo/Armadura deixam de ter tiers, passam a ser
+-- uma peca so por tipo com um nivel de melhoria continuo (1-99), gasto em
+-- moedas (nunca por drop) - ver secção 7 da documentação. As colunas de
+-- tiers/posse acima (nivel_melhoria_*, tiers_possuidos_*, tier_equipado_*)
+-- ficam por usar, mantidas so para não perder dados de quem chegou a
+-- testar o sistema anterior (mesmo padrão de nivelEquipVida/Ataque/Defesa
+-- em js/storage-keys.js).
+alter table public.player_progress add column if not exists nivel_arma smallint not null default 1;
+alter table public.player_progress add column if not exists nivel_escudo smallint not null default 1;
+alter table public.player_progress add column if not exists nivel_armadura smallint not null default 1;
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

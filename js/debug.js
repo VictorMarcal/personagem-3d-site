@@ -266,19 +266,6 @@ function checkSimCoinDropsForDistance(currentSessionDistanceM) {
   }
 }
 
-// Espelha equipDropsCheckedKm de js/training.js (contador PROPRIO, nunca
-// partilhado - mesma razao de simCoinsCheckedKm acima).
-let simEquipDropsCheckedKm = 0;
-
-function checkSimEquipmentDropsForDistance(currentSessionDistanceM) {
-  const currentKm = Math.floor(currentSessionDistanceM / 1000);
-  const newKm = currentKm - simEquipDropsCheckedKm;
-  if (newKm > 0) {
-    rollEquipmentDropsForKm(newKm);
-    simEquipDropsCheckedKm = currentKm;
-  }
-}
-
 function tickSimDistance() {
   const factor = Number(inputSimFactor.value) || 0;
   const elapsedSeconds = SIM_DISTANCE_TICK_MS / 1000;
@@ -288,7 +275,6 @@ function tickSimDistance() {
   addToMonthlyDistance(deltaM);
   simSessionDistanceM += deltaM;
   checkSimCoinDropsForDistance(simSessionDistanceM);
-  checkSimEquipmentDropsForDistance(simSessionDistanceM);
   const simSessionDurationSeconds = (Date.now() - simSessionStartTime) / 1000;
   checkAndUnlockAchievements(simSessionDistanceM, simSessionDurationSeconds);
 
@@ -300,7 +286,6 @@ function startSimDistance() {
   if (simDistanceIntervalId !== null) return;
   simSessionDistanceM = 0;
   simCoinsCheckedKm = 0;
-  simEquipDropsCheckedKm = 0;
   simSessionStartTime = Date.now();
   simDistanceIntervalId = setInterval(tickSimDistance, SIM_DISTANCE_TICK_MS);
   btnToggleSimDistance.textContent = "Parar simulação";
@@ -379,15 +364,9 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelForca);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelResistencia);
   localStorage.removeItem(STORAGE_KEY_MOEDAS);
-  localStorage.removeItem(STORAGE_KEY_WEAPON_UPGRADE_LEVELS);
-  localStorage.removeItem(STORAGE_KEY_SHIELD_UPGRADE_LEVELS);
-  localStorage.removeItem(STORAGE_KEY_ARMOR_UPGRADE_LEVELS);
-  localStorage.removeItem(STORAGE_KEY_WEAPON_OWNED_TIERS);
-  localStorage.removeItem(STORAGE_KEY_SHIELD_OWNED_TIERS);
-  localStorage.removeItem(STORAGE_KEY_ARMOR_OWNED_TIERS);
-  localStorage.removeItem(STORAGE_KEY_WEAPON_EQUIPPED_TIER);
-  localStorage.removeItem(STORAGE_KEY_SHIELD_EQUIPPED_TIER);
-  localStorage.removeItem(STORAGE_KEY_ARMOR_EQUIPPED_TIER);
+  localStorage.removeItem(STORAGE_KEY_WEAPON_LEVEL);
+  localStorage.removeItem(STORAGE_KEY_SHIELD_LEVEL);
+  localStorage.removeItem(STORAGE_KEY_ARMOR_LEVEL);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado);
   localStorage.removeItem(STORAGE_KEYS.active);
   localStorage.removeItem(STORAGE_KEYS.distanciaAcumuladaM);

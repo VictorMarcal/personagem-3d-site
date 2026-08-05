@@ -17,15 +17,9 @@ function readLocalProgressSnapshot() {
     nivel_forca: getInvestableStatLevel("forca"),
     nivel_resistencia: getInvestableStatLevel("resistencia"),
     moedas: getMoedas(),
-    nivel_melhoria_armas: getWeaponUpgradeLevelsMap(),
-    nivel_melhoria_escudos: getShieldUpgradeLevelsMap(),
-    nivel_melhoria_armaduras: getArmorUpgradeLevelsMap(),
-    tiers_possuidos_armas: getWeaponOwnedTiers(),
-    tiers_possuidos_escudos: getShieldOwnedTiers(),
-    tiers_possuidos_armaduras: getArmorOwnedTiers(),
-    tier_equipado_arma: getCurrentWeaponTierIndex(),
-    tier_equipado_escudo: getCurrentShieldTierIndex(),
-    tier_equipado_armadura: getCurrentArmorTierIndex(),
+    nivel_arma: getWeaponLevel(),
+    nivel_escudo: getShieldLevel(),
+    nivel_armadura: getArmorLevel(),
     last_awarded_level: getLastAwardedLevel(),
     defeated_creatures: getDefeatedCreaturesMap(),
     encountered_creatures: getEncounteredLevels(),
@@ -149,15 +143,9 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelForca, String(progress.nivel_forca || 0));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelResistencia, String(progress.nivel_resistencia || 0));
   localStorage.setItem(STORAGE_KEY_MOEDAS, String(progress.moedas != null ? progress.moedas : 100));
-  localStorage.setItem(STORAGE_KEY_WEAPON_UPGRADE_LEVELS, JSON.stringify(progress.nivel_melhoria_armas || {}));
-  localStorage.setItem(STORAGE_KEY_SHIELD_UPGRADE_LEVELS, JSON.stringify(progress.nivel_melhoria_escudos || {}));
-  localStorage.setItem(STORAGE_KEY_ARMOR_UPGRADE_LEVELS, JSON.stringify(progress.nivel_melhoria_armaduras || {}));
-  localStorage.setItem(STORAGE_KEY_WEAPON_OWNED_TIERS, JSON.stringify(progress.tiers_possuidos_armas || [0]));
-  localStorage.setItem(STORAGE_KEY_SHIELD_OWNED_TIERS, JSON.stringify(progress.tiers_possuidos_escudos || [0]));
-  localStorage.setItem(STORAGE_KEY_ARMOR_OWNED_TIERS, JSON.stringify(progress.tiers_possuidos_armaduras || [0]));
-  localStorage.setItem(STORAGE_KEY_WEAPON_EQUIPPED_TIER, String(progress.tier_equipado_arma || 0));
-  localStorage.setItem(STORAGE_KEY_SHIELD_EQUIPPED_TIER, String(progress.tier_equipado_escudo || 0));
-  localStorage.setItem(STORAGE_KEY_ARMOR_EQUIPPED_TIER, String(progress.tier_equipado_armadura || 0));
+  localStorage.setItem(STORAGE_KEY_WEAPON_LEVEL, String(progress.nivel_arma || 1));
+  localStorage.setItem(STORAGE_KEY_SHIELD_LEVEL, String(progress.nivel_escudo || 1));
+  localStorage.setItem(STORAGE_KEY_ARMOR_LEVEL, String(progress.nivel_armadura || 1));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado, String(progress.last_awarded_level));
   localStorage.setItem(STORAGE_KEY_DEFEATED_CREATURES, JSON.stringify(progress.defeated_creatures || {}));
   localStorage.setItem(STORAGE_KEY_ENCOUNTERED_CREATURES, JSON.stringify(progress.encountered_creatures || []));
