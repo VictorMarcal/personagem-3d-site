@@ -80,6 +80,7 @@ function awardMonsterCoins(creature) {
   if (!range) return;
   const amount = Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
   addMoedas(amount);
+  showGameToast(`+${amount} moedas`, "moedas");
 }
 
 // Drop de equipamento por derrotar mini-boss/boss (secção 7 da
@@ -98,7 +99,7 @@ function awardMonsterEquipmentDrop(creature) {
   if (chancePercent === null) return;
 
   const drop = rollEquipmentDrop(chancePercent);
-  if (drop) showEquipmentDropToast(describeEquipmentDrop(drop));
+  if (drop) showGameToast(describeEquipmentDrop(drop), "equipamento");
 }
 
 function updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp) {

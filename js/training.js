@@ -229,6 +229,7 @@ function rollCoinDropsForKm(kmCount) {
     if (Math.random() < COIN_FIND_CHANCE) {
       const found = Math.floor(Math.random() * (COIN_FIND_MAX - COIN_FIND_MIN + 1)) + COIN_FIND_MIN;
       addMoedas(found);
+      showGameToast(`+${found} moedas`, "moedas");
     }
   }
 }
@@ -259,7 +260,7 @@ const EQUIPMENT_DROP_CHANCE_KM = 5;
 function rollEquipmentDropsForKm(kmCount) {
   for (let i = 0; i < kmCount; i++) {
     const drop = rollEquipmentDrop(EQUIPMENT_DROP_CHANCE_KM);
-    if (drop) showEquipmentDropToast(describeEquipmentDrop(drop));
+    if (drop) showGameToast(describeEquipmentDrop(drop), "equipamento");
   }
 }
 

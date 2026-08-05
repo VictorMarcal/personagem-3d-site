@@ -328,7 +328,7 @@ function getDuplicateDropCoinReward(tiers, tierIndex) {
 // do intervalo elegivel (acima) - no maximo uma peca por evento. Devolve
 // null se nao dropou nada (falhou a % ou nao ha nenhum tier elegivel nesse
 // nivel), ou um objeto descrevendo o resultado para quem chamou poder
-// avisar o jogador (showEquipmentDropToast).
+// avisar o jogador (showGameToast).
 function rollEquipmentDrop(chancePercent) {
   if (Math.random() * 100 >= chancePercent) return null;
 
@@ -350,13 +350,14 @@ function rollEquipmentDrop(chancePercent) {
   return { pieceName: typeConfig.pieceName, tier, duplicate: false };
 }
 
-// Aviso nao-bloqueante de um drop (novo ou duplicado) - mesmo espirito do
-// numero flutuante de combate (js/main.js showFloatingCombatText), mas fixo
-// no ecra (o treino/luta nao tem uma posicao 3D fixa relevante para isto) e
-// com texto em vez de um numero.
-function showEquipmentDropToast(message) {
+// Aviso nao-bloqueante generico (drop de equipamento, moedas, subida de
+// nivel, medalha mensal - variant escolhe a cor via CSS .game-toast-<variant>)
+// - mesmo espirito do numero flutuante de combate (js/main.js
+// showFloatingCombatText), mas fixo no ecra (o treino/luta nao tem uma
+// posicao 3D fixa relevante para isto) e com texto em vez de um numero.
+function showGameToast(message, variant) {
   const el = document.createElement("div");
-  el.className = "equip-drop-toast";
+  el.className = `game-toast game-toast-${variant}`;
   el.textContent = message;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 3500);
@@ -433,6 +434,8 @@ function awardPointsIfNeeded(lifetimeM) {
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(newPoints));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.ultimoNivelPremiado, String(currentLevel));
   queueProgressSync();
+
+  showGameToast(`Subiste para o nível ${currentLevel}!`, "nivel");
 }
 
 // Pontuacao por derrotar uma criatura depende das estrelas da vitoria

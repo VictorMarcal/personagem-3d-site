@@ -594,7 +594,7 @@ main {
   font-size: 0.8rem;
 }
 
-.equip-drop-toast {
+.game-toast {
   position: fixed;
   top: 1rem;
   left: 50%;
@@ -603,13 +603,31 @@ main {
   max-width: 90vw;
   padding: 0.6rem 1rem;
   border-radius: 0.5rem;
-  background: #1c2e1f;
-  border: 1px solid #2f7a3d;
   color: #f0f0f0;
   font-size: 0.85rem;
   text-align: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   animation: floatUpFade 3.5s ease-out forwards;
+}
+
+.game-toast-equipamento {
+  background: #1c2e1f;
+  border: 1px solid #2f7a3d;
+}
+
+.game-toast-moedas {
+  background: #2e2a1c;
+  border: 1px solid #a9822f;
+}
+
+.game-toast-nivel {
+  background: #1c2530;
+  border: 1px solid #4a90d9;
+}
+
+.game-toast-medalha {
+  background: #302a1c;
+  border: 1px solid #d9a84a;
 }
 
 .achievement-item {

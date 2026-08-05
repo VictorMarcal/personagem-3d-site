@@ -276,6 +276,14 @@ function generateMonthlyMedalAchievements(unlockedMap = getUnlockedAchievements(
   });
 }
 
+// So usado pelo toast de moedas por conquista (unlockAchievement abaixo) -
+// procura o nome legivel a partir do id, ja que unlockAchievement so
+// recebe o id em bruto.
+function getAchievementName(id) {
+  const achievement = getAllAchievements().find((a) => a.id === id);
+  return achievement ? achievement.name : "";
+}
+
 function getAllAchievements(unlockedMap = getUnlockedAchievements()) {
   return [
     ...STATIC_ACHIEVEMENTS,
@@ -394,6 +402,20 @@ function unlockAchievement(id, unlockedAt) {
 
     const coinReward = getAchievementCoinReward(id);
     if (coinReward > 0) addMoedas(coinReward);
+
+    // Medalha mensal (id real medal_<cor>_<ano>_<mes>, atribuido por
+    // js/monthly-medals.js claimOwnMedals): toast proprio em vez do
+    // generico de moedas abaixo, com as moedas do premio incluidas na
+    // mesma mensagem - mesmo espirito do toast de drop de equipamento
+    // repetido (uma so mensagem por evento, nao duas empilhadas).
+    const medalMatch = id.match(MONTHLY_MEDAL_ID_PATTERN);
+    if (medalMatch) {
+      const [, medal] = medalMatch;
+      const coinSuffix = coinReward > 0 ? ` (+${coinReward} moedas)` : "";
+      showGameToast(`${MEDAL_ICON_BY_TYPE[medal]} Medalha de ${MEDAL_LABEL_BY_TYPE[medal]} conquistada!${coinSuffix}`, "medalha");
+    } else if (coinReward > 0) {
+      showGameToast(`+${coinReward} moedas (${getAchievementName(id)})`, "moedas");
+    }
   }
 }
 
