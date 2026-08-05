@@ -434,4 +434,26 @@ document.getElementById("btn-save-debug-vars").addEventListener("click", saveDeb
 document.getElementById("btn-reset-debug-vars").addEventListener("click", resetDebugVars);
 document.getElementById("btn-reset-character").addEventListener("click", resetCharacterAndDistance);
 
+// Esconder/mostrar o corpo do card de Debug (2026-08-05): so o admin ve
+// este card, mas com dezenas de campos ocupa muito espaco na aba Jogo -
+// o titulo/botao de alternar ficam sempre visiveis, so o resto se esconde.
+// Preferencia local (debug.*, nunca sincronizada, como o resto do Debug).
+const DEBUG_CARD_COLLAPSED_KEY = "debug.cardEscondido";
+const debugCardBodyEl = document.getElementById("debug-card-body");
+const btnToggleDebugCard = document.getElementById("btn-toggle-debug-card");
+
+function applyDebugCardCollapsedState() {
+  const collapsed = localStorage.getItem(DEBUG_CARD_COLLAPSED_KEY) === "true";
+  debugCardBodyEl.classList.toggle("hidden", collapsed);
+  btnToggleDebugCard.textContent = collapsed ? "Mostrar" : "Esconder";
+}
+
+btnToggleDebugCard.addEventListener("click", () => {
+  const collapsed = localStorage.getItem(DEBUG_CARD_COLLAPSED_KEY) === "true";
+  localStorage.setItem(DEBUG_CARD_COLLAPSED_KEY, String(!collapsed));
+  applyDebugCardCollapsedState();
+});
+
+applyDebugCardCollapsedState();
+
 loadDebugVarInputs();
