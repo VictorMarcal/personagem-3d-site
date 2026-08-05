@@ -26,6 +26,19 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Fechar/recarregar a aba a meio de uma luta nao gravava nada (vida/moedas/
+// pontos so sao persistidos no FIM do combate, ver startBattle abaixo) -
+// funcionava como um "abortar gratis", sem qualquer penalizacao, incluindo
+// como forma de fugir a uma derrota certa. O aviso nativo do browser (texto
+// generico, nao customizavel por nenhum browser moderno - por isso
+// event.returnValue fica so a "") obriga a uma confirmacao extra antes de
+// sair, reduzindo saidas acidentais e desincentivando o uso deliberado.
+window.addEventListener("beforeunload", (event) => {
+  if (!battleInProgress) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
+
 // Variacao aleatoria aplicada ao valor final (depois do piso minimo) - se
 // fosse antes do piso, builds com defesa forte (dano bruto sempre abaixo
 // do piso) acabavam sempre com o mesmo numero exato, sem variacao nenhuma
@@ -125,6 +138,13 @@ async function startBattle(creature) {
   }
 
   battleInProgress = true;
+
+  // Trocar para a aba Perfil a meio da luta nao a pausava - so parava o
+  // render 3D (jogoViewVisible, js/main.js), o ciclo da luta continuava a
+  // correr por baixo e resolvia-se sozinho, sem o jogador ver. Desativado
+  // enquanto a luta durar, reativado no fim (mesmo padrao do bloqueio entre
+  // abas acima, mas dentro da mesma aba).
+  document.getElementById("btn-nav-perfil").disabled = true;
 
   // Entrar em combate revela a Vida da criatura no card, ganhe ou perca
   // a luta - Ataque/Defesa ficam sempre desconhecidos.
@@ -252,6 +272,7 @@ async function startBattle(creature) {
 
   btnBattleBack.classList.remove("hidden");
   battleInProgress = false;
+  document.getElementById("btn-nav-perfil").disabled = false;
   releaseTabLock(STORAGE_KEY_BATTLE_TAB_LOCK);
 }
 

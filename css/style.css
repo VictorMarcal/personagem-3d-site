@@ -64,6 +64,11 @@ body {
   color: #fff;
 }
 
+.nav-tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 main {
   flex: 1;
   display: flex;
