@@ -282,7 +282,7 @@ Cada conquista tem ícone (emoji como placeholder), nome e um destaque visual ve
 
 ## 11. Debug
 
-Card com todos os valores públicos ajustáveis em tempo real (sem precisar de editar código):
+Card com todos os valores públicos ajustáveis em tempo real (sem precisar de editar código). **Botão "Esconder"/"Mostrar"** (2026-08-05, `btn-toggle-debug-card`) no cabeçalho do card: com dezenas de campos, o card ocupava muito espaço na aba Jogo mesmo para quem só queria espreitar o resto do jogo — o título e o botão ficam sempre visíveis, só o corpo (`#debug-card-body`) esconde. Preferência guardada em `localStorage` (`debug.cardEscondido`), nunca sincronizada (como o resto do Debug), por isso é por dispositivo/browser, não por conta:
 
 - Curva de nível (`LEVEL_BASE`, `LEVEL_EXP`)
 - Curvas de status de monstro × 3 (`STAT_BASE/FLAT/PERCENT` para Vida, Ataque, Defesa — secção 7)
