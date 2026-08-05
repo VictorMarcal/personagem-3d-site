@@ -155,8 +155,12 @@ const WEAPON_BASE_ATAQUE = 5;
 const SHIELD_BASE_DEFESA = 2;
 const ARMOR_BASE_VIDA = 3;
 
-function computeEquipPrimaryStat(base, level) {
-  return base + Math.round(Math.pow(level, EQUIP_PRIMARY_EXPONENT));
+// Arma tem o seu proprio expoente (2026-08-05, a pedido) - cresce mais
+// depressa que Escudo/Armadura, que continuam em EQUIP_PRIMARY_EXPONENT.
+const WEAPON_PRIMARY_EXPONENT = 1.4;
+
+function computeEquipPrimaryStat(base, level, exponent = EQUIP_PRIMARY_EXPONENT) {
+  return base + Math.round(Math.pow(level, exponent));
 }
 
 // Bonus secundario (2026-08-05, a pedido): vai de 0 no nivel 1 a
@@ -213,7 +217,7 @@ function computePlayerVida(energiaLevel) {
 }
 
 function computePlayerAtaque(forcaLevel) {
-  const weaponAtaque = computeEquipPrimaryStat(WEAPON_BASE_ATAQUE, getWeaponLevel());
+  const weaponAtaque = computeEquipPrimaryStat(WEAPON_BASE_ATAQUE, getWeaponLevel(), WEAPON_PRIMARY_EXPONENT);
   return Math.round(getPlayerBaseAtaque() + weaponAtaque + Math.pow(forcaLevel, getForcaExponent()));
 }
 
@@ -381,7 +385,7 @@ function createEquipmentUpgradeController(config) {
 
   function render() {
     const level = config.getLevel();
-    const primary = computeEquipPrimaryStat(config.base, level);
+    const primary = computeEquipPrimaryStat(config.base, level, config.primaryExponent);
     const secondary = computeEquipSecondaryStat(level);
     const coins = getMoedas();
 
@@ -400,7 +404,7 @@ function createEquipmentUpgradeController(config) {
     confirmBtn.classList.toggle("hidden", !canShowNext);
 
     if (canShowNext) {
-      const nextPrimary = computeEquipPrimaryStat(config.base, nextLevel);
+      const nextPrimary = computeEquipPrimaryStat(config.base, nextLevel, config.primaryExponent);
       const nextSecondary = computeEquipSecondaryStat(nextLevel);
       const cost = computeEquipUpgradeCost(nextLevel);
       nextPrimaryEl.textContent = `${nextPrimary} (+${nextPrimary - primary})`;
@@ -450,6 +454,7 @@ function createEquipmentUpgradeController(config) {
 const weaponUpgradeController = createEquipmentUpgradeController({
   idPrefix: "weapon",
   base: WEAPON_BASE_ATAQUE,
+  primaryExponent: WEAPON_PRIMARY_EXPONENT,
   getLevel: getWeaponLevel,
   setLevel: (level) => setEquipLevel(STORAGE_KEY_WEAPON_LEVEL, level),
   primaryIdSuffix: "ataque",
