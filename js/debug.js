@@ -67,7 +67,7 @@ const DEBUG_DEFAULTS = {
   // normais para bicicleta seriam um erro claro a caminhar ou a correr.
   maxSpeedKmhCaminhar: 7,
   maxSpeedKmhCorrer: 20,
-  maxSpeedKmhBicicleta: 25,
+  maxSpeedKmhBicicleta: 37,
   // Limite MINIMO por modo (2026-08-06, bug reportado - escolher "Correr"
   // e depois andar devagar continuava a contar ao multiplicador de Correr,
   // sem nunca ser filtrado pelo teto de velocidade, muito acima do ritmo
