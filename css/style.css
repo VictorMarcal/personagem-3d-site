@@ -42,6 +42,18 @@ body {
   font-weight: 600;
 }
 
+.site-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.site-version-hero {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #9a9aa5;
+}
+
 .nav-tabs {
   display: flex;
   gap: 0.4rem;
@@ -902,11 +914,6 @@ main {
   border-top: 1px solid #2a2a30;
 }
 
-.site-version {
-  margin-top: 0.15rem;
-  font-size: 0.7rem;
-  color: #555;
-}
 
 #auth-modal,
 #name-picker-modal {
