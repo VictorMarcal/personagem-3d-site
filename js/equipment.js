@@ -95,6 +95,25 @@ function getInvestableStatLevel(type) {
   return getStoredNumber(INVESTABLE_STAT_STORAGE_KEY_BY_TYPE[type], 0);
 }
 
+// Nivel "efetivo" de um status investivel = pontos investidos + bonus
+// secundario da peca de equipamento que o governa (2026-08-05, a pedido -
+// antes o bonus so entrava na formula do status DERIVADO, Letalidade/
+// Destreza/Regeneracao, sem nunca aparecer no numero mostrado ao
+// jogador). Usado em todo o lado onde este status e mostrado OU serve de
+// base a uma formula (HUD, Perfil, Debug, luta) - so upgradeEquipmentType
+// (gastar um ponto) e o snapshot do progress-sync.js continuam a usar o
+// valor investido em bruto (getInvestableStatLevel), que e o que
+// realmente se incrementa/guarda.
+const EQUIP_LEVEL_GETTER_BY_STAT_TYPE = {
+  energia: () => getArmorLevel(),
+  forca: () => getWeaponLevel(),
+  resistencia: () => getShieldLevel(),
+};
+
+function getEffectiveInvestableStatLevel(type) {
+  return getInvestableStatLevel(type) + computeEquipSecondaryStat(EQUIP_LEVEL_GETTER_BY_STAT_TYPE[type]());
+}
+
 // Formula recursiva antiga - mantida so para os MONSTROS (computeCreatureStatValue,
 // js/monsters.js), que continuam com as curvas statBase/Flat/Percent de
 // sempre (js/debug.js). O jogador passou a usar computePlayerVida/Ataque/Defesa
@@ -110,21 +129,13 @@ function computeStatValue(type, equipLevel) {
   return value;
 }
 
-// getLevelInfo/getLifetimeDistanceM sao de js/experience.js, que carrega
-// DEPOIS de equipment.js - guard usado no unico sitio que precisa do nivel
-// do personagem (capar a melhoria de uma peca ao proprio nivel).
-function getCurrentPlayerLevel() {
-  if (typeof getLevelInfo !== "function" || typeof getLifetimeDistanceM !== "function") return 1;
-  return getLevelInfo(getLifetimeDistanceM()).level;
-}
-
 // --- Equipamento continuo (2026-08-05) -----------------------------------
 // Substitui por completo o antigo sistema de 10 tiers + posse/drop por
 // peca: Arma/Escudo/Armadura sao agora uma peca so por tipo, com um unico
 // "nivel de melhoria" continuo de 1 a 99 (sem tiers, sem inventario, sem
-// RNG) - sobe-se gastando moedas, ate ao nivel de personagem atual (nunca
-// se pode ultrapassar o proprio nivel, mesma regra do sistema anterior)
-// ou ao maximo de 99.
+// RNG) - sobe-se gastando moedas ate ao maximo de 99, sem depender do
+// nivel de personagem (a regra que capava a melhoria ao proprio nivel
+// existiu por um dia so e foi removida a pedido).
 //
 // Formulas (nivel^expoente em vez de base^nivel, mesmo raciocinio de
 // "Porquê expoente sobre o nível" ja usado nos status do jogador acima -
@@ -205,29 +216,24 @@ function computePlayerDefesa(resistenciaLevel) {
 }
 
 // Destreza/Letalidade/Regeneracao (sem Foco - cada uma alimentada pelo
-// nivel investido no status que a governa + o bonus secundario da peca de
-// equipamento correspondente, no seu nivel de melhoria atual). Destreza/
-// Letalidade: formulas "base + (nivel+bonus)^expoente", resultado em
-// pontos percentuais - dividido por 100 para dar a fracao (0-1) usada nas
-// rolagens de combate (js/battle.js).
+// nivel EFETIVO do status que a governa, ja com o bonus secundario da
+// peca de equipamento correspondente incluido - ver
+// getEffectiveInvestableStatLevel acima, quem chama e que passa o valor
+// certo). Destreza/Letalidade: formula "base + nivel^expoente", resultado
+// em pontos percentuais - dividido por 100 para dar a fracao (0-1) usada
+// nas rolagens de combate (js/battle.js).
 function computeDestrezaChance(resistenciaLevel) {
-  const shieldBonus = computeEquipSecondaryStat(getShieldLevel());
-  const total = resistenciaLevel + shieldBonus;
-  return (getDestrezaBase() + Math.pow(total, getDestrezaExponent())) / 100;
+  return (getDestrezaBase() + Math.pow(resistenciaLevel, getDestrezaExponent())) / 100;
 }
 
 function computeLetalidadeChance(forcaLevel) {
-  const weaponBonus = computeEquipSecondaryStat(getWeaponLevel());
-  const total = forcaLevel + weaponBonus;
-  return (getLetalidadeBase() + Math.pow(total, getLetalidadeExponent())) / 100;
+  return (getLetalidadeBase() + Math.pow(forcaLevel, getLetalidadeExponent())) / 100;
 }
 
 // Regeneracao: mesma forma, mas o resultado fica em pontos de vida por
 // segundo (nao percentagem) - usada por getCurrentHp abaixo.
 function computeRegeneracaoPerSecond(energiaLevel) {
-  const armorBonus = computeEquipSecondaryStat(getArmorLevel());
-  const total = energiaLevel + armorBonus;
-  return getRegeneracaoBase() + Math.pow(total, getRegeneracaoExponent());
+  return getRegeneracaoBase() + Math.pow(energiaLevel, getRegeneracaoExponent());
 }
 
 // Comeca em 1 (nivel inicial) para "subir de nivel" so contar a partir
@@ -274,7 +280,7 @@ function getCurrentHp(maxHp) {
 
   const lastUpdate = Number(localStorage.getItem(STORAGE_KEY_HP_LAST_UPDATE)) || Date.now();
   const elapsedSeconds = Math.max(0, (Date.now() - lastUpdate) / 1000);
-  const recovered = Number(stored) + computeRegeneracaoPerSecond(getInvestableStatLevel("energia")) * elapsedSeconds;
+  const recovered = Number(stored) + computeRegeneracaoPerSecond(getEffectiveInvestableStatLevel("energia")) * elapsedSeconds;
   return Math.min(maxHp, Math.max(0, recovered));
 }
 
@@ -297,9 +303,9 @@ function awardBonusPoints(amount) {
 }
 
 function renderStatsHud() {
-  const energiaLevel = getInvestableStatLevel("energia");
-  const forcaLevel = getInvestableStatLevel("forca");
-  const resistenciaLevel = getInvestableStatLevel("resistencia");
+  const energiaLevel = getEffectiveInvestableStatLevel("energia");
+  const forcaLevel = getEffectiveInvestableStatLevel("forca");
+  const resistenciaLevel = getEffectiveInvestableStatLevel("resistencia");
 
   const maxHp = computePlayerVida(energiaLevel);
   statVidaValueEl.textContent = `${Math.round(getCurrentHp(maxHp))}/${maxHp}`;
@@ -337,7 +343,7 @@ function updateHpTicker(maxHp) {
       // durante uma luta o personagem esta noutra posicao (battle-fullscreen)
       // e a recuperacao ja nao avanca de qualquer forma.
       if (!battleInProgress) {
-        showFloatingCombatText(head, computeRegeneracaoPerSecond(getInvestableStatLevel("energia")));
+        showFloatingCombatText(head, computeRegeneracaoPerSecond(getEffectiveInvestableStatLevel("energia")));
       }
     }, 1000);
   } else if (isFull && hpTickerIntervalId !== null) {
@@ -360,7 +366,6 @@ function createEquipmentUpgradeController(config) {
   const nextPrimaryEl = document.getElementById(`${idPrefix}-upgrade-next-${config.primaryIdSuffix}`);
   const nextSecondaryEl = document.getElementById(`${idPrefix}-upgrade-next-${config.secondaryIdSuffix}`);
   const maxedEl = document.getElementById(`${idPrefix}-upgrade-maxed`);
-  const levelCapEl = document.getElementById(`${idPrefix}-upgrade-level-cap`);
   const costRowEl = document.getElementById(`${idPrefix}-upgrade-cost-row`);
   const costEl = document.getElementById(`${idPrefix}-upgrade-cost`);
   const coinsEl = document.getElementById(`${idPrefix}-upgrade-coins`);
@@ -369,7 +374,6 @@ function createEquipmentUpgradeController(config) {
 
   function render() {
     const level = config.getLevel();
-    const playerLevel = getCurrentPlayerLevel();
     const primary = computeEquipPrimaryStat(config.base, level);
     const secondary = computeEquipSecondaryStat(level);
     const coins = getMoedas();
@@ -381,14 +385,10 @@ function createEquipmentUpgradeController(config) {
 
     const atMax = level >= EQUIP_MAX_LEVEL;
     const nextLevel = level + 1;
-    // Regra 1 (herdada do sistema anterior): nunca melhorar a peca para um
-    // nivel acima do nivel de personagem atual.
-    const cappedByPlayerLevel = !atMax && nextLevel > playerLevel;
-    const canShowNext = !atMax && !cappedByPlayerLevel;
+    const canShowNext = !atMax;
 
     nextRowEl.classList.toggle("hidden", !canShowNext);
     maxedEl.classList.toggle("hidden", !atMax);
-    levelCapEl.classList.toggle("hidden", !cappedByPlayerLevel);
     costRowEl.classList.toggle("hidden", !canShowNext);
     confirmBtn.classList.toggle("hidden", !canShowNext);
 
@@ -416,7 +416,7 @@ function createEquipmentUpgradeController(config) {
   function upgrade() {
     const level = config.getLevel();
     const nextLevel = level + 1;
-    if (nextLevel > EQUIP_MAX_LEVEL || nextLevel > getCurrentPlayerLevel()) return;
+    if (nextLevel > EQUIP_MAX_LEVEL) return;
 
     const cost = computeEquipUpgradeCost(nextLevel);
     if (getMoedas() < cost) return; // moedas insuficientes

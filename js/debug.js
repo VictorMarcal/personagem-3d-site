@@ -67,7 +67,7 @@ const DEBUG_DEFAULTS = {
   // normais para bicicleta seriam um erro claro a caminhar ou a correr.
   maxSpeedKmhCaminhar: 7,
   maxSpeedKmhCorrer: 20,
-  maxSpeedKmhBicicleta: 45,
+  maxSpeedKmhBicicleta: 25,
   // Multiplicador de "justica de esforco" aplicado a distancia real (GPS)
   // antes de contar para XP/pontos/leaderboard/conquistas (ver secção 4 da
   // documentacao) - calibrado a partir de valores MET do Compendium of
@@ -206,9 +206,9 @@ function loadDebugVarInputs() {
 // dentro de handlers, nunca no topo do modulo)
 function renderDebugCharacterInfo() {
   debugPointsValueEl.textContent = getUnspentPoints();
-  debugLevelEnergiaEl.textContent = getInvestableStatLevel("energia");
-  debugLevelForcaEl.textContent = getInvestableStatLevel("forca");
-  debugLevelResistenciaEl.textContent = getInvestableStatLevel("resistencia");
+  debugLevelEnergiaEl.textContent = getEffectiveInvestableStatLevel("energia");
+  debugLevelForcaEl.textContent = getEffectiveInvestableStatLevel("forca");
+  debugLevelResistenciaEl.textContent = getEffectiveInvestableStatLevel("resistencia");
 }
 
 // Recalcula tudo o que depende das variaveis afinaveis, depois de

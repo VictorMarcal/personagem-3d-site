@@ -135,11 +135,11 @@ async function startBattle(creature) {
   // por garantia) - lutar com vida parcial e uma escolha do jogador, nao
   // um bloqueio. A recuperacao para de contar assim que a luta comeca
   // (so volta a avancar depois, a partir do valor guardado no fim dela).
-  const playerMaxHp = computePlayerVida(getInvestableStatLevel("energia"));
-  const playerAtaque = computePlayerAtaque(getInvestableStatLevel("forca"));
-  const playerDefesa = computePlayerDefesa(getInvestableStatLevel("resistencia"));
-  const playerDestreza = computeDestrezaChance(getInvestableStatLevel("resistencia"));
-  const playerLetalidade = computeLetalidadeChance(getInvestableStatLevel("forca"));
+  const playerMaxHp = computePlayerVida(getEffectiveInvestableStatLevel("energia"));
+  const playerAtaque = computePlayerAtaque(getEffectiveInvestableStatLevel("forca"));
+  const playerDefesa = computePlayerDefesa(getEffectiveInvestableStatLevel("resistencia"));
+  const playerDestreza = computeDestrezaChance(getEffectiveInvestableStatLevel("resistencia"));
+  const playerLetalidade = computeLetalidadeChance(getEffectiveInvestableStatLevel("forca"));
 
   const monsterMaxHp = computeCreatureStatValue("vida", creature);
   const monsterAtaque = computeCreatureStatValue("ataque", creature);

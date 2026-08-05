@@ -83,9 +83,9 @@ function onTrainingSessionsSynced() {
 // --- Status/Equipamento (dados ja existentes, so leitura) ---------------
 
 function renderProfileStatusSection() {
-  const energiaLevel = getInvestableStatLevel("energia");
-  const forcaLevel = getInvestableStatLevel("forca");
-  const resistenciaLevel = getInvestableStatLevel("resistencia");
+  const energiaLevel = getEffectiveInvestableStatLevel("energia");
+  const forcaLevel = getEffectiveInvestableStatLevel("forca");
+  const resistenciaLevel = getEffectiveInvestableStatLevel("resistencia");
 
   const profileMaxHp = computePlayerVida(energiaLevel);
   document.getElementById("profile-stat-vida").textContent = `${Math.round(getCurrentHp(profileMaxHp))}/${profileMaxHp}`;

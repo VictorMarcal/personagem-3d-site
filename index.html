@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260805g">
+  <link rel="stylesheet" href="css/style.css?v=20260805h">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -34,7 +34,7 @@
   <header class="site-header">
     <div class="site-title-group">
       <h1>Personagem 3D</h1>
-      <span id="site-version" class="site-version-hero">v1.10.0</span>
+      <span id="site-version" class="site-version-hero">v1.11.0</span>
     </div>
     <nav class="nav-tabs">
       <button id="btn-nav-jogo" class="nav-tab active">Jogo</button>
@@ -177,7 +177,6 @@
           </div>
         </div>
         <p id="weapon-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
-        <p id="weapon-upgrade-level-cap" class="hidden">Sobe de nível de personagem para continuar a evoluir esta peça.</p>
         <p id="weapon-upgrade-cost-row" class="auth-text">
           Custo: <strong id="weapon-upgrade-cost">0</strong> moedas (tens <strong id="weapon-upgrade-coins">0</strong>)
         </p>
@@ -202,7 +201,6 @@
           </div>
         </div>
         <p id="shield-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
-        <p id="shield-upgrade-level-cap" class="hidden">Sobe de nível de personagem para continuar a evoluir esta peça.</p>
         <p id="shield-upgrade-cost-row" class="auth-text">
           Custo: <strong id="shield-upgrade-cost">0</strong> moedas (tens <strong id="shield-upgrade-coins">0</strong>)
         </p>
@@ -227,7 +225,6 @@
           </div>
         </div>
         <p id="armor-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
-        <p id="armor-upgrade-level-cap" class="hidden">Sobe de nível de personagem para continuar a evoluir esta peça.</p>
         <p id="armor-upgrade-cost-row" class="auth-text">
           Custo: <strong id="armor-upgrade-cost">0</strong> moedas (tens <strong id="armor-upgrade-coins">0</strong>)
         </p>
@@ -401,7 +398,7 @@
 
       <div id="debug-character-info">
         <p>Pontos disponíveis: <span id="debug-points-value">0</span></p>
-        <p>Status investidos — Energia: <span id="debug-level-energia">0</span> · Força: <span id="debug-level-forca">0</span> · Resistência: <span id="debug-level-resistencia">0</span></p>
+        <p>Status investidos — Energia Lvl <span id="debug-level-energia">0</span> · Força Lvl <span id="debug-level-forca">0</span> · Resistência Lvl <span id="debug-level-resistencia">0</span></p>
       </div>
 
       <hr class="debug-divider">
@@ -462,21 +459,21 @@
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260805g"></script>
-  <script src="js/tab-lock.js?v=20260805g"></script>
-  <script src="js/auth.js?v=20260805g"></script>
-  <script src="js/progress-sync.js?v=20260805g"></script>
-  <script src="js/leaderboard.js?v=20260805g"></script>
-  <script src="js/main.js?v=20260805g"></script>
-  <script src="js/debug.js?v=20260805g"></script>
-  <script src="js/equipment.js?v=20260805g"></script>
-  <script src="js/experience.js?v=20260805g"></script>
-  <script src="js/monsters.js?v=20260805g"></script>
-  <script src="js/monthly-medals.js?v=20260805g"></script>
-  <script src="js/battle.js?v=20260805g"></script>
-  <script src="js/training.js?v=20260805g"></script>
-  <script src="js/profile.js?v=20260805g"></script>
-  <script src="js/achievements.js?v=20260805g"></script>
-  <script src="js/orientation.js?v=20260805g"></script>
+  <script src="js/storage-keys.js?v=20260805h"></script>
+  <script src="js/tab-lock.js?v=20260805h"></script>
+  <script src="js/auth.js?v=20260805h"></script>
+  <script src="js/progress-sync.js?v=20260805h"></script>
+  <script src="js/leaderboard.js?v=20260805h"></script>
+  <script src="js/main.js?v=20260805h"></script>
+  <script src="js/debug.js?v=20260805h"></script>
+  <script src="js/equipment.js?v=20260805h"></script>
+  <script src="js/experience.js?v=20260805h"></script>
+  <script src="js/monsters.js?v=20260805h"></script>
+  <script src="js/monthly-medals.js?v=20260805h"></script>
+  <script src="js/battle.js?v=20260805h"></script>
+  <script src="js/training.js?v=20260805h"></script>
+  <script src="js/profile.js?v=20260805h"></script>
+  <script src="js/achievements.js?v=20260805h"></script>
+  <script src="js/orientation.js?v=20260805h"></script>
 </body>
 </html>
