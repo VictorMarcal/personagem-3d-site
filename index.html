@@ -6,7 +6,7 @@
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260806e">
+  <link rel="stylesheet" href="css/style.css?v=20260806f">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -35,7 +35,7 @@
   <header class="site-header">
     <div class="site-title-group">
       <h1>Personagem 3D</h1>
-      <span id="site-version" class="site-version-hero">v1.13.1</span>
+      <span id="site-version" class="site-version-hero">v1.14.0</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -238,6 +238,15 @@
           <label>MAX_SPEED_KMH_BICICLETA <span class="debug-hint">velocidade máx. aceite de bicicleta (km/h)</span>
             <input type="number" id="dbg-maxSpeedKmhBicicleta" step="1">
           </label>
+          <label>MIN_SPEED_KMH_CAMINHAR <span class="debug-hint">velocidade mín. aceite a caminhar (km/h) - abaixo disto e descartado</span>
+            <input type="number" id="dbg-minSpeedKmhCaminhar" step="1">
+          </label>
+          <label>MIN_SPEED_KMH_CORRER <span class="debug-hint">velocidade mín. aceite a correr (km/h) - impede escolher Correr e andar</span>
+            <input type="number" id="dbg-minSpeedKmhCorrer" step="1">
+          </label>
+          <label>MIN_SPEED_KMH_BICICLETA <span class="debug-hint">velocidade mín. aceite de bicicleta (km/h) - impede escolher Bicicleta e andar/correr</span>
+            <input type="number" id="dbg-minSpeedKmhBicicleta" step="1">
+          </label>
           <label>XP_MULTIPLIER_CAMINHAR <span class="debug-hint">fração da distância que conta para XP a caminhar</span>
             <input type="number" id="dbg-xpMultiplierCaminhar" step="0.01">
           </label>
@@ -314,7 +323,7 @@
         </p>
       </section>
 
-      <p id="speed-warning" class="speed-warning hidden">⚠️ Velocidade acima do limite — esta distância não está a contar</p>
+      <p id="speed-warning" class="speed-warning hidden">⚠️ Velocidade incompatível com o modo escolhido — esta distância não está a contar</p>
 
       <section id="training-panel">
         <div id="start-screen" class="panel-screen">
@@ -523,22 +532,22 @@
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260806e"></script>
-  <script src="js/tab-lock.js?v=20260806e"></script>
-  <script src="js/auth.js?v=20260806e"></script>
-  <script src="js/progress-sync.js?v=20260806e"></script>
-  <script src="js/leaderboard.js?v=20260806e"></script>
-  <script src="js/main.js?v=20260806e"></script>
-  <script src="js/debug.js?v=20260806e"></script>
-  <script src="js/equipment.js?v=20260806e"></script>
-  <script src="js/experience.js?v=20260806e"></script>
-  <script src="js/monsters.js?v=20260806e"></script>
-  <script src="js/monthly-medals.js?v=20260806e"></script>
-  <script src="js/battle.js?v=20260806e"></script>
-  <script src="js/training.js?v=20260806e"></script>
-  <script src="js/profile.js?v=20260806e"></script>
-  <script src="js/achievements.js?v=20260806e"></script>
-  <script src="js/orientation.js?v=20260806e"></script>
-  <script src="js/nav.js?v=20260806e"></script>
+  <script src="js/storage-keys.js?v=20260806f"></script>
+  <script src="js/tab-lock.js?v=20260806f"></script>
+  <script src="js/auth.js?v=20260806f"></script>
+  <script src="js/progress-sync.js?v=20260806f"></script>
+  <script src="js/leaderboard.js?v=20260806f"></script>
+  <script src="js/main.js?v=20260806f"></script>
+  <script src="js/debug.js?v=20260806f"></script>
+  <script src="js/equipment.js?v=20260806f"></script>
+  <script src="js/experience.js?v=20260806f"></script>
+  <script src="js/monsters.js?v=20260806f"></script>
+  <script src="js/monthly-medals.js?v=20260806f"></script>
+  <script src="js/battle.js?v=20260806f"></script>
+  <script src="js/training.js?v=20260806f"></script>
+  <script src="js/profile.js?v=20260806f"></script>
+  <script src="js/achievements.js?v=20260806f"></script>
+  <script src="js/orientation.js?v=20260806f"></script>
+  <script src="js/nav.js?v=20260806f"></script>
 </body>
 </html>

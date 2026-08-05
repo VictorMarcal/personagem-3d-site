@@ -271,7 +271,12 @@ function onPositionUpdate(position) {
     const deltaSeconds = (timestamp - lastPosition.timestamp) / 1000;
     const speedMps = deltaSeconds > 0 ? segmentM / deltaSeconds : Infinity;
 
-    if (speedMps > getMaxSpeedMps(selectedTrainingMode)) {
+    // Fora da janela de velocidade do modo escolhido - tanto acima do teto
+    // (ver nota abaixo) como abaixo do minimo (2026-08-06, bug reportado:
+    // escolher "Correr" e depois andar devagar continuava a contar ao
+    // multiplicador de Correr, ja que so havia teto, nunca piso, e o ritmo
+    // de uma caminhada fica bem abaixo do teto de 20km/h de Correr).
+    if (speedMps > getMaxSpeedMps(selectedTrainingMode) || speedMps < getMinSpeedMps(selectedTrainingMode)) {
       // A ancora avanca SEMPRE a partir daqui (linha lastPosition = ... no
       // fim da funcao, ja fora deste bloco) - mesmo numa rejeicao. Antes
       // ficava presa na ultima posicao valida; se o ritmo real do jogador

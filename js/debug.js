@@ -68,6 +68,16 @@ const DEBUG_DEFAULTS = {
   maxSpeedKmhCaminhar: 7,
   maxSpeedKmhCorrer: 20,
   maxSpeedKmhBicicleta: 25,
+  // Limite MINIMO por modo (2026-08-06, bug reportado - escolher "Correr"
+  // e depois andar devagar continuava a contar ao multiplicador de Correr,
+  // sem nunca ser filtrado pelo teto de velocidade, muito acima do ritmo
+  // real). Caminhar fica sem minimo (e o modo mais lento, nao ha nada por
+  // baixo dele para simular) - Correr comeca exatamente onde o teto de
+  // Caminhar acaba (sem zona morta entre os dois), Bicicleta comeca acima
+  // do ritmo normal de corrida. Valores de partida, ajustaveis aqui.
+  minSpeedKmhCaminhar: 0,
+  minSpeedKmhCorrer: 7,
+  minSpeedKmhBicicleta: 10,
   // Multiplicador de "justica de esforco" aplicado a distancia real (GPS)
   // antes de contar para XP/pontos/leaderboard/conquistas (ver secção 4 da
   // documentacao) - calibrado a partir de valores MET do Compendium of
@@ -135,6 +145,8 @@ function getMaxAccuracyM() { return getDebugValue("maxAccuracyM"); }
 function getMinMovementM() { return getDebugValue("minMovementM"); }
 function getMaxSpeedKmh(mode) { return getDebugValue("maxSpeedKmh" + TRAINING_MODE_KEY_SUFFIX[mode]); }
 function getMaxSpeedMps(mode) { return getMaxSpeedKmh(mode) / 3.6; }
+function getMinSpeedKmh(mode) { return getDebugValue("minSpeedKmh" + TRAINING_MODE_KEY_SUFFIX[mode]); }
+function getMinSpeedMps(mode) { return getMinSpeedKmh(mode) / 3.6; }
 function getXpMultiplier(mode) { return getDebugValue("xpMultiplier" + TRAINING_MODE_KEY_SUFFIX[mode]); }
 function getMiniBossLevelStep() { return getDebugValue("miniBossLevelStep"); }
 function getBossLevelStep() { return getDebugValue("bossLevelStep"); }
@@ -176,6 +188,9 @@ const debugVarInputs = {
   maxSpeedKmhCaminhar: document.getElementById("dbg-maxSpeedKmhCaminhar"),
   maxSpeedKmhCorrer: document.getElementById("dbg-maxSpeedKmhCorrer"),
   maxSpeedKmhBicicleta: document.getElementById("dbg-maxSpeedKmhBicicleta"),
+  minSpeedKmhCaminhar: document.getElementById("dbg-minSpeedKmhCaminhar"),
+  minSpeedKmhCorrer: document.getElementById("dbg-minSpeedKmhCorrer"),
+  minSpeedKmhBicicleta: document.getElementById("dbg-minSpeedKmhBicicleta"),
   xpMultiplierCaminhar: document.getElementById("dbg-xpMultiplierCaminhar"),
   xpMultiplierCorrer: document.getElementById("dbg-xpMultiplierCorrer"),
   xpMultiplierBicicleta: document.getElementById("dbg-xpMultiplierBicicleta"),
