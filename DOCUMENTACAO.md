@@ -39,13 +39,14 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/battle.js` | Lógica de combate por turnos, popup fullscreen de batalha |
 | `js/training.js` | GPS, tracking de distância, sessões de treino, filtros de ruído, fila local de sessões pendentes para `training_sessions` |
 | `js/profile.js` | Aba de Perfil: histórico de treinos, agregados semana/mês, gráficos SVG |
+| `js/changelog.js` | Card "Versão da Aplicação" na aba Perfil: notas de atualização em linguagem simples (array `CHANGELOG`), traduzidas a partir do histórico técnico de versões |
 | `js/orientation.js` | Aviso de rodar para retrato em dispositivos touch |
 | `js/nav.js` | Barra de separadores inferior (Personagem/Treino/Batalhas/Troféus/Perfil), tema "Campo Aberto" — ver secção 15 |
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — histórico/registo, não é lido pelo site nem pelo Supabase |
 | `.mcp.json` | Liga o Claude Code ao projeto Supabase via MCP (`--project-ref=vnqjaepjfqlhgmlrhzlr`), token vem de uma variável de ambiente (`SUPABASE_ACCESS_TOKEN`), nunca gravado no ficheiro. Desde 2026-08-03, migrações novas são aplicadas diretamente via este MCP (`apply_migration`) em vez de copiar/colar SQL manualmente no dashboard — `supabase/schema.sql` continua a ser atualizado a cada migração, só como registo/referência |
 
 Ordem de carregamento dos scripts (importa por causa de dependências entre módulos):
-`storage-keys → tab-lock → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → monthly-medals → battle → training → profile → achievements → orientation → nav`
+`storage-keys → tab-lock → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → monthly-medals → battle → training → profile → changelog → achievements → orientation → nav`
 
 `achievements.js` carrega **depois** de `monthly-medals.js` e `profile.js` porque os 12 cartões de medalha mensal (secção 10) dependem de `MONTH_NAMES_PT` (definido em `profile.js`) já estar disponível quando `achievements.js` corre a sua própria renderização inicial no fim do ficheiro.
 
@@ -371,6 +372,7 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **Card Resumo** (`renderProfileSummary`): distância total e sessão mais longa da semana/mês atual, dias distintos treinados, **Recorde de distância** (`getBestSessionDistanceM()` — a maior distância numa única sessão de sempre, já existia para as conquistas de distância, só passou a aparecer aqui também), **Recorde de velocidade** (`getBestPaceMps()` — o mesmo valor já usado pela conquista `pace_personal_record`, convertido para km/h), e **distância anulada por excesso de velocidade** (secção 4)
 - Cada barra mostra sempre um **rótulo visível por baixo** (dia da semana, dia do mês, ou abreviatura do mês no gráfico de todos os meses) — o valor exato continua só no `<title>` nativo ao passar o rato (não funciona por toque em mobile), mas identificar qual barra é qual já não depende disso
 - **Todas as distâncias mostradas ao jogador são em km** (`formatDistanceKm()`, js/experience.js) e **velocidades em km/h** (`formatSpeedKmh()`, js/experience.js) — os dados continuam guardados/calculados em metros e m/s, só a apresentação muda
+- **Card "Versão da Aplicação"** (2026-08-06, a pedido — entre o histórico e a Zona de Perigo, `js/changelog.js`, array `CHANGELOG`): notas de atualização em linguagem simples, ao estilo do que outros jogos mostram quando lançam uma versão nova — não é o `git log`/`DOCUMENTACAO.md` técnico, é uma tradução para o que importa a quem joga. Cada entrada agrupa uma versão **menor** (`x.Y`) e os patches dela (`x.Y.z`) numa só - "`"Nome do update"` `vX.Y.Z`" seguido de pontos com o que mudou, mais recente primeiro. Conteúdo estático (sem build step no site, sem ligação ao Supabase) — ao lançar uma versão nova, acrescenta-se uma entrada nova ao array em vez de gerar isto a partir dos commits automaticamente
 - **"Zona de Perigo"** (secção final da aba): botão de repor personagem e distância, igual ao do Debug mas disponível a qualquer jogador (secção 11)
 
 ## 16. Limitações conhecidas / possíveis próximos passos
