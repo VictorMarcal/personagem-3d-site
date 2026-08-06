@@ -6,7 +6,7 @@
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260806m">
+  <link rel="stylesheet" href="css/style.css?v=20260806n">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -35,7 +35,7 @@
   <header class="site-header">
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
-      <span id="site-version" class="site-version-hero">v1.16.2</span>
+      <span id="site-version" class="site-version-hero">v1.16.3</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -92,9 +92,9 @@
       </div>
 
       <div id="equipment-mini-list">
-        <p class="equipment-mini-item weapon"><span class="equipment-mini-icon">🗡️</span> Arma Lv <span id="hud-weapon-level">1</span></p>
-        <p class="equipment-mini-item shield"><span class="equipment-mini-icon">🛡️</span> Escudo Lv <span id="hud-shield-level">1</span></p>
-        <p class="equipment-mini-item armor"><span class="equipment-mini-icon">🧥</span> Armadura Lv <span id="hud-armor-level">1</span></p>
+        <button id="equipment-mini-weapon" class="equipment-mini-item weapon" type="button"><span class="equipment-mini-icon">🗡️</span> Arma Lv <span id="hud-weapon-level">1</span></button>
+        <button id="equipment-mini-shield" class="equipment-mini-item shield" type="button"><span class="equipment-mini-icon">🛡️</span> Escudo Lv <span id="hud-shield-level">1</span></button>
+        <button id="equipment-mini-armor" class="equipment-mini-item armor" type="button"><span class="equipment-mini-icon">🧥</span> Armadura Lv <span id="hud-armor-level">1</span></button>
       </div>
     </div>
 
@@ -539,22 +539,22 @@
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260806m"></script>
-  <script src="js/tab-lock.js?v=20260806m"></script>
-  <script src="js/auth.js?v=20260806m"></script>
-  <script src="js/progress-sync.js?v=20260806m"></script>
-  <script src="js/leaderboard.js?v=20260806m"></script>
-  <script src="js/main.js?v=20260806m"></script>
-  <script src="js/debug.js?v=20260806m"></script>
-  <script src="js/equipment.js?v=20260806m"></script>
-  <script src="js/experience.js?v=20260806m"></script>
-  <script src="js/monsters.js?v=20260806m"></script>
-  <script src="js/monthly-medals.js?v=20260806m"></script>
-  <script src="js/battle.js?v=20260806m"></script>
-  <script src="js/training.js?v=20260806m"></script>
-  <script src="js/profile.js?v=20260806m"></script>
-  <script src="js/achievements.js?v=20260806m"></script>
-  <script src="js/orientation.js?v=20260806m"></script>
-  <script src="js/nav.js?v=20260806m"></script>
+  <script src="js/storage-keys.js?v=20260806n"></script>
+  <script src="js/tab-lock.js?v=20260806n"></script>
+  <script src="js/auth.js?v=20260806n"></script>
+  <script src="js/progress-sync.js?v=20260806n"></script>
+  <script src="js/leaderboard.js?v=20260806n"></script>
+  <script src="js/main.js?v=20260806n"></script>
+  <script src="js/debug.js?v=20260806n"></script>
+  <script src="js/equipment.js?v=20260806n"></script>
+  <script src="js/experience.js?v=20260806n"></script>
+  <script src="js/monsters.js?v=20260806n"></script>
+  <script src="js/monthly-medals.js?v=20260806n"></script>
+  <script src="js/battle.js?v=20260806n"></script>
+  <script src="js/training.js?v=20260806n"></script>
+  <script src="js/profile.js?v=20260806n"></script>
+  <script src="js/achievements.js?v=20260806n"></script>
+  <script src="js/orientation.js?v=20260806n"></script>
+  <script src="js/nav.js?v=20260806n"></script>
 </body>
 </html>

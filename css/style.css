@@ -330,26 +330,36 @@ main {
 #equipment-mini-list {
   position: absolute;
   top: -14px;
-  right: 16px;
+  right: -6px;
   z-index: 10;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
+/* Botoes (2026-08-06, a pedido) - abrem o mesmo popup de evolucao que
+   tocar na peca no modelo 3D (openWeaponUpgradeModal/openShieldUpgradeModal/
+   openArmorUpgradeModal, js/equipment.js), sem precisar de acertar na peca
+   certa no modelo (dificil em mobile, sobretudo com a camera afastada). */
 .equipment-mini-item {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 6px 12px 6px 6px;
+  border: none;
   border-radius: 999px;
   background: var(--surface-2);
   box-shadow: var(--shadow-sm);
+  font-family: var(--font-body);
   font-size: 12px;
   font-weight: 700;
   color: var(--text);
   white-space: nowrap;
+  cursor: pointer;
 }
+
+.equipment-mini-item:hover { background: var(--surface); }
+.equipment-mini-item:active { box-shadow: none; }
 
 .equipment-mini-icon {
   display: inline-flex;

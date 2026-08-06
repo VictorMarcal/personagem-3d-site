@@ -500,6 +500,13 @@ function openWeaponUpgradeModal() { weaponUpgradeController.open(); }
 function openShieldUpgradeModal() { shieldUpgradeController.open(); }
 function openArmorUpgradeModal() { armorUpgradeController.open(); }
 
+// Mini-lista de equipamento pendurada no palco 3D (2026-08-06, a pedido) -
+// abre o mesmo popup que tocar na peca certa no modelo, sem depender de
+// acertar nela (dificil em mobile, com a camera afastada).
+document.getElementById("equipment-mini-weapon").addEventListener("click", openWeaponUpgradeModal);
+document.getElementById("equipment-mini-shield").addEventListener("click", openShieldUpgradeModal);
+document.getElementById("equipment-mini-armor").addEventListener("click", openArmorUpgradeModal);
+
 // Gasta 1 ponto a subir o nivel de um status investido - so pelos botoes
 // "+" do HUD agora (as 3 pecas de equipamento no modelo 3D abrem os
 // popups de moedas acima, ja nao investem pontos por clique direto).
