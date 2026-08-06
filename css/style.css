@@ -1379,9 +1379,6 @@ main {
 
 /* ---------- Perfil ----------------------------------------------------------- */
 
-#profile-status-card p { font-size: 14px; color: var(--muted); }
-#profile-status-card p + p { margin-top: 4px; }
-
 .profile-summary-list {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1431,19 +1428,25 @@ main {
 
 .profile-history-group-title:first-child { margin-top: 0; }
 
-.profile-history-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 12px 14px;
-  border-radius: var(--r-md);
-  background: var(--surface);
-  border: none;
-  font-size: 13px;
+.profile-history-day-title {
+  margin-top: 8px;
+  font-family: var(--font-heading);
+  font-size: 15px;
+  color: var(--text);
 }
 
-.profile-history-row span:first-child { font-weight: 700; font-size: 14px; }
-.profile-history-row span:last-child { color: var(--muted); }
+.profile-history-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.profile-history-session-list li {
+  font-size: 13px;
+  color: var(--muted);
+}
 
 .profile-history-empty {
   font-size: 14px;

@@ -54,6 +54,17 @@ function formatMonthLabel(date) {
   return `${MONTH_NAMES_PT[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+// getDay(): 0 = domingo, 1 = segunda, ... 6 = sabado.
+const WEEKDAY_FULL_NAMES_PT = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+
+function formatDayHeaderLabel(date) {
+  const weekday = WEEKDAY_FULL_NAMES_PT[date.getDay()];
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yy = String(date.getFullYear()).slice(-2);
+  return `${weekday} ${dd}-${mm}-${yy}`;
+}
+
 function isSameMonth(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
 }
@@ -78,26 +89,6 @@ btnNavPerfil.addEventListener("click", () => showView("perfil"));
 // Supabase - so vale a pena voltar a renderizar se a aba estiver aberta.
 function onTrainingSessionsSynced() {
   if (!viewPerfilEl.classList.contains("hidden")) renderProfileTab();
-}
-
-// --- Status/Equipamento (dados ja existentes, so leitura) ---------------
-
-function renderProfileStatusSection() {
-  const energiaLevel = getEffectiveInvestableStatLevel("energia");
-  const forcaLevel = getEffectiveInvestableStatLevel("forca");
-  const resistenciaLevel = getEffectiveInvestableStatLevel("resistencia");
-
-  const profileMaxHp = computePlayerVida(energiaLevel);
-  document.getElementById("profile-stat-vida").textContent = `${Math.round(getCurrentHp(profileMaxHp))}/${profileMaxHp}`;
-  document.getElementById("profile-stat-ataque").textContent = computePlayerAtaque(forcaLevel);
-  document.getElementById("profile-stat-defesa").textContent = computePlayerDefesa(resistenciaLevel);
-  document.getElementById("profile-stat-destreza").textContent = `${(computeDestrezaChance(resistenciaLevel) * 100).toFixed(1)}%`;
-  document.getElementById("profile-stat-letalidade").textContent = `${(computeLetalidadeChance(forcaLevel) * 100).toFixed(1)}%`;
-  document.getElementById("profile-stat-regeneracao").textContent = computeRegeneracaoPerSecond(energiaLevel).toFixed(1);
-
-  document.getElementById("profile-level-energia").textContent = energiaLevel;
-  document.getElementById("profile-level-forca").textContent = forcaLevel;
-  document.getElementById("profile-level-resistencia").textContent = resistenciaLevel;
 }
 
 // --- Resumo (semana/mes atual + dias distintos) -------------------------
@@ -150,6 +141,30 @@ function renderProfileSummary(sessions) {
 // fim - os graficos abaixo continuam a cobrir a historia completa.
 const HISTORY_MAX_MONTHS = 24;
 
+// Formata uma sessao individual para uma linha da lista (2026-08-06, a
+// pedido - antes um dia com varios treinos era resumido numa unica linha
+// somada, com o modo a aparecer como "Misto" quando havia mais que um).
+function formatSessionListItem(s) {
+  const distance = toNum(s.distance_m);
+  // Sessoes anteriores a esta funcionalidade nao tem effective_distance_m
+  // (coluna nova) - cai para distance_m, que e o que valia para XP nessa
+  // altura (so existia um "modo" implicito, sem multiplicador).
+  const effectiveDistance = toNum(s.effective_distance_m != null ? s.effective_distance_m : s.distance_m);
+  const duration = toNum(s.duration_seconds);
+
+  // So mostra a distancia efetiva separada quando difere da real (ex:
+  // sessoes de bicicleta, com o multiplicador de justica de esforco) - em
+  // caminhar/correr seria sempre repetir o mesmo numero.
+  const showsEffective = Math.round(effectiveDistance) !== Math.round(distance);
+  const distanceText = showsEffective
+    ? `${formatDistanceKm(distance)} (${formatDistanceKm(effectiveDistance)} efetivos)`
+    : formatDistanceKm(distance);
+
+  const avgSpeedMps = duration > 0 ? distance / duration : 0;
+  const modeLabel = MODE_LABEL_PT[s.mode] || "Treino";
+  return `${modeLabel} — ${distanceText} · ${Math.round(duration / 60)} min · ${formatSpeedKmh(avgSpeedMps)}`;
+}
+
 function renderProfileHistory(sessions) {
   const listEl = document.getElementById("profile-history-list");
   listEl.innerHTML = "";
@@ -163,15 +178,8 @@ function renderProfileHistory(sessions) {
   sessions.forEach((s) => {
     const date = new Date(s.started_at);
     const key = formatDayKey(date);
-    const entry = byDay.get(key) || { date, distance: 0, effectiveDistance: 0, duration: 0, count: 0, modes: new Set() };
-    entry.distance += toNum(s.distance_m);
-    // Sessoes anteriores a esta funcionalidade nao tem effective_distance_m
-    // (coluna nova) - cai para distance_m, que e o que valia para XP nessa
-    // altura (so existia um "modo" implicito, sem multiplicador).
-    entry.effectiveDistance += toNum(s.effective_distance_m != null ? s.effective_distance_m : s.distance_m);
-    entry.duration += toNum(s.duration_seconds);
-    entry.count += 1;
-    if (s.mode) entry.modes.add(s.mode);
+    const entry = byDay.get(key) || { date, sessions: [] };
+    entry.sessions.push(s);
     byDay.set(key, entry);
   });
 
@@ -191,31 +199,23 @@ function renderProfileHistory(sessions) {
     listEl.appendChild(title);
 
     const days = byMonth.get(monthKey).sort((a, b) => (a.dayKey < b.dayKey ? 1 : -1));
-    days.forEach((entry) => {
-      const row = document.createElement("div");
-      row.className = "profile-history-row";
+    days.forEach((dayEntry) => {
+      const dayTitle = document.createElement("p");
+      dayTitle.className = "profile-history-day-title";
+      dayTitle.textContent = formatDayHeaderLabel(dayEntry.date);
+      listEl.appendChild(dayTitle);
 
-      const modesArray = [...entry.modes];
-      const modeLabel = modesArray.length === 1 ? MODE_LABEL_PT[modesArray[0]] || "" : modesArray.length > 1 ? "Misto" : "";
-      const labelSuffix = [entry.count > 1 ? `${entry.count} treinos` : null, modeLabel || null].filter(Boolean).join(", ");
+      const sessionListEl = document.createElement("ul");
+      sessionListEl.className = "profile-history-session-list";
 
-      const label = document.createElement("span");
-      label.textContent = labelSuffix ? `${entry.dayKey} (${labelSuffix})` : entry.dayKey;
+      const daySessions = [...dayEntry.sessions].sort((a, b) => new Date(a.started_at) - new Date(b.started_at));
+      daySessions.forEach((s) => {
+        const item = document.createElement("li");
+        item.textContent = formatSessionListItem(s);
+        sessionListEl.appendChild(item);
+      });
 
-      // So mostra a distancia efetiva separada quando difere da real (ex:
-      // sessoes de bicicleta, com o multiplicador de justica de esforco) -
-      // em caminhar/correr seria sempre repetir o mesmo numero.
-      const showsEffective = Math.round(entry.effectiveDistance) !== Math.round(entry.distance);
-      const distanceText = showsEffective
-        ? `${formatDistanceKm(entry.distance)} (${formatDistanceKm(entry.effectiveDistance)} efetivos)`
-        : formatDistanceKm(entry.distance);
-
-      const avgSpeedMps = entry.duration > 0 ? entry.distance / entry.duration : 0;
-      const value = document.createElement("span");
-      value.textContent = `${distanceText} · ${Math.round(entry.duration / 60)} min · ${formatSpeedKmh(avgSpeedMps)}`;
-
-      row.append(label, value);
-      listEl.appendChild(row);
+      listEl.appendChild(sessionListEl);
     });
   });
 }
@@ -455,8 +455,6 @@ function renderAllMonthsChart(sessions) {
 // --- Orquestrador ---------------------------------------------------------
 
 async function renderProfileTab() {
-  renderProfileStatusSection();
-
   if (!currentUserId) return; // ainda sem sessao confirmada
 
   const { data: sessions, error } = await supabaseClient
