@@ -96,9 +96,9 @@ a:hover { color: var(--accent-600); }
 .site-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 14px;
   padding: 18px 20px 10px;
 }
 
@@ -129,18 +129,6 @@ a:hover { color: var(--accent-600); }
   color: var(--accent-700);
   font-family: var(--font-heading);
   font-size: 15px;
-}
-
-/* Visualmente escondido mas continua no DOM - js/auth.js escreve o nome
-   escolhido aqui (applyDisplayNameToHud), o mockup do tema "Campo Aberto"
-   so mostra o nivel no crachá, sem nome por baixo. */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 /* Os botoes Jogo/Perfil antigos continuam no DOM (js/profile.js e
@@ -339,10 +327,12 @@ main {
   line-height: 1.1;
 }
 
+/* Empilhada por baixo do cracha de nivel, no mesmo lado esquerdo (2026-08-06,
+   a pedido - antes ficava no canto direito, oposto ao cracha). */
 #equipment-mini-list {
   position: absolute;
-  top: -14px;
-  right: 16px;
+  top: 56px;
+  left: 20px;
   z-index: 10;
   display: flex;
   flex-direction: column;

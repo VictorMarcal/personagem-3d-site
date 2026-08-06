@@ -14,7 +14,7 @@ const namePickerModalEl = document.getElementById("name-picker-modal");
 const namePickerInputEl = document.getElementById("name-picker-input");
 const btnNamePickerConfirm = document.getElementById("btn-name-picker-confirm");
 const namePickerStatusEl = document.getElementById("name-picker-status");
-const characterHudNameEl = document.getElementById("character-hud-name");
+const siteTitleEl = document.getElementById("site-title");
 
 let currentUserId = null;
 let currentProfile = null;
@@ -52,11 +52,12 @@ document.getElementById("btn-google-signin").addEventListener("click", () => {
 
 // --- Gate do card de Debug e HUD -------------------------------------------
 
-// Mostra o nome escolhido no popup em vez de "Personagem" no HUD do
-// personagem 3D - o leaderboard ja usa currentDisplayName() diretamente.
+// Mostra o nome escolhido no lugar de "Personagem 3D" no cabecalho (2026-08-06,
+// a pedido - antes ficava so num span sr-only, nunca visivel) - o leaderboard
+// ja usa currentDisplayName() diretamente.
 function applyDisplayNameToHud() {
-  if (characterHudNameEl && currentProfile && currentProfile.display_name) {
-    characterHudNameEl.textContent = currentProfile.display_name;
+  if (siteTitleEl && currentProfile && currentProfile.display_name) {
+    siteTitleEl.textContent = currentProfile.display_name;
   }
 }
 
