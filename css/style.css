@@ -1533,6 +1533,43 @@ main {
   color: var(--muted);
 }
 
+/* Card "Versao da Aplicacao" (2026-08-06, a pedido) - notas de
+   atualizacao em linguagem simples, uma entrada por versao "menor"
+   (js/changelog.js, CHANGELOG), mais recente primeiro. */
+#profile-changelog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.changelog-entry-title {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  color: var(--text);
+}
+
+.changelog-entry-version {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted-2);
+}
+
+.changelog-entry-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.changelog-entry-changes li {
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .profile-history-empty {
   font-size: 14px;
   color: var(--muted);
