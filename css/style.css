@@ -96,9 +96,9 @@ a:hover { color: var(--accent-600); }
 .site-header {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 8px;
   padding: 18px 20px 10px;
 }
 
@@ -327,12 +327,10 @@ main {
   line-height: 1.1;
 }
 
-/* Empilhada por baixo do cracha de nivel, no mesmo lado esquerdo (2026-08-06,
-   a pedido - antes ficava no canto direito, oposto ao cracha). */
 #equipment-mini-list {
   position: absolute;
-  top: 56px;
-  left: 20px;
+  top: -14px;
+  right: 16px;
   z-index: 10;
   display: flex;
   flex-direction: column;
