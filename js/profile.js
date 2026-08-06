@@ -208,7 +208,7 @@ function renderProfileHistory(sessions) {
       const sessionListEl = document.createElement("ul");
       sessionListEl.className = "profile-history-session-list";
 
-      const daySessions = [...dayEntry.sessions].sort((a, b) => new Date(a.started_at) - new Date(b.started_at));
+      const daySessions = [...dayEntry.sessions].sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
       daySessions.forEach((s) => {
         const item = document.createElement("li");
         item.textContent = formatSessionListItem(s);
