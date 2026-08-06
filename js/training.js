@@ -413,6 +413,13 @@ function beginTrainingSession() {
   beginWatch();
 }
 
+// Treino descartado por completo se nao tiver distancia real nenhuma OU
+// durar menos que isto (2026-08-06, a pedido) - nao gera registo em
+// training_sessions nem conta para XP/pontos/conquistas. Cobre paragens
+// acidentais ("Iniciar" logo seguido de "Parar") e ruido puro de GPS sem
+// deslocamento nenhum.
+const MIN_TRAINING_DURATION_SECONDS = 10;
+
 function stopTraining() {
   if (watchId !== null) {
     navigator.geolocation.clearWatch(watchId);
@@ -428,7 +435,15 @@ function stopTraining() {
   const sessionEndTime = Date.now();
   const sessionDurationSeconds = sessionStartTime ? (sessionEndTime - sessionStartTime) / 1000 : null;
 
-  if (sessionStartTime) {
+  const discardReasons = [];
+  if (sessionDistanceM <= 0) discardReasons.push("sem distância percorrida");
+  if (sessionDurationSeconds == null || sessionDurationSeconds < MIN_TRAINING_DURATION_SECONDS) {
+    discardReasons.push(`duração menor que ${MIN_TRAINING_DURATION_SECONDS}s`);
+  }
+
+  if (discardReasons.length > 0) {
+    showGameToast(`Treino descartado (${discardReasons.join(" e ")})`, "aviso");
+  } else {
     enqueueTrainingSession({
       client_id: crypto.randomUUID(),
       started_at: new Date(sessionStartTime).toISOString(),
@@ -438,22 +453,22 @@ function stopTraining() {
       mode: selectedTrainingMode,
       duration_seconds: sessionDurationSeconds,
     });
-  }
 
-  // Distancia EFETIVA (com o multiplicador de justica de esforco ja
-  // aplicado) e que conta para XP/pontos/leaderboard/conquistas - a real
-  // (GPS) fica so no historico da sessao acima, para o jogador ver o que
-  // percorreu de facto.
-  addToLifetimeDistance(sessionEffectiveDistanceM);
-  addToMonthlyDistance(sessionEffectiveDistanceM);
-  incrementTotalTrainingsCompleted();
-  checkAndUnlockAchievements(sessionEffectiveDistanceM, sessionDurationSeconds, selectedTrainingMode);
+    // Distancia EFETIVA (com o multiplicador de justica de esforco ja
+    // aplicado) e que conta para XP/pontos/leaderboard/conquistas - a real
+    // (GPS) fica so no historico da sessao acima, para o jogador ver o que
+    // percorreu de facto.
+    addToLifetimeDistance(sessionEffectiveDistanceM);
+    addToMonthlyDistance(sessionEffectiveDistanceM);
+    incrementTotalTrainingsCompleted();
+    checkAndUnlockAchievements(sessionEffectiveDistanceM, sessionDurationSeconds, selectedTrainingMode);
+    renderMonsters(); // pode ter desbloqueado monstros novos
+  }
 
   totalDistanceM = 0;
   lastPosition = null;
   sessionStartTime = null;
   updateXPDisplay(0);
-  renderMonsters(); // pode ter desbloqueado monstros novos
 
   clearPersistedTraining();
   releaseTabLock(STORAGE_KEY_TRAINING_TAB_LOCK);

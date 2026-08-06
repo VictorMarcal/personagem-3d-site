@@ -1002,6 +1002,7 @@ main {
 .game-toast-moedas { background: var(--accent-200); color: var(--accent-700); }
 .game-toast-nivel { background: var(--ink); color: var(--surface-2); }
 .game-toast-medalha { background: var(--accent); color: var(--bg); }
+.game-toast-aviso { background: var(--accent-700); color: var(--bg); }
 
 /* ---------- Popup fullscreen de conquistas -------------------------------- */
 
