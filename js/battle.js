@@ -160,9 +160,9 @@ async function startBattle(creature) {
 
   // A vida entra na luta com o que tiver recuperado ate agora (nunca cheia
   // por garantia) - lutar com vida parcial e uma escolha do jogador, nao
-  // um bloqueio. A recuperacao para de contar assim que a luta comeca
-  // (so volta a avancar depois, a partir do valor guardado no fim dela).
-  const playerMaxHp = computePlayerVida(getEffectiveInvestableStatLevel("energia"));
+  // um bloqueio.
+  const playerEnergiaLevel = getEffectiveInvestableStatLevel("energia");
+  const playerMaxHp = computePlayerVida(playerEnergiaLevel);
   const playerAtaque = computePlayerAtaque(getEffectiveInvestableStatLevel("forca"));
   const playerDefesa = computePlayerDefesa(getEffectiveInvestableStatLevel("resistencia"));
   const playerDestreza = computeDestrezaChance(getEffectiveInvestableStatLevel("resistencia"));
@@ -178,6 +178,21 @@ async function startBattle(creature) {
 
   let playerHp = getCurrentHp(playerMaxHp);
   let monsterHp = monsterMaxHp;
+
+  // Regeneracao passa a decorrer tambem DURANTE a luta, nao so fora dela
+  // (2026-08-06, a pedido - antes o relogio de recuperacao ficava
+  // completamente parado enquanto battleInProgress, so retomando a partir
+  // do valor final quando a luta acabava). Aplicada a cada intervalo real
+  // entre acoes (BATTLE_ROUND_DELAY_MS), capada na vida maxima - mesmo
+  // "+X" flutuante verde usado fora de combate (showFloatingCombatText,
+  // js/main.js), so que aqui tambem soma ao mesmo playerHp que o dano usa.
+  function tickPlayerRegen() {
+    if (playerHp >= playerMaxHp) return;
+    const before = playerHp;
+    playerHp = Math.min(playerMaxHp, playerHp + computeRegeneracaoPerSecond(playerEnergiaLevel) * (BATTLE_ROUND_DELAY_MS / 1000));
+    const healed = Math.round(playerHp - before);
+    if (healed > 0) showFloatingCombatText(head, healed, "heal");
+  }
 
   characterHudEl.classList.add("hidden");
   btnBattleBack.classList.add("hidden");
@@ -201,6 +216,8 @@ async function startBattle(creature) {
   updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
   setBattleLog("A batalha começou!");
   await sleep(BATTLE_ROUND_DELAY_MS);
+  tickPlayerRegen();
+  updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
 
   let won = false;
   let round = 0;
@@ -226,6 +243,8 @@ async function startBattle(creature) {
     }
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
     await sleep(BATTLE_ROUND_DELAY_MS);
+    tickPlayerRegen();
+    updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
 
     if (monsterHp <= 0) {
       won = true;
@@ -249,6 +268,8 @@ async function startBattle(creature) {
     }
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
     await sleep(BATTLE_ROUND_DELAY_MS);
+    tickPlayerRegen();
+    updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
 
     if (playerHp <= 0) {
       won = false;

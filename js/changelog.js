@@ -7,10 +7,11 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
-    version: "v1.17.0",
+    version: "v1.17.1",
     title: "Notas de Atualização",
     changes: [
       "Novo cartão \"Versão da Aplicação\" na aba Perfil, com as novidades de cada atualização explicadas em linguagem simples - exatamente o que estás a ler agora.",
+      "A recuperação de vida (Regeneração) deixou de parar por completo durante uma luta - agora continua a recuperar um pouco a cada troca de ataques, tal como já acontecia fora de combate.",
     ],
   },
   {
