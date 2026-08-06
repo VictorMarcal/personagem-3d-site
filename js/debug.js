@@ -276,7 +276,7 @@ function checkSimCoinDropsForDistance(currentSessionDistanceM) {
   const currentKm = Math.floor(currentSessionDistanceM / 1000);
   const newKm = currentKm - simCoinsCheckedKm;
   if (newKm > 0) {
-    rollCoinDropsForKm(newKm);
+    rollCoinDropsForKm(simCoinsCheckedKm, newKm);
     simCoinsCheckedKm = currentKm;
   }
 }

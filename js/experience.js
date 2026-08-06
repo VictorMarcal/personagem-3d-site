@@ -30,7 +30,20 @@ function formatSpeedKmh(metersPerSecond) {
 // esforco aplicado), por isso mostra-los como "pontos" de XP em vez de km
 // reforca que representam esforco, nao quilometros reais percorridos.
 function formatXP(meters) {
-  return `${Math.round(meters)} XP`;
+  return `${Math.round(meters).toLocaleString("pt-BR")} XP`;
+}
+
+// "3900" -> "3:00" (ou "1:05:00" acima de 1h) - usado no relogio ao vivo do
+// treino (js/training.js), nunca guardado neste formato (duration_seconds
+// continua sempre em segundos nos dados).
+function formatDurationClock(totalSeconds) {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  const mm = hours > 0 ? String(minutes).padStart(2, "0") : String(minutes);
+  const ss = String(secs).padStart(2, "0");
+  return hours > 0 ? `${hours}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
 // Chamado quando um treino e efetivamente parado, para tornar a distancia

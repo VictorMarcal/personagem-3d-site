@@ -49,9 +49,18 @@ const modeButtonEls = {
 // js/profile.js) para nao duplicar o identificador global.
 const MODE_LABEL_PT = { caminhar: "Caminhar", correr: "Correr", bicicleta: "Bicicleta" };
 
+const modeXpExplanationEl = document.getElementById("mode-xp-explanation");
+
 function updateModeButtonsUI() {
   Object.entries(modeButtonEls).forEach(([mode, btn]) => {
     btn.classList.toggle("active", mode === selectedTrainingMode);
+  });
+  modeXpExplanationEl.textContent = getModeXpExplanationText(selectedTrainingMode);
+}
+
+function setModeSelectorDisabled(disabled) {
+  Object.values(modeButtonEls).forEach((btn) => {
+    btn.disabled = disabled;
   });
 }
 
@@ -106,10 +115,15 @@ function addToDiscardedSpeedDistance(deltaM) {
   queueProgressSync();
 }
 
-// Aviso persistente enquanto a velocidade estiver acima do limite - so
-// desaparece quando uma leitura seguinte volta a ficar dentro do limite
-// (nao e um toast com temporizador).
-function showSpeedWarning() {
+// Aviso persistente enquanto a velocidade estiver fora da janela do modo -
+// so desaparece quando uma leitura seguinte volta a ficar dentro dela (nao
+// e um toast com temporizador). Inclui o nome do modo e a direcao da
+// violacao (acima do teto ou abaixo do minimo - secção 4 da documentação),
+// 2026-08-06 a pedido, para o jogador perceber de imediato porque motivo.
+function showSpeedWarning(direction) {
+  const modeLabel = MODE_LABEL_PT[selectedTrainingMode];
+  const reason = direction === "slow" ? `abaixo do mínimo de ${modeLabel}` : `acima do limite de ${modeLabel}`;
+  speedWarningEl.textContent = `⚠️ Velocidade ${reason} — esta distância não está a contar`;
   speedWarningEl.classList.remove("hidden");
 }
 
@@ -117,19 +131,40 @@ function hideSpeedWarning() {
   speedWarningEl.classList.add("hidden");
 }
 
-const effectiveDistanceRowEl = document.getElementById("training-effective-distance-row");
 const effectiveDistanceEl = document.getElementById("training-effective-distance");
+const liveStatsEl = document.getElementById("training-live-stats");
+
+// Relogio + velocidade media ao vivo, por baixo da distancia percorrida
+// (2026-08-06, a pedido - antes so existiam no fim da sessao, guardados em
+// training_sessions, nunca mostrados durante o proprio treino). Duracao em
+// "MM:SS" (ou "H:MM:SS" acima de 1h, formatDurationClock em js/experience.js).
+function updateLiveStatsDisplay() {
+  const elapsedSeconds = sessionStartTime ? (Date.now() - sessionStartTime) / 1000 : 0;
+  const avgSpeedMps = elapsedSeconds > 0 ? totalDistanceM / elapsedSeconds : 0;
+  liveStatsEl.textContent = `${formatDurationClock(elapsedSeconds)} · ${formatSpeedKmh(avgSpeedMps)}`;
+}
+
+let liveStatsIntervalId = null;
+
+function startLiveStatsTicker() {
+  updateLiveStatsDisplay();
+  if (liveStatsIntervalId === null) liveStatsIntervalId = setInterval(updateLiveStatsDisplay, 1000);
+}
+
+function stopLiveStatsTicker() {
+  if (liveStatsIntervalId !== null) {
+    clearInterval(liveStatsIntervalId);
+    liveStatsIntervalId = null;
+  }
+}
 
 function updateDistanceDisplay() {
   distanceEl.textContent = formatDistanceKm(totalDistanceM);
-
-  // So mostra a linha "efetiva" quando difere da real (multiplicador != 1)
-  // - em Correr as duas seriam sempre o mesmo numero, so ruido visual.
-  const multiplier = getXpMultiplier(selectedTrainingMode);
-  effectiveDistanceRowEl.classList.toggle("hidden", multiplier === 1);
-  if (multiplier !== 1) {
-    effectiveDistanceEl.textContent = formatDistanceKm(getEffectiveDistanceM(totalDistanceM, selectedTrainingMode));
-  }
+  // Sempre em XP (2026-08-06, a pedido - antes ficava em km e escondida em
+  // modos com multiplicador 1.0, como Correr, por ser "o mesmo numero" -
+  // mas em XP nunca e redundante, e reforca a mesma convencao usada na
+  // barra de nivel/leaderboard, secção 5).
+  effectiveDistanceEl.textContent = formatXP(getEffectiveDistanceM(totalDistanceM, selectedTrainingMode));
 }
 
 // Treino acumulado: copia persistida em localStorage, salva a cada 10s
@@ -224,12 +259,36 @@ const COIN_FIND_CHANCE = 0.5;
 const COIN_FIND_MIN = 1;
 const COIN_FIND_MAX = 20;
 
-function rollCoinDropsForKm(kmCount) {
+// Cartao persistente com a ultima moeda encontrada (2026-08-06, a pedido -
+// complementa o toast efemero acima, que desaparece sozinho ao fim de
+// 3.5s). Fica visivel ate ao fim do treino ou ate uma moeda nova aparecer
+// (substitui o conteudo, nao acumula um historico).
+const trainingCoinFoundEl = document.getElementById("training-coin-found");
+const trainingCoinFoundAmountEl = document.getElementById("training-coin-found-amount");
+const trainingCoinFoundKmEl = document.getElementById("training-coin-found-km");
+
+function showCoinFoundCard(amount, kmNumber) {
+  trainingCoinFoundAmountEl.textContent = amount;
+  trainingCoinFoundKmEl.textContent = kmNumber;
+  trainingCoinFoundEl.classList.remove("hidden");
+}
+
+function hideCoinFoundCard() {
+  trainingCoinFoundEl.classList.add("hidden");
+}
+
+// startKm: quantos km INTEIROS ja tinham sido testados antes desta chamada
+// - preciso para saber a que km exato (1-based) cada moeda desta leva
+// pertence, para o cartao acima poder dizer "ao N.º quilómetro" (2026-08-06,
+// a pedido; antes so se sabia "quantas" moedas, nunca "em que km").
+function rollCoinDropsForKm(startKm, kmCount) {
   for (let i = 0; i < kmCount; i++) {
     if (Math.random() < COIN_FIND_CHANCE) {
       const found = Math.floor(Math.random() * (COIN_FIND_MAX - COIN_FIND_MIN + 1)) + COIN_FIND_MIN;
+      const kmNumber = startKm + i + 1;
       addMoedas(found);
       showGameToast(`+${found} moedas`, "moedas");
+      showCoinFoundCard(found, kmNumber);
     }
   }
 }
@@ -243,7 +302,7 @@ function checkCoinDropsForDistance(currentTotalDistanceM) {
   const currentKm = Math.floor(currentTotalDistanceM / 1000);
   const newKm = currentKm - coinsCheckedKm;
   if (newKm > 0) {
-    rollCoinDropsForKm(newKm);
+    rollCoinDropsForKm(coinsCheckedKm, newKm);
     coinsCheckedKm = currentKm;
   }
 }
@@ -290,7 +349,7 @@ function onPositionUpdate(position) {
       consecutiveSpeedViolations += 1;
       if (consecutiveSpeedViolations >= SPEED_VIOLATION_GRACE_READINGS) {
         addToDiscardedSpeedDistance(segmentM);
-        showSpeedWarning();
+        showSpeedWarning(speedMps > getMaxSpeedMps(selectedTrainingMode) ? "fast" : "slow");
       }
       lastPosition = { latitude, longitude, timestamp };
       return;
@@ -328,18 +387,22 @@ function beginWatch() {
     updateXPDisplay(getEffectiveDistanceM(totalDistanceM, selectedTrainingMode));
     refreshTabLock(STORAGE_KEY_TRAINING_TAB_LOCK);
   }, SAVE_INTERVAL_MS);
+  startLiveStatsTicker();
 }
 
 function showTrainingScreen() {
   startScreen.classList.add("hidden");
   trainingScreen.classList.remove("hidden");
   hideSpeedWarning();
+  setModeSelectorDisabled(true);
 }
 
 function showStartScreen() {
   trainingScreen.classList.add("hidden");
   startScreen.classList.remove("hidden");
   hideSpeedWarning();
+  hideCoinFoundCard();
+  setModeSelectorDisabled(false);
 }
 
 // Popup de contagem decrescente (5s) mostrado entre carregar em "Iniciar
@@ -429,6 +492,7 @@ function stopTraining() {
     clearInterval(saveIntervalId);
     saveIntervalId = null;
   }
+  stopLiveStatsTicker();
 
   const sessionDistanceM = totalDistanceM;
   const sessionEffectiveDistanceM = getEffectiveDistanceM(sessionDistanceM, selectedTrainingMode);
