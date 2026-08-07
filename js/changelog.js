@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.17.5",
+    title: "Fim da Farmagem",
+    changes: [
+      "Derrotar um monstro que já tinhas vencido com 3 estrelas deixou de dar moedas - continua a poder lutar-se de novo para testar builds, só já não rende dinheiro. Antes de chegares às 3 estrelas continua a pagar normalmente.",
+    ],
+  },
+  {
     version: "v1.17.4",
     title: "Lutas Com Mais Vida",
     changes: [

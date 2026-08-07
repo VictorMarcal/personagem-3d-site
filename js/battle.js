@@ -320,7 +320,12 @@ async function startBattle(creature) {
       }
     }
 
-    awardMonsterCoins(creature);
+    // So paga moedas enquanto ainda nao tinhas 3 estrelas contra esta
+    // criatura (2026-08-07, a pedido - antes pagava em TODA vitoria, mesmo
+    // repetida, o que incentivava "farmar" um monstro ja dominado so pelo
+    // dinheiro). Uma vez a 3 estrelas, re-lutar continua disponivel (para
+    // testar builds, ver stats, etc.) mas deixa de rentabilizar.
+    if (previousStars < 3) awardMonsterCoins(creature);
     checkAndUnlockAchievements(); // pode ter desbloqueado uma conquista de boss
     battleResultEl.textContent = `Vitória! Derrotaste ${creature.name}.`;
   } else {
