@@ -301,6 +301,10 @@ async function startBattle(creature) {
     }
   }
 
+  // Conta para a conquista "Guerreiro" (numero total de lutas, ganhas ou
+  // perdidas - 2026-08-07) - antes do if/else, aplica-se aos dois casos.
+  incrementTotalBattlesFought();
+
   if (won) {
     // Estrelas antes desta vitoria (0 se nunca derrotada) - guardado antes
     // de markCreatureDefeated atualizar o mapa, para podermos comparar.
@@ -326,11 +330,14 @@ async function startBattle(creature) {
     // dinheiro). Uma vez a 3 estrelas, re-lutar continua disponivel (para
     // testar builds, ver stats, etc.) mas deixa de rentabilizar.
     if (previousStars < 3) awardMonsterCoins(creature);
-    checkAndUnlockAchievements(); // pode ter desbloqueado uma conquista de boss
     battleResultEl.textContent = `Vitória! Derrotaste ${creature.name}.`;
   } else {
     battleResultEl.textContent = `Derrota... ${creature.name} venceu.`;
   }
+
+  // Fora do if/else porque conquistas como "Guerreiro" (numero de lutas)
+  // tem de ser reavaliadas mesmo numa derrota, nao so numa vitoria.
+  checkAndUnlockAchievements();
 
   // Guarda a vida com que ficou (ganhando ou perdendo) - e a partir daqui
   // que a recuperacao por tempo real comeca a contar.

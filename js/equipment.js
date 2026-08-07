@@ -74,9 +74,23 @@ function getMoedas() {
   return getStoredNumber(STORAGE_KEY_MOEDAS, STARTING_MOEDAS);
 }
 
+// Contadores vitalícios (2026-08-07, conquistas "Moedas ganhas"/"Investidor")
+// - ao contrário de getMoedas() (saldo atual, sobe e desce), estes só sobem,
+// nunca são reduzidos por gastar ou perder. STARTING_MOEDAS não conta para
+// getTotalMoedasGanhas (só moedas realmente ganhas em jogo, não a oferta
+// inicial), por isso o valor por omissão é 0, não STARTING_MOEDAS.
+function getTotalMoedasGanhas() {
+  return getStoredNumber(STORAGE_KEY_TOTAL_MOEDAS_GANHAS, 0);
+}
+
+function getTotalMoedasGastas() {
+  return getStoredNumber(STORAGE_KEY_TOTAL_MOEDAS_GASTAS, 0);
+}
+
 function addMoedas(amount) {
   if (amount <= 0) return;
   localStorage.setItem(STORAGE_KEY_MOEDAS, String(getMoedas() + amount));
+  localStorage.setItem(STORAGE_KEY_TOTAL_MOEDAS_GANHAS, String(getTotalMoedasGanhas() + amount));
   queueProgressSync();
   renderStatsHud();
 }
@@ -84,6 +98,7 @@ function addMoedas(amount) {
 function spendMoedas(amount) {
   if (amount <= 0 || amount > getMoedas()) return false;
   localStorage.setItem(STORAGE_KEY_MOEDAS, String(getMoedas() - amount));
+  localStorage.setItem(STORAGE_KEY_TOTAL_MOEDAS_GASTAS, String(getTotalMoedasGastas() + amount));
   queueProgressSync();
   renderStatsHud();
   return true;

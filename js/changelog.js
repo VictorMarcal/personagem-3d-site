@@ -7,6 +7,20 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.18.0",
+    title: "Mais 39 Conquistas Novas",
+    changes: [
+      "Marcos de Nível (10/25/50/100), inspirados no número que agora aparece no cabeçalho.",
+      "Moedas ganhas e moedas investidas ao longo da vida, em vários patamares.",
+      "Levar a Arma, o Escudo ou a Armadura ao nível máximo (e uma extra por levar as 3 ao máximo).",
+      "\"Madrugador\" e \"Notívago\", por treinar muito cedo ou muito tarde.",
+      "\"Poliglota do Treino\", por experimentares os 3 modos (Caminhar, Correr, Bicicleta).",
+      "\"Colecionador\", por desbloquear várias outras conquistas.",
+      "Meses de calendário distintos treinados, não precisam de ser seguidos.",
+      "Número total de lutas travadas (ganhas ou perdidas).",
+    ],
+  },
+  {
     version: "v1.17.8",
     title: "Caminhar Com Mais Margem",
     changes: [

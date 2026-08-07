@@ -37,6 +37,11 @@ function readLocalProgressSnapshot() {
     best_pace_mps_bicicleta: getBestPaceMps("bicicleta"),
     best_streak_days: getBestStreakDays(),
     discarded_speed_distance_m: getDiscardedSpeedDistanceM(),
+    // Contadores vitalicios novos (2026-08-07, secção 10 - mais conquistas)
+    total_moedas_ganhas: getTotalMoedasGanhas(),
+    total_moedas_gastas: getTotalMoedasGastas(),
+    total_battles_fought: getTotalBattlesFought(),
+    distinct_months_trained: getDistinctMonthsTrained(),
   };
 }
 
@@ -159,4 +164,8 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS_BICICLETA, String(progress.best_pace_mps_bicicleta || 0));
   localStorage.setItem(STORAGE_KEY_BEST_STREAK_DAYS, String(progress.best_streak_days || 0));
   localStorage.setItem(STORAGE_KEY_DISCARDED_SPEED_M, String(progress.discarded_speed_distance_m || 0));
+  localStorage.setItem(STORAGE_KEY_TOTAL_MOEDAS_GANHAS, String(progress.total_moedas_ganhas || 0));
+  localStorage.setItem(STORAGE_KEY_TOTAL_MOEDAS_GASTAS, String(progress.total_moedas_gastas || 0));
+  localStorage.setItem(STORAGE_KEY_TOTAL_BATTLES, String(progress.total_battles_fought || 0));
+  localStorage.setItem(STORAGE_KEY_DISTINCT_MONTHS_TRAINED, String(progress.distinct_months_trained || 0));
 }

@@ -16,19 +16,28 @@ const CATEGORY_BY_TYPE = {
   streak: "Frequência",
   fullMonthTrained: "Frequência",
   activeWeekend: "Frequência",
+  sessionTime: "Frequência",
+  allModesTrained: "Frequência",
+  distinctMonths: "Frequência",
   bossDefeated: "Combate",
   creatureStars: "Combate",
   allMiniBossesThreeStars: "Combate",
   allBossesThreeStars: "Combate",
   allCreaturesDefeated: "Combate",
+  battleCount: "Combate",
   monthlyMedal: "Liderança",
   monthlyMedalPending: "Liderança",
   monthlyMedalMissed: "Liderança",
   monthlyMedalFuture: "Liderança",
   pace: "Ritmo",
   personalRecord: "Ritmo",
+  characterLevel: "Progresso",
+  coinsEarned: "Progresso",
+  coinsSpent: "Progresso",
+  equipmentMaxed: "Progresso",
+  achievementCount: "Progresso",
 };
-const CATEGORY_ORDER = ["Distância", "Frequência", "Combate", "Liderança", "Ritmo"];
+const CATEGORY_ORDER = ["Distância", "Frequência", "Combate", "Progresso", "Liderança", "Ritmo"];
 
 const STATIC_ACHIEVEMENTS = [
   { id: "dist_lifetime_50km", name: "50 km vitalícios", icon: "🌍", type: "lifetimeDistance", threshold: 50000 },
@@ -49,6 +58,60 @@ const STATIC_ACHIEVEMENTS = [
   { id: "combat_all_minibosses_3star", name: "Mestre dos Mini-Bosses", icon: "🌟", type: "allMiniBossesThreeStars" },
   { id: "combat_all_bosses_3star", name: "Lenda dos Bosses", icon: "🌟", type: "allBossesThreeStars" },
   { id: "combat_all_defeated", name: "Todas as criaturas derrotadas", icon: "👑", type: "allCreaturesDefeated" },
+  { id: "battles_10", name: "10 Lutas", icon: "⚔️", type: "battleCount", threshold: 10 },
+  { id: "battles_25", name: "25 Lutas", icon: "⚔️", type: "battleCount", threshold: 25 },
+  { id: "battles_50", name: "50 Lutas", icon: "⚔️", type: "battleCount", threshold: 50 },
+  // Nivel do personagem (2026-08-07, a pedido) - distinto das conquistas de
+  // "Distância vitalícia" acima (mesmo dado subjacente, mas o nivel e o
+  // numero que aparece em destaque no cabeçalho e no palco 3D).
+  { id: "level_10", name: "Nível 10", icon: "🏅", type: "characterLevel", threshold: 10 },
+  { id: "level_25", name: "Nível 25", icon: "🏅", type: "characterLevel", threshold: 25 },
+  { id: "level_50", name: "Nível 50", icon: "🏅", type: "characterLevel", threshold: 50 },
+  { id: "level_100", name: "Nível 100", icon: "🏅", type: "characterLevel", threshold: 100 },
+  // Moedas ganhas/gastas ao longo da vida (2026-08-07, a pedido) - contador
+  // proprio (getTotalMoedasGanhas/Gastas em js/equipment.js), distinto do
+  // saldo atual (que sobe e desce).
+  { id: "coins_earned_500", name: "500 moedas ganhas", icon: "💰", type: "coinsEarned", threshold: 500 },
+  { id: "coins_earned_2000", name: "2000 moedas ganhas", icon: "💰", type: "coinsEarned", threshold: 2000 },
+  { id: "coins_earned_10000", name: "10000 moedas ganhas", icon: "💰", type: "coinsEarned", threshold: 10000 },
+  { id: "spender_500", name: "500 moedas investidas", icon: "🛒", type: "coinsSpent", threshold: 500 },
+  { id: "spender_2000", name: "2000 moedas investidas", icon: "🛒", type: "coinsSpent", threshold: 2000 },
+  { id: "spender_10000", name: "10000 moedas investidas", icon: "🛒", type: "coinsSpent", threshold: 10000 },
+  // Equipamento no nivel maximo (2026-08-07, a pedido) - EQUIP_MAX_LEVEL=99
+  // (js/equipment.js), o mesmo teto usado pela barra de melhoria de cada
+  // peca.
+  { id: "weapon_maxed", name: "Arma no máximo", icon: "🗡️", type: "equipmentMaxed", equip: "arma" },
+  { id: "shield_maxed", name: "Escudo no máximo", icon: "🛡️", type: "equipmentMaxed", equip: "escudo" },
+  { id: "armor_maxed", name: "Armadura no máximo", icon: "🧥", type: "equipmentMaxed", equip: "armadura" },
+  { id: "all_equipment_maxed", name: "Equipamento completo", icon: "💎", type: "equipmentMaxed", equip: "todos" },
+  // Colecionador de conquistas (2026-08-07, a pedido) - meta-conquista,
+  // conta o numero de OUTRAS conquistas ja desbloqueadas (nunca as medalhas
+  // mensais, que dependem de competir com outros jogadores, não só de
+  // esforço próprio - ver getUnlockedAchievementCountExcludingMedals).
+  { id: "collector_10", name: "Colecionador (10)", icon: "🧩", type: "achievementCount", threshold: 10 },
+  { id: "collector_25", name: "Colecionador (25)", icon: "🧩", type: "achievementCount", threshold: 25 },
+  { id: "collector_50", name: "Colecionador (50)", icon: "🧩", type: "achievementCount", threshold: 50 },
+];
+
+// Horario de uma sessao de treino (2026-08-07, a pedido) - hora LOCAL do
+// dispositivo que fecha a sessao (nem sempre quem a treinou, mas e o mais
+// perto que temos sem fuso guardado por sessao).
+const EARLY_BIRD_ACHIEVEMENT = { id: "early_bird", name: "Madrugador", icon: "🌅", type: "sessionTime" };
+const NIGHT_OWL_ACHIEVEMENT = { id: "night_owl", name: "Notívago", icon: "🌙", type: "sessionTime" };
+const EARLY_BIRD_MAX_HOUR = 7; // antes das 7h
+const NIGHT_OWL_MIN_HOUR = 22; // a partir das 22h
+
+// Treinar nos 3 modos pelo menos uma vez cada, nao precisa de ser no mesmo
+// dia (2026-08-07, a pedido).
+const MODE_EXPLORER_ACHIEVEMENT = { id: "mode_explorer", name: "Poliglota do Treino", icon: "🧭", type: "allModesTrained" };
+
+// Meses de calendario DISTINTOS com pelo menos um treino, nao precisam de
+// ser seguidos (2026-08-07, a pedido) - diferente de "streak" (dias
+// seguidos) e de "month_full" (todos os dias de UM mes).
+const DISTINCT_MONTHS_ACHIEVEMENTS = [
+  { id: "months_3", name: "3 meses treinados", icon: "🗓️", type: "distinctMonths", threshold: 3 },
+  { id: "months_6", name: "6 meses treinados", icon: "🗓️", type: "distinctMonths", threshold: 6 },
+  { id: "months_12", name: "12 meses treinados", icon: "🗓️", type: "distinctMonths", threshold: 12 },
 ];
 
 // Conquistas de distância de sessão e de ritmo separadas por modo de
@@ -206,6 +269,35 @@ const ACHIEVEMENT_COIN_REWARD = {
   pace_personal_record: 31,
   pace_personal_record_caminhar: 31,
   pace_personal_record_bicicleta: 31,
+  // Combate (novas, 2026-08-07)
+  battles_10: 8,
+  battles_25: 20,
+  battles_50: 45,
+  // Progresso (novas, 2026-08-07)
+  level_10: 15,
+  level_25: 65,
+  level_50: 90,
+  level_100: 100,
+  coins_earned_500: 5,
+  coins_earned_2000: 20,
+  coins_earned_10000: 60,
+  spender_500: 5,
+  spender_2000: 20,
+  spender_10000: 60,
+  weapon_maxed: 90,
+  shield_maxed: 90,
+  armor_maxed: 90,
+  all_equipment_maxed: 100,
+  collector_10: 10,
+  collector_25: 30,
+  collector_50: 70,
+  // Frequência (novas, 2026-08-07)
+  early_bird: 10,
+  night_owl: 10,
+  mode_explorer: 10,
+  months_3: 8,
+  months_6: 25,
+  months_12: 60,
 };
 
 // Liderança - medalha mensal, recorrente (paga de novo a cada mes de
@@ -292,8 +384,31 @@ function getAllAchievements(unlockedMap = getUnlockedAchievements()) {
     ...PERSONAL_RECORD_ACHIEVEMENTS,
     ...generateBossAchievements(),
     ...generateMonthlyMedalAchievements(unlockedMap),
+    EARLY_BIRD_ACHIEVEMENT,
+    NIGHT_OWL_ACHIEVEMENT,
+    MODE_EXPLORER_ACHIEVEMENT,
+    ...DISTINCT_MONTHS_ACHIEVEMENTS,
   ];
 }
+
+// Numero de conquistas desbloqueadas que conta para "Colecionador"
+// (achievementCount) - exclui medalhas mensais de proposito (dependem de
+// competir com outros jogadores no leaderboard mensal, nao so de esforco
+// proprio - nao seria justo exigi-las para uma conquista de progresso
+// pessoal).
+function getUnlockedAchievementCountExcludingMedals(unlockedMap = getUnlockedAchievements()) {
+  return Object.keys(unlockedMap).filter((id) => !MONTHLY_MEDAL_ID_PATTERN.test(id)).length;
+}
+
+// Nivel de equipamento por tipo, para a conquista "equipmentMaxed" -
+// "todos" (all_equipment_maxed) usa o MINIMO dos 3, so fica "met" quando
+// nenhum ficou por tras.
+const EQUIP_LEVEL_GETTER_BY_EQUIP_ACHIEVEMENT = {
+  arma: () => getWeaponLevel(),
+  escudo: () => getShieldLevel(),
+  armadura: () => getArmorLevel(),
+  todos: () => Math.min(getWeaponLevel(), getShieldLevel(), getArmorLevel()),
+};
 
 const BEST_SESSION_DISTANCE_KEY_BY_MODE = {
   correr: STORAGE_KEY_BEST_SESSION_DISTANCE_M,
@@ -323,6 +438,19 @@ function getTotalTrainingsCompleted() {
 
 function incrementTotalTrainingsCompleted() {
   localStorage.setItem(STORAGE_KEY_TOTAL_TRAININGS, String(getTotalTrainingsCompleted() + 1));
+  queueProgressSync();
+}
+
+// Numero total de lutas travadas (2026-08-07, conquista "Guerreiro") -
+// ganhas OU perdidas, ao contrario de defeated_creatures (so guarda o
+// MELHOR resultado por criatura). Incrementado uma vez por luta, no fim de
+// startBattle (js/battle.js), sempre - antes de saber se ganhou ou perdeu.
+function getTotalBattlesFought() {
+  return Number(localStorage.getItem(STORAGE_KEY_TOTAL_BATTLES)) || 0;
+}
+
+function incrementTotalBattlesFought() {
+  localStorage.setItem(STORAGE_KEY_TOTAL_BATTLES, String(getTotalBattlesFought() + 1));
   queueProgressSync();
 }
 
@@ -360,6 +488,17 @@ function getBestStreakDays() {
 function updateBestStreakDaysIfBetter(days) {
   if (days > getBestStreakDays()) {
     localStorage.setItem(STORAGE_KEY_BEST_STREAK_DAYS, String(days));
+    queueProgressSync();
+  }
+}
+
+function getDistinctMonthsTrained() {
+  return Number(localStorage.getItem(STORAGE_KEY_DISTINCT_MONTHS_TRAINED)) || 0;
+}
+
+function updateDistinctMonthsTrainedIfBetter(count) {
+  if (count > getDistinctMonthsTrained()) {
+    localStorage.setItem(STORAGE_KEY_DISTINCT_MONTHS_TRAINED, String(count));
     queueProgressSync();
   }
 }
@@ -461,9 +600,39 @@ function getAchievementProgress(achievement) {
       const defeatedCount = Object.keys(getDefeatedCreaturesMap()).length;
       return { current: defeatedCount, target: total, met: total > 0 && defeatedCount === total };
     }
+    case "battleCount": {
+      const total = getTotalBattlesFought();
+      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
+    }
+    case "characterLevel": {
+      const level = getLevelInfo(getLifetimeDistanceM()).level;
+      return { current: Math.min(level, achievement.threshold), target: achievement.threshold, met: level >= achievement.threshold };
+    }
+    case "coinsEarned": {
+      const total = getTotalMoedasGanhas();
+      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
+    }
+    case "coinsSpent": {
+      const total = getTotalMoedasGastas();
+      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
+    }
+    case "equipmentMaxed": {
+      const level = EQUIP_LEVEL_GETTER_BY_EQUIP_ACHIEVEMENT[achievement.equip]();
+      return { current: Math.min(level, EQUIP_MAX_LEVEL), target: EQUIP_MAX_LEVEL, met: level >= EQUIP_MAX_LEVEL };
+    }
+    case "achievementCount": {
+      const total = getUnlockedAchievementCountExcludingMedals();
+      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
+    }
+    case "distinctMonths": {
+      const total = getDistinctMonthsTrained();
+      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
+    }
     case "pace":
     case "fullMonthTrained":
     case "activeWeekend":
+    case "sessionTime":
+    case "allModesTrained":
     case "personalRecord":
     case "monthlyMedal":
     case "monthlyMedalPending":
@@ -591,6 +760,32 @@ function hasActiveWeekend(sessions) {
   });
 }
 
+// Numero de meses de calendario DISTINTOS ("AAAA-MM") com pelo menos um
+// treino, nao precisam de ser seguidos (2026-08-07) - diferente de
+// hasTrainedFullCalendarMonth (todos os dias de UM mes) e de
+// computeLongestStreakDays (dias seguidos).
+function countDistinctMonthsTrained(sessions) {
+  return new Set(sessions.map((s) => formatDayKey(new Date(s.started_at)).slice(0, 7))).size;
+}
+
+// Hora LOCAL do dispositivo em que a sessao terminou - "Madrugador"/
+// "Notivago" (2026-08-07), eventos binarios (uma sessao suficientemente
+// cedo/tarde alguma vez, sem precisar de se repetir).
+function hasEarlyBirdSession(sessions) {
+  return sessions.some((s) => new Date(s.started_at).getHours() < EARLY_BIRD_MAX_HOUR);
+}
+
+function hasNightOwlSession(sessions) {
+  return sessions.some((s) => new Date(s.started_at).getHours() >= NIGHT_OWL_MIN_HOUR);
+}
+
+// "Poliglota do Treino" (2026-08-07) - os 3 modos pelo menos uma vez cada,
+// nao precisa de ser no mesmo dia/sessao.
+function hasTrainedAllModes(sessions) {
+  const modesUsed = new Set(sessions.map((s) => s.mode));
+  return ACHIEVEMENT_TRAINING_MODES.every((mode) => modesUsed.has(mode));
+}
+
 // Chamado sempre que a lista completa de sessoes de treino do jogador
 // esta disponivel (login, ou abertura da aba Perfil) - atualiza a cache
 // local da sequencia e desbloqueia os eventos binarios diretamente, depois
@@ -598,9 +793,13 @@ function hasActiveWeekend(sessions) {
 // via a cache que acabou de ser atualizada).
 function checkFrequencyAchievementsFromSessions(sessions) {
   updateBestStreakDaysIfBetter(computeLongestStreakDays(sessions));
+  updateDistinctMonthsTrainedIfBetter(countDistinctMonthsTrained(sessions));
 
   if (hasTrainedFullCalendarMonth(sessions)) unlockAchievement("month_full", Date.now());
   if (hasActiveWeekend(sessions)) unlockAchievement("weekend_warrior", Date.now());
+  if (hasEarlyBirdSession(sessions)) unlockAchievement("early_bird", Date.now());
+  if (hasNightOwlSession(sessions)) unlockAchievement("night_owl", Date.now());
+  if (hasTrainedAllModes(sessions)) unlockAchievement("mode_explorer", Date.now());
 
   checkAndUnlockAchievements();
 }
@@ -643,6 +842,28 @@ function getAchievementDescription(achievement) {
       return `Percorre ${formatDistanceKm(achievement.distanceM)} em menos de ${Math.round(achievement.maxSeconds / 60)} minutos, ${MODE_ACTIVITY_PHRASE_PT[achievement.mode]}.`;
     case "personalRecord":
       return `Bate o teu próprio recorde de ritmo ${MODE_ACTIVITY_PHRASE_PT[achievement.mode]} (a partir da 2ª sessão nesse modo).`;
+    case "battleCount":
+      return `Trava ${achievement.threshold} lutas (ganhas ou perdidas, contam todas).`;
+    case "characterLevel":
+      return `Chega ao Nível ${achievement.threshold}.`;
+    case "coinsEarned":
+      return `Ganha ${achievement.threshold.toLocaleString("pt-BR")} moedas ao longo da vida (treino, lutas e conquistas - não conta o saldo inicial).`;
+    case "coinsSpent":
+      return `Investe ${achievement.threshold.toLocaleString("pt-BR")} moedas ao longo da vida a evoluir equipamento.`;
+    case "equipmentMaxed":
+      return achievement.equip === "todos"
+        ? "Leva a Arma, o Escudo e a Armadura todos ao nível máximo (99)."
+        : `Leva ${achievement.equip === "arma" ? "a Arma" : achievement.equip === "escudo" ? "o Escudo" : "a Armadura"} ao nível máximo (99).`;
+    case "achievementCount":
+      return `Desbloqueia ${achievement.threshold} conquistas (medalhas mensais não contam - dependem de competir com outros jogadores, não só de esforço próprio).`;
+    case "sessionTime":
+      return achievement.id === "early_bird"
+        ? `Termina um treino antes das ${EARLY_BIRD_MAX_HOUR}h.`
+        : `Termina um treino a partir das ${NIGHT_OWL_MIN_HOUR}h.`;
+    case "allModesTrained":
+      return "Treina pelo menos uma vez em cada um dos 3 modos (Caminhar, Correr, Bicicleta).";
+    case "distinctMonths":
+      return `Treina em ${achievement.threshold} meses de calendário diferentes (não precisam de ser seguidos).`;
     default:
       return "";
   }

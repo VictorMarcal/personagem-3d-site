@@ -56,6 +56,14 @@ const STORAGE_KEY_BEST_SESSION_DISTANCE_M_BICICLETA = "personagem.melhorDistanci
 
 const STORAGE_KEY_TOTAL_TRAININGS = "personagem.totalTreinosConcluidos";
 
+// Contadores vitalícios para novas conquistas (2026-08-07, a pedido) -
+// distintos dos valores "atuais" já existentes (moedas/luta), que sobem E
+// descem: estes só sobem, nunca são reduzidos por gastar moedas ou perder
+// uma luta.
+const STORAGE_KEY_TOTAL_MOEDAS_GANHAS = "personagem.totalMoedasGanhas";
+const STORAGE_KEY_TOTAL_MOEDAS_GASTAS = "personagem.totalMoedasGastas";
+const STORAGE_KEY_TOTAL_BATTLES = "personagem.totalLutas";
+
 // Fila de sessoes de treino ainda nao confirmadas no Supabase (ver
 // js/training.js) - diferente das chaves acima porque cada sessao e um
 // evento discreto, nao um valor agregado que pode ser reenviado.
@@ -72,6 +80,12 @@ const STORAGE_KEY_HP_LAST_UPDATE = "personagem.vidaUltimaAtualizacao";
 // leaderboard), para as conquistas dependentes disso poderem ser lidas de
 // forma sincrona pelo checkAndUnlockAchievements() como tudo o resto.
 const STORAGE_KEY_BEST_STREAK_DAYS = "personagem.melhorSequenciaDias";
+
+// Numero de meses de calendario DISTINTOS com pelo menos um treino, nunca
+// diminui (2026-08-07, conquista "meses treinados") - mesmo padrao de
+// cache local de STORAGE_KEY_BEST_STREAK_DAYS acima, recalculado sempre que
+// o historico completo de sessoes chega (checkFrequencyAchievementsFromSessions).
+const STORAGE_KEY_DISTINCT_MONTHS_TRAINED = "personagem.mesesDistintosTreinados";
 
 // Melhor ritmo (m/s), tambem por modo de treino (mesmo padrao do recorde
 // de distancia de sessao acima) - Correr reaproveita a chave ja existente.

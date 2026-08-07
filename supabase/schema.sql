@@ -215,6 +215,14 @@ update public.training_sessions set effective_distance_m = distance_m where effe
 alter table public.training_sessions alter column effective_distance_m set not null;
 alter table public.training_sessions alter column effective_distance_m set default 0;
 
+-- Migracao: contadores vitalicios novos para as conquistas adicionadas em
+-- 2026-08-07 (secção 10 da documentação) - distintos dos valores "atuais"
+-- ja existentes (moedas/lutas), que sobem E descem: estes so sobem.
+alter table public.player_progress add column if not exists total_moedas_ganhas integer not null default 0;
+alter table public.player_progress add column if not exists total_moedas_gastas integer not null default 0;
+alter table public.player_progress add column if not exists total_battles_fought integer not null default 0;
+alter table public.player_progress add column if not exists distinct_months_trained integer not null default 0;
+
 -- Migracao: recorde de distancia de sessao e de ritmo, separados por modo
 -- de treino (js/achievements.js generateSessionDistanceAchievements/
 -- PACE_ACHIEVEMENTS - conquistas separadas por Caminhar/Correr/Bicicleta,
