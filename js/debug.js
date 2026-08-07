@@ -65,24 +65,29 @@ const DEBUG_DEFAULTS = {
   // Um limite de velocidade por modo de treino (js/training.js) - cada um
   // filtra erros de GPS/veiculo de forma diferente, ja que velocidades
   // normais para bicicleta seriam um erro claro a caminhar ou a correr.
-  maxSpeedKmhCaminhar: 7,
+  maxSpeedKmhCaminhar: 9,
   maxSpeedKmhCorrer: 15,
   maxSpeedKmhBicicleta: 37,
   // Limite MINIMO por modo (2026-08-06, bug reportado - escolher "Correr"
   // e depois andar devagar continuava a contar ao multiplicador de Correr,
   // sem nunca ser filtrado pelo teto de velocidade, muito acima do ritmo
   // real). Caminhar fica sem minimo (e o modo mais lento, nao ha nada por
-  // baixo dele para simular) - Correr comeca exatamente onde o teto de
-  // Caminhar acaba (sem zona morta entre os dois). Teto de Correr reduzido
-  // de 20 para 15 km/h e minimo de Bicicleta subido de 10 para 13 km/h
-  // (2026-08-07, a pedido - 20 km/h sustido e ritmo de elite, quase o
-  // recorde mundial de maratona, deixava uma zona de sobreposicao enorme
-  // com o ritmo normal de bicicleta em que pedalar tranquilamente podia
-  // ser declarado "Correr" e pago ao multiplicador 1.0x em vez do 0.35x
-  // justo). Ainda sobra uma pequena zona de sobreposicao entre os 13 e os
-  // 15 km/h (Correr aceita até 15, Bicicleta aceita a partir de 13) -
-  // reduzida para 2 km/h, mas nao eliminada. Valores de partida, ajustaveis
-  // aqui.
+  // baixo dele para simular). Teto de Correr reduzido de 20 para 15 km/h e
+  // minimo de Bicicleta subido de 10 para 13 km/h (2026-08-07, a pedido -
+  // 20 km/h sustido e ritmo de elite, quase o recorde mundial de maratona,
+  // deixava uma zona de sobreposicao enorme com o ritmo normal de
+  // bicicleta em que pedalar tranquilamente podia ser declarado "Correr" e
+  // pago ao multiplicador 1.0x em vez do 0.35x justo). Ainda sobra uma
+  // pequena zona de sobreposicao entre os 13 e os 15 km/h (Correr aceita
+  // até 15, Bicicleta aceita a partir de 13) - reduzida para 2 km/h, mas
+  // nao eliminada.
+  // Teto de Caminhar subido de 7 para 9 km/h (2026-08-07, a pedido) -
+  // ATENCAO: minSpeedKmhCorrer ficou em 7, por isso "Correr comeca
+  // exatamente onde o teto de Caminhar acaba" (verdade quando os dois
+  // ficaram em 7) deixou de ser verdade - agora ha uma zona de
+  // sobreposicao de 2 km/h (7-9) tambem aqui, nao so entre Correr/Bicicleta
+  // acima. Nao subi minSpeedKmhCorrer sem pedido explicito. Valores de
+  // partida, ajustaveis aqui.
   minSpeedKmhCaminhar: 0,
   minSpeedKmhCorrer: 7,
   minSpeedKmhBicicleta: 13,

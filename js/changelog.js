@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.17.8",
+    title: "Caminhar Com Mais Margem",
+    changes: [
+      "O limite máximo de velocidade de Caminhar subiu de 7 para 9 km/h.",
+    ],
+  },
+  {
     version: "v1.17.7",
     title: "Limites de Velocidade Mais Justos (Correr/Bicicleta)",
     changes: [
