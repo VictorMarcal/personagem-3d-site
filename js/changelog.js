@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.17.2",
+    title: "Cartões Mais Separados",
+    changes: [
+      "Os cartões do Perfil (e de outras abas com vários cartões seguidos) passaram a ter uma linha fina a separá-los, para ficar claro onde um acaba e o outro começa.",
+    ],
+  },
+  {
     version: "v1.17.1",
     title: "Notas de Atualização",
     changes: [
