@@ -1075,12 +1075,31 @@ main {
 
 /* ---------- Avisos flutuantes --------------------------------------------- */
 
-.game-toast {
+/* Container partilhado por todos os .game-toast (2026-08-07, corrigido a
+   pedido - "os monstros deixam de dropar moedas depois das 3 estrelas":
+   nao era a atribuicao de moedas que parava (confirmado - awardMonsterCoins
+   nunca depende de estrelas), era este aviso a ficar escondido por baixo de
+   outro. Antes cada .game-toast tinha a sua propria position:fixed no MESMO
+   top/left - dois avisos a aparecer perto um do outro (ex: moedas da vitoria
+   + moedas da conquista "Vitoria perfeita" ao atingir 3 estrelas por vez
+   primeira) ficavam exatamente sobrepostos, o de cima escondendo por completo
+   o de baixo). Agora empilham-se verticalmente dentro deste container fixo,
+   em vez de cada um ter a sua propria posicao fixa igual a todos os outros.
+   `pointer-events: none` porque os toasts sao so informativos, nunca clicaveis. */
+#game-toast-container {
   position: fixed;
   top: 14px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 980;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.game-toast {
   max-width: 90vw;
   padding: 12px 18px;
   border-radius: 999px;

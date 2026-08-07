@@ -128,6 +128,54 @@ function exitBattleView() {
   camera.lookAt(0, 1, 0);
 }
 
+// "Lunge" de ataque (2026-08-07, a pedido) - quem ataca avanca parte do
+// caminho ate ao outro e volta, para dar sensacao de impacto em vez dos
+// dois combatentes ficarem sempre estaticos nas mesmas posicoes durante
+// toda a luta. So anima o eixo X (a unica dimensao em que se afastam,
+// ver enterBattleView acima).
+const LUNGE_FRACTION = 0.4; // 0-1, quanto do caminho ate ao outro e percorrido
+const LUNGE_OUT_MS = 160;
+const LUNGE_BACK_MS = 200;
+const LUNGE_STEP_MS = 16; // ~60fps enquanto a aba esta em primeiro plano
+
+// setTimeout em vez de requestAnimationFrame de proposito: o rAF fica
+// suspenso por completo enquanto a aba nao esta visivel (ecra apagado,
+// trocar de app a meio de uma luta) - como js/battle.js faz `await
+// lungeOut(...)` antes de continuar a ronda, isso deixaria a luta inteira
+// presa para sempre à espera de uma animacao que nunca mais corre.
+// setTimeout continua a disparar em segundo plano (so mais lento), por
+// isso a luta sempre acaba por avançar, mesmo que a animacao fique feia.
+function animatePositionX(object3d, fromX, toX, durationMs) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    function step() {
+      const t = Math.min(1, (Date.now() - start) / durationMs);
+      object3d.position.x = fromX + (toX - fromX) * t;
+      if (t < 1) setTimeout(step, LUNGE_STEP_MS);
+      else resolve();
+    }
+    step();
+  });
+}
+
+// Avanca o atacante em direcao ao defensor - devolve a posicao original,
+// para lungeBack saber para onde voltar. js/battle.js espera por isto
+// antes de mostrar o dano (o numero flutuante aparece no momento do
+// "impacto", no pico do avanco).
+async function lungeOut(attacker, defender) {
+  const originalX = attacker.position.x;
+  const towardX = originalX + (defender.position.x - originalX) * LUNGE_FRACTION;
+  await animatePositionX(attacker, originalX, towardX, LUNGE_OUT_MS);
+  return originalX;
+}
+
+// Regresso a posicao original - disparado sem esperar (js/battle.js nao
+// faz await), a decorrer em paralelo com o resto da ronda (ha sempre tempo
+// de sobra no BATTLE_ROUND_DELAY_MS que se segue).
+function lungeBack(attacker, originalX) {
+  animatePositionX(attacker, attacker.position.x, originalX, LUNGE_BACK_MS);
+}
+
 loadingEl.style.display = "none";
 
 function onResize() {

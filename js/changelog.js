@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.17.4",
+    title: "Lutas Com Mais Vida",
+    changes: [
+      "Quem ataca agora avança um pouco para o outro lado, para as lutas parecerem menos estáticas.",
+      "O número de vida recuperada durante a luta passou a mostrar o valor exato (ex: \"+2.1\"), tal como já acontecia fora de combate.",
+      "Corrigido um problema visual em que dois avisos a aparecer ao mesmo tempo (ex: moedas ganhas + uma conquista desbloqueada) ficavam exatamente um em cima do outro, escondendo um deles - agora empilham-se.",
+    ],
+  },
+  {
     version: "v1.17.3",
     title: "Monstros Também Recuperam",
     changes: [

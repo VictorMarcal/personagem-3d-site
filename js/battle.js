@@ -186,11 +186,16 @@ async function startBattle(creature) {
   // entre acoes (BATTLE_ROUND_DELAY_MS), capada na vida maxima - mesmo
   // "+X" flutuante verde usado fora de combate (showFloatingCombatText,
   // js/main.js), so que aqui tambem soma ao mesmo playerHp que o dano usa.
+  // O numero mostrado ja nao e arredondado a um inteiro (2026-08-07,
+  // corrigido a pedido - "tenho 2.6 de recuperacao por segundo mas na
+  // luta so aparecia +2"): mesma formatacao de fora de combate
+  // (showFloatingCombatText usa toFixed(1) para nao-inteiros), agora
+  // tambem em luta.
   function tickPlayerRegen() {
     if (playerHp >= playerMaxHp) return;
     const before = playerHp;
     playerHp = Math.min(playerMaxHp, playerHp + computeRegeneracaoPerSecond(playerEnergiaLevel) * (BATTLE_ROUND_DELAY_MS / 1000));
-    const healed = Math.round(playerHp - before);
+    const healed = playerHp - before;
     if (healed > 0) showFloatingCombatText(head, healed, "heal");
   }
 
@@ -202,7 +207,7 @@ async function startBattle(creature) {
     if (monsterHp <= 0 || monsterHp >= monsterMaxHp) return;
     const before = monsterHp;
     monsterHp = Math.min(monsterMaxHp, monsterHp + monsterMaxHp * (getMonsterRegenPercent() / 100));
-    const healed = Math.round(monsterHp - before);
+    const healed = monsterHp - before;
     if (healed > 0) showFloatingCombatText(monsterHead, healed, "heal");
   }
 
@@ -240,6 +245,7 @@ async function startBattle(creature) {
     round += 1;
     refreshTabLock(STORAGE_KEY_BATTLE_TAB_LOCK);
 
+    const playerLungeOriginX = await lungeOut(character, monster);
     if (rollDodge(monsterDestreza)) {
       showFloatingCombatText(monsterHead, 0, "miss");
       setBattleLog(`${creature.name} esquivou o teu ataque!`, "miss");
@@ -254,6 +260,7 @@ async function startBattle(creature) {
       showFloatingCombatText(monsterHead, -dmgToMonster, "damage");
       setBattleLog(`Atacaste ${creature.name}: -${dmgToMonster} Vida`);
     }
+    lungeBack(character, playerLungeOriginX);
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
     await sleep(BATTLE_ROUND_DELAY_MS);
     tickPlayerRegen();
@@ -266,6 +273,7 @@ async function startBattle(creature) {
       break;
     }
 
+    const monsterLungeOriginX = await lungeOut(monster, character);
     if (rollDodge(playerDestreza)) {
       showFloatingCombatText(head, 0, "miss");
       setBattleLog(`Esquivaste do ataque de ${creature.name}!`, "miss");
@@ -280,6 +288,7 @@ async function startBattle(creature) {
       showFloatingCombatText(head, -dmgToPlayer, "damage");
       setBattleLog(`${creature.name} atacou-te: -${dmgToPlayer} Vida`);
     }
+    lungeBack(monster, monsterLungeOriginX);
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
     await sleep(BATTLE_ROUND_DELAY_MS);
     tickPlayerRegen();

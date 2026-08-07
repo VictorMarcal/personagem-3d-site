@@ -208,11 +208,26 @@ function getArmorLevel() { return getEquipLevel(STORAGE_KEY_ARMOR_LEVEL); }
 // numero flutuante de combate (js/main.js showFloatingCombatText), mas
 // fixo no ecra (o treino/luta nao tem uma posicao 3D fixa relevante para
 // isto) e com texto em vez de um numero.
+let gameToastContainerEl = null;
+
+// Criado so quando o primeiro toast aparece (nao existe nenhum no HTML) -
+// todos os avisos partilham este container fixo, para se empilharem em vez
+// de ficarem todos sobrepostos exatamente na mesma posicao (ver
+// #game-toast-container em css/style.css).
+function getGameToastContainer() {
+  if (!gameToastContainerEl) {
+    gameToastContainerEl = document.createElement("div");
+    gameToastContainerEl.id = "game-toast-container";
+    document.body.appendChild(gameToastContainerEl);
+  }
+  return gameToastContainerEl;
+}
+
 function showGameToast(message, variant) {
   const el = document.createElement("div");
   el.className = `game-toast game-toast-${variant}`;
   el.textContent = message;
-  document.body.appendChild(el);
+  getGameToastContainer().appendChild(el);
   setTimeout(() => el.remove(), 3500);
 }
 
