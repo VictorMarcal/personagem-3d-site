@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.17.3",
+    title: "Monstros Também Recuperam",
+    changes: [
+      "Os monstros passaram a recuperar um pouco de vida durante a luta, tal como tu já fazias - antes só o jogador recuperava em combate.",
+    ],
+  },
+  {
     version: "v1.17.2",
     title: "Cartões Mais Separados",
     changes: [

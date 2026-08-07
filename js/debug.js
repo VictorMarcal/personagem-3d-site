@@ -99,6 +99,14 @@ const DEBUG_DEFAULTS = {
   battleDefensePercent: 0.6,
   battleFloorPercent: 0.5,
   damageVarianceMin: 0.8,
+  // % da Vida MAXIMA do monstro recuperada a cada troca de ataques durante
+  // a luta (2026-08-07, a pedido - antes so o jogador regenerava em
+  // combate, ver tickPlayerRegen em js/battle.js). Percentagem em vez de
+  // vida/segundo como o jogador porque os monstros nao tem nenhum status de
+  // Energia para alimentar essa formula - uma % da propria Vida maxima
+  // escala automaticamente com o nivel/arquetipo sem precisar de um numero
+  // fixo por monstro.
+  monsterRegenPercent: 1,
 };
 
 const STAT_TYPE_KEY_SUFFIX = { vida: "Vida", ataque: "Ataque", defesa: "Defesa" };
@@ -156,6 +164,7 @@ function getBossMaxPoints() { return getDebugValue("bossMaxPoints"); }
 function getBattleDefensePercent() { return getDebugValue("battleDefensePercent"); }
 function getBattleFloorPercent() { return getDebugValue("battleFloorPercent"); }
 function getDamageVarianceMin() { return getDebugValue("damageVarianceMin"); }
+function getMonsterRegenPercent() { return getDebugValue("monsterRegenPercent"); }
 
 const debugVarInputs = {
   levelBase: document.getElementById("dbg-levelBase"),
@@ -202,6 +211,7 @@ const debugVarInputs = {
   battleDefensePercent: document.getElementById("dbg-battleDefensePercent"),
   battleFloorPercent: document.getElementById("dbg-battleFloorPercent"),
   damageVarianceMin: document.getElementById("dbg-damageVarianceMin"),
+  monsterRegenPercent: document.getElementById("dbg-monsterRegenPercent"),
 };
 
 const debugVarsStatusEl = document.getElementById("debug-vars-status");

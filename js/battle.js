@@ -194,6 +194,18 @@ async function startBattle(creature) {
     if (healed > 0) showFloatingCombatText(head, healed, "heal");
   }
 
+  // Monstros passam a regenerar tambem (2026-08-07, a pedido) - sem status
+  // de Energia proprio, usam uma % da sua Vida MAXIMA por troca de ataques
+  // em vez de vida/segundo (MONSTER_REGEN_PERCENT no Debug), nos mesmos
+  // momentos que tickPlayerRegen acima.
+  function tickMonsterRegen() {
+    if (monsterHp <= 0 || monsterHp >= monsterMaxHp) return;
+    const before = monsterHp;
+    monsterHp = Math.min(monsterMaxHp, monsterHp + monsterMaxHp * (getMonsterRegenPercent() / 100));
+    const healed = Math.round(monsterHp - before);
+    if (healed > 0) showFloatingCombatText(monsterHead, healed, "heal");
+  }
+
   characterHudEl.classList.add("hidden");
   btnBattleBack.classList.add("hidden");
   battleResultEl.textContent = "";
@@ -217,6 +229,7 @@ async function startBattle(creature) {
   setBattleLog("A batalha começou!");
   await sleep(BATTLE_ROUND_DELAY_MS);
   tickPlayerRegen();
+  tickMonsterRegen();
   updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
 
   let won = false;
@@ -244,6 +257,7 @@ async function startBattle(creature) {
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
     await sleep(BATTLE_ROUND_DELAY_MS);
     tickPlayerRegen();
+    tickMonsterRegen();
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
 
     if (monsterHp <= 0) {
@@ -269,6 +283,7 @@ async function startBattle(creature) {
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
     await sleep(BATTLE_ROUND_DELAY_MS);
     tickPlayerRegen();
+    tickMonsterRegen();
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
 
     if (playerHp <= 0) {
