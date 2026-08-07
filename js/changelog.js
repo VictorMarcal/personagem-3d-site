@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.17.6",
+    title: "Nível à Vista",
+    changes: [
+      "O teu nível passou a aparecer também no topo da página, ao lado do teu nome, sem precisares de ir à aba Personagem para ver.",
+    ],
+  },
+  {
     version: "v1.17.5",
     title: "Fim da Farmagem",
     changes: [

@@ -5,6 +5,7 @@
 // STORAGE_KEY_LIFETIME_M esta definida em js/storage-keys.js
 
 const characterLevelValueEl = document.getElementById("character-level-value");
+const siteTitleLevelEl = document.getElementById("site-title-level");
 const xpProgressTextEl = document.getElementById("xp-progress-text");
 const xpBarFillEl = document.getElementById("xp-bar-fill");
 
@@ -87,6 +88,10 @@ function updateXPDisplay(liveSessionM = 0) {
   const progressPct = Math.min(100, (info.distanceIntoLevel / info.distanceForNextLevel) * 100);
 
   characterLevelValueEl.textContent = info.level;
+  // Nivel tambem no hero da pagina (2026-08-07, a pedido), ao lado do nome
+  // - mesmo valor do cracha do palco 3D, so uma segunda leitura visivel sem
+  // ter de entrar na aba Personagem.
+  siteTitleLevelEl.textContent = `Nível ${info.level}`;
   // Mostrado como XP (1 XP = 1 metro, ex: 1km = 1000 XP), nao em km como as
   // restantes distancias do jogo - a barra de nivel e a unica leitura de
   // progresso onde faz sentido falar de "pontos de experiencia", nao de
