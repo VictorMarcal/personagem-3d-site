@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.17.7",
+    title: "Limites de Velocidade Mais Justos (Correr/Bicicleta)",
+    changes: [
+      "O limite máximo de velocidade de Correr desceu de 20 para 15 km/h - 20 km/h sustido é ritmo de recorde mundial de maratona, o que deixava passar como \"Correr\" ritmos que eram claramente de bicicleta tranquila.",
+      "O limite mínimo de velocidade de Bicicleta subiu de 10 para 13 km/h, pelo mesmo motivo.",
+    ],
+  },
+  {
     version: "v1.17.6",
     title: "Nível à Vista",
     changes: [
