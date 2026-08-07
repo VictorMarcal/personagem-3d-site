@@ -771,6 +771,15 @@ main {
   border: none;
 }
 
+/* Separador entre cards consecutivos (2026-08-07, a pedido) - o visual
+   "campo aberto" (v1.12.2) nao tem caixa/fundo a delimitar cada card, o
+   que no Perfil (varios cards com listas longas empilhados) ficava
+   confuso, sem se perceber onde um terminava e o outro comecava. */
+.card + .card {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
 .card-title {
   font-family: var(--font-heading);
   font-size: 20px;
