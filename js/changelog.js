@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.2.0",
+    title: "Navegação Simplificada",
+    changes: [
+      "O separador \"Treino\" deixou de existir — tudo o que lá estava (Iniciar Treino, distância, calorias ao vivo) passou para o separador Personagem, logo no topo.",
+      "O separador \"Batalhas\" passou a chamar-se \"Arena\".",
+      "Barra de navegação com 4 separadores em vez de 5.",
+    ],
+  },
+  {
     version: "v2.1.0",
     title: "8 Conquistas Novas de Calorias",
     changes: [

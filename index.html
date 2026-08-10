@@ -36,7 +36,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v2.1.0</span>
+      <span id="site-version" class="site-version-hero">v2.2.0</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -103,6 +103,44 @@
 
     <!-- ===== Separador: Personagem ===== -->
     <div class="pane active" data-pane-name="personagem">
+      <h2 class="card-title training-title">Treino</h2>
+
+      <p class="mode-xp-explanation">A atividade (Caminhar/Correr/Bicicleta) é detetada automaticamente pelo ritmo — não precisas de escolher nada.</p>
+
+      <section id="training-readout">
+        <p class="training-label">Distância percorrida</p>
+        <p id="training-distance" class="training-distance">0 km</p>
+        <p id="training-live-stats" class="training-live-stats">0:00 · nominal 0.0 km/h · média 0.0 km/h</p>
+        <p id="training-detected-activity" class="training-detected-activity">Atividade detetada: —</p>
+        <p id="training-calories-row" class="training-calories-row">
+          Calorias (XP): <span id="training-calories">0 kcal</span>
+        </p>
+      </section>
+
+      <p id="speed-warning" class="speed-warning hidden">⚠️ Velocidade demasiado alta para ser real — esta distância não está a contar</p>
+
+      <div id="training-coin-found" class="training-coin-found hidden">
+        <span class="training-coin-found-icon">🪙</span>
+        <div>
+          <p class="training-coin-found-title">Encontraste <span id="training-coin-found-amount">0</span> moedas</p>
+          <p class="training-coin-found-sub">ao <span id="training-coin-found-km">0</span>.º quilómetro</p>
+        </div>
+      </div>
+
+      <section id="training-panel">
+        <div id="start-screen" class="panel-screen">
+          <button id="btn-start-treino" class="btn-primary">Iniciar Treino</button>
+          <div id="training-today-card">
+            <p class="training-label">Treinos de hoje</p>
+            <ul id="training-today-list" class="training-today-list"></ul>
+          </div>
+        </div>
+
+        <div id="training-screen" class="panel-screen hidden">
+          <button id="btn-stop-treino" class="btn-stop">Parar Treino</button>
+        </div>
+      </section>
+
       <section id="xp-panel">
         <div class="xp-bar-track">
           <div id="xp-bar-fill" class="xp-bar-fill"></div>
@@ -307,51 +345,10 @@
       </section>
     </div>
 
-    <!-- ===== Separador: Treino ===== -->
-    <div class="pane" data-pane-name="treino">
-      <h2 class="card-title training-title">Treino</h2>
-
-      <p class="mode-xp-explanation">A atividade (Caminhar/Correr/Bicicleta) é detetada automaticamente pelo ritmo — não precisas de escolher nada.</p>
-
-      <section id="training-readout">
-        <p class="training-label">Distância percorrida</p>
-        <p id="training-distance" class="training-distance">0 km</p>
-        <p id="training-live-stats" class="training-live-stats">0:00 · nominal 0.0 km/h · média 0.0 km/h</p>
-        <p id="training-detected-activity" class="training-detected-activity">Atividade detetada: —</p>
-        <p id="training-calories-row" class="training-calories-row">
-          Calorias (XP): <span id="training-calories">0 kcal</span>
-        </p>
-      </section>
-
-      <p id="speed-warning" class="speed-warning hidden">⚠️ Velocidade demasiado alta para ser real — esta distância não está a contar</p>
-
-      <div id="training-coin-found" class="training-coin-found hidden">
-        <span class="training-coin-found-icon">🪙</span>
-        <div>
-          <p class="training-coin-found-title">Encontraste <span id="training-coin-found-amount">0</span> moedas</p>
-          <p class="training-coin-found-sub">ao <span id="training-coin-found-km">0</span>.º quilómetro</p>
-        </div>
-      </div>
-
-      <section id="training-panel">
-        <div id="start-screen" class="panel-screen">
-          <button id="btn-start-treino" class="btn-primary">Iniciar Treino</button>
-          <div id="training-today-card">
-            <p class="training-label">Treinos de hoje</p>
-            <ul id="training-today-list" class="training-today-list"></ul>
-          </div>
-        </div>
-
-        <div id="training-screen" class="panel-screen hidden">
-          <button id="btn-stop-treino" class="btn-stop">Parar Treino</button>
-        </div>
-      </section>
-    </div>
-
-    <!-- ===== Separador: Batalhas ===== -->
+    <!-- ===== Separador: Arena (era "Batalhas") ===== -->
     <div class="pane" data-pane-name="batalhas">
       <section id="monsters-card" class="card">
-        <h2 class="card-title">Batalhas</h2>
+        <h2 class="card-title">Arena</h2>
         <div id="monsters-list"></div>
       </section>
     </div>
@@ -537,8 +534,7 @@
 
   <nav id="tab-bar">
     <button class="tab-btn active" type="button" data-tab="personagem"><span class="tab-icon">🧍</span>Personagem</button>
-    <button class="tab-btn" type="button" data-tab="treino"><span class="tab-icon">🥾</span>Treino</button>
-    <button class="tab-btn" type="button" data-tab="batalhas"><span class="tab-icon">⚔️</span>Batalhas</button>
+    <button class="tab-btn" type="button" data-tab="batalhas"><span class="tab-icon">⚔️</span>Arena</button>
     <button class="tab-btn" type="button" data-tab="trofeus"><span class="tab-icon">🏅</span>Troféus</button>
     <button class="tab-btn" type="button" data-tab="perfil"><span class="tab-icon">📊</span>Perfil</button>
   </nav>
@@ -564,6 +560,6 @@
   <script src="js/changelog.js?v=20260807h"></script>
   <script src="js/achievements.js?v=20260810f"></script>
   <script src="js/orientation.js?v=20260806p"></script>
-  <script src="js/nav.js?v=20260806p"></script>
+  <script src="js/nav.js?v=20260810a"></script>
 </body>
 </html>

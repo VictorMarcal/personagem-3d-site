@@ -1,5 +1,5 @@
 /* ==========================================================================
-   js/nav.js — barra de separadores inferior (5 separadores)
+   js/nav.js — barra de separadores inferior (4 separadores)
    Adicionado com o tema "Campo Aberto". NÃO substitui a navegação antiga:
    limita-se a clicar nos botões #btn-nav-jogo / #btn-nav-perfil que já
    existiam (agora invisíveis), para que js/profile.js e js/battle.js
