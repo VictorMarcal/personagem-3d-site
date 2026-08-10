@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.5.1",
+    title: "Correção: Flecha ao Contrário",
+    changes: [
+      "Corrigido: a flecha do arqueiro voava com a ponta para trás.",
+      "A flecha passa a mirar o corpo do monstro em vez da cabeça (o dano continua a aparecer por cima da cabeça).",
+    ],
+  },
+  {
     version: "v2.5.0",
     title: "A Personagem Passa a Arqueira",
     changes: [
