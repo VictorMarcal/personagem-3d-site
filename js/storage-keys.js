@@ -109,3 +109,8 @@ const STORAGE_KEY_DISCARDED_SPEED_M = "personagem.distanciaAnuladaVelocidadeM";
 // contar/pagar a mesma coisa em separado.
 const STORAGE_KEY_TRAINING_TAB_LOCK = "treino.lockAba";
 const STORAGE_KEY_BATTLE_TAB_LOCK = "personagem.lockBatalhaAba";
+
+// Peso corporal do jogador (kg), editavel no Perfil - pre-requisito da
+// formula de calorias/MET planeada (secção 17 da documentação). Omissão
+// de 70kg para quem ainda não preencheu (DEFAULT_WEIGHT_KG, js/equipment.js).
+const STORAGE_KEY_WEIGHT_KG = "personagem.pesoKg";

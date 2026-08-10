@@ -16,6 +16,26 @@ const viewPerfilEl = document.getElementById("view-perfil");
 // e util para qualquer jogador, por isso fica tambem aqui, fora do gate.
 document.getElementById("btn-reset-character-profile").addEventListener("click", resetCharacterAndDistance);
 
+// --- Definicoes: peso corporal (kg), pre-requisito da formula de calorias/
+// MET planeada (secção 17 da documentação) - so afeta o que ainda nao
+// existe, guardado ja para nao bloquear essa mudanca mais tarde.
+const profileWeightInputEl = document.getElementById("profile-weight-input");
+const profileWeightStatusEl = document.getElementById("profile-weight-status");
+
+function renderProfileSettings() {
+  profileWeightInputEl.value = getPesoKg();
+}
+
+document.getElementById("btn-save-weight").addEventListener("click", () => {
+  const kg = Number(profileWeightInputEl.value);
+  if (!Number.isFinite(kg) || kg < 20 || kg > 300) {
+    profileWeightStatusEl.textContent = "Peso inválido (entre 20 e 300 kg).";
+    return;
+  }
+  setPesoKg(kg);
+  profileWeightStatusEl.textContent = "Guardado!";
+});
+
 function toNum(value) {
   return Number(value) || 0;
 }
@@ -474,6 +494,7 @@ async function renderProfileTab() {
   selectedWeekCursor = getStartOfIsoWeek(new Date());
   selectedMonthCursor = getStartOfLocalMonth(new Date());
 
+  renderProfileSettings();
   renderProfileSummary(sessions);
   renderProfileHistory(sessions);
   renderSelectedWeekChart();

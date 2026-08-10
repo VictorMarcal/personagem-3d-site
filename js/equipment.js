@@ -74,6 +74,21 @@ function getMoedas() {
   return getStoredNumber(STORAGE_KEY_MOEDAS, STARTING_MOEDAS);
 }
 
+// Peso corporal do jogador (kg), editavel no Perfil - pre-requisito da
+// formula de calorias/MET planeada (secção 17 da documentação). Omissão
+// de 70kg para quem ainda não preencheu, mesmo padrão de STARTING_MOEDAS
+// acima (só conta para quem nunca teve esta chave guardada).
+const DEFAULT_WEIGHT_KG = 70;
+
+function getPesoKg() {
+  return getStoredNumber(STORAGE_KEY_WEIGHT_KG, DEFAULT_WEIGHT_KG);
+}
+
+function setPesoKg(kg) {
+  localStorage.setItem(STORAGE_KEY_WEIGHT_KG, String(kg));
+  queueProgressSync();
+}
+
 // Contadores vitalícios (2026-08-07, conquistas "Moedas ganhas"/"Investidor")
 // - ao contrário de getMoedas() (saldo atual, sobe e desce), estes só sobem,
 // nunca são reduzidos por gastar ou perder. STARTING_MOEDAS não conta para

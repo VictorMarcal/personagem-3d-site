@@ -308,6 +308,12 @@ alter table public.player_progress add column if not exists nivel_arma smallint 
 alter table public.player_progress add column if not exists nivel_escudo smallint not null default 1;
 alter table public.player_progress add column if not exists nivel_armadura smallint not null default 1;
 
+-- Peso corporal do jogador (kg), editavel no Perfil (2026-08-10) - pre-
+-- requisito da formula de calorias/MET planeada na secção 17 da
+-- documentação (validação de treino por calorias em vez de velocidade).
+-- Omissão de 70kg para quem ainda não preencheu.
+alter table public.player_progress add column if not exists peso_kg numeric not null default 70;
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

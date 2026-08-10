@@ -36,7 +36,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v1.18.1</span>
+      <span id="site-version" class="site-version-hero">v1.19.0</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -391,6 +391,16 @@
     </div>
 
     <div id="view-perfil" class="hidden">
+      <section class="card" id="profile-settings-card">
+        <h2 class="card-title">Definições</h2>
+        <div class="debug-row">
+          <label class="debug-label" for="profile-weight-input">Peso (kg) — usado para calcular calorias nos treinos</label>
+          <input type="number" id="profile-weight-input" min="20" max="300" step="1">
+          <button id="btn-save-weight" class="btn-secondary">Guardar</button>
+        </div>
+        <p id="profile-weight-status" class="debug-status"></p>
+      </section>
+
       <section class="card" id="profile-summary-card">
         <h2 class="card-title">Resumo</h2>
         <div id="profile-summary-list" class="profile-summary-list"></div>
@@ -548,20 +558,20 @@
        alterares algum js/*.js, para o navegador nao continuar a usar uma
        copia antiga em cache depois de um deploy. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/build/three.min.js"></script>
-  <script src="js/storage-keys.js?v=20260807h"></script>
+  <script src="js/storage-keys.js?v=20260810a"></script>
   <script src="js/tab-lock.js?v=20260806p"></script>
   <script src="js/auth.js?v=20260806p"></script>
-  <script src="js/progress-sync.js?v=20260807h"></script>
+  <script src="js/progress-sync.js?v=20260810a"></script>
   <script src="js/leaderboard.js?v=20260806p"></script>
   <script src="js/main.js?v=20260807c"></script>
   <script src="js/debug.js?v=20260807h"></script>
-  <script src="js/equipment.js?v=20260807h"></script>
+  <script src="js/equipment.js?v=20260810a"></script>
   <script src="js/experience.js?v=20260807e"></script>
   <script src="js/monsters.js?v=20260806p"></script>
   <script src="js/monthly-medals.js?v=20260806p"></script>
   <script src="js/battle.js?v=20260810a"></script>
   <script src="js/training.js?v=20260806p"></script>
-  <script src="js/profile.js?v=20260806p"></script>
+  <script src="js/profile.js?v=20260810a"></script>
   <script src="js/changelog.js?v=20260807h"></script>
   <script src="js/achievements.js?v=20260807h"></script>
   <script src="js/orientation.js?v=20260806p"></script>

@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.19.0",
+    title: "Peso Corporal no Perfil",
+    changes: [
+      "Novo campo \"Peso (kg)\" na aba Perfil - vai ser usado para calcular calorias nos treinos numa próxima atualização.",
+    ],
+  },
+  {
     version: "v1.18.1",
     title: "Corrige Golpe Depois de Morrer em Luta",
     changes: [
