@@ -548,12 +548,8 @@ main {
 
 .training-title { margin: 16px 16px 0; }
 
-#mode-selector-panel {
-  margin: 12px 16px 0;
-}
-
 .mode-xp-explanation {
-  margin-top: 8px;
+  margin: 12px 16px 0;
   padding: 0 4px;
   font-size: 12px;
   color: var(--muted);
@@ -583,6 +579,12 @@ main {
 .training-live-stats {
   margin-top: 4px;
   font-size: 13px;
+  color: var(--muted);
+}
+
+.training-detected-activity {
+  margin-top: 4px;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -672,38 +674,26 @@ main {
 
 .panel-screen.hidden { display: none; }
 
-.mode-selector {
-  display: flex;
-  gap: 6px;
-  padding: 5px;
-  border-radius: 999px;
+#training-today-card {
+  margin-top: 4px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
   background: var(--surface);
 }
 
-.mode-btn {
-  flex: 1;
-  border: none;
-  border-radius: 999px;
-  padding: 10px 6px;
-  font-family: var(--font-body);
+.training-today-list {
+  margin-top: 8px;
   font-size: 13px;
-  font-weight: 700;
-  background: transparent;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.training-today-empty {
+  font-size: 13px;
   color: var(--muted);
-  cursor: pointer;
 }
-
-.mode-btn:hover { background: rgba(32, 30, 29, 0.06); }
-
-.mode-btn.active {
-  background: var(--accent);
-  color: var(--bg);
-}
-
-.mode-btn.active:hover { background: var(--accent-600); }
-
-.mode-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.mode-btn.active:disabled { opacity: 1; }
 
 /* ---------- Botoes -------------------------------------------------------- */
 

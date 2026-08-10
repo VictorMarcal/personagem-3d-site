@@ -215,6 +215,15 @@ update public.training_sessions set effective_distance_m = distance_m where effe
 alter table public.training_sessions alter column effective_distance_m set not null;
 alter table public.training_sessions alter column effective_distance_m set default 0;
 
+-- Migracao (2026-08-10, secção 17.1 da documentação - motor de calorias):
+-- calorias da sessao (formula MET, ver js/training.js computeSegmentCalories),
+-- guardadas em paralelo a effective_distance_m. Ainda NAO conta para XP/
+-- pontos/leaderboard/conquistas (isso continua a vir de effective_distance_m,
+-- agora alimentada pelo modo DOMINANTE detetado automaticamente em vez de
+-- escolhido a mao) - preparacao para a troca de unidade base, feita so
+-- quando a curva de nivel for recalibrada para kcal.
+alter table public.training_sessions add column if not exists calories_kcal numeric not null default 0;
+
 -- Migracao: contadores vitalicios novos para as conquistas adicionadas em
 -- 2026-08-07 (secção 10 da documentação) - distintos dos valores "atuais"
 -- ja existentes (moedas/lutas), que sobem E descem: estes so sobem.

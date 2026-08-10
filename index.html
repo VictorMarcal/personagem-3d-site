@@ -6,7 +6,7 @@
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260807e">
+  <link rel="stylesheet" href="css/style.css?v=20260810b">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -36,7 +36,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v1.19.0</span>
+      <span id="site-version" class="site-version-hero">v1.20.0</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -229,23 +229,23 @@
           <label>MIN_MOVEMENT_M <span class="debug-hint">movimento mín. para contar (m)</span>
             <input type="number" id="dbg-minMovementM" step="1">
           </label>
-          <label>MAX_SPEED_KMH_CAMINHAR <span class="debug-hint">velocidade máx. aceite a caminhar (km/h)</span>
-            <input type="number" id="dbg-maxSpeedKmhCaminhar" step="1">
+          <label>MAX_SAFE_SPEED_KMH <span class="debug-hint">teto único de segurança (km/h) - erro de GPS/veículo, não decide esforço</span>
+            <input type="number" id="dbg-maxSafeSpeedKmh" step="1">
           </label>
-          <label>MAX_SPEED_KMH_CORRER <span class="debug-hint">velocidade máx. aceite a correr (km/h)</span>
-            <input type="number" id="dbg-maxSpeedKmhCorrer" step="1">
+          <label>ACTIVITY_STOPPED_MAX_KMH <span class="debug-hint">abaixo disto = parado (pausa automática)</span>
+            <input type="number" id="dbg-activityStoppedMaxKmh" step="0.1">
           </label>
-          <label>MAX_SPEED_KMH_BICICLETA <span class="debug-hint">velocidade máx. aceite de bicicleta (km/h)</span>
-            <input type="number" id="dbg-maxSpeedKmhBicicleta" step="1">
+          <label>ACTIVITY_WALK_MAX_KMH <span class="debug-hint">teto da faixa "caminhar" na deteção automática</span>
+            <input type="number" id="dbg-activityWalkMaxKmh" step="0.1">
           </label>
-          <label>MIN_SPEED_KMH_CAMINHAR <span class="debug-hint">velocidade mín. aceite a caminhar (km/h) - abaixo disto e descartado</span>
-            <input type="number" id="dbg-minSpeedKmhCaminhar" step="1">
+          <label>ACTIVITY_RUN_MAX_KMH <span class="debug-hint">teto da faixa "correr" na deteção automática (acima = bicicleta)</span>
+            <input type="number" id="dbg-activityRunMaxKmh" step="0.1">
           </label>
-          <label>MIN_SPEED_KMH_CORRER <span class="debug-hint">velocidade mín. aceite a correr (km/h) - impede escolher Correr e andar</span>
-            <input type="number" id="dbg-minSpeedKmhCorrer" step="1">
+          <label>ACTIVITY_WINDOW_SECONDS <span class="debug-hint">janela deslizante (s) para a velocidade média de classificação</span>
+            <input type="number" id="dbg-activityWindowSeconds" step="1">
           </label>
-          <label>MIN_SPEED_KMH_BICICLETA <span class="debug-hint">velocidade mín. aceite de bicicleta (km/h) - impede escolher Bicicleta e andar/correr</span>
-            <input type="number" id="dbg-minSpeedKmhBicicleta" step="1">
+          <label>ACTIVITY_HYSTERESIS_SECONDS <span class="debug-hint">tempo (s) na nova faixa antes de mudar de atividade detetada</span>
+            <input type="number" id="dbg-activityHysteresisSeconds" step="1">
           </label>
           <label>XP_MULTIPLIER_CAMINHAR <span class="debug-hint">fração da distância que conta para XP a caminhar</span>
             <input type="number" id="dbg-xpMultiplierCaminhar" step="0.01">
@@ -320,25 +320,22 @@
     <div class="pane" data-pane-name="treino">
       <h2 class="card-title training-title">Treino</h2>
 
-      <div id="mode-selector-panel">
-        <div id="mode-selector" class="mode-selector">
-          <button id="btn-mode-caminhar" class="mode-btn" type="button">🚶 Caminhar</button>
-          <button id="btn-mode-correr" class="mode-btn active" type="button">🏃 Correr</button>
-          <button id="btn-mode-bicicleta" class="mode-btn" type="button">🚴 Bicicleta</button>
-        </div>
-        <p id="mode-xp-explanation" class="mode-xp-explanation"></p>
-      </div>
+      <p class="mode-xp-explanation">A atividade (Caminhar/Correr/Bicicleta) é detetada automaticamente pelo ritmo — não precisas de escolher nada.</p>
 
       <section id="training-readout">
         <p class="training-label">Distância percorrida</p>
         <p id="training-distance" class="training-distance">0 km</p>
-        <p id="training-live-stats" class="training-live-stats">0:00 · 0.0 km/h</p>
+        <p id="training-live-stats" class="training-live-stats">0:00 · nominal 0.0 km/h · média 0.0 km/h</p>
+        <p id="training-detected-activity" class="training-detected-activity">Atividade detetada: —</p>
         <p id="training-effective-distance-row" class="training-effective-distance-row">
           Distância efetiva (XP): <span id="training-effective-distance">0 XP</span>
         </p>
+        <p id="training-calories-row" class="training-effective-distance-row">
+          Calorias (info): <span id="training-calories">0 kcal</span>
+        </p>
       </section>
 
-      <p id="speed-warning" class="speed-warning hidden">⚠️ Velocidade incompatível com o modo escolhido — esta distância não está a contar</p>
+      <p id="speed-warning" class="speed-warning hidden">⚠️ Velocidade demasiado alta para ser real — esta distância não está a contar</p>
 
       <div id="training-coin-found" class="training-coin-found hidden">
         <span class="training-coin-found-icon">🪙</span>
@@ -351,6 +348,10 @@
       <section id="training-panel">
         <div id="start-screen" class="panel-screen">
           <button id="btn-start-treino" class="btn-primary">Iniciar Treino</button>
+          <div id="training-today-card">
+            <p class="training-label">Treinos de hoje</p>
+            <ul id="training-today-list" class="training-today-list"></ul>
+          </div>
         </div>
 
         <div id="training-screen" class="panel-screen hidden">
@@ -564,13 +565,13 @@
   <script src="js/progress-sync.js?v=20260810a"></script>
   <script src="js/leaderboard.js?v=20260806p"></script>
   <script src="js/main.js?v=20260807c"></script>
-  <script src="js/debug.js?v=20260807h"></script>
+  <script src="js/debug.js?v=20260810b"></script>
   <script src="js/equipment.js?v=20260810a"></script>
   <script src="js/experience.js?v=20260807e"></script>
   <script src="js/monsters.js?v=20260806p"></script>
   <script src="js/monthly-medals.js?v=20260806p"></script>
   <script src="js/battle.js?v=20260810a"></script>
-  <script src="js/training.js?v=20260806p"></script>
+  <script src="js/training.js?v=20260810b"></script>
   <script src="js/profile.js?v=20260810a"></script>
   <script src="js/changelog.js?v=20260807h"></script>
   <script src="js/achievements.js?v=20260807h"></script>

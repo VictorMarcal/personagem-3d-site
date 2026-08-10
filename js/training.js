@@ -23,62 +23,151 @@ const STORAGE_KEYS = {
   distanciaAcumuladaM: "treino.distanciaAcumuladaM",
   ultimaPosicao: "treino.ultimaPosicao",
   inicioSessao: "treino.inicioSessao",
-  // Modo escolhido (caminhar/correr/bicicleta, ver js/debug.js) - guardado
-  // mesmo fora de um treino ativo, para lembrar a ultima escolha como
-  // default; guardado TAMBEM enquanto o treino decorre, para um
-  // resumeTrainingIfNeeded() apos um refresh continuar a usar o limite de
-  // velocidade certo (secção 4.1 da documentação).
-  modoAtivo: "treino.modoAtivo",
 };
 
-// Fixo para toda a duracao de uma sessao (nao muda a meio - os botoes de
-// escolha ficam dentro do #start-screen, por isso ficam escondidos assim
-// que o treino comeca).
-const DEFAULT_TRAINING_MODE = "correr";
-let selectedTrainingMode = localStorage.getItem(STORAGE_KEYS.modoAtivo) || DEFAULT_TRAINING_MODE;
-
-const modeButtonEls = {
-  caminhar: document.getElementById("btn-mode-caminhar"),
-  correr: document.getElementById("btn-mode-correr"),
-  bicicleta: document.getElementById("btn-mode-bicicleta"),
-};
-
-// Para apresentacao (popup de contagem decrescente, historico do Perfil) -
-// distinto do mapa de sufixos de chave de js/debug.js (TRAINING_MODE_KEY_SUFFIX),
+// Para apresentacao (historico do Perfil, treinos de hoje) - distinto do
+// mapa de sufixos de chave de js/debug.js (TRAINING_MODE_KEY_SUFFIX),
 // apesar dos valores coincidirem hoje. Declarado aqui (carrega antes de
 // js/profile.js) para nao duplicar o identificador global.
 const MODE_LABEL_PT = { caminhar: "Caminhar", correr: "Correr", bicicleta: "Bicicleta" };
 
-const modeXpExplanationEl = document.getElementById("mode-xp-explanation");
+// --- Deteccao automatica de atividade (2026-08-10, secção 17.1 da
+// documentacao) - substitui a escolha manual de modo (Caminhar/Correr/
+// Bicicleta). Cada segmento de GPS e classificado pela velocidade MEDIA de
+// uma janela deslizante (evita reclassificar a cada oscilacao pontual, ex:
+// parar num semaforo), com historese antes de confirmar uma mudanca de
+// categoria (evita "saltar" entre atividades a cada variacao de ritmo
+// momentanea). "parado" nao acumula distancia/calorias (pausa automatica).
+const ACTIVITY_STOPPED = "parado";
+const ACTIVITY_WALK = "caminhar";
+const ACTIVITY_RUN = "correr";
+const ACTIVITY_CYCLE = "bicicleta";
+const ACTIVITY_LABEL_PT = { parado: "Parado", caminhar: "Caminhar", correr: "Correr", bicicleta: "Bicicleta" };
 
-function updateModeButtonsUI() {
-  Object.entries(modeButtonEls).forEach(([mode, btn]) => {
-    btn.classList.toggle("active", mode === selectedTrainingMode);
+function classifySpeedKmh(speedKmh) {
+  if (speedKmh < getActivityStoppedMaxKmh()) return ACTIVITY_STOPPED;
+  if (speedKmh < getActivityWalkMaxKmh()) return ACTIVITY_WALK;
+  if (speedKmh < getActivityRunMaxKmh()) return ACTIVITY_RUN;
+  return ACTIVITY_CYCLE;
+}
+
+// Amostras {speedMps, timestamp} dos ultimos getActivityWindowSeconds()
+// segundos - usadas so para a media da janela deslizante acima, nao para o
+// calculo de calorias em si (esse usa a velocidade real de cada segmento).
+let speedSampleBuffer = [];
+
+function pushSpeedSample(speedMps, timestamp) {
+  speedSampleBuffer.push({ speedMps, timestamp });
+  const windowMs = getActivityWindowSeconds() * 1000;
+  while (speedSampleBuffer.length > 1 && timestamp - speedSampleBuffer[0].timestamp > windowMs) {
+    speedSampleBuffer.shift();
+  }
+}
+
+// Media da janela PONDERADA pelo tempo entre amostras (nao uma media simples
+// dos valores) - leituras de GPS nao chegam a intervalos regulares.
+function windowAverageSpeedMps() {
+  if (speedSampleBuffer.length === 0) return 0;
+  if (speedSampleBuffer.length === 1) return speedSampleBuffer[0].speedMps;
+  let weightedSum = 0;
+  let totalWeight = 0;
+  for (let i = 1; i < speedSampleBuffer.length; i++) {
+    const dt = speedSampleBuffer[i].timestamp - speedSampleBuffer[i - 1].timestamp;
+    weightedSum += speedSampleBuffer[i].speedMps * dt;
+    totalWeight += dt;
+  }
+  return totalWeight > 0 ? weightedSum / totalWeight : speedSampleBuffer[speedSampleBuffer.length - 1].speedMps;
+}
+
+// Atividade confirmada (a que de facto conta para MET/calorias) - so muda
+// depois de a classificacao da janela se manter estavel numa categoria
+// diferente por getActivityHysteresisSeconds() segundos seguidos.
+let currentActiveMode = null;
+let pendingMode = null;
+let pendingModeSinceMs = null;
+
+function updateDetectedActivity(timestamp) {
+  const candidate = classifySpeedKmh(windowAverageSpeedMps() * 3.6);
+
+  if (currentActiveMode === null) {
+    currentActiveMode = candidate; // primeira leitura da sessao, sem periodo de graca
+    pendingMode = null;
+    return;
+  }
+  if (candidate === currentActiveMode) {
+    pendingMode = null;
+    return;
+  }
+  if (candidate !== pendingMode) {
+    pendingMode = candidate;
+    pendingModeSinceMs = timestamp;
+    return;
+  }
+  if (timestamp - pendingModeSinceMs >= getActivityHysteresisSeconds() * 1000) {
+    currentActiveMode = candidate;
+    pendingMode = null;
+  }
+}
+
+// --- Formula MET (calorias) -----------------------------------------------
+//
+// Caminhar/Correr: equacoes continuas do ACSM (VO2 em ml/kg/min a partir da
+// velocidade em m/min). Bicicleta: tabela por faixas de velocidade
+// (Compendium of Physical Activities, Ainsworth et al.) - nao ha uma formula
+// linear tao limpa como andar/correr. Calorias = MET x peso(kg) x horas,
+// por segmento, somadas ao longo da sessao (secção 17.1 da documentação).
+function computeWalkOrRunMet(speedKmh, isRunning) {
+  const speedMPerMin = (speedKmh * 1000) / 60;
+  const vo2 = (isRunning ? 0.2 : 0.1) * speedMPerMin + 3.5;
+  return vo2 / 3.5;
+}
+
+function computeCyclingMet(speedKmh) {
+  if (speedKmh < 16) return 4.0;
+  if (speedKmh < 19) return 6.8;
+  if (speedKmh < 22.4) return 8.0;
+  if (speedKmh < 25.6) return 10.0;
+  if (speedKmh < 30.6) return 12.0;
+  return 15.8;
+}
+
+function computeMetForActivity(activity, speedKmh) {
+  if (activity === ACTIVITY_WALK) return computeWalkOrRunMet(speedKmh, false);
+  if (activity === ACTIVITY_RUN) return computeWalkOrRunMet(speedKmh, true);
+  if (activity === ACTIVITY_CYCLE) return computeCyclingMet(speedKmh);
+  return 0; // parado - nunca chamado (ver onPositionUpdate, parado nao gera segmento)
+}
+
+function computeSegmentCalories(activity, speedKmh, durationSeconds) {
+  const met = computeMetForActivity(activity, speedKmh);
+  return met * getPesoKg() * (durationSeconds / 3600);
+}
+
+// Tempo (ms) acumulado em cada atividade nesta sessao - decide o "modo
+// dominante" (o que ocupou mais tempo) usado para o calculo de XP ja
+// existente (getEffectiveDistanceM abaixo, mantido por agora) e para as
+// conquistas de ritmo/recorde pessoal por modo (secção 10 da documentação).
+let modeTimeAccumMs = { caminhar: 0, correr: 0, bicicleta: 0 };
+
+function getDominantMode() {
+  let best = "correr";
+  let bestMs = 0;
+  [ACTIVITY_WALK, ACTIVITY_RUN, ACTIVITY_CYCLE].forEach((mode) => {
+    if ((modeTimeAccumMs[mode] || 0) > bestMs) {
+      bestMs = modeTimeAccumMs[mode];
+      best = mode;
+    }
   });
-  modeXpExplanationEl.textContent = getModeXpExplanationText(selectedTrainingMode);
+  return best;
 }
 
-function setModeSelectorDisabled(disabled) {
-  Object.values(modeButtonEls).forEach((btn) => {
-    btn.disabled = disabled;
-  });
-}
-
-function setTrainingMode(mode) {
-  selectedTrainingMode = mode;
-  localStorage.setItem(STORAGE_KEYS.modoAtivo, mode);
-  updateModeButtonsUI();
-}
-
-Object.entries(modeButtonEls).forEach(([mode, btn]) => {
-  btn.addEventListener("click", () => setTrainingMode(mode));
-});
-
-updateModeButtonsUI();
-
-// Distancia "efetiva" (com o multiplicador de justica de esforco do modo
-// ja aplicado) - e esta que conta para XP/pontos/leaderboard/conquistas,
-// nunca a distancia real diretamente (ver js/debug.js getXpMultiplier).
+// Distancia "efetiva" (com o multiplicador de justica de esforco do MODO
+// DOMINANTE ja aplicado) - e esta que conta para XP/pontos/leaderboard/
+// conquistas, nunca a distancia real diretamente (ver js/debug.js
+// getXpMultiplier). MANTIDO por agora so para o sistema de XP existente
+// continuar a funcionar sem alteracoes, alimentado pela deteccao automatica
+// em vez da escolha manual - sera substituido por calorias quando a nova
+// curva de nivel/migracao (secção 17.1) estiver pronta.
 function getEffectiveDistanceM(rawM, mode) {
   return rawM * getXpMultiplier(mode);
 }
@@ -101,6 +190,14 @@ let watchId = null;
 let saveIntervalId = null;
 let sessionStartTime = null; // usado para conquistas de ritmo (ex: 5km em menos de 25 min)
 
+// Calorias da sessao em curso (soma dos segmentos, formula MET acima) -
+// ainda NAO conta para XP/nivel (ver getEffectiveDistanceM), so informativo
+// por agora (secção 17.1 da documentação). Velocidade nominal = velocidade
+// do ultimo segmento aceite (instantanea), distinta da media da sessao
+// inteira mostrada ao lado.
+let sessionCaloriesKcal = 0;
+let currentNominalSpeedMps = 0;
+
 // Soma vitalicia (nao so desta sessao) de distancia descartada por exceder
 // MAX_SPEED_KMH - nunca conta para XP/leaderboard, so para o jogador ver
 // quanto ficou de fora. Sincronizada com o Supabase como o resto do
@@ -115,15 +212,11 @@ function addToDiscardedSpeedDistance(deltaM) {
   queueProgressSync();
 }
 
-// Aviso persistente enquanto a velocidade estiver fora da janela do modo -
-// so desaparece quando uma leitura seguinte volta a ficar dentro dela (nao
-// e um toast com temporizador). Inclui o nome do modo e a direcao da
-// violacao (acima do teto ou abaixo do minimo - secção 4 da documentação),
-// 2026-08-06 a pedido, para o jogador perceber de imediato porque motivo.
-function showSpeedWarning(direction) {
-  const modeLabel = MODE_LABEL_PT[selectedTrainingMode];
-  const reason = direction === "slow" ? `abaixo do mínimo de ${modeLabel}` : `acima do limite de ${modeLabel}`;
-  speedWarningEl.textContent = `⚠️ Velocidade ${reason} — esta distância não está a contar`;
+// Aviso persistente enquanto a velocidade exceder o teto de seguranca UNICO
+// (2026-08-10, ja nao ha "modo escolhido" para violar - a deteccao e
+// automatica, ver secção 17.1) - so desaparece quando uma leitura seguinte
+// volta a ficar dentro do teto (nao e um toast com temporizador).
+function showSpeedWarning() {
   speedWarningEl.classList.remove("hidden");
 }
 
@@ -132,16 +225,23 @@ function hideSpeedWarning() {
 }
 
 const effectiveDistanceEl = document.getElementById("training-effective-distance");
+const caloriesEl = document.getElementById("training-calories");
 const liveStatsEl = document.getElementById("training-live-stats");
+const detectedActivityEl = document.getElementById("training-detected-activity");
 
-// Relogio + velocidade media ao vivo, por baixo da distancia percorrida
-// (2026-08-06, a pedido - antes so existiam no fim da sessao, guardados em
-// training_sessions, nunca mostrados durante o proprio treino). Duracao em
-// "MM:SS" (ou "H:MM:SS" acima de 1h, formatDurationClock em js/experience.js).
+// Relogio + velocidade nominal/media ao vivo, por baixo da distancia
+// percorrida (2026-08-06, a pedido - antes so existiam no fim da sessao,
+// guardados em training_sessions, nunca mostrados durante o proprio
+// treino). Nominal = velocidade do ultimo segmento aceite (instantanea);
+// media = da sessao inteira ate agora (2026-08-10, as duas passaram a
+// aparecer lado a lado, antes so havia a media). Duracao em "MM:SS" (ou
+// "H:MM:SS" acima de 1h, formatDurationClock em js/experience.js).
 function updateLiveStatsDisplay() {
   const elapsedSeconds = sessionStartTime ? (Date.now() - sessionStartTime) / 1000 : 0;
   const avgSpeedMps = elapsedSeconds > 0 ? totalDistanceM / elapsedSeconds : 0;
-  liveStatsEl.textContent = `${formatDurationClock(elapsedSeconds)} · ${formatSpeedKmh(avgSpeedMps)}`;
+  liveStatsEl.textContent =
+    `${formatDurationClock(elapsedSeconds)} · nominal ${formatSpeedKmh(currentNominalSpeedMps)} · média ${formatSpeedKmh(avgSpeedMps)}`;
+  detectedActivityEl.textContent = `Atividade detetada: ${ACTIVITY_LABEL_PT[currentActiveMode] || "—"}`;
 }
 
 let liveStatsIntervalId = null;
@@ -163,8 +263,10 @@ function updateDistanceDisplay() {
   // Sempre em XP (2026-08-06, a pedido - antes ficava em km e escondida em
   // modos com multiplicador 1.0, como Correr, por ser "o mesmo numero" -
   // mas em XP nunca e redundante, e reforca a mesma convencao usada na
-  // barra de nivel/leaderboard, secção 5).
-  effectiveDistanceEl.textContent = formatXP(getEffectiveDistanceM(totalDistanceM, selectedTrainingMode));
+  // barra de nivel/leaderboard, secção 5). Modo dominante em vez do
+  // escolhido a mao (2026-08-10, ja nao ha escolha manual).
+  effectiveDistanceEl.textContent = formatXP(getEffectiveDistanceM(totalDistanceM, getDominantMode()));
+  caloriesEl.textContent = `${Math.round(sessionCaloriesKcal)} kcal`;
 }
 
 // Treino acumulado: copia persistida em localStorage, salva a cada 10s
@@ -329,27 +431,23 @@ function onPositionUpdate(position) {
 
     const deltaSeconds = (timestamp - lastPosition.timestamp) / 1000;
     const speedMps = deltaSeconds > 0 ? segmentM / deltaSeconds : Infinity;
+    const speedKmh = speedMps * 3.6;
 
-    // Fora da janela de velocidade do modo escolhido - tanto acima do teto
-    // (ver nota abaixo) como abaixo do minimo (2026-08-06, bug reportado:
-    // escolher "Correr" e depois andar devagar continuava a contar ao
-    // multiplicador de Correr, ja que so havia teto, nunca piso, e o ritmo
-    // de uma caminhada fica bem abaixo do teto de 20km/h de Correr).
-    if (speedMps > getMaxSpeedMps(selectedTrainingMode) || speedMps < getMinSpeedMps(selectedTrainingMode)) {
+    // Teto de seguranca UNICO (2026-08-10, substitui os tetos/pisos por
+    // modo de antes de existir deteccao automatica - secção 4.1/17.1 da
+    // documentação) - so filtra erro de GPS/veiculo (nenhum humano sustem
+    // isto a pe/de bicicleta), nao decide esforco (isso e a formula MET,
+    // mais abaixo, aplicada a qualquer velocidade dentro do teto).
+    if (speedKmh > getMaxSafeSpeedKmh()) {
       // A ancora avanca SEMPRE a partir daqui (linha lastPosition = ... no
       // fim da funcao, ja fora deste bloco) - mesmo numa rejeicao. Antes
-      // ficava presa na ultima posicao valida; se o ritmo real do jogador
-      // se mantivesse perto do limite do modo (facil em Caminhar, cujo teto
-      // de 7 km/h esta perto do ritmo normal de uma caminhada), a distancia
-      // entre a ancora (cada vez mais antiga) e a posicao atual so crescia -
-      // nunca baixava o suficiente para a velocidade calculada voltar a
-      // ficar dentro do limite. Bola de neve real: quase tudo acabava
-      // descartado numa sessao inteira, em qualquer um dos 3 modos (mesmo
-      // codigo partilhado).
+      // ficava presa na ultima posicao valida numa rejeicao, o que podia
+      // criar uma "bola de neve" (secção 4 da documentação) - com a ancora
+      // a avancar sempre, cada leitura e comparada com a mais recente.
       consecutiveSpeedViolations += 1;
       if (consecutiveSpeedViolations >= SPEED_VIOLATION_GRACE_READINGS) {
         addToDiscardedSpeedDistance(segmentM);
-        showSpeedWarning(speedMps > getMaxSpeedMps(selectedTrainingMode) ? "fast" : "slow");
+        showSpeedWarning();
       }
       lastPosition = { latitude, longitude, timestamp };
       return;
@@ -357,9 +455,21 @@ function onPositionUpdate(position) {
 
     consecutiveSpeedViolations = 0;
     hideSpeedWarning();
-    totalDistanceM += segmentM;
-    updateDistanceDisplay();
-    checkCoinDropsForDistance(totalDistanceM);
+
+    pushSpeedSample(speedMps, timestamp);
+    updateDetectedActivity(timestamp);
+    currentNominalSpeedMps = speedMps;
+
+    // "parado" nao acumula distancia/calorias (pausa automatica) - mas a
+    // ancora ja avancou acima, por isso o proximo segmento e medido a
+    // partir daqui, nao de uma posicao cada vez mais antiga.
+    if (currentActiveMode !== ACTIVITY_STOPPED) {
+      totalDistanceM += segmentM;
+      sessionCaloriesKcal += computeSegmentCalories(currentActiveMode, speedKmh, deltaSeconds);
+      modeTimeAccumMs[currentActiveMode] = (modeTimeAccumMs[currentActiveMode] || 0) + deltaSeconds * 1000;
+      updateDistanceDisplay();
+      checkCoinDropsForDistance(totalDistanceM);
+    }
   }
 
   lastPosition = { latitude, longitude, timestamp };
@@ -378,13 +488,13 @@ function beginWatch() {
   });
 
   // A barra/progresso de nivel usa a distancia EFETIVA (com o multiplicador
-  // do modo ja aplicado), nunca a real diretamente - tem de refletir ao
-  // vivo exatamente o que vai ser creditado no fim da sessao (secção 4.1),
-  // nao uma previa otimista baseada na distancia real.
-  updateXPDisplay(getEffectiveDistanceM(totalDistanceM, selectedTrainingMode));
+  // do modo dominante ja aplicado), nunca a real diretamente - tem de
+  // refletir ao vivo exatamente o que vai ser creditado no fim da sessao
+  // (secção 4.1), nao uma previa otimista baseada na distancia real.
+  updateXPDisplay(getEffectiveDistanceM(totalDistanceM, getDominantMode()));
   saveIntervalId = setInterval(() => {
     persistAccumulatedTraining();
-    updateXPDisplay(getEffectiveDistanceM(totalDistanceM, selectedTrainingMode));
+    updateXPDisplay(getEffectiveDistanceM(totalDistanceM, getDominantMode()));
     refreshTabLock(STORAGE_KEY_TRAINING_TAB_LOCK);
   }, SAVE_INTERVAL_MS);
   startLiveStatsTicker();
@@ -394,7 +504,6 @@ function showTrainingScreen() {
   startScreen.classList.add("hidden");
   trainingScreen.classList.remove("hidden");
   hideSpeedWarning();
-  setModeSelectorDisabled(true);
 }
 
 function showStartScreen() {
@@ -402,29 +511,22 @@ function showStartScreen() {
   startScreen.classList.remove("hidden");
   hideSpeedWarning();
   hideCoinFoundCard();
-  setModeSelectorDisabled(false);
+  renderTodaysTrainings();
 }
 
 // Popup de contagem decrescente (5s) mostrado entre carregar em "Iniciar
 // Treino" e o GPS realmente comecar a contar - da tempo ao jogador para se
-// preparar/comecar a mexer-se, e lembra a conversao km->XP do modo
-// escolhido (relevante sobretudo em Caminhar/Bicicleta, onde difere de 1:1).
+// preparar/comecar a mexer-se.
 const trainingCountdownModalEl = document.getElementById("training-countdown-modal");
 const trainingCountdownNumberEl = document.getElementById("training-countdown-number");
 const trainingCountdownMessageEl = document.getElementById("training-countdown-message");
 const TRAINING_COUNTDOWN_SECONDS = 5;
 let trainingCountdownIntervalId = null;
 
-function getModeXpExplanationText(mode) {
-  const multiplier = getXpMultiplier(mode);
-  const label = MODE_LABEL_PT[mode];
-  if (multiplier === 1) return `${label}: 1 km percorrido = 1 km de XP.`;
-  return `${label}: 1 km percorrido = ${multiplier.toFixed(2)} km de XP (esforço equivalente menor que correr a mesma distância).`;
-}
-
 function showTrainingCountdown() {
   let secondsLeft = TRAINING_COUNTDOWN_SECONDS;
-  trainingCountdownMessageEl.textContent = getModeXpExplanationText(selectedTrainingMode);
+  trainingCountdownMessageEl.textContent =
+    "A atividade (Caminhar/Correr/Bicicleta) é detetada automaticamente pelo teu ritmo ao longo do treino.";
   trainingCountdownNumberEl.textContent = String(secondsLeft);
   trainingCountdownModalEl.classList.remove("hidden");
 
@@ -466,6 +568,13 @@ function beginTrainingSession() {
   lastPosition = null;
   sessionStartTime = Date.now();
   coinsCheckedKm = 0;
+  sessionCaloriesKcal = 0;
+  currentNominalSpeedMps = 0;
+  speedSampleBuffer = [];
+  currentActiveMode = null;
+  pendingMode = null;
+  pendingModeSinceMs = null;
+  modeTimeAccumMs = { caminhar: 0, correr: 0, bicicleta: 0 };
   updateDistanceDisplay();
   showTrainingScreen();
 
@@ -495,7 +604,9 @@ function stopTraining() {
   stopLiveStatsTicker();
 
   const sessionDistanceM = totalDistanceM;
-  const sessionEffectiveDistanceM = getEffectiveDistanceM(sessionDistanceM, selectedTrainingMode);
+  const sessionDominantMode = getDominantMode();
+  const sessionEffectiveDistanceM = getEffectiveDistanceM(sessionDistanceM, sessionDominantMode);
+  const sessionCalories = sessionCaloriesKcal;
   const sessionEndTime = Date.now();
   const sessionDurationSeconds = sessionStartTime ? (sessionEndTime - sessionStartTime) / 1000 : null;
 
@@ -514,8 +625,14 @@ function stopTraining() {
       ended_at: new Date(sessionEndTime).toISOString(),
       distance_m: sessionDistanceM,
       effective_distance_m: sessionEffectiveDistanceM,
-      mode: selectedTrainingMode,
+      // Modo DOMINANTE (mais tempo, secção 17.1) - ja nao e escolhido a
+      // mao, a sessao pode ter passado por mais que uma atividade.
+      mode: sessionDominantMode,
       duration_seconds: sessionDurationSeconds,
+      // Ainda NAO conta para XP/pontos/leaderboard (ver getEffectiveDistanceM
+      // acima) - guardado desde ja para nao perder historico ate a troca de
+      // unidade base (secção 17.1, tarefa da nova curva de nivel/migracao).
+      calories_kcal: sessionCalories,
     });
 
     // Distancia EFETIVA (com o multiplicador de justica de esforco ja
@@ -525,7 +642,7 @@ function stopTraining() {
     addToLifetimeDistance(sessionEffectiveDistanceM);
     addToMonthlyDistance(sessionEffectiveDistanceM);
     incrementTotalTrainingsCompleted();
-    checkAndUnlockAchievements(sessionEffectiveDistanceM, sessionDurationSeconds, selectedTrainingMode);
+    checkAndUnlockAchievements(sessionEffectiveDistanceM, sessionDurationSeconds, sessionDominantMode);
     renderMonsters(); // pode ter desbloqueado monstros novos
   }
 
@@ -556,10 +673,53 @@ function resumeTrainingIfNeeded() {
   // Nao re-testa km ja percorridos antes do refresh - so os km novos a
   // partir daqui contam para moedas.
   coinsCheckedKm = Math.floor(totalDistanceM / 1000);
+  // Calorias/deteccao de atividade (sessionCaloriesKcal, currentActiveMode,
+  // modeTimeAccumMs, etc.) NAO sao persistidas - um refresh a meio de um
+  // treino reinicia a deteccao do zero (ja com os valores por omissao do
+  // carregamento do script), so a distancia/posicao acima sobrevivem.
+  // Aceitavel: um refresh a meio de um treino ja e um caso raro.
 
   updateDistanceDisplay();
   showTrainingScreen();
   beginWatch();
+}
+
+// --- Treinos de hoje (2026-08-10, secção 17.2) -----------------------------
+//
+// Lista dos treinos ja concluidos no dia civil corrente, no ecrã inicial do
+// painel de Treino - desaparece a meia-noite (nao e um cache, e sempre um
+// pedido novo filtrado por "hoje" na hora local do dispositivo).
+const trainingTodayListEl = document.getElementById("training-today-list");
+
+async function renderTodaysTrainings() {
+  if (!trainingTodayListEl || !currentUserId) return;
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabaseClient
+    .from("training_sessions")
+    .select("distance_m, duration_seconds, mode, calories_kcal")
+    .eq("user_id", currentUserId)
+    .gte("started_at", startOfToday.toISOString())
+    .order("started_at", { ascending: false });
+
+  if (error || !data) return;
+
+  if (data.length === 0) {
+    trainingTodayListEl.innerHTML = '<li class="training-today-empty">Ainda sem treinos hoje.</li>';
+    return;
+  }
+
+  trainingTodayListEl.innerHTML = data
+    .map((s) => {
+      const modeLabel = MODE_LABEL_PT[s.mode] || "Treino";
+      const km = formatDistanceKm(Number(s.distance_m) || 0);
+      const minutes = Math.round((Number(s.duration_seconds) || 0) / 60);
+      const kcal = Math.round(Number(s.calories_kcal) || 0);
+      return `<li>${modeLabel} — ${km} · ${minutes} min · ${kcal} kcal</li>`;
+    })
+    .join("");
 }
 
 btnStart.addEventListener("click", startTraining);

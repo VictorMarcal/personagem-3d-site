@@ -7,6 +7,17 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.20.0",
+    title: "Deteção Automática de Atividade",
+    changes: [
+      "Já não precisas de escolher Caminhar/Correr/Bicicleta antes de treinar — a atividade é detetada automaticamente pelo teu ritmo.",
+      "O ecrã de treino agora mostra a velocidade nominal (atual) e a média, lado a lado, e a atividade detetada no momento.",
+      "Calorias da sessão calculadas em tempo real (ainda não contam para XP — só informativo por agora).",
+      "Lista dos treinos já feitos hoje, no ecrã inicial do painel de Treino.",
+      "Os limites de velocidade por modo foram substituídos por um único teto de segurança, que só filtra erros de GPS/veículo.",
+    ],
+  },
+  {
     version: "v1.19.0",
     title: "Peso Corporal no Perfil",
     changes: [
