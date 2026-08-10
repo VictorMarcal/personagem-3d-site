@@ -82,7 +82,7 @@ const STATIC_ACHIEVEMENTS = [
   // Equipamento no nivel maximo (2026-08-07, a pedido) - EQUIP_MAX_LEVEL=99
   // (js/equipment.js), o mesmo teto usado pela barra de melhoria de cada
   // peca.
-  { id: "weapon_maxed", name: "Arma no máximo", icon: "🗡️", type: "equipmentMaxed", equip: "arma" },
+  { id: "weapon_maxed", name: "Arco no máximo", icon: "🏹", type: "equipmentMaxed", equip: "arma" },
   { id: "shield_maxed", name: "Escudo no máximo", icon: "🛡️", type: "equipmentMaxed", equip: "escudo" },
   { id: "armor_maxed", name: "Armadura no máximo", icon: "🧥", type: "equipmentMaxed", equip: "armadura" },
   { id: "all_equipment_maxed", name: "Equipamento completo", icon: "💎", type: "equipmentMaxed", equip: "todos" },

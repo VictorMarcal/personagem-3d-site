@@ -61,15 +61,32 @@ character.add(head);
 // peca 3D propria, so o botao "+" do HUD)
 body.userData.equipType = "energia"; // armadura = corpo
 
-const sword = new THREE.Mesh(
-  new THREE.BoxGeometry(0.08, 0.9, 0.08),
-  new THREE.MeshStandardMaterial({ color: 0xc0c0c0 })
+// Arco (2026-08-11, era uma espada - personagem passou a arqueiro, secção
+// 9 da documentação): arco parcial de TorusGeometry (a "corda" - abaixo -
+// fecha a abertura entre as duas pontas, dando a silhueta reconhecivel de
+// um arco). BOW_ARC centrado em 0deg (eixo +X local) para as pontas
+// ficarem simetricas acima/abaixo, arqueadas para a frente do personagem.
+const BOW_ARC = Math.PI * (5 / 6); // 150deg
+const bow = new THREE.Mesh(
+  new THREE.TorusGeometry(0.42, 0.035, 8, 24, BOW_ARC),
+  new THREE.MeshStandardMaterial({ color: 0x6b3f1d })
 );
-sword.position.set(0.55, 1.1, 0);
-sword.rotation.z = Math.PI / 10;
-sword.castShadow = true;
-sword.userData.equipType = "forca";
-character.add(sword);
+bow.position.set(0.55, 1.1, 0);
+bow.rotation.z = -BOW_ARC / 2;
+bow.castShadow = true;
+bow.userData.equipType = "forca";
+character.add(bow);
+
+// Corda do arco - so decorativa, nao entra em equipmentMeshes (nao reage a
+// cliques), liga as duas pontas do arco acima (raio 0.42, arco de 150deg
+// centrado em 0deg -> pontas em +-75deg, ver calculo no comentario acima).
+const bowStringTipY = 0.42 * Math.sin(BOW_ARC / 2);
+const bowString = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.008, 0.008, 2 * bowStringTipY, 6),
+  new THREE.MeshStandardMaterial({ color: 0xe8e0c8 })
+);
+bowString.position.set(0.55 + 0.42 * Math.cos(BOW_ARC / 2), 1.1, 0);
+character.add(bowString);
 
 const shield = new THREE.Mesh(
   new THREE.CylinderGeometry(0.28, 0.28, 0.08, 16),
@@ -176,6 +193,55 @@ function lungeBack(attacker, originalX) {
   animatePositionX(attacker, attacker.position.x, originalX, LUNGE_BACK_MS);
 }
 
+// Flecha do ataque do jogador (2026-08-11, personagem passou a arqueiro,
+// secção 9 da documentação) - so o jogador atira, o monstro mantem o
+// "lunge" de ataque generico acima (nao e um arqueiro). Uma unica mesh
+// reutilizada a cada disparo (escondida entre tiros), voa do arco ate a
+// cabeca do monstro - js/battle.js espera (`await`) por isto antes de
+// mostrar o dano, mesmo padrao de `lungeOut` (impacto "no momento certo").
+const arrow = new THREE.Group();
+const arrowShaft = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.012, 0.012, 0.5, 6),
+  new THREE.MeshStandardMaterial({ color: 0x8a5a2b })
+);
+arrowShaft.rotation.x = -Math.PI / 2; // deitada ao longo do eixo -Z local (convencao do lookAt abaixo)
+arrow.add(arrowShaft);
+const arrowTip = new THREE.Mesh(
+  new THREE.ConeGeometry(0.03, 0.08, 6),
+  new THREE.MeshStandardMaterial({ color: 0xd9d9d9 })
+);
+arrowTip.position.z = -0.29;
+arrowTip.rotation.x = -Math.PI / 2;
+arrow.add(arrowTip);
+arrow.visible = false;
+scene.add(arrow);
+
+const ARROW_FLIGHT_MS = 220;
+const ARROW_STEP_MS = 16;
+
+function shootArrow(fromMesh, toMesh) {
+  return new Promise((resolve) => {
+    const from = fromMesh.getWorldPosition(new THREE.Vector3());
+    const to = toMesh.getWorldPosition(new THREE.Vector3());
+    arrow.position.copy(from);
+    arrow.lookAt(to);
+    arrow.visible = true;
+
+    const start = Date.now();
+    function step() {
+      const t = Math.min(1, (Date.now() - start) / ARROW_FLIGHT_MS);
+      arrow.position.lerpVectors(from, to, t);
+      if (t < 1) {
+        setTimeout(step, ARROW_STEP_MS);
+      } else {
+        arrow.visible = false;
+        resolve();
+      }
+    }
+    step();
+  });
+}
+
 loadingEl.style.display = "none";
 
 function onResize() {
@@ -197,7 +263,7 @@ let pointerDownY = 0;
 const TAP_MAX_MOVEMENT_PX = 6;
 const raycaster = new THREE.Raycaster();
 const pointerNDC = new THREE.Vector2();
-const equipmentMeshes = [body, sword, shield];
+const equipmentMeshes = [body, bow, shield];
 
 function raycastEquipmentAt(clientX, clientY) {
   if (typeof battleInProgress !== "undefined" && battleInProgress) return;

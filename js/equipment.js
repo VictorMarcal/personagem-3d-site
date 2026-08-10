@@ -513,8 +513,8 @@ const weaponUpgradeController = createEquipmentUpgradeController({
   setLevel: (level) => setEquipLevel(STORAGE_KEY_WEAPON_LEVEL, level),
   primaryIdSuffix: "ataque",
   secondaryIdSuffix: "forca",
-  pieceName: "Arma",
-  pieceNameLower: "arma",
+  pieceName: "Arco",
+  pieceNameLower: "arco",
 });
 
 const shieldUpgradeController = createEquipmentUpgradeController({

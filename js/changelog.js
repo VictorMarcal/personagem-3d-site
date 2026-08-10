@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.5.0",
+    title: "A Personagem Passa a Arqueira",
+    changes: [
+      "Novo visual: a espada deu lugar a um arco — o escudo mantém-se.",
+      "Os ataques em combate passam a ser disparos de flechas, com uma animação nova a acompanhar.",
+      "A conquista \"Arma no máximo\" passa a chamar-se \"Arco no máximo\".",
+    ],
+  },
+  {
     version: "v2.4.1",
     title: "Correção: Distância Presa a 0",
     changes: [

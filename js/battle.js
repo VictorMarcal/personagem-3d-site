@@ -245,22 +245,24 @@ async function startBattle(creature) {
     round += 1;
     refreshTabLock(STORAGE_KEY_BATTLE_TAB_LOCK);
 
-    const playerLungeOriginX = await lungeOut(character, monster);
+    // Jogador e arqueiro (2026-08-11) - dispara uma flecha em vez do
+    // "lunge" de ataque generico (esse continua a ser usado pelo monstro,
+    // mais abaixo). O bow fica parado no lugar, so a flecha se desloca.
+    await shootArrow(bow, monsterHead);
     if (rollDodge(monsterDestreza)) {
       showFloatingCombatText(monsterHead, 0, "miss");
-      setBattleLog(`${creature.name} esquivou o teu ataque!`, "miss");
+      setBattleLog(`${creature.name} esquivou da tua flecha!`, "miss");
     } else if (rollCritico(playerLetalidade)) {
       const critDmg = Math.round(playerAtaque * getLetalidadeMultiplicador());
       monsterHp -= critDmg;
       showFloatingCombatText(monsterHead, -critDmg, "critico");
-      setBattleLog(`Crítico! Atacaste ${creature.name}: -${critDmg} Vida`, "critico");
+      setBattleLog(`Crítico! Flecha certeira em ${creature.name}: -${critDmg} Vida`, "critico");
     } else {
       const dmgToMonster = computeBattleDamage(playerAtaque, monsterDefesa);
       monsterHp -= dmgToMonster;
       showFloatingCombatText(monsterHead, -dmgToMonster, "damage");
-      setBattleLog(`Atacaste ${creature.name}: -${dmgToMonster} Vida`);
+      setBattleLog(`Acertaste uma flecha em ${creature.name}: -${dmgToMonster} Vida`);
     }
-    lungeBack(character, playerLungeOriginX);
     updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
     await sleep(BATTLE_ROUND_DELAY_MS);
     tickPlayerRegen();
