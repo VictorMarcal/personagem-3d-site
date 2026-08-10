@@ -425,10 +425,6 @@ function onPositionUpdate(position) {
       longitude
     );
 
-    if (segmentM < getMinMovementM()) {
-      return; // provavel ruido de GPS parado, mantem a ancora e ignora
-    }
-
     const deltaSeconds = (timestamp - lastPosition.timestamp) / 1000;
     const speedMps = deltaSeconds > 0 ? segmentM / deltaSeconds : Infinity;
     const speedKmh = speedMps * 3.6;
@@ -456,14 +452,25 @@ function onPositionUpdate(position) {
     consecutiveSpeedViolations = 0;
     hideSpeedWarning();
 
+    // A deteccao de atividade corre SEMPRE, mesmo com deslocamento abaixo
+    // de MIN_MOVEMENT_M (2026-08-10, bug reportado: "o treino nao entra em
+    // pausa apos um periodo de inatividade") - e a UNICA forma de a
+    // atividade detetada conseguir chegar a "parado": um segmento pequeno
+    // demais para contar como deslocamento real (deriva de GPS parado)
+    // continua a representar uma velocidade quase nula, que a janela
+    // deslizante precisa de ver para o jogador deixar de ficar "preso" na
+    // ultima atividade detetada antes de parar, por mais tempo que fique
+    // parado. MIN_MOVEMENT_M continua a decidir se o segmento CONTA para
+    // distancia/calorias (abaixo), so deixou de bloquear a classificacao.
     pushSpeedSample(speedMps, timestamp);
     updateDetectedActivity(timestamp);
     currentNominalSpeedMps = speedMps;
 
-    // "parado" nao acumula distancia/calorias (pausa automatica) - mas a
+    // "parado" (ou deslocamento abaixo de MIN_MOVEMENT_M, ruido de GPS
+    // parado) nao acumula distancia/calorias (pausa automatica) - mas a
     // ancora ja avancou acima, por isso o proximo segmento e medido a
     // partir daqui, nao de uma posicao cada vez mais antiga.
-    if (currentActiveMode !== ACTIVITY_STOPPED) {
+    if (segmentM >= getMinMovementM() && currentActiveMode !== ACTIVITY_STOPPED) {
       totalDistanceM += segmentM;
       sessionCaloriesKcal += computeSegmentCalories(currentActiveMode, speedKmh, deltaSeconds);
       modeTimeAccumMs[currentActiveMode] = (modeTimeAccumMs[currentActiveMode] || 0) + deltaSeconds * 1000;

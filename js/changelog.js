@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.20.1",
+    title: "Corrige Treino Sem Pausa",
+    changes: [
+      "O treino já entra em pausa corretamente depois de ficares parado — antes a atividade detetada podia ficar \"presa\" na última que estavas a fazer.",
+    ],
+  },
+  {
     version: "v1.20.0",
     title: "Deteção Automática de Atividade",
     changes: [
