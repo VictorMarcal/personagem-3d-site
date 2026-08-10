@@ -605,7 +605,7 @@ function getAchievementProgress(achievement) {
       return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
     }
     case "characterLevel": {
-      const level = getLevelInfo(getLifetimeDistanceM()).level;
+      const level = getLevelInfo(getLifetimeCaloriesKcal()).level;
       return { current: Math.min(level, achievement.threshold), target: achievement.threshold, met: level >= achievement.threshold };
     }
     case "coinsEarned": {

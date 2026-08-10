@@ -30,13 +30,14 @@ function createLeaderboardRowEl(row, rank, isOwn, distanceM) {
     nameEl.addEventListener("click", () => openPlayerTrophiesModal(row.display_name, row.unlocked_achievements));
   }
 
-  // Nivel vem sempre da distancia VITALICIA (secção 5), nunca da coluna
-  // mostrada na aba Mensal (monthly_distance_m reinicia todos os meses,
-  // um "nivel" derivado dela nao corresponderia ao nivel real do jogador) -
-  // por isso lifetime_distance_m e sempre pedido a parte (ver renderLeaderboardInto).
+  // Nivel vem sempre das calorias VITALICIAS (secção 5/17.1), nunca da
+  // coluna mostrada na aba Mensal (monthly_calories_kcal reinicia todos os
+  // meses, um "nivel" derivado dela nao corresponderia ao nivel real do
+  // jogador) - por isso lifetime_calories_kcal e sempre pedido a parte
+  // (ver renderLeaderboardInto).
   const levelEl = document.createElement("span");
   levelEl.className = "leaderboard-level";
-  levelEl.textContent = `Lvl ${getLevelInfo(row.lifetime_distance_m).level}`;
+  levelEl.textContent = `Lvl ${getLevelInfo(row.lifetime_calories_kcal).level}`;
 
   const distEl = document.createElement("span");
   distEl.className = "leaderboard-distance";
@@ -46,22 +47,23 @@ function createLeaderboardRowEl(row, rank, isOwn, distanceM) {
   return el;
 }
 
-// distanceColumn: "lifetime_distance_m" (geral) ou "monthly_distance_m"
-// (mensal). Quando monthKey e passado, filtra so as linhas cujo
+// distanceColumn: "lifetime_calories_kcal" (geral) ou "monthly_calories_kcal"
+// (mensal) - 2026-08-10, eram lifetime_distance_m/monthly_distance_m ate
+// aqui (secção 5/17.1). Quando monthKey e passado, filtra so as linhas cujo
 // month_reference bate com o mes corrente - sem isto, jogadores que ainda
-// nao fizeram login desde a virada do mes apareceriam com a distancia do
-// mes anterior, que ainda nao foi resetada na sua linha. Mesmo aspeto do
+// nao fizeram login desde a virada do mes apareceriam com as calorias do
+// mes anterior, que ainda nao foram resetadas na sua linha. Mesmo aspeto do
 // geral em ambas as abas - as medalhas por posicao aparecem so na conquista
 // mensal (js/achievements.js) e no historico abaixo, nao aqui.
-// lifetime_distance_m e sempre pedido, mesmo na aba Mensal (distanceColumn
-// = monthly_distance_m nesse caso) - e a partir dela que o nivel de cada
+// lifetime_calories_kcal e sempre pedido, mesmo na aba Mensal (distanceColumn
+// = monthly_calories_kcal nesse caso) - e a partir dela que o nivel de cada
 // linha e calculado (ver createLeaderboardRowEl), nunca da coluna mostrada.
 // unlocked_achievements tambem e sempre pedido - popup de trofeus ao
 // clicar no nome (openPlayerTrophiesModal abaixo).
 function leaderboardSelectColumns(distanceColumn) {
-  return distanceColumn === "lifetime_distance_m"
-    ? "user_id, display_name, lifetime_distance_m, unlocked_achievements"
-    : `user_id, display_name, lifetime_distance_m, unlocked_achievements, ${distanceColumn}`;
+  return distanceColumn === "lifetime_calories_kcal"
+    ? "user_id, display_name, lifetime_calories_kcal, unlocked_achievements"
+    : `user_id, display_name, lifetime_calories_kcal, unlocked_achievements, ${distanceColumn}`;
 }
 
 async function renderLeaderboardInto(listEl, distanceColumn, monthKey) {
@@ -109,7 +111,7 @@ async function renderMedalHistory() {
 
   const { data: medals, error } = await supabaseClient
     .from("monthly_medals")
-    .select("month, medal, display_name, distance_m")
+    .select("month, medal, display_name, calories_kcal")
     .order("month", { ascending: false });
 
   if (error) {
@@ -151,7 +153,7 @@ async function renderMedalHistory() {
 
         const distEl = document.createElement("span");
         distEl.className = "leaderboard-distance";
-        distEl.textContent = formatXP(m.distance_m);
+        distEl.textContent = formatXP(m.calories_kcal);
 
         el.append(rankEl, nameEl, distEl);
         leaderboardListHistoryEl.appendChild(el);
@@ -194,8 +196,8 @@ document.getElementById("player-trophies-modal").addEventListener("click", (even
 });
 
 async function renderLeaderboardCardNow() {
-  await renderLeaderboardInto(leaderboardListEl, "lifetime_distance_m");
-  await renderLeaderboardInto(leaderboardListMonthlyEl, "monthly_distance_m", formatMonthKey(new Date()));
+  await renderLeaderboardInto(leaderboardListEl, "lifetime_calories_kcal");
+  await renderLeaderboardInto(leaderboardListMonthlyEl, "monthly_calories_kcal", formatMonthKey(new Date()));
   await renderMedalHistory();
 }
 

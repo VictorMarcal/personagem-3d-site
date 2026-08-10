@@ -323,6 +323,39 @@ alter table public.player_progress add column if not exists nivel_armadura small
 -- Omissão de 70kg para quem ainda não preencheu.
 alter table public.player_progress add column if not exists peso_kg numeric not null default 70;
 
+-- Migracao (2026-08-10, secção 5/17.1 da documentação): calorias passam a
+-- ser a unidade base do nivel/XP, em vez de distancia efetiva (metros).
+-- lifetime_distance_m/monthly_distance_m/effective_distance_m/distance_m
+-- continuam a existir e a ser atualizados em paralelo, so como estatistica
+-- informativa (usada pelas conquistas de distancia/ritmo por modo, secção
+-- 10, que continuam calibradas por distancia/velocidade real).
+alter table public.player_progress add column if not exists lifetime_calories_kcal numeric not null default 0;
+alter table public.leaderboard add column if not exists lifetime_calories_kcal numeric not null default 0;
+alter table public.leaderboard add column if not exists monthly_calories_kcal numeric not null default 0;
+alter table public.leaderboard add column if not exists previous_month_calories_kcal numeric not null default 0;
+-- calories_kcal e o que agora decide a medalha (Ouro/Prata/Bronze); distance_m
+-- continua gravado so como registo informativo (ver js/monthly-medals.js).
+alter table public.monthly_medals add column if not exists calories_kcal numeric not null default 0;
+
+-- Migracao retroativa: converte a distancia efetiva vitalicia/mensal ja
+-- acumulada por cada jogador para um equivalente em calorias, usando a
+-- mesma aproximacao fisiologica ja usada para calibrar os multiplicadores
+-- de XP por modo (~1 kcal/kg/km a correr, Compendium/ACSM) e o peso de
+-- cada jogador (peso_kg, omissao 70kg para quem ainda nao o preencheu).
+-- O novo LEVEL_BASE=70 (js/debug.js, era 1000 quando a unidade era metros)
+-- foi escolhido exatamente para esta conversao preservar o nivel atual de
+-- qualquer jogador com peso 70kg - confirmado com os 2 jogadores reais
+-- desta conta (nivel identico antes/depois: 7->7, 6->6).
+update public.player_progress
+set lifetime_calories_kcal = (lifetime_distance_m / 1000.0) * peso_kg
+where lifetime_calories_kcal = 0;
+
+update public.leaderboard l
+set lifetime_calories_kcal = (l.lifetime_distance_m / 1000.0) * coalesce((select p.peso_kg from public.player_progress p where p.user_id = l.user_id), 70),
+    monthly_calories_kcal = (l.monthly_distance_m / 1000.0) * coalesce((select p.peso_kg from public.player_progress p where p.user_id = l.user_id), 70),
+    previous_month_calories_kcal = (l.previous_month_distance_m / 1000.0) * coalesce((select p.peso_kg from public.player_progress p where p.user_id = l.user_id), 70)
+where l.lifetime_calories_kcal = 0;
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

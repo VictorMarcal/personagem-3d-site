@@ -494,14 +494,13 @@ function beginWatch() {
     timeout: 15000,
   });
 
-  // A barra/progresso de nivel usa a distancia EFETIVA (com o multiplicador
-  // do modo dominante ja aplicado), nunca a real diretamente - tem de
-  // refletir ao vivo exatamente o que vai ser creditado no fim da sessao
-  // (secção 4.1), nao uma previa otimista baseada na distancia real.
-  updateXPDisplay(getEffectiveDistanceM(totalDistanceM, getDominantMode()));
+  // A barra/progresso de nivel usa as CALORIAS da sessao em curso
+  // (2026-08-10, secção 5/17.1 - era distancia efetiva ate aqui), para
+  // refletir ao vivo exatamente o que vai ser creditado no fim da sessao.
+  updateXPDisplay(sessionCaloriesKcal);
   saveIntervalId = setInterval(() => {
     persistAccumulatedTraining();
-    updateXPDisplay(getEffectiveDistanceM(totalDistanceM, getDominantMode()));
+    updateXPDisplay(sessionCaloriesKcal);
     refreshTabLock(STORAGE_KEY_TRAINING_TAB_LOCK);
   }, SAVE_INTERVAL_MS);
   startLiveStatsTicker();
@@ -636,16 +635,16 @@ function stopTraining() {
       // mao, a sessao pode ter passado por mais que uma atividade.
       mode: sessionDominantMode,
       duration_seconds: sessionDurationSeconds,
-      // Ainda NAO conta para XP/pontos/leaderboard (ver getEffectiveDistanceM
-      // acima) - guardado desde ja para nao perder historico ate a troca de
-      // unidade base (secção 17.1, tarefa da nova curva de nivel/migracao).
       calories_kcal: sessionCalories,
     });
 
-    // Distancia EFETIVA (com o multiplicador de justica de esforco ja
-    // aplicado) e que conta para XP/pontos/leaderboard/conquistas - a real
-    // (GPS) fica so no historico da sessao acima, para o jogador ver o que
-    // percorreu de facto.
+    // Calorias (2026-08-10, secção 5/17.1) sao o que conta para XP/pontos/
+    // leaderboard/medalhas mensais a partir de agora. Distancia efetiva
+    // continua a ser somada em paralelo, mas passa a ser so estatistica
+    // informativa (usada pelas conquistas de distancia/ritmo por modo,
+    // secção 10, que continuam calibradas por distancia/velocidade real).
+    addToLifetimeCalories(sessionCalories);
+    addToMonthlyCalories(sessionCalories);
     addToLifetimeDistance(sessionEffectiveDistanceM);
     addToMonthlyDistance(sessionEffectiveDistanceM);
     incrementTotalTrainingsCompleted();

@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.0.0",
+    title: "Calorias Passam a Ser a Unidade de Progresso",
+    changes: [
+      "Nível, XP, leaderboard e medalhas mensais passam a ser calculados por calorias reais (fórmula MET), não por distância — mais justo entre quem anda, corre e pedala.",
+      "O nível de todos os jogadores existentes foi preservado na mudança — ninguém perde progresso.",
+      "Distância continua a ser mostrada em todo o lado (histórico, gráficos, conquistas de distância) — só deixou de decidir o nível.",
+    ],
+  },
+  {
     version: "v1.20.1",
     title: "Corrige Treino Sem Pausa",
     changes: [

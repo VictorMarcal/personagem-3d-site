@@ -12,6 +12,20 @@ function addToMonthlyDistance(deltaM) {
   queueProgressSync();
 }
 
+// Calorias do mes corrente (2026-08-10, secção 17.1) - passam a decidir a
+// medalha mensal (Ouro/Prata/Bronze, ver checkMonthlyRollover abaixo).
+// getMonthlyDistanceM acima continua a existir/atualizar-se em paralelo,
+// so como estatistica informativa.
+function getMonthlyCaloriesKcal() {
+  return Number(localStorage.getItem(STORAGE_KEY_MONTHLY_KCAL)) || 0;
+}
+
+function addToMonthlyCalories(deltaKcal) {
+  if (deltaKcal <= 0) return;
+  localStorage.setItem(STORAGE_KEY_MONTHLY_KCAL, String(getMonthlyCaloriesKcal() + deltaKcal));
+  queueProgressSync();
+}
+
 function getMonthReference() {
   return localStorage.getItem(STORAGE_KEY_MONTH_REFERENCE) || formatMonthKey(new Date());
 }
@@ -47,12 +61,13 @@ async function hydrateMonthlyDistanceFromServer() {
 
   const { data: own } = await supabaseClient
     .from("leaderboard")
-    .select("monthly_distance_m, previous_month_distance_m, month_reference, previous_month_reference")
+    .select("monthly_distance_m, previous_month_distance_m, monthly_calories_kcal, previous_month_calories_kcal, month_reference, previous_month_reference")
     .eq("user_id", currentUserId)
     .maybeSingle();
 
   if (own && localStorage.getItem(SYNC_PENDING_KEY) !== "true") {
     localStorage.setItem(STORAGE_KEY_MONTHLY_DISTANCE_M, String(own.monthly_distance_m || 0));
+    localStorage.setItem(STORAGE_KEY_MONTHLY_KCAL, String(own.monthly_calories_kcal || 0));
     setMonthReference(own.month_reference || formatMonthKey(new Date()));
   }
 
@@ -109,21 +124,26 @@ async function checkMonthlyRollover() {
   if (!existing || existing.length === 0) {
     const { data: allRows } = await supabaseClient
       .from("leaderboard")
-      .select("user_id, display_name, monthly_distance_m, month_reference, previous_month_distance_m, previous_month_reference");
+      .select(
+        "user_id, display_name, monthly_distance_m, monthly_calories_kcal, month_reference, previous_month_distance_m, previous_month_calories_kcal, previous_month_reference"
+      );
 
+    // Ranking por CALORIAS (2026-08-10, secção 17.1) - era por distancia
+    // mensal ate aqui. distance_m continua gravado na medalha, so como
+    // registo informativo (secção 10/14), ja nao decide a ordem.
     const ranked = (allRows || [])
-      .map((r) => ({
-        user_id: r.user_id,
-        display_name: r.display_name,
-        distance:
-          r.month_reference === endedMonth
-            ? r.monthly_distance_m
-            : r.previous_month_reference === endedMonth
-              ? r.previous_month_distance_m
-              : 0,
-      }))
-      .filter((r) => r.distance > 0)
-      .sort((a, b) => b.distance - a.distance)
+      .map((r) => {
+        const fromCurrent = r.month_reference === endedMonth;
+        const fromPrevious = !fromCurrent && r.previous_month_reference === endedMonth;
+        return {
+          user_id: r.user_id,
+          display_name: r.display_name,
+          calories: fromCurrent ? r.monthly_calories_kcal : fromPrevious ? r.previous_month_calories_kcal : 0,
+          distance: fromCurrent ? r.monthly_distance_m : fromPrevious ? r.previous_month_distance_m : 0,
+        };
+      })
+      .filter((r) => r.calories > 0)
+      .sort((a, b) => b.calories - a.calories)
       .slice(0, 3);
 
     const medalOrder = ["gold", "silver", "bronze"];
@@ -133,6 +153,7 @@ async function checkMonthlyRollover() {
       user_id: r.user_id,
       display_name: r.display_name,
       distance_m: r.distance,
+      calories_kcal: r.calories,
     }));
 
     if (medalRows.length > 0) {
@@ -141,16 +162,19 @@ async function checkMonthlyRollover() {
   }
 
   // Roda a minha propria linha: guarda o mes que terminou como "anterior"
-  // e reinicia o contador corrente
+  // e reinicia o contador corrente (distancia E calorias)
   await supabaseClient.from("leaderboard").upsert({
     user_id: currentUserId,
     display_name: currentDisplayName(),
     previous_month_distance_m: own.monthly_distance_m,
+    previous_month_calories_kcal: own.monthly_calories_kcal,
     previous_month_reference: endedMonth,
     monthly_distance_m: 0,
+    monthly_calories_kcal: 0,
     month_reference: currentMonthKey,
   });
   localStorage.setItem(STORAGE_KEY_MONTHLY_DISTANCE_M, "0");
+  localStorage.setItem(STORAGE_KEY_MONTHLY_KCAL, "0");
   setMonthReference(currentMonthKey);
 
   // Pode ter acabado de creditar a mim proprio agora mesmo

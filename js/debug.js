@@ -5,13 +5,17 @@
 // equipment.js/experience.js/monsters.js porque estes chamam os
 // getters logo na primeira renderizacao.
 const DEBUG_DEFAULTS = {
-  // Nivel 1: 1000 XP (= 1km) para subir - pedido explicitamente a subir de
-  // 500 (0.5km) para o primeiro nivel "arredondar" para 1km/1000 XP.
-  // Duplica a distancia necessaria em TODOS os niveis (o formulario e
-  // proporcional a LEVEL_BASE), nao so no primeiro - efeito retroativo em
-  // qualquer jogador com progresso existente (o nivel e sempre recalculado
-  // ao vivo a partir da distancia vitalicia, nunca guardado por si so).
-  levelBase: 1000,
+  // Nivel 1: 70 XP (= 70 kcal) para subir (2026-08-10, secção 5/17.1 da
+  // documentação - era 1000 XP/1 km ate aqui, quando a unidade base era
+  // metros). 70 kcal e o equivalente calorico de 1km a correr para um
+  // jogador de referencia de 70kg (formula MET, ~1 kcal/kg/km a correr) -
+  // escolhido para preservar EXATAMENTE o mesmo nivel de qualquer jogador
+  // ja existente na migracao retroativa (LEVEL_BASE novo = LEVEL_BASE
+  // antigo/1000 * 70), nao um numero arbitrario novo. Duplica as calorias
+  // necessarias em TODOS os niveis (o incremento e proporcional a
+  // LEVEL_BASE), nao so no primeiro - o nivel e sempre recalculado ao vivo
+  // a partir das calorias vitalicias, nunca guardado por si so.
+  levelBase: 70,
   levelExp: 1.3,
   statBaseVida: 100,
   statFlatVida: 4,
@@ -253,7 +257,7 @@ function refreshAllAfterConfigChange() {
   // Distancia EFETIVA (nao a real) - mesma logica de js/training.js
   // beginWatch(), para a barra de nivel nunca mostrar uma previa otimista
   // se este for chamado a meio de um treino ativo (ex: guardar no Debug).
-  updateXPDisplay(typeof totalDistanceM === "number" ? getEffectiveDistanceM(totalDistanceM, getDominantMode()) : 0);
+  updateXPDisplay(typeof sessionCaloriesKcal === "number" ? sessionCaloriesKcal : 0);
   renderStatsHud();
   renderMonsters();
   renderDebugCharacterInfo();
@@ -286,6 +290,7 @@ let simDistanceIntervalId = null;
 // conquistas de distancia/ritmo (que dependem de uma sessao, nao da
 // distancia vitalicia) tambem poderem ser testadas com o simulador
 let simSessionDistanceM = 0;
+let simSessionCaloriesKcal = 0;
 let simSessionStartTime = null;
 // Espelha coinsCheckedKm de js/training.js (contador PROPRIO, nunca
 // partilhado - ver rollCoinDropsForKm la) - o simulador substitui uma
@@ -308,9 +313,19 @@ function tickSimDistance() {
   const elapsedSeconds = SIM_DISTANCE_TICK_MS / 1000;
   const deltaM = elapsedSeconds * factor;
 
+  // Desde o cutover para calorias (2026-08-10, secção 5), o nivel ja nao
+  // sobe so com addToLifetimeDistance - o simulador tambem precisa de
+  // creditar calorias, ou deixaria de servir para testar niveis altos sem
+  // andar de verdade (o proposito original desta ferramenta). Sem MET real
+  // (o simulador nao gera velocidade/segmentos), usa a mesma aproximacao
+  // da migracao retroativa: ~1 kcal/kg/km a correr (Compendium/ACSM).
+  const deltaKcal = (deltaM / 1000) * getPesoKg();
+  addToLifetimeCalories(deltaKcal);
+  addToMonthlyCalories(deltaKcal);
   addToLifetimeDistance(deltaM);
   addToMonthlyDistance(deltaM);
   simSessionDistanceM += deltaM;
+  simSessionCaloriesKcal += deltaKcal;
   checkSimCoinDropsForDistance(simSessionDistanceM);
   const simSessionDurationSeconds = (Date.now() - simSessionStartTime) / 1000;
   checkAndUnlockAchievements(simSessionDistanceM, simSessionDurationSeconds);
@@ -322,6 +337,7 @@ function tickSimDistance() {
 function startSimDistance() {
   if (simDistanceIntervalId !== null) return;
   simSessionDistanceM = 0;
+  simSessionCaloriesKcal = 0;
   simCoinsCheckedKm = 0;
   simSessionStartTime = Date.now();
   simDistanceIntervalId = setInterval(tickSimDistance, SIM_DISTANCE_TICK_MS);
@@ -348,6 +364,7 @@ function stopSimDistance() {
     effective_distance_m: simSessionDistanceM,
     mode: "correr",
     duration_seconds: (Date.now() - simSessionStartTime) / 1000,
+    calories_kcal: simSessionCaloriesKcal,
   });
 
   btnToggleSimDistance.textContent = "Iniciar simulação";
@@ -393,6 +410,8 @@ function resetCharacterAndDistance() {
   }
 
   localStorage.removeItem(STORAGE_KEY_LIFETIME_M);
+  localStorage.removeItem(STORAGE_KEY_LIFETIME_KCAL);
+  localStorage.removeItem(STORAGE_KEY_MONTHLY_KCAL);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEquipVida);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEquipAtaque);

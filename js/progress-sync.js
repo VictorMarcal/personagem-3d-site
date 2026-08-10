@@ -12,6 +12,7 @@ let syncTimeoutId = null;
 function readLocalProgressSnapshot() {
   return {
     lifetime_distance_m: getLifetimeDistanceM(),
+    lifetime_calories_kcal: getLifetimeCaloriesKcal(),
     unspent_points: getUnspentPoints(),
     nivel_energia: getInvestableStatLevel("energia"),
     nivel_forca: getInvestableStatLevel("forca"),
@@ -61,7 +62,9 @@ async function syncProgressToSupabase() {
       user_id: currentUserId,
       display_name: currentDisplayName(),
       lifetime_distance_m: snapshot.lifetime_distance_m,
+      lifetime_calories_kcal: snapshot.lifetime_calories_kcal,
       monthly_distance_m: getMonthlyDistanceM(),
+      monthly_calories_kcal: getMonthlyCaloriesKcal(),
       month_reference: getMonthReference(),
       // Copia publica das conquistas (player_progress e privado, RLS so
       // deixa o dono ler a sua propria linha) - usada pelo popup de
@@ -131,7 +134,9 @@ async function migrateLocalProgressToSupabase(userId, existingDisplayName) {
     user_id: userId,
     display_name: existingDisplayName || "Jogador",
     lifetime_distance_m: snapshot.lifetime_distance_m,
+    lifetime_calories_kcal: snapshot.lifetime_calories_kcal,
     monthly_distance_m: getMonthlyDistanceM(),
+    monthly_calories_kcal: getMonthlyCaloriesKcal(),
     month_reference: getMonthReference(),
     unlocked_achievements: snapshot.unlocked_achievements,
   });
@@ -144,6 +149,7 @@ async function migrateLocalProgressToSupabase(userId, existingDisplayName) {
 // continuar a funcionar sem alteracoes.
 function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEY_LIFETIME_M, String(progress.lifetime_distance_m));
+  localStorage.setItem(STORAGE_KEY_LIFETIME_KCAL, String(progress.lifetime_calories_kcal || 0));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(progress.unspent_points));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEnergia, String(progress.nivel_energia || 0));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelForca, String(progress.nivel_forca || 0));

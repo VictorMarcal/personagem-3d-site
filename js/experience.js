@@ -1,8 +1,10 @@
-// Curva de progressao de nivel: distancia (m) necessaria para subir do
-// nivel n para o n+1 = round(LEVEL_BASE * n^LEVEL_EXP). Nem linear nem
-// exponencial: os incrementos crescem, mas a taxa de crescimento desacelera.
-// LEVEL_BASE/LEVEL_EXP sao ajustaveis no card de Debug (js/debug.js).
-// STORAGE_KEY_LIFETIME_M esta definida em js/storage-keys.js
+// Curva de progressao de nivel: calorias (kcal) necessarias para subir do
+// nivel n para o n+1 = round(LEVEL_BASE * n^LEVEL_EXP) (2026-08-10, era
+// distancia em metros ate aqui - secção 5/17.1 da documentação). Nem linear
+// nem exponencial: os incrementos crescem, mas a taxa de crescimento
+// desacelera. LEVEL_BASE/LEVEL_EXP sao ajustaveis no card de Debug
+// (js/debug.js). STORAGE_KEY_LIFETIME_M/STORAGE_KEY_LIFETIME_KCAL estao
+// definidas em js/storage-keys.js
 
 const characterLevelValueEl = document.getElementById("character-level-value");
 const siteTitleLevelEl = document.getElementById("site-title-level");
@@ -11,6 +13,21 @@ const xpBarFillEl = document.getElementById("xp-bar-fill");
 
 function getLifetimeDistanceM() {
   return Number(localStorage.getItem(STORAGE_KEY_LIFETIME_M)) || 0;
+}
+
+// Calorias vitalicias (2026-08-10) - a unidade base do nivel/XP (ver
+// getLevelInfo/updateXPDisplay abaixo). getLifetimeDistanceM acima
+// continua a existir e a ser atualizada em paralelo, so como estatistica
+// informativa de distancia real - deixou de alimentar o nivel.
+function getLifetimeCaloriesKcal() {
+  return Number(localStorage.getItem(STORAGE_KEY_LIFETIME_KCAL)) || 0;
+}
+
+function addToLifetimeCalories(deltaKcal) {
+  if (deltaKcal <= 0) return;
+  const total = getLifetimeCaloriesKcal() + deltaKcal;
+  localStorage.setItem(STORAGE_KEY_LIFETIME_KCAL, String(total));
+  queueProgressSync();
 }
 
 // Todas as distancias continuam guardadas/calculadas em metros - isto e
@@ -25,13 +42,12 @@ function formatSpeedKmh(metersPerSecond) {
   return `${(metersPerSecond * 3.6).toFixed(1)} km/h`;
 }
 
-// XP (1 XP = 1 metro, ex: 1km = 1000 XP) - mesma convencao da barra de
-// nivel (secção 5 da documentação), usada tambem no leaderboard: os
-// valores ja sao distancia EFETIVA (com o multiplicador de justica de
-// esforco aplicado), por isso mostra-los como "pontos" de XP em vez de km
-// reforca que representam esforco, nao quilometros reais percorridos.
-function formatXP(meters) {
-  return `${Math.round(meters).toLocaleString("pt-BR")} XP`;
+// XP (2026-08-10: 1 XP = 1 kcal, era 1 XP = 1 metro ate aqui - secção 5/17.1
+// da documentação) - mesma convencao da barra de nivel, usada tambem no
+// leaderboard: os valores representam esforco real (calorias, formula
+// MET), nao quilometros percorridos.
+function formatXP(kcal) {
+  return `${Math.round(kcal).toLocaleString("pt-BR")} XP`;
 }
 
 // "3900" -> "3:00" (ou "1:05:00" acima de 1h) - usado no relogio ao vivo do
@@ -56,35 +72,39 @@ function addToLifetimeDistance(deltaM) {
   queueProgressSync();
 }
 
-function getLevelInfo(totalM) {
+// totalKcal: total de calorias vitalicias (2026-08-10 - era totalM em
+// metros ate aqui). A formula em si nao mudou (round(LEVEL_BASE * n^LEVEL_EXP)),
+// so a unidade do numero de entrada - ver secção 5 da documentação.
+function getLevelInfo(totalKcal) {
   let level = 1;
-  let levelStartM = 0;
+  let levelStartKcal = 0;
 
   while (true) {
-    const distanceForThisLevel = Math.round(getLevelBase() * Math.pow(level, getLevelExp()));
-    if (levelStartM + distanceForThisLevel > totalM) {
+    const kcalForThisLevel = Math.round(getLevelBase() * Math.pow(level, getLevelExp()));
+    if (levelStartKcal + kcalForThisLevel > totalKcal) {
       return {
         level,
-        distanceIntoLevel: totalM - levelStartM,
-        distanceForNextLevel: distanceForThisLevel,
+        distanceIntoLevel: totalKcal - levelStartKcal,
+        distanceForNextLevel: kcalForThisLevel,
       };
     }
-    levelStartM += distanceForThisLevel;
+    levelStartKcal += kcalForThisLevel;
     level += 1;
   }
 }
 
-// liveSessionM: distancia do treino em curso ainda nao commitada ao total
-// vitalicio, para a barra refletir progresso em tempo real durante o treino
-function updateXPDisplay(liveSessionM = 0) {
-  const lifetimeM = getLifetimeDistanceM();
+// liveSessionKcal: calorias do treino em curso ainda nao commitadas ao
+// total vitalicio, para a barra refletir progresso em tempo real durante
+// o treino (2026-08-10 - era distancia efetiva em metros ate aqui).
+function updateXPDisplay(liveSessionKcal = 0) {
+  const lifetimeKcal = getLifetimeCaloriesKcal();
 
-  // Pontos de status so sao creditados com base em distancia ja confirmada
+  // Pontos de status so sao creditados com base em calorias ja confirmadas
   // (nunca com a sessao em curso, que pode ainda ser perdida)
-  awardPointsIfNeeded(lifetimeM);
+  awardPointsIfNeeded(lifetimeKcal);
 
-  const totalM = lifetimeM + liveSessionM;
-  const info = getLevelInfo(totalM);
+  const totalKcal = lifetimeKcal + liveSessionKcal;
+  const info = getLevelInfo(totalKcal);
   const progressPct = Math.min(100, (info.distanceIntoLevel / info.distanceForNextLevel) * 100);
 
   characterLevelValueEl.textContent = info.level;
@@ -92,10 +112,10 @@ function updateXPDisplay(liveSessionM = 0) {
   // - mesmo valor do cracha do palco 3D, so uma segunda leitura visivel sem
   // ter de entrar na aba Personagem.
   siteTitleLevelEl.textContent = `Nível ${info.level}`;
-  // Mostrado como XP (1 XP = 1 metro, ex: 1km = 1000 XP), nao em km como as
-  // restantes distancias do jogo - a barra de nivel e a unica leitura de
-  // progresso onde faz sentido falar de "pontos de experiencia", nao de
-  // distancia percorrida. Formato "campo aberto" (2026-08-06): XP ja
+  // Mostrado como XP (1 XP = 1 kcal, 2026-08-10 - era 1 XP = 1 metro), nao em
+  // km como as restantes distancias do jogo - a barra de nivel e a unica
+  // leitura de progresso onde faz sentido falar de "pontos de experiencia",
+  // nao de esforco em si. Formato "campo aberto" (2026-08-06): XP ja
   // ganho no nivel atual, mais quanto falta para o proximo, em vez de
   // "X / Y XP".
   const remaining = Math.round(info.distanceForNextLevel - info.distanceIntoLevel);

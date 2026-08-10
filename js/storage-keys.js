@@ -4,6 +4,14 @@
 // monsters/achievements), que continuam a ser os donos da lógica.
 const STORAGE_KEY_LIFETIME_M = "personagem.distanciaTotalM";
 
+// Calorias vitalicias (2026-08-10, secção 17.1 da documentação) - passa a
+// ser a unidade base do nivel/XP (substitui STORAGE_KEY_LIFETIME_M nesse
+// papel, que continua a existir so como estatistica informativa de
+// distancia real). STORAGE_KEY_MONTHLY_KCAL e o equivalente mensal de
+// STORAGE_KEY_MONTHLY_DISTANCE_M, usado no leaderboard/medalhas mensais.
+const STORAGE_KEY_LIFETIME_KCAL = "personagem.caloriasTotaisKcal";
+const STORAGE_KEY_MONTHLY_KCAL = "personagem.caloriasMesAtualKcal";
+
 const STORAGE_KEYS_EQUIPMENT = {
   pontosDisponiveis: "personagem.pontosDisponiveis",
   ultimoNivelPremiado: "personagem.ultimoNivelPremiado",
