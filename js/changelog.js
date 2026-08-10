@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.4.1",
+    title: "Correção: Distância Presa a 0",
+    changes: [
+      "Corrigido: em alguns telemóveis, treinos curtos a pé podiam ficar sempre com 0.00 km e 0 kcal mesmo a caminhar sem parar (o GPS reportava depressa demais para o filtro de ruído conseguir somar o percurso).",
+    ],
+  },
+  {
     version: "v2.4.0",
     title: "Calorias no Perfil",
     changes: [

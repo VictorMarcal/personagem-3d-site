@@ -433,6 +433,7 @@ function resetCharacterAndDistance() {
 
   totalDistanceM = 0;
   lastPosition = null;
+  lastCountedPosition = null;
   sessionStartTime = null;
 
   updateDistanceDisplay();

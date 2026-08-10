@@ -171,7 +171,19 @@ function haversineDistance(lat1, lon1, lat2, lon2) {
 
 // Distancia do treino a decorrer (em memoria, atualizada a cada leitura de GPS)
 let totalDistanceM = 0;
+// lastPosition: SEMPRE avanca para a leitura mais recente - usada para
+// velocidade/deteccao de atividade (classifySpeedKmh, teto de seguranca).
+// lastCountedPosition: so avanca quando um segmento e de facto creditado a
+// distancia/calorias (2026-08-11, bug reportado - treino real de 1-3min a
+// pe ficava sempre a 0.00km/0kcal). Com uma unica ancora que avanca sempre,
+// um telemovel a reportar GPS mais depressa do que o tempo que a pe leva a
+// percorrer MIN_MOVEMENT_M (ex: leituras a cada 1-2s a 4km/h) nunca gera um
+// UNICO segmento grande o suficiente para contar, por mais que o jogador
+// caminhe sem parar. Com duas ancoras, segmentos pequenos consecutivos
+// somam-se (lastCountedPosition fica para tras) ate ultrapassarem o
+// limiar, exatamente como antes da correcao de ontem para o "parado".
 let lastPosition = null;
+let lastCountedPosition = null;
 let watchId = null;
 let saveIntervalId = null;
 let sessionStartTime = null; // usado para conquistas de ritmo (ex: 5km em menos de 25 min)
@@ -444,20 +456,34 @@ function onPositionUpdate(position) {
     updateDetectedActivity(timestamp);
     currentNominalSpeedMps = speedMps;
 
-    // "parado" (ou deslocamento abaixo de MIN_MOVEMENT_M, ruido de GPS
-    // parado) nao acumula distancia/calorias (pausa automatica) - mas a
-    // ancora ja avancou acima, por isso o proximo segmento e medido a
-    // partir daqui, nao de uma posicao cada vez mais antiga.
-    if (segmentM >= getMinMovementM() && currentActiveMode !== ACTIVITY_STOPPED) {
-      totalDistanceM += segmentM;
-      sessionCaloriesKcal += computeSegmentCalories(currentActiveMode, speedKmh, deltaSeconds);
-      modeTimeAccumMs[currentActiveMode] = (modeTimeAccumMs[currentActiveMode] || 0) + deltaSeconds * 1000;
+    // Distancia/calorias medidas a partir de lastCountedPosition, NAO de
+    // lastPosition (2026-08-11) - pode ser uma leitura mais antiga que a
+    // usada acima para velocidade/deteccao, para segmentos pequenos
+    // consecutivos se poderem somar ate ultrapassar MIN_MOVEMENT_M. Velocidade
+    // e duracao usadas na formula MET sao as deste segmento acumulado (nao a
+    // instantanea entre as duas ultimas leituras), para bater certo com a
+    // distancia/tempo creditados.
+    const distanceSegmentM = haversineDistance(
+      lastCountedPosition.latitude,
+      lastCountedPosition.longitude,
+      latitude,
+      longitude
+    );
+
+    if (distanceSegmentM >= getMinMovementM() && currentActiveMode !== ACTIVITY_STOPPED) {
+      const creditedDurationSeconds = (timestamp - lastCountedPosition.timestamp) / 1000;
+      const creditedSpeedKmh = creditedDurationSeconds > 0 ? (distanceSegmentM / creditedDurationSeconds) * 3.6 : speedKmh;
+      totalDistanceM += distanceSegmentM;
+      sessionCaloriesKcal += computeSegmentCalories(currentActiveMode, creditedSpeedKmh, creditedDurationSeconds);
+      modeTimeAccumMs[currentActiveMode] = (modeTimeAccumMs[currentActiveMode] || 0) + creditedDurationSeconds * 1000;
       updateDistanceDisplay();
       checkCoinDropsForDistance(totalDistanceM);
+      lastCountedPosition = { latitude, longitude, timestamp };
     }
   }
 
   lastPosition = { latitude, longitude, timestamp };
+  if (!lastCountedPosition) lastCountedPosition = { latitude, longitude, timestamp };
 }
 
 function onPositionError(error) {
@@ -550,6 +576,7 @@ function startTraining() {
 function beginTrainingSession() {
   totalDistanceM = 0;
   lastPosition = null;
+  lastCountedPosition = null;
   sessionStartTime = Date.now();
   coinsCheckedKm = 0;
   sessionCaloriesKcal = 0;
@@ -629,6 +656,7 @@ function stopTraining() {
 
   totalDistanceM = 0;
   lastPosition = null;
+  lastCountedPosition = null;
   sessionStartTime = null;
   updateXPDisplay(0);
 
@@ -650,6 +678,11 @@ function resumeTrainingIfNeeded() {
   totalDistanceM = Number(localStorage.getItem(STORAGE_KEYS.distanciaAcumuladaM)) || 0;
   const savedPosition = localStorage.getItem(STORAGE_KEYS.ultimaPosicao);
   lastPosition = savedPosition ? JSON.parse(savedPosition) : null;
+  // lastCountedPosition arranca igual a lastPosition apos um refresh (nao e
+  // persistida em separado) - pior caso, um segmento a mais precisa de se
+  // acumular antes de voltar a contar, sem impacto real (refresh a meio de
+  // um treino ja e um caso raro, ver nota abaixo sobre calorias/deteccao).
+  lastCountedPosition = lastPosition;
   sessionStartTime = Number(localStorage.getItem(STORAGE_KEYS.inicioSessao)) || Date.now();
   // Nao re-testa km ja percorridos antes do refresh - so os km novos a
   // partir daqui contam para moedas.
