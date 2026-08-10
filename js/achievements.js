@@ -36,8 +36,10 @@ const CATEGORY_BY_TYPE = {
   coinsSpent: "Progresso",
   equipmentMaxed: "Progresso",
   achievementCount: "Progresso",
+  sessionCalories: "Calorias",
+  lifetimeCalories: "Calorias",
 };
-const CATEGORY_ORDER = ["Distância", "Frequência", "Combate", "Progresso", "Liderança", "Ritmo"];
+const CATEGORY_ORDER = ["Distância", "Calorias", "Frequência", "Combate", "Progresso", "Liderança", "Ritmo"];
 
 const STATIC_ACHIEVEMENTS = [
   { id: "dist_lifetime_50km", name: "50 km vitalícios", icon: "🌍", type: "lifetimeDistance", threshold: 50000 },
@@ -91,6 +93,18 @@ const STATIC_ACHIEVEMENTS = [
   { id: "collector_10", name: "Colecionador (10)", icon: "🧩", type: "achievementCount", threshold: 10 },
   { id: "collector_25", name: "Colecionador (25)", icon: "🧩", type: "achievementCount", threshold: 25 },
   { id: "collector_50", name: "Colecionador (50)", icon: "🧩", type: "achievementCount", threshold: 50 },
+  // Conquistas de calorias (2026-08-10, secção 10/17.2 da documentação) -
+  // ao contrario de sessionDistance, NAO separadas por modo: calorias ja
+  // normalizam esforco entre caminhar/correr/bicicleta (é o que a formula
+  // MET/secção 4.1 faz), nao precisam de 3 copias por limiar.
+  { id: "cal_sessao_200", name: "Primeira Fagulha", icon: "✨", type: "sessionCalories", threshold: 200 },
+  { id: "cal_sessao_500", name: "Em Chamas", icon: "🔥", type: "sessionCalories", threshold: 500 },
+  { id: "cal_sessao_1000", name: "Fornalha", icon: "🌋", type: "sessionCalories", threshold: 1000 },
+  { id: "cal_sessao_2000", name: "Incêndio Total", icon: "💥", type: "sessionCalories", threshold: 2000 },
+  { id: "cal_vida_10000", name: "Aquecimento Vitalício", icon: "🪵", type: "lifetimeCalories", threshold: 10000 },
+  { id: "cal_vida_50000", name: "Combustível Sério", icon: "⛽", type: "lifetimeCalories", threshold: 50000 },
+  { id: "cal_vida_250000", name: "Fornalha Humana", icon: "🌡️", type: "lifetimeCalories", threshold: 250000 },
+  { id: "cal_vida_1000000", name: "Lenda Calórica", icon: "☄️", type: "lifetimeCalories", threshold: 1000000 },
 ];
 
 // Horario de uma sessao de treino (2026-08-07, a pedido) - hora LOCAL do
@@ -299,6 +313,15 @@ const ACHIEVEMENT_COIN_REWARD = {
   months_3: 8,
   months_6: 25,
   months_12: 60,
+  // Calorias (novas, 2026-08-10 - secção 10/17.2)
+  cal_sessao_200: 5,
+  cal_sessao_500: 15,
+  cal_sessao_1000: 30,
+  cal_sessao_2000: 60,
+  cal_vida_10000: 7,
+  cal_vida_50000: 12,
+  cal_vida_250000: 51,
+  cal_vida_1000000: 100,
 };
 
 // Liderança - medalha mensal, recorrente (paga de novo a cada mes de
@@ -429,6 +452,19 @@ function getBestSessionDistanceM(mode) {
 function updateBestSessionDistanceM(sessionDistanceM, mode = "correr") {
   if (sessionDistanceM > getBestSessionDistanceM(mode)) {
     localStorage.setItem(BEST_SESSION_DISTANCE_KEY_BY_MODE[mode], String(sessionDistanceM));
+    queueProgressSync();
+  }
+}
+
+// Recorde de calorias numa unica sessao - sem mode (ver nota em
+// STATIC_ACHIEVEMENTS acima), usado pela conquista "sessionCalories".
+function getBestSessionCaloriesKcal() {
+  return Number(localStorage.getItem(STORAGE_KEY_BEST_SESSION_CALORIES_KCAL)) || 0;
+}
+
+function updateBestSessionCaloriesKcalIfBetter(sessionCaloriesKcal) {
+  if (sessionCaloriesKcal > getBestSessionCaloriesKcal()) {
+    localStorage.setItem(STORAGE_KEY_BEST_SESSION_CALORIES_KCAL, String(sessionCaloriesKcal));
     queueProgressSync();
   }
 }
@@ -579,6 +615,14 @@ function getAchievementProgress(achievement) {
       const total = getLifetimeDistanceM();
       return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
     }
+    case "sessionCalories": {
+      const best = getBestSessionCaloriesKcal();
+      return { current: Math.min(best, achievement.threshold), target: achievement.threshold, met: best >= achievement.threshold };
+    }
+    case "lifetimeCalories": {
+      const total = getLifetimeCaloriesKcal();
+      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
+    }
     case "streak": {
       const best = getBestStreakDays();
       return { current: Math.min(best, achievement.threshold), target: achievement.threshold, met: best >= achievement.threshold };
@@ -669,10 +713,17 @@ const PACE_PERSONAL_RECORD_ID_BY_MODE = {
 // documentação). As de RITMO tambem usam distancia/velocidade real - cada
 // conquista de ritmo/recorde pessoal so e avaliada/atualizada para o modo
 // a que pertence (achievement.mode), nunca cruzando modos entre si.
-function checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, mode = "correr") {
+// sessionCaloriesKcal (2026-08-10, secção 10/17.2) alimenta so a conquista
+// "sessionCalories" (recorde de sessao, sem mode) - "lifetimeCalories" le
+// getLifetimeCaloriesKcal() diretamente (ja atualizado pelo chamador antes
+// desta funcao correr, ver js/training.js stopTraining).
+function checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, mode = "correr", sessionCaloriesKcal) {
   const hasSessionData = typeof sessionDistanceM === "number";
   if (hasSessionData) {
     updateBestSessionDistanceM(sessionDistanceM, mode);
+  }
+  if (typeof sessionCaloriesKcal === "number") {
+    updateBestSessionCaloriesKcalIfBetter(sessionCaloriesKcal);
   }
 
   // Recorde pessoal de ritmo (do modo desta sessao): so pode disparar a
@@ -812,6 +863,10 @@ function getAchievementDescription(achievement) {
       return `Percorre ${formatDistanceKm(achievement.threshold)} numa única sessão ${MODE_ACTIVITY_PHRASE_PT[achievement.mode]}.`;
     case "lifetimeDistance":
       return `Acumula ${formatDistanceKm(achievement.threshold)} de distância ao longo da tua vida.`;
+    case "sessionCalories":
+      return `Queima ${achievement.threshold.toLocaleString("pt-BR")} kcal numa única sessão de treino.`;
+    case "lifetimeCalories":
+      return `Acumula ${achievement.threshold.toLocaleString("pt-BR")} kcal ao longo da tua vida.`;
     case "trainingCount":
       return `Completa ${achievement.threshold} treino${achievement.threshold > 1 ? "s" : ""}.`;
     case "streak":

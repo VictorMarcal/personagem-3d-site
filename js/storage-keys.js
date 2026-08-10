@@ -12,6 +12,11 @@ const STORAGE_KEY_LIFETIME_M = "personagem.distanciaTotalM";
 const STORAGE_KEY_LIFETIME_KCAL = "personagem.caloriasTotaisKcal";
 const STORAGE_KEY_MONTHLY_KCAL = "personagem.caloriasMesAtualKcal";
 
+// Recorde de calorias numa unica sessao (secção 10 - conquistas de
+// calorias, 2026-08-10) - nao separado por modo (calorias ja normalizam
+// esforco entre modos, ao contrario da distancia de sessao acima).
+const STORAGE_KEY_BEST_SESSION_CALORIES_KCAL = "personagem.melhorSessaoCaloriasKcal";
+
 const STORAGE_KEYS_EQUIPMENT = {
   pontosDisponiveis: "personagem.pontosDisponiveis",
   ultimoNivelPremiado: "personagem.ultimoNivelPremiado",

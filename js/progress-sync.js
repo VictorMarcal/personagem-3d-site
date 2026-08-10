@@ -44,6 +44,7 @@ function readLocalProgressSnapshot() {
     total_battles_fought: getTotalBattlesFought(),
     distinct_months_trained: getDistinctMonthsTrained(),
     peso_kg: getPesoKg(),
+    best_session_calories_kcal: getBestSessionCaloriesKcal(),
   };
 }
 
@@ -176,4 +177,5 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEY_TOTAL_BATTLES, String(progress.total_battles_fought || 0));
   localStorage.setItem(STORAGE_KEY_DISTINCT_MONTHS_TRAINED, String(progress.distinct_months_trained || 0));
   localStorage.setItem(STORAGE_KEY_WEIGHT_KG, String(progress.peso_kg || DEFAULT_WEIGHT_KG));
+  localStorage.setItem(STORAGE_KEY_BEST_SESSION_CALORIES_KCAL, String(progress.best_session_calories_kcal || 0));
 }

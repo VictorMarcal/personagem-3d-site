@@ -356,6 +356,11 @@ set lifetime_calories_kcal = (l.lifetime_distance_m / 1000.0) * coalesce((select
     previous_month_calories_kcal = (l.previous_month_distance_m / 1000.0) * coalesce((select p.peso_kg from public.player_progress p where p.user_id = l.user_id), 70)
 where l.lifetime_calories_kcal = 0;
 
+-- Migracao (2026-08-10, secção 10/17.2 da documentação): conquistas de
+-- calorias - recorde de sessao (sem mode, ao contrario de
+-- best_session_distance_m - calorias ja normalizam esforco entre modos).
+alter table public.player_progress add column if not exists best_session_calories_kcal numeric not null default 0;
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

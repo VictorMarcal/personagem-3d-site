@@ -623,7 +623,7 @@ function stopTraining() {
     addToLifetimeDistance(sessionDistanceM);
     addToMonthlyDistance(sessionDistanceM);
     incrementTotalTrainingsCompleted();
-    checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, sessionDominantMode);
+    checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, sessionDominantMode, sessionCalories);
     renderMonsters(); // pode ter desbloqueado monstros novos
   }
 

@@ -302,7 +302,7 @@ function tickSimDistance() {
   simSessionCaloriesKcal += deltaKcal;
   checkSimCoinDropsForDistance(simSessionDistanceM);
   const simSessionDurationSeconds = (Date.now() - simSessionStartTime) / 1000;
-  checkAndUnlockAchievements(simSessionDistanceM, simSessionDurationSeconds);
+  checkAndUnlockAchievements(simSessionDistanceM, simSessionDurationSeconds, "correr", simSessionCaloriesKcal);
 
   refreshAllAfterConfigChange();
   simDistanceStatusEl.textContent = `Simulação ativa: +${factor} m/s`;

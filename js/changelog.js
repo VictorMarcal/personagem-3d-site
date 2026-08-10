@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.1.0",
+    title: "8 Conquistas Novas de Calorias",
+    changes: [
+      "Nova categoria \"Calorias\" nas Conquistas: recorde de calorias numa sessão (Primeira Fagulha, Em Chamas, Fornalha, Incêndio Total) e calorias acumuladas ao longo da vida (Aquecimento Vitalício, Combustível Sério, Fornalha Humana, Lenda Calórica).",
+      "Ao contrário das conquistas de distância, estas não são separadas por modo — calorias já são justas entre caminhar, correr e pedalar.",
+    ],
+  },
+  {
     version: "v2.0.1",
     title: "Limpeza: Distância Efetiva Retirada",
     changes: [
