@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v1.18.1",
+    title: "Corrige Golpe Depois de Morrer em Luta",
+    changes: [
+      "A personagem já não consegue desferir mais um golpe depois de a vida chegar a 0 numa luta — a recuperação de vida entre ataques não pode mais reanimar quem já perdeu.",
+    ],
+  },
+  {
     version: "v1.18.0",
     title: "Mais 39 Conquistas Novas",
     changes: [

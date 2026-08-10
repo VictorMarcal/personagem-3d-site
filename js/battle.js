@@ -192,7 +192,7 @@ async function startBattle(creature) {
   // (showFloatingCombatText usa toFixed(1) para nao-inteiros), agora
   // tambem em luta.
   function tickPlayerRegen() {
-    if (playerHp >= playerMaxHp) return;
+    if (playerHp <= 0 || playerHp >= playerMaxHp) return;
     const before = playerHp;
     playerHp = Math.min(playerMaxHp, playerHp + computeRegeneracaoPerSecond(playerEnergiaLevel) * (BATTLE_ROUND_DELAY_MS / 1000));
     const healed = playerHp - before;
