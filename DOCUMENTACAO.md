@@ -290,13 +290,14 @@ A variação aleatória aplica-se **depois** do piso mínimo, não antes. Foi te
 
 ## 10. Conquistas
 
-Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem de desbloqueio; depois as mais próximas de completar), sempre num grid plano. Botão "Ver todas" abre popup fullscreen, organizado por **categorias** (`CATEGORY_BY_TYPE`/`CATEGORY_ORDER` em `js/achievements.js`, mesmo padrão de títulos de grupo já usado no histórico da aba Perfil): **Distância**, **Frequência**, **Combate**, **Progresso**, **Liderança**, **Ritmo**. 92 conquistas no total (2026-08-07).
+Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem de desbloqueio; depois as mais próximas de completar), sempre num grid plano. Botão "Ver todas" abre popup fullscreen, organizado por **categorias** (`CATEGORY_BY_TYPE`/`CATEGORY_ORDER` em `js/achievements.js`, mesmo padrão de títulos de grupo já usado no histórico da aba Perfil): **Distância**, **Calorias**, **Frequência**, **Combate**, **Progresso**, **Liderança**, **Ritmo**. 100 conquistas no total (2026-08-10).
 
 **Arquitetura**: `checkAndUnlockAchievements()` continua 100% síncrona, só lê `localStorage`. Para os tipos que dependem do Supabase, um valor derivado fica cacheado localmente (ex: `melhorSequenciaDias`), atualizado por uma função assíncrona chamada nos sítios onde esses dados já são pedidos por outro motivo (login, ou quando o leaderboard/Perfil já buscam o mesmo dado) — sem chamadas de rede dedicadas extra, exceto uma única busca de `training_sessions` no login.
 
 **Tipos implementados:**
 - `sessionDistance` — **separada por modo de treino** (Caminhar/Correr/Bicicleta, ver secção 4.1): "5 km seguidos", "Meia Maratona" e "Maratonista" existem como 3 conquistas independentes cada (15 no total), uma por modo, cada uma verificada contra o recorde de sessão **desse modo especificamente** (`getBestSessionDistanceM(mode)`). Comparam **distância real** (2026-08-10 — comparavam distância "efetiva" até aqui, conceito que deixou de existir por completo, secção 4.1) — os 3 limiares de cada threshold continuam a usar os mesmos números para os 3 modos, mas agora representam literalmente a mesma distância física percorrida, já não um esforço equivalente (isso é o que o nível/XP em calorias mede, secção 5). Correr reaproveita os ids/nomes já existentes antes desta separação (`dist_1km`, `dist_5km`, etc., sem sufixo) para não perder conquistas já desbloqueadas por jogadores existentes; Caminhar/Bicicleta são ids novos (`dist_1km_caminhar`, `dist_1km_bicicleta`, ...)
 - `lifetimeDistance` — distância acumulada de sempre, **combinada entre modos** (deliberadamente não separada — é sobre a jornada toda, não uma sessão de um modo específico)
+- **Calorias** (`sessionCalories`/`lifetimeCalories`, 2026-08-10, categoria própria "Calorias", 8 no total): `getBestSessionCaloriesKcal()` (recorde de sessão) e `getLifetimeCaloriesKcal()` (secção 5, o mesmo valor que já alimenta o nível). Ao contrário de `sessionDistance`, **não separadas por modo** — calorias já normalizam esforço entre caminhar/correr/bicicleta (é o que a fórmula MET faz), não precisam de 3 cópias por limiar. Sessão: `cal_sessao_200/500/1000/2000` ("Primeira Fagulha"/"Em Chamas"/"Fornalha"/"Incêndio Total"). Vitalícias: `cal_vida_10000/50000/250000/1000000` ("Aquecimento Vitalício"/"Combustível Sério"/"Fornalha Humana"/"Lenda Calórica")
 - `trainingCount` — número de treinos concluídos
 - `streak` — maior sequência de dias distintos treinados **de sempre** (não a sequência atual — uma vez alcançada, fica para sempre, mesmo que a sequência se quebre depois)
 - `fullMonthTrained` / `activeWeekend` — treinar todos os dias de um mês civil / sábado e domingo da mesma semana ISO
@@ -442,23 +443,15 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 
 Hoje os dados são guardados em unidades "de cálculo" (metros, m/s) e só a apresentação ao jogador converte para km/km-h (nota em 4.1/5). Item levantado: guardar diretamente em unidades mais legíveis — **hh:mm:ss** (duração, em vez de segundos), **Km** (distância, em vez de metros). Por decidir: se isto se aplica só à apresentação (como hoje) ou também às colunas gravadas no Supabase (`training_sessions`, `player_progress` — implicaria migração de schema, não só de UI). `training_sessions.calories_kcal`/`player_progress.lifetime_calories_kcal` (2026-08-10) já nasceram como colunas novas dedicadas, sem reaproveitar nenhuma coluna em metros - não conflitam com este item, que é sobre as colunas **existentes** em metros/segundos.
 
-### 17.2 Conquistas novas de calorias (propostas, por validar — "podes inventar")
+**Conquistas novas de calorias — implementadas (2026-08-10)**: `sessionCalories`/`lifetimeCalories`, categoria "Calorias" nova (8 conquistas) — ver detalhe na secção 10. Não separadas por modo (calorias já normalizam esforço entre caminhar/correr/bicicleta). Limiares/nomes usados exatamente como propostos aqui, sem alteração. A ideia de "medalha calórica mensal" em paralelo acabou por não ser necessária — a medalha mensal existente já passou a rankear por calorias diretamente (secção 10/14). Este item saiu do backlog.
 
-Família nova, ainda **não pedida com valores exatos** — proposta inventada para haver um ponto de partida a afinar, no mesmo espírito das famílias de conquistas já existentes (secção 10: limiares/nomes sempre ajustáveis, nunca escritos em pedra). Ao contrário de `sessionDistance`/`pace` (separadas por modo), estas **não são separadas por modo** — como o modo deixa de ser escolhido manualmente, calorias por sessão já são a soma de todos os segmentos detetados, independentemente do tipo:
+**Nota**: metas diárias de calorias **não entram como conquista** — vão entrar de outra forma, através de um **painel de Missões** novo (ver 17.2), ainda por especificar.
 
-- **`sessionCalories`** — kcal queimadas numa única sessão: `cal_sessao_200` "Primeira Fagulha" (200 kcal), `cal_sessao_500` "Em Chamas" (500 kcal), `cal_sessao_1000` "Fornalha" (1000 kcal), `cal_sessao_2000` "Incêndio Total" (2000 kcal)
-- **`lifetimeCalories`** — kcal acumuladas de sempre (`getLifetimeCaloriesKcal()`, secção 5 — o mesmo valor que já alimenta o nível, aqui como conquista à parte, mesmo padrão de `characterLevel`/`lifetimeDistance` já coexistirem hoje): `cal_vida_10000` "Aquecimento Vitalício" (10.000 kcal), `cal_vida_50000` "Combustível Sério" (50.000 kcal), `cal_vida_250000` "Fornalha Humana" (250.000 kcal), `cal_vida_1000000` "Lenda Calórica" (1.000.000 kcal)
-- ~~Medalha calórica mensal~~ — **já implementada por outro caminho (2026-08-10)**: a medalha mensal existente (Ouro/Prata/Bronze, secção 10/14) passou a rankear por `monthly_calories_kcal` diretamente, em vez de precisar de uma medalha/tabela nova em paralelo. Este item fica riscado, não é mais necessário
+### 17.2 Painel de Missões (novo ecrã, ainda por especificar)
 
-Todos os limiares acima são valores de arranque inventados para servir de base à conversa, não pedidos com número exato — tal como o resto do jogo, ficam ajustáveis (Debug) antes/depois de implementados.
+Mencionado de passagem a propósito das conquistas de calorias (acima): vai existir um ecrã/painel de Missões novo, distinto do card de Conquistas (secção 10) — é onde metas diárias (ex: calorias do dia) vivem, em vez de serem conquistas permanentes. Sem desenho nenhum ainda (estrutura, tipos de missão, recompensas, se é diário/semanal) — só o nome e o propósito ficaram estabelecidos até agora.
 
-**Nota**: metas diárias de calorias **não entram como conquista** — vão entrar de outra forma, através de um **painel de Missões** novo (ver 17.3), ainda por especificar.
-
-### 17.3 Painel de Missões (novo ecrã, ainda por especificar)
-
-Mencionado de passagem a propósito de 17.2: vai existir um ecrã/painel de Missões novo, distinto do card de Conquistas (secção 10) — é onde metas diárias (ex: calorias do dia) vivem, em vez de serem conquistas permanentes. Sem desenho nenhum ainda (estrutura, tipos de missão, recompensas, se é diário/semanal, se substitui ou complementa `dailyCalories`) — só o nome e o propósito ficaram estabelecidos até agora.
-
-### 17.4 Reestruturação de navegação — Treino integra em Personagem, Batalhas passa a Arena
+### 17.3 Reestruturação de navegação — Treino integra em Personagem, Batalhas passa a Arena
 
 Hoje há 5 separadores na barra inferior (secção 3/12, `js/nav.js`, `index.html:540-544`): **Personagem** 🧍, **Treino** 🥾, **Batalhas** ⚔️, **Troféus** 🏅, **Perfil** 📊. Mudança pedida:
 
