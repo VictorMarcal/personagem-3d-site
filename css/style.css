@@ -1450,6 +1450,8 @@ main {
 
 .leaderboard-tabs { margin-bottom: 12px; }
 
+.profile-chart-metric-tabs { margin-bottom: 14px; }
+
 .leaderboard-list {
   display: flex;
   flex-direction: column;

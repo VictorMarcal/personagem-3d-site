@@ -6,7 +6,7 @@
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260810f">
+  <link rel="stylesheet" href="css/style.css?v=20260810g">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -36,7 +36,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v2.3.0</span>
+      <span id="site-version" class="site-version-hero">v2.4.0</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -423,6 +423,10 @@
 
       <section class="card" id="profile-charts-card">
         <h2 class="card-title">Evolução</h2>
+        <div class="nav-tabs profile-chart-metric-tabs">
+          <button id="btn-chart-metric-distancia" class="nav-tab active" type="button">Distância</button>
+          <button id="btn-chart-metric-calorias" class="nav-tab" type="button">Calorias</button>
+        </div>
         <div class="profile-month-nav">
           <button id="btn-week-chart-prev" class="btn-secondary btn-month-nav">‹</button>
           <span id="profile-week-chart-label" class="training-label">Esta semana</span>
@@ -585,7 +589,7 @@
   <script src="js/monthly-medals.js?v=20260810d"></script>
   <script src="js/battle.js?v=20260810a"></script>
   <script src="js/training.js?v=20260810f"></script>
-  <script src="js/profile.js?v=20260810e"></script>
+  <script src="js/profile.js?v=20260810f"></script>
   <script src="js/changelog.js?v=20260810a"></script>
   <script src="js/achievements.js?v=20260810f"></script>
   <script src="js/orientation.js?v=20260806p"></script>

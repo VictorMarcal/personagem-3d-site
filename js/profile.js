@@ -40,6 +40,13 @@ function toNum(value) {
   return Number(value) || 0;
 }
 
+// Mesmo padrao de formatXP (1 XP = 1 kcal, secção 5), mas sem o rotulo
+// "XP" - aqui e sempre um valor de calorias em si, nao uma leitura de
+// progresso de nivel, para nao confundir os dois contextos.
+function formatCaloriesKcal(kcal) {
+  return `${Math.round(kcal).toLocaleString("pt-BR")} kcal`;
+}
+
 function getStartOfLocalMonth(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
@@ -139,15 +146,19 @@ function renderProfileSummary(sessions) {
 
   const weekTotal = weekSessions.reduce((sum, s) => sum + toNum(s.distance_m), 0);
   const weekMax = weekSessions.reduce((max, s) => Math.max(max, toNum(s.distance_m)), 0);
+  const weekCalories = weekSessions.reduce((sum, s) => sum + toNum(s.calories_kcal), 0);
   const monthTotal = monthSessions.reduce((sum, s) => sum + toNum(s.distance_m), 0);
   const monthMax = monthSessions.reduce((max, s) => Math.max(max, toNum(s.distance_m)), 0);
+  const monthCalories = monthSessions.reduce((sum, s) => sum + toNum(s.calories_kcal), 0);
   const distinctDays = new Set(sessions.map((s) => formatDayKey(new Date(s.started_at)))).size;
 
   const listEl = document.getElementById("profile-summary-list");
   listEl.innerHTML = "";
   addSummaryRow(listEl, "Distância total esta semana", formatDistanceKm(weekTotal));
+  addSummaryRow(listEl, "Calorias esta semana", formatCaloriesKcal(weekCalories));
   addSummaryRow(listEl, "Sessão mais longa esta semana", formatDistanceKm(weekMax));
   addSummaryRow(listEl, "Distância total este mês", formatDistanceKm(monthTotal));
+  addSummaryRow(listEl, "Calorias este mês", formatCaloriesKcal(monthCalories));
   addSummaryRow(listEl, "Sessão mais longa este mês", formatDistanceKm(monthMax));
   addSummaryRow(listEl, "Dias distintos treinados", `${distinctDays}`);
   addSummaryRow(listEl, "Recorde de distância", formatDistanceKm(getBestSessionDistanceM()));
@@ -251,17 +262,17 @@ function chartTickY(fraction) {
 // ver .profile-chart-yaxis/.profile-chart-scroll em css/style.css), para
 // os rotulos de km ficarem sempre visiveis mesmo com muitas barras (ex: o
 // grafico "todos os meses" ou um mes com 31 dias).
-function buildYAxisSvg(maxValue) {
+function buildYAxisSvg(maxValue, formatValue) {
   const labels = CHART_YAXIS_TICK_FRACTIONS.map((fraction) => {
     const y = chartTickY(fraction);
     const value = maxValue * fraction;
-    return `<text x="${CHART_YAXIS_WIDTH - 4}" y="${y + 3}" text-anchor="end" font-size="8" fill="#888">${formatDistanceKm(value)}</text>`;
+    return `<text x="${CHART_YAXIS_WIDTH - 4}" y="${y + 3}" text-anchor="end" font-size="8" fill="#888">${formatValue(value)}</text>`;
   }).join("");
 
   return `<svg viewBox="0 0 ${CHART_YAXIS_WIDTH} ${CHART_TOTAL_HEIGHT}" width="${CHART_YAXIS_WIDTH}" height="${CHART_TOTAL_HEIGHT}" xmlns="http://www.w3.org/2000/svg">${labels}</svg>`;
 }
 
-function buildBarChartSvg(entries, maxValue) {
+function buildBarChartSvg(entries, maxValue, formatValue) {
   const barWidth = 14;
   const gap = 4;
   const width = Math.max(1, entries.length * (barWidth + gap) - gap);
@@ -280,7 +291,7 @@ function buildBarChartSvg(entries, maxValue) {
       const y = CHART_TOP_PADDING + (CHART_HEIGHT - barHeight);
       const labelX = x + barWidth / 2;
       return (
-        `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="#4a90d9" rx="2"><title>${entry.label}: ${formatDistanceKm(entry.value)}</title></rect>` +
+        `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="#4a90d9" rx="2"><title>${entry.label}: ${formatValue(entry.value)}</title></rect>` +
         `<text x="${labelX}" y="${CHART_TOP_PADDING + CHART_HEIGHT + CHART_LABEL_HEIGHT - 3}" text-anchor="middle" font-size="8" fill="#888">${entry.label}</text>`
       );
     })
@@ -291,22 +302,54 @@ function buildBarChartSvg(entries, maxValue) {
 
 // Junta o eixo (fixo) com as barras (scroll horizontal) - container.innerHTML
 // e substituido por isto em vez de so pelas barras, nas 3 chamadas abaixo.
-function buildChartWithAxis(entries) {
+// formatValue: formatDistanceKm ou formatCaloriesKcal, conforme a metrica
+// selecionada no toggle "Distância"/"Calorias" (2026-08-10).
+function buildChartWithAxis(entries, formatValue) {
   const maxValue = Math.max(1, ...entries.map((e) => e.value));
   return (
-    `<div class="profile-chart-yaxis">${buildYAxisSvg(maxValue)}</div>` +
-    `<div class="profile-chart-scroll">${buildBarChartSvg(entries, maxValue)}</div>`
+    `<div class="profile-chart-yaxis">${buildYAxisSvg(maxValue, formatValue)}</div>` +
+    `<div class="profile-chart-scroll">${buildBarChartSvg(entries, maxValue, formatValue)}</div>`
   );
 }
 
-function sumDistanceInRange(sessions, start, end) {
+// metricKey: "distance_m" ou "calories_kcal" - a mesma agregacao serve os
+// dois graficos (distância/calorias, 2026-08-10), so muda o campo somado.
+function sumMetricInRange(sessions, start, end, metricKey) {
   return sessions
     .filter((s) => {
       const t = new Date(s.started_at);
       return t >= start && t < end;
     })
-    .reduce((sum, s) => sum + toNum(s.distance_m), 0);
+    .reduce((sum, s) => sum + toNum(s[metricKey]), 0);
 }
+
+// --- Metrica selecionada nos graficos (Distância/Calorias) ---------------
+
+let selectedChartMetric = "distance_m";
+
+const CHART_METRIC_FORMAT = {
+  distance_m: formatDistanceKm,
+  calories_kcal: formatCaloriesKcal,
+};
+
+const btnChartMetricDistancia = document.getElementById("btn-chart-metric-distancia");
+const btnChartMetricCalorias = document.getElementById("btn-chart-metric-calorias");
+
+function renderAllCharts() {
+  renderSelectedWeekChart();
+  renderSelectedMonthChart();
+  renderAllMonthsChart(cachedSessions);
+}
+
+function setChartMetric(metric) {
+  selectedChartMetric = metric;
+  btnChartMetricDistancia.classList.toggle("active", metric === "distance_m");
+  btnChartMetricCalorias.classList.toggle("active", metric === "calories_kcal");
+  renderAllCharts();
+}
+
+btnChartMetricDistancia.addEventListener("click", () => setChartMetric("distance_m"));
+btnChartMetricCalorias.addEventListener("click", () => setChartMetric("calories_kcal"));
 
 // --- Navegacao de semana no grafico "Esta semana" -------------------------
 //
@@ -347,10 +390,10 @@ function renderWeekChart(sessions, weekCursor) {
   for (let i = 0; i <= lastDayIndex; i++) {
     const dayStart = new Date(weekCursor.getFullYear(), weekCursor.getMonth(), weekCursor.getDate() + i);
     const dayEnd = new Date(weekCursor.getFullYear(), weekCursor.getMonth(), weekCursor.getDate() + i + 1);
-    entries.push({ label: WEEKDAY_NAMES_PT[i], value: sumDistanceInRange(sessions, dayStart, dayEnd) });
+    entries.push({ label: WEEKDAY_NAMES_PT[i], value: sumMetricInRange(sessions, dayStart, dayEnd, selectedChartMetric) });
   }
 
-  container.innerHTML = buildChartWithAxis(entries);
+  container.innerHTML = buildChartWithAxis(entries, CHART_METRIC_FORMAT[selectedChartMetric]);
 }
 
 function renderSelectedWeekChart() {
@@ -406,10 +449,10 @@ function renderMonthChart(sessions, monthCursor) {
   for (let day = 1; day <= lastDay; day++) {
     const dayStart = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), day);
     const dayEnd = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), day + 1);
-    entries.push({ label: String(day), value: sumDistanceInRange(sessions, dayStart, dayEnd) });
+    entries.push({ label: String(day), value: sumMetricInRange(sessions, dayStart, dayEnd, selectedChartMetric) });
   }
 
-  container.innerHTML = buildChartWithAxis(entries);
+  container.innerHTML = buildChartWithAxis(entries, CHART_METRIC_FORMAT[selectedChartMetric]);
 }
 
 function renderSelectedMonthChart() {
@@ -452,11 +495,11 @@ function renderAllMonthsChart(sessions) {
   while (cursor <= now) {
     const monthStart = cursor;
     const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-    entries.push({ label: MONTH_NAMES_PT[cursor.getMonth()].slice(0, 3), value: sumDistanceInRange(sessions, monthStart, monthEnd) });
+    entries.push({ label: MONTH_NAMES_PT[cursor.getMonth()].slice(0, 3), value: sumMetricInRange(sessions, monthStart, monthEnd, selectedChartMetric) });
     cursor = monthEnd;
   }
 
-  container.innerHTML = buildChartWithAxis(entries);
+  container.innerHTML = buildChartWithAxis(entries, CHART_METRIC_FORMAT[selectedChartMetric]);
 }
 
 // --- Orquestrador ---------------------------------------------------------
@@ -466,7 +509,7 @@ async function renderProfileTab() {
 
   const { data: sessions, error } = await supabaseClient
     .from("training_sessions")
-    .select("started_at, distance_m, mode, duration_seconds")
+    .select("started_at, distance_m, mode, duration_seconds, calories_kcal")
     .eq("user_id", currentUserId)
     .order("started_at");
 
@@ -480,12 +523,13 @@ async function renderProfileTab() {
   cachedSessions = sessions;
   selectedWeekCursor = getStartOfIsoWeek(new Date());
   selectedMonthCursor = getStartOfLocalMonth(new Date());
+  selectedChartMetric = "distance_m";
+  btnChartMetricDistancia.classList.add("active");
+  btnChartMetricCalorias.classList.remove("active");
 
   renderProfileSettings();
   renderProfileSummary(sessions);
   renderProfileHistory(sessions);
-  renderSelectedWeekChart();
-  renderSelectedMonthChart();
-  renderAllMonthsChart(sessions);
+  renderAllCharts();
   checkFrequencyAchievementsFromSessions(sessions);
 }

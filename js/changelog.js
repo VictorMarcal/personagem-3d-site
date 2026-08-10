@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.4.0",
+    title: "Calorias no Perfil",
+    changes: [
+      "Novo: calorias desta semana e deste mês no card Resumo, ao lado da distância.",
+      "Os gráficos de Evolução (semana/mês/todos os meses) ganharam um seletor para veres em Distância ou em Calorias.",
+    ],
+  },
+  {
     version: "v2.3.0",
     title: "Novo Separador \"Mundo\"",
     changes: [
