@@ -166,23 +166,10 @@ const HISTORY_MAX_MONTHS = 24;
 // somada, com o modo a aparecer como "Misto" quando havia mais que um).
 function formatSessionListItem(s) {
   const distance = toNum(s.distance_m);
-  // Sessoes anteriores a esta funcionalidade nao tem effective_distance_m
-  // (coluna nova) - cai para distance_m, que e o que valia para XP nessa
-  // altura (so existia um "modo" implicito, sem multiplicador).
-  const effectiveDistance = toNum(s.effective_distance_m != null ? s.effective_distance_m : s.distance_m);
   const duration = toNum(s.duration_seconds);
-
-  // So mostra a distancia efetiva separada quando difere da real (ex:
-  // sessoes de bicicleta, com o multiplicador de justica de esforco) - em
-  // caminhar/correr seria sempre repetir o mesmo numero.
-  const showsEffective = Math.round(effectiveDistance) !== Math.round(distance);
-  const distanceText = showsEffective
-    ? `${formatDistanceKm(distance)} (${formatDistanceKm(effectiveDistance)} efetivos)`
-    : formatDistanceKm(distance);
-
   const avgSpeedMps = duration > 0 ? distance / duration : 0;
   const modeLabel = MODE_LABEL_PT[s.mode] || "Treino";
-  return `${modeLabel} — ${distanceText} · ${Math.round(duration / 60)} min · ${formatSpeedKmh(avgSpeedMps)}`;
+  return `${modeLabel} — ${formatDistanceKm(distance)} · ${Math.round(duration / 60)} min · ${formatSpeedKmh(avgSpeedMps)}`;
 }
 
 function renderProfileHistory(sessions) {
@@ -479,7 +466,7 @@ async function renderProfileTab() {
 
   const { data: sessions, error } = await supabaseClient
     .from("training_sessions")
-    .select("started_at, distance_m, effective_distance_m, mode, duration_seconds")
+    .select("started_at, distance_m, mode, duration_seconds")
     .eq("user_id", currentUserId)
     .order("started_at");
 

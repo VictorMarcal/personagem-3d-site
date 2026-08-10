@@ -86,23 +86,6 @@ const DEBUG_DEFAULTS = {
   // depois de estar continuamente na nova faixa por este tempo.
   activityWindowSeconds: 45,
   activityHysteresisSeconds: 25,
-  // Multiplicador de "justica de esforco" aplicado a distancia real (GPS)
-  // antes de contar para XP/pontos/leaderboard/conquistas (ver secção 4 da
-  // documentacao) - calibrado a partir de valores MET do Compendium of
-  // Physical Activities (Ainsworth et al.): correr gasta ~1 kcal/kg/km
-  // seja qual for o ritmo (por isso fica em 1.0, sem alteracao); andar
-  // custa ~75-85% disso a ritmo normal; bicicleta custa muito menos por km
-  // percorrido (~30-50%, mais alto quanto mais rapido, por causa do
-  // arrasto) - 0.35 e um valor representativo de ritmo moderado, nao uma
-  // formula continua por velocidade (mantem o sistema simples, como o
-  // resto do jogo). MANTIDO por agora so para o calculo de XP/pontos ja
-  // existente continuar a funcionar sem alteracoes (agora alimentado pelo
-  // modo DOMINANTE detetado automaticamente, nao mais escolhido a mao) -
-  // sera retirado quando calorias passarem a ser a unidade base (secção
-  // 17.1, tarefa da nova curva de nivel + migracao).
-  xpMultiplierCaminhar: 0.8,
-  xpMultiplierCorrer: 1.0,
-  xpMultiplierBicicleta: 0.35,
   miniBossLevelStep: 5,
   bossLevelStep: 10,
   maxLevelToGenerate: 100,
@@ -122,11 +105,6 @@ const DEBUG_DEFAULTS = {
 };
 
 const STAT_TYPE_KEY_SUFFIX = { vida: "Vida", ataque: "Ataque", defesa: "Defesa" };
-
-// Modos de treino (js/training.js) - a chave e o valor guardado em
-// training_sessions.mode (modo DOMINANTE detetado automaticamente desde
-// 2026-08-10, secção 17.1), o sufixo mapeia para xpMultiplier* acima.
-const TRAINING_MODE_KEY_SUFFIX = { caminhar: "Caminhar", correr: "Correr", bicicleta: "Bicicleta" };
 
 const DEBUG_STORAGE_PREFIX = "debug.";
 
@@ -170,7 +148,6 @@ function getActivityWalkMaxKmh() { return getDebugValue("activityWalkMaxKmh"); }
 function getActivityRunMaxKmh() { return getDebugValue("activityRunMaxKmh"); }
 function getActivityWindowSeconds() { return getDebugValue("activityWindowSeconds"); }
 function getActivityHysteresisSeconds() { return getDebugValue("activityHysteresisSeconds"); }
-function getXpMultiplier(mode) { return getDebugValue("xpMultiplier" + TRAINING_MODE_KEY_SUFFIX[mode]); }
 function getMiniBossLevelStep() { return getDebugValue("miniBossLevelStep"); }
 function getBossLevelStep() { return getDebugValue("bossLevelStep"); }
 function getMaxLevelToGenerate() { return getDebugValue("maxLevelToGenerate"); }
@@ -215,9 +192,6 @@ const debugVarInputs = {
   activityRunMaxKmh: document.getElementById("dbg-activityRunMaxKmh"),
   activityWindowSeconds: document.getElementById("dbg-activityWindowSeconds"),
   activityHysteresisSeconds: document.getElementById("dbg-activityHysteresisSeconds"),
-  xpMultiplierCaminhar: document.getElementById("dbg-xpMultiplierCaminhar"),
-  xpMultiplierCorrer: document.getElementById("dbg-xpMultiplierCorrer"),
-  xpMultiplierBicicleta: document.getElementById("dbg-xpMultiplierBicicleta"),
   miniBossLevelStep: document.getElementById("dbg-miniBossLevelStep"),
   bossLevelStep: document.getElementById("dbg-bossLevelStep"),
   maxLevelToGenerate: document.getElementById("dbg-maxLevelToGenerate"),
@@ -352,16 +326,14 @@ function stopSimDistance() {
 
   // Tal como ja acontecia para as conquistas, o tempo simulado conta como
   // uma sessao de treino real - sem isto o Perfil nunca teria dados para
-  // testar sem andar de verdade.
-  // O simulador representa sempre o modo Correr (multiplicador 1.0) -
-  // simSessionDistanceM ja e a distancia diretamente creditada para XP em
-  // tickSimDistance acima, sem passar por getEffectiveDistanceM.
+  // testar sem andar de verdade. O simulador representa sempre o modo
+  // Correr - simSessionCaloriesKcal ja e o que conta para XP (ver
+  // tickSimDistance acima).
   enqueueTrainingSession({
     client_id: crypto.randomUUID(),
     started_at: new Date(simSessionStartTime).toISOString(),
     ended_at: new Date().toISOString(),
     distance_m: simSessionDistanceM,
-    effective_distance_m: simSessionDistanceM,
     mode: "correr",
     duration_seconds: (Date.now() - simSessionStartTime) / 1000,
     calories_kcal: simSessionCaloriesKcal,

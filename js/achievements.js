@@ -126,13 +126,14 @@ const MODE_ICON_PT = { correr: "🏃", caminhar: "🚶", bicicleta: "🚴" };
 // deste ficheiro).
 const MODE_ACTIVITY_PHRASE_PT = { correr: "a correr", caminhar: "a caminhar", bicicleta: "de bicicleta" };
 
-// Mesmos limiares para os 3 modos porque comparam distância EFETIVA (já
-// com o multiplicador de justiça de esforço aplicado - secção 4.1), não a
-// distância real - "Maratonista de Bicicleta" exige o mesmo esforço que
-// "Maratonista" a Correr, só que fisicamente é preciso pedalar muito mais
-// para lá chegar. Correr reaproveita os ids/nomes já existentes (sem
-// sufixo) para não perder conquistas já desbloqueadas por jogadores
-// existentes - Caminhar/Bicicleta são ids novos.
+// Mesmos limiares (km) para os 3 modos, mas desde 2026-08-10 comparam
+// distância REAL, não mais "efetiva" (esse conceito deixou de existir -
+// secção 4.1/5) - "Maratonista de Bicicleta" passou a significar
+// literalmente pedalar 42.195km, não mais um esforço equivalente ao de
+// correr essa distância (isso já é o que o nível/XP em calorias mede).
+// Correr reaproveita os ids/nomes já existentes (sem sufixo) para não
+// perder conquistas já desbloqueadas por jogadores existentes -
+// Caminhar/Bicicleta são ids novos.
 const SESSION_DISTANCE_THRESHOLDS = [
   { key: "dist_1km", name: "1 km seguido", threshold: 1000 },
   { key: "dist_5km", name: "5 km seguidos", threshold: 5000 },
@@ -158,9 +159,9 @@ function generateSessionDistanceAchievements() {
   return achievements;
 }
 
-// Ao contrário da distância, o ritmo é sobre velocidade REAL, não faz
-// sentido comparar por distância efetiva - por isso cada modo tem os seus
-// próprios limiares, calibrados à velocidade típica desse modo (Compendium
+// O ritmo é sobre velocidade REAL (sempre foi, na intenção - ver correção
+// de 2026-08-10 abaixo) - por isso cada modo tem os seus próprios
+// limiares, calibrados à velocidade típica desse modo (Compendium
 // of Physical Activities, mesma fonte da secção 4.1): Correr mantém os
 // limiares já existentes (~12-15 km/h, ritmo de corrida recreativa);
 // Caminhar usa ritmo de marcha rápida/atlética (~6-7.5 km/h); Bicicleta
@@ -662,13 +663,12 @@ const PACE_PERSONAL_RECORD_ID_BY_MODE = {
 // default "correr" preserva o comportamento anterior para chamadas sem
 // sessao (batalhas) ou do simulador de distancia do Debug.
 //
-// sessionDistanceM aqui e sempre a distancia EFETIVA (com o multiplicador
-// de justica de esforco do modo ja aplicado, ver js/training.js) - as
-// conquistas de distancia sao assim justas para qualquer modo, cada uma
-// verificada contra o recorde do PROPRIO modo (secção 10 da documentação).
-// As de RITMO sao sobre velocidade real, nao esforco - cada conquista de
-// ritmo/recorde pessoal so e avaliada/atualizada para o modo a que
-// pertence (achievement.mode), nunca cruzando modos entre si.
+// sessionDistanceM aqui e sempre a distancia REAL (2026-08-10 - distancia
+// "efetiva" deixou de existir, secção 4.1/5) - cada conquista de distancia
+// e verificada contra o recorde do PROPRIO modo (secção 10 da
+// documentação). As de RITMO tambem usam distancia/velocidade real - cada
+// conquista de ritmo/recorde pessoal so e avaliada/atualizada para o modo
+// a que pertence (achievement.mode), nunca cruzando modos entre si.
 function checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, mode = "correr") {
   const hasSessionData = typeof sessionDistanceM === "number";
   if (hasSessionData) {
@@ -809,7 +809,7 @@ function checkFrequencyAchievementsFromSessions(sessions) {
 function getAchievementDescription(achievement) {
   switch (achievement.type) {
     case "sessionDistance":
-      return `Percorre ${formatDistanceKm(achievement.threshold)} (efetivos) numa única sessão ${MODE_ACTIVITY_PHRASE_PT[achievement.mode]}.`;
+      return `Percorre ${formatDistanceKm(achievement.threshold)} numa única sessão ${MODE_ACTIVITY_PHRASE_PT[achievement.mode]}.`;
     case "lifetimeDistance":
       return `Acumula ${formatDistanceKm(achievement.threshold)} de distância ao longo da tua vida.`;
     case "trainingCount":

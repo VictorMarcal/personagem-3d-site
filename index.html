@@ -6,7 +6,7 @@
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=20260810b">
+  <link rel="stylesheet" href="css/style.css?v=20260810e">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -36,7 +36,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v2.0.0</span>
+      <span id="site-version" class="site-version-hero">v2.0.1</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -247,15 +247,6 @@
           <label>ACTIVITY_HYSTERESIS_SECONDS <span class="debug-hint">tempo (s) na nova faixa antes de mudar de atividade detetada</span>
             <input type="number" id="dbg-activityHysteresisSeconds" step="1">
           </label>
-          <label>XP_MULTIPLIER_CAMINHAR <span class="debug-hint">fração da distância que conta para XP a caminhar</span>
-            <input type="number" id="dbg-xpMultiplierCaminhar" step="0.01">
-          </label>
-          <label>XP_MULTIPLIER_CORRER <span class="debug-hint">fração da distância que conta para XP a correr</span>
-            <input type="number" id="dbg-xpMultiplierCorrer" step="0.01">
-          </label>
-          <label>XP_MULTIPLIER_BICICLETA <span class="debug-hint">fração da distância que conta para XP de bicicleta</span>
-            <input type="number" id="dbg-xpMultiplierBicicleta" step="0.01">
-          </label>
           <label>MINIBOSS_LEVEL_STEP <span class="debug-hint">intervalo de mini-bosses (níveis)</span>
             <input type="number" id="dbg-miniBossLevelStep" step="1">
           </label>
@@ -327,11 +318,8 @@
         <p id="training-distance" class="training-distance">0 km</p>
         <p id="training-live-stats" class="training-live-stats">0:00 · nominal 0.0 km/h · média 0.0 km/h</p>
         <p id="training-detected-activity" class="training-detected-activity">Atividade detetada: —</p>
-        <p id="training-effective-distance-row" class="training-effective-distance-row">
-          Distância efetiva (XP): <span id="training-effective-distance">0 XP</span>
-        </p>
-        <p id="training-calories-row" class="training-effective-distance-row">
-          Calorias (info): <span id="training-calories">0 kcal</span>
+        <p id="training-calories-row" class="training-calories-row">
+          Calorias (XP): <span id="training-calories">0 kcal</span>
         </p>
       </section>
 
@@ -565,16 +553,16 @@
   <script src="js/progress-sync.js?v=20260810d"></script>
   <script src="js/leaderboard.js?v=20260810d"></script>
   <script src="js/main.js?v=20260807c"></script>
-  <script src="js/debug.js?v=20260810d"></script>
+  <script src="js/debug.js?v=20260810e"></script>
   <script src="js/equipment.js?v=20260810a"></script>
   <script src="js/experience.js?v=20260810d"></script>
   <script src="js/monsters.js?v=20260806p"></script>
   <script src="js/monthly-medals.js?v=20260810d"></script>
   <script src="js/battle.js?v=20260810a"></script>
-  <script src="js/training.js?v=20260810d"></script>
-  <script src="js/profile.js?v=20260810a"></script>
+  <script src="js/training.js?v=20260810e"></script>
+  <script src="js/profile.js?v=20260810e"></script>
   <script src="js/changelog.js?v=20260807h"></script>
-  <script src="js/achievements.js?v=20260810d"></script>
+  <script src="js/achievements.js?v=20260810e"></script>
   <script src="js/orientation.js?v=20260806p"></script>
   <script src="js/nav.js?v=20260806p"></script>
 </body>

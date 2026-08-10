@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.0.1",
+    title: "Limpeza: Distância Efetiva Retirada",
+    changes: [
+      "\"Distância efetiva\" deixou de existir de vez — já não aparecia no ecrã de treino nem influenciava nada, ficava só como resto do sistema antigo.",
+      "As conquistas de distância por modo passam a comparar a distância real percorrida, não um valor ajustado por esforço (isso já é o que as calorias/nível medem).",
+    ],
+  },
+  {
     version: "v2.0.0",
     title: "Calorias Passam a Ser a Unidade de Progresso",
     changes: [

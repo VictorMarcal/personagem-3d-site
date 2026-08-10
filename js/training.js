@@ -25,10 +25,8 @@ const STORAGE_KEYS = {
   inicioSessao: "treino.inicioSessao",
 };
 
-// Para apresentacao (historico do Perfil, treinos de hoje) - distinto do
-// mapa de sufixos de chave de js/debug.js (TRAINING_MODE_KEY_SUFFIX),
-// apesar dos valores coincidirem hoje. Declarado aqui (carrega antes de
-// js/profile.js) para nao duplicar o identificador global.
+// Para apresentacao (historico do Perfil, treinos de hoje). Declarado aqui
+// (carrega antes de js/profile.js) para nao duplicar o identificador global.
 const MODE_LABEL_PT = { caminhar: "Caminhar", correr: "Correr", bicicleta: "Bicicleta" };
 
 // --- Deteccao automatica de atividade (2026-08-10, secção 17.1 da
@@ -144,9 +142,8 @@ function computeSegmentCalories(activity, speedKmh, durationSeconds) {
 }
 
 // Tempo (ms) acumulado em cada atividade nesta sessao - decide o "modo
-// dominante" (o que ocupou mais tempo) usado para o calculo de XP ja
-// existente (getEffectiveDistanceM abaixo, mantido por agora) e para as
-// conquistas de ritmo/recorde pessoal por modo (secção 10 da documentação).
+// dominante" (o que ocupou mais tempo), gravado em training_sessions.mode
+// e usado pelas conquistas de ritmo/recorde pessoal por modo (secção 10).
 let modeTimeAccumMs = { caminhar: 0, correr: 0, bicicleta: 0 };
 
 function getDominantMode() {
@@ -159,17 +156,6 @@ function getDominantMode() {
     }
   });
   return best;
-}
-
-// Distancia "efetiva" (com o multiplicador de justica de esforco do MODO
-// DOMINANTE ja aplicado) - e esta que conta para XP/pontos/leaderboard/
-// conquistas, nunca a distancia real diretamente (ver js/debug.js
-// getXpMultiplier). MANTIDO por agora so para o sistema de XP existente
-// continuar a funcionar sem alteracoes, alimentado pela deteccao automatica
-// em vez da escolha manual - sera substituido por calorias quando a nova
-// curva de nivel/migracao (secção 17.1) estiver pronta.
-function getEffectiveDistanceM(rawM, mode) {
-  return rawM * getXpMultiplier(mode);
 }
 
 function haversineDistance(lat1, lon1, lat2, lon2) {
@@ -190,9 +176,8 @@ let watchId = null;
 let saveIntervalId = null;
 let sessionStartTime = null; // usado para conquistas de ritmo (ex: 5km em menos de 25 min)
 
-// Calorias da sessao em curso (soma dos segmentos, formula MET acima) -
-// ainda NAO conta para XP/nivel (ver getEffectiveDistanceM), so informativo
-// por agora (secção 17.1 da documentação). Velocidade nominal = velocidade
+// Calorias da sessao em curso (soma dos segmentos, formula MET acima) - e
+// o que conta para XP/nivel (secção 5). Velocidade nominal = velocidade
 // do ultimo segmento aceite (instantanea), distinta da media da sessao
 // inteira mostrada ao lado.
 let sessionCaloriesKcal = 0;
@@ -224,7 +209,6 @@ function hideSpeedWarning() {
   speedWarningEl.classList.add("hidden");
 }
 
-const effectiveDistanceEl = document.getElementById("training-effective-distance");
 const caloriesEl = document.getElementById("training-calories");
 const liveStatsEl = document.getElementById("training-live-stats");
 const detectedActivityEl = document.getElementById("training-detected-activity");
@@ -260,12 +244,6 @@ function stopLiveStatsTicker() {
 
 function updateDistanceDisplay() {
   distanceEl.textContent = formatDistanceKm(totalDistanceM);
-  // Sempre em XP (2026-08-06, a pedido - antes ficava em km e escondida em
-  // modos com multiplicador 1.0, como Correr, por ser "o mesmo numero" -
-  // mas em XP nunca e redundante, e reforca a mesma convencao usada na
-  // barra de nivel/leaderboard, secção 5). Modo dominante em vez do
-  // escolhido a mao (2026-08-10, ja nao ha escolha manual).
-  effectiveDistanceEl.textContent = formatXP(getEffectiveDistanceM(totalDistanceM, getDominantMode()));
   caloriesEl.textContent = `${Math.round(sessionCaloriesKcal)} kcal`;
 }
 
@@ -611,7 +589,6 @@ function stopTraining() {
 
   const sessionDistanceM = totalDistanceM;
   const sessionDominantMode = getDominantMode();
-  const sessionEffectiveDistanceM = getEffectiveDistanceM(sessionDistanceM, sessionDominantMode);
   const sessionCalories = sessionCaloriesKcal;
   const sessionEndTime = Date.now();
   const sessionDurationSeconds = sessionStartTime ? (sessionEndTime - sessionStartTime) / 1000 : null;
@@ -630,7 +607,6 @@ function stopTraining() {
       started_at: new Date(sessionStartTime).toISOString(),
       ended_at: new Date(sessionEndTime).toISOString(),
       distance_m: sessionDistanceM,
-      effective_distance_m: sessionEffectiveDistanceM,
       // Modo DOMINANTE (mais tempo, secção 17.1) - ja nao e escolhido a
       // mao, a sessao pode ter passado por mais que uma atividade.
       mode: sessionDominantMode,
@@ -638,17 +614,16 @@ function stopTraining() {
       calories_kcal: sessionCalories,
     });
 
-    // Calorias (2026-08-10, secção 5/17.1) sao o que conta para XP/pontos/
-    // leaderboard/medalhas mensais a partir de agora. Distancia efetiva
-    // continua a ser somada em paralelo, mas passa a ser so estatistica
-    // informativa (usada pelas conquistas de distancia/ritmo por modo,
-    // secção 10, que continuam calibradas por distancia/velocidade real).
+    // Calorias (2026-08-10, secção 5) sao o que conta para XP/pontos/
+    // leaderboard/medalhas mensais. Distancia efetiva deixou de existir
+    // (2026-08-10) - conquistas de distancia/ritmo/recorde por modo
+    // (secção 10) passam a usar a distancia/velocidade REAL diretamente.
     addToLifetimeCalories(sessionCalories);
     addToMonthlyCalories(sessionCalories);
-    addToLifetimeDistance(sessionEffectiveDistanceM);
-    addToMonthlyDistance(sessionEffectiveDistanceM);
+    addToLifetimeDistance(sessionDistanceM);
+    addToMonthlyDistance(sessionDistanceM);
     incrementTotalTrainingsCompleted();
-    checkAndUnlockAchievements(sessionEffectiveDistanceM, sessionDurationSeconds, sessionDominantMode);
+    checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, sessionDominantMode);
     renderMonsters(); // pode ter desbloqueado monstros novos
   }
 
