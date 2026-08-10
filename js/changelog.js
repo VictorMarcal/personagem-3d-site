@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.3.0",
+    title: "Novo Separador \"Mundo\"",
+    changes: [
+      "Novo separador \"Mundo\" (era \"Arena\") — passa a ser o primeiro ecrã ao abrir a app, com a personagem 3D sempre visível.",
+      "Dentro de Mundo: Campo (era o separador \"Treino\", fica aberto por omissão), Masmorra (combate contra monstros, era \"Arena\"/\"Batalhas\"), e já com o lugar reservado para Arena (PvP) e Missões — ambos \"Em breve\".",
+      "Personagem volta a ser só sobre a tua personagem: nível, stats e equipamento.",
+    ],
+  },
+  {
     version: "v2.2.0",
     title: "Navegação Simplificada",
     changes: [

@@ -35,8 +35,10 @@
         pane.classList.toggle("active", pane.dataset.paneName === tab);
       });
       // O #viewer só tem dimensões quando está visível — sem isto o canvas
-      // ficava com o tamanho que tinha ao ser escondido.
-      if (tab === "personagem" && typeof onResize === "function") {
+      // ficava com o tamanho que tinha ao ser escondido. Visível em
+      // Personagem E Mundo (2026-08-10 - Mundo passou a mostrar a
+      // personagem 3D tambem, ver css/style.css #viewer-stage).
+      if ((tab === "personagem" || tab === "mundo") && typeof onResize === "function") {
         requestAnimationFrame(() => onResize());
       }
     }
@@ -75,7 +77,7 @@
     viewerObserver.observe(viewer, { attributes: true, attributeFilter: ["class"] });
   }
 
-  let initial = "personagem";
+  let initial = "mundo";
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved && tabButtons.some((btn) => btn.dataset.tab === saved)) initial = saved;
@@ -83,4 +85,37 @@
     /* ignorar */
   }
   showTab(initial);
+})();
+
+/* ==========================================================================
+   Sub-navegação dentro do separador "Mundo" (2026-08-10) — mesmo padrão das
+   abas do Leaderboard (js/leaderboard.js): Campo (era o separador "Treino"),
+   Masmorra (PvE, era "Arena"/"Batalhas"), Arena (PvP) e Missões — estas duas
+   últimas já visíveis mas "Em breve" (sem conteúdo ainda). Sempre reinicia
+   em "Campo" ao recarregar, sem persistência — mesmo espírito das abas do
+   leaderboard, que também não guardam a última aba escolhida.
+   ========================================================================== */
+(function () {
+  const subButtons = {
+    campo: document.getElementById("btn-mundo-campo"),
+    masmorra: document.getElementById("btn-mundo-masmorra"),
+    arena: document.getElementById("btn-mundo-arena"),
+    missoes: document.getElementById("btn-mundo-missoes"),
+  };
+  const subPanes = {
+    campo: document.getElementById("mundo-subpane-campo"),
+    masmorra: document.getElementById("mundo-subpane-masmorra"),
+    arena: document.getElementById("mundo-subpane-arena"),
+    missoes: document.getElementById("mundo-subpane-missoes"),
+  };
+  if (Object.values(subButtons).some((btn) => !btn) || Object.values(subPanes).some((pane) => !pane)) return;
+
+  function showMundoSubtab(subtab) {
+    Object.entries(subButtons).forEach(([key, btn]) => btn.classList.toggle("active", key === subtab));
+    Object.entries(subPanes).forEach(([key, pane]) => pane.classList.toggle("active", key === subtab));
+  }
+
+  Object.entries(subButtons).forEach(([key, btn]) => {
+    btn.addEventListener("click", () => showMundoSubtab(key));
+  });
 })();

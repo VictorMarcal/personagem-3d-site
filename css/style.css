@@ -240,6 +240,29 @@ main {
 .pane { display: none; }
 .pane.active { display: block; }
 
+/* Sub-navegacao dentro do separador Mundo (2026-08-10) - mesmo padrao
+   .pane/.pane.active acima, so com nome proprio para nao colidir com o
+   nivel de cima (um separador Mundo ativo, com uma sub-aba ativa la dentro). */
+.mundo-tabs { margin: 0 16px 16px; }
+.mundo-subpane { display: none; }
+.mundo-subpane.active { display: block; }
+
+.mundo-soon-card {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.mundo-soon-icon {
+  font-size: 40px;
+  margin: 0 0 8px;
+}
+
+.mundo-soon-text {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 6px;
+}
+
 /* ---------- Visualizador 3D ---------------------------------------------- */
 
 /* Envolve o #viewer para poder pendurar o crachá de nível e a mini-lista
@@ -264,13 +287,16 @@ main {
   background: linear-gradient(180deg, var(--sage-200) 0%, var(--surface) 100%);
 }
 
-/* So visivel no separador "Personagem" - ou sempre que houver uma luta a
-   decorrer (js/battle.js poe .battle-fullscreen no #viewer). Aplica-se ao
-   wrapper inteiro (#viewer-stage), para o crachá de nível/equipamento
-   escondam com o resto - :has() traz de volta o wrapper quando o #viewer
-   lá dentro fica fullscreen, senao o display:none do wrapper impedia o
-   #viewer de aparecer mesmo com position:fixed. */
-#view-jogo:not([data-pane="personagem"]) #viewer-stage { display: none; }
+/* So visivel nos separadores "Personagem"/"Mundo" (2026-08-10: Mundo
+   passou a ser o separador de arranque, com o Treino/Campo la dentro -
+   sem isto o jogador via a app abrir sem a personagem 3D visivel) - ou
+   sempre que houver uma luta a decorrer (js/battle.js poe
+   .battle-fullscreen no #viewer). Aplica-se ao wrapper inteiro
+   (#viewer-stage), para o crachá de nível/equipamento escondam com o
+   resto - :has() traz de volta o wrapper quando o #viewer lá dentro fica
+   fullscreen, senao o display:none do wrapper impedia o #viewer de
+   aparecer mesmo com position:fixed. */
+#view-jogo:not([data-pane="personagem"]):not([data-pane="mundo"]) #viewer-stage { display: none; }
 #viewer-stage:has(#viewer.battle-fullscreen) { display: block !important; }
 
 #viewer.battle-fullscreen {
@@ -392,7 +418,7 @@ main {
   color: var(--muted-2);
 }
 
-#view-jogo:not([data-pane="personagem"]) > .viewer-hint { display: none; }
+#view-jogo:not([data-pane="personagem"]):not([data-pane="mundo"]) > .viewer-hint { display: none; }
 
 .floating-combat-text {
   position: absolute;
