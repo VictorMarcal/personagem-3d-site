@@ -196,22 +196,27 @@ function lungeBack(attacker, originalX) {
 // Flecha do ataque do jogador (2026-08-11, personagem passou a arqueiro,
 // secção 9 da documentação) - so o jogador atira, o monstro mantem o
 // "lunge" de ataque generico acima (nao e um arqueiro). Uma unica mesh
-// reutilizada a cada disparo (escondida entre tiros), voa do arco ate a
-// cabeca do monstro - js/battle.js espera (`await`) por isto antes de
+// reutilizada a cada disparo (escondida entre tiros), voa do arco ate ao
+// corpo do monstro - js/battle.js espera (`await`) por isto antes de
 // mostrar o dano, mesmo padrao de `lungeOut` (impacto "no momento certo").
 const arrow = new THREE.Group();
 const arrowShaft = new THREE.Mesh(
   new THREE.CylinderGeometry(0.012, 0.012, 0.5, 6),
   new THREE.MeshStandardMaterial({ color: 0x8a5a2b })
 );
-arrowShaft.rotation.x = -Math.PI / 2; // deitada ao longo do eixo -Z local (convencao do lookAt abaixo)
+// Deitada ao longo do eixo +Z local - para um Object3D genérico (nao
+// camera/luz), Object3D.lookAt() aponta o eixo +Z LOCAL para o alvo (ao
+// contrario da convencao -Z das cameras), por isso a ponta da flecha tem
+// de ficar do lado +Z para nao voar ao contrario (bug reportado: "a
+// flecha esta ao contrario").
+arrowShaft.rotation.x = Math.PI / 2;
 arrow.add(arrowShaft);
 const arrowTip = new THREE.Mesh(
   new THREE.ConeGeometry(0.03, 0.08, 6),
   new THREE.MeshStandardMaterial({ color: 0xd9d9d9 })
 );
-arrowTip.position.z = -0.29;
-arrowTip.rotation.x = -Math.PI / 2;
+arrowTip.position.z = 0.29;
+arrowTip.rotation.x = Math.PI / 2;
 arrow.add(arrowTip);
 arrow.visible = false;
 scene.add(arrow);

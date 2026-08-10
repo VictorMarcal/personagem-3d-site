@@ -248,7 +248,10 @@ async function startBattle(creature) {
     // Jogador e arqueiro (2026-08-11) - dispara uma flecha em vez do
     // "lunge" de ataque generico (esse continua a ser usado pelo monstro,
     // mais abaixo). O bow fica parado no lugar, so a flecha se desloca.
-    await shootArrow(bow, monsterHead);
+    // Mira no corpo (nao precisa de ser a cabeca, a pedido) - o numero de
+    // dano continua a aparecer por cima da cabeca (showFloatingCombatText
+    // abaixo), so o alvo do voo da flecha mudou.
+    await shootArrow(bow, monsterBody);
     if (rollDodge(monsterDestreza)) {
       showFloatingCombatText(monsterHead, 0, "miss");
       setBattleLog(`${creature.name} esquivou da tua flecha!`, "miss");
