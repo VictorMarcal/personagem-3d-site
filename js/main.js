@@ -125,6 +125,38 @@ function loadShieldModel() {
 }
 loadShieldModel();
 
+// Arco 3D real (2026-08-11, a pedido - "assets/Bow.glb"). Comprido ao
+// longo do eixo Z de fabrica (~1.1 unidades), nao do Y - rodado 90° em X
+// para ficar de pe (tips para cima/baixo, como um arco segurado), a
+// verificar visualmente. Adicionado como filho do proprio `bow` (o
+// Object3D-ancora ja usado como origem da flecha em shootArrow, definido
+// acima) em vez de `character` diretamente - fica automaticamente na
+// mesma posicao (0.55, 1.1, 0) sem repetir as coordenadas.
+let bowModel = null;
+let bowModelReady = false;
+
+function loadBowModel() {
+  new THREE.GLTFLoader().load(
+    "assets/Bow.glb",
+    (gltf) => {
+      const model = gltf.scene;
+      model.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+      model.rotation.x = Math.PI / 2;
+      bow.add(model);
+      bowModel = model;
+      bowModelReady = true;
+    },
+    undefined,
+    (err) => console.warn("Falha ao carregar assets/Bow.glb.", err)
+  );
+}
+loadBowModel();
+
 // Placeholder do monstro (mesma forma do personagem, cores diferentes),
 // escondido ate uma batalha comecar (js/battle.js)
 const monster = new THREE.Group();
