@@ -95,6 +95,36 @@ function loadHeroModel() {
 }
 loadHeroModel();
 
+// Escudo 3D real (2026-08-11, a pedido - "assets/Shield.glb"). Disco fino
+// (~0.45 unidades de diametro) centrado na propria origem, sem rotacao
+// nenhuma de fabrica - colocado na mesma posicao/lado que o escudo
+// placeholder antigo ocupava (mao esquerda do heroi, lado oposto ao arco
+// em `bow` acima), sem reescalar (tamanho ja parece plausivel para a mao).
+let shieldModel = null;
+let shieldModelReady = false;
+
+function loadShieldModel() {
+  new THREE.GLTFLoader().load(
+    "assets/Shield.glb",
+    (gltf) => {
+      const model = gltf.scene;
+      model.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+      model.position.set(-0.55, 1.1, 0);
+      character.add(model);
+      shieldModel = model;
+      shieldModelReady = true;
+    },
+    undefined,
+    (err) => console.warn("Falha ao carregar assets/Shield.glb.", err)
+  );
+}
+loadShieldModel();
+
 // Placeholder do monstro (mesma forma do personagem, cores diferentes),
 // escondido ate uma batalha comecar (js/battle.js)
 const monster = new THREE.Group();

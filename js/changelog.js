@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.7.9",
+    title: "Escudo com Modelo 3D Real",
+    changes: [
+      "O escudo do herói ganhou um modelo 3D a sério, em vez de ficar sem representação visual.",
+    ],
+  },
+  {
     version: "v2.7.8",
     title: "Modelo do Herói Atualizado",
     changes: [
