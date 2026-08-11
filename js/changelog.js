@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.7.5",
+    title: "Modelo do Herói Atualizado",
+    changes: [
+      "Novo modelo 3D do herói (ainda em progresso).",
+    ],
+  },
+  {
     version: "v2.7.4",
     title: "Limpeza do Modelo do Herói",
     changes: [
