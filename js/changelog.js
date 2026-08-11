@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.8.2",
+    title: "Correção: Calorias Infladas ao Ficar Parado",
+    changes: [
+      "Corrigido: ficar parado vários minutos a meio de um treino e depois voltar a andar podia inflacionar muito as calorias registadas nesse troço.",
+    ],
+  },
+  {
     version: "v2.8.1",
     title: "Correção: Calorias Perdidas ao Recarregar",
     changes: [

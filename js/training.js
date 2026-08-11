@@ -477,22 +477,50 @@ function onPositionUpdate(position) {
     // e duracao usadas na formula MET sao as deste segmento acumulado (nao a
     // instantanea entre as duas ultimas leituras), para bater certo com a
     // distancia/tempo creditados.
-    const distanceSegmentM = haversineDistance(
-      lastCountedPosition.latitude,
-      lastCountedPosition.longitude,
-      latitude,
-      longitude
-    );
-
-    if (distanceSegmentM >= getMinMovementM() && currentActiveMode !== ACTIVITY_STOPPED) {
-      const creditedDurationSeconds = (timestamp - lastCountedPosition.timestamp) / 1000;
-      const creditedSpeedKmh = creditedDurationSeconds > 0 ? (distanceSegmentM / creditedDurationSeconds) * 3.6 : speedKmh;
-      totalDistanceM += distanceSegmentM;
-      sessionCaloriesKcal += computeSegmentCalories(currentActiveMode, creditedSpeedKmh, creditedDurationSeconds);
-      modeTimeAccumMs[currentActiveMode] = (modeTimeAccumMs[currentActiveMode] || 0) + creditedDurationSeconds * 1000;
-      updateDistanceDisplay();
-      checkCoinDropsForDistance(totalDistanceM);
+    //
+    // Bug corrigido (2026-08-11, reportado com o histórico real: "Caminhar
+    // - 0.33km - 33min - 58kcal", calorias muito acima do esperado para a
+    // distância): se o jogador ficasse "parado" (ou quase) durante varios
+    // minutos SEM lastCountedPosition avancar (so avancava ao creditar um
+    // segmento), esse tempo todo ficava "pendurado" à espera - assim que um
+    // movimento real finalmente ultrapassava MIN_MOVEMENT_M, TODO o gap
+    // (incluindo os minutos parados) era creditado como duracao desse UNICO
+    // segmento, inflacionando calorias/tempo por modo muito acima do real
+    // (podia tambem inflacionar a propria DISTANCIA, por deriva de GPS
+    // acumulada num ponto-ancora cada vez mais antigo - mesma "bola de
+    // neve" ja corrigida para lastPosition na secção 4, mas ainda possivel
+    // aqui). Duas correcoes:
+    if (currentActiveMode === ACTIVITY_STOPPED) {
+      // "Parado" nunca creditou distancia/calorias - agora tambem avanca a
+      // ancora (antes so a deteccao de atividade fazia isto, via
+      // lastPosition acima) para o tempo parado nunca "vazar" para dentro
+      // de um credito futuro.
       lastCountedPosition = { latitude, longitude, timestamp };
+    } else {
+      const distanceSegmentM = haversineDistance(
+        lastCountedPosition.latitude,
+        lastCountedPosition.longitude,
+        latitude,
+        longitude
+      );
+
+      if (distanceSegmentM >= getMinMovementM()) {
+        // Capada a getActivityWindowSeconds() (defensivo): cobre tambem o
+        // caso de nunca chegar a classificar como "parado" (ex: a
+        // arrastar-se devagar sem nunca cruzar o limiar de "parado"), onde
+        // a correcao acima nao chegaria. So limita o DIVISOR usado para
+        // calorias/tempo por modo - a distancia creditada nunca e afetada,
+        // conta sempre por inteiro.
+        const rawDurationSeconds = (timestamp - lastCountedPosition.timestamp) / 1000;
+        const creditedDurationSeconds = Math.min(getActivityWindowSeconds(), rawDurationSeconds);
+        const creditedSpeedKmh = creditedDurationSeconds > 0 ? (distanceSegmentM / creditedDurationSeconds) * 3.6 : speedKmh;
+        totalDistanceM += distanceSegmentM;
+        sessionCaloriesKcal += computeSegmentCalories(currentActiveMode, creditedSpeedKmh, creditedDurationSeconds);
+        modeTimeAccumMs[currentActiveMode] = (modeTimeAccumMs[currentActiveMode] || 0) + creditedDurationSeconds * 1000;
+        updateDistanceDisplay();
+        checkCoinDropsForDistance(totalDistanceM);
+        lastCountedPosition = { latitude, longitude, timestamp };
+      }
     }
   }
 
