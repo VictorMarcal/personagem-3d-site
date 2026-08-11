@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.7.7",
+    title: "Deteção de Atividade Mais Rápida",
+    changes: [
+      "Corrigido: podia demorar perto de 30 segundos a detetar que tinhas começado a caminhar/correr depois de estares parado — agora é bem mais rápido.",
+    ],
+  },
+  {
     version: "v2.7.6",
     title: "Modelo do Herói Atualizado",
     changes: [

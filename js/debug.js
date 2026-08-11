@@ -83,9 +83,16 @@ const DEBUG_DEFAULTS = {
   // Janela deslizante (segundos) usada para a velocidade media que alimenta
   // a classificacao acima - evita reclassificar a cada oscilacao pontual
   // (ex: parar num semaforo). Historese (segundos) - so muda de categoria
-  // depois de estar continuamente na nova faixa por este tempo.
-  activityWindowSeconds: 45,
-  activityHysteresisSeconds: 25,
+  // depois de estar continuamente na nova faixa por este tempo. Descidos de
+  // 45/25 para 20/8 (2026-08-11, corrigido a pedido - "demora muito tempo
+  // para detetar entre treino e parado... 30 segundos ate detetar que
+  // estava a caminhar", os dois valores somavam-se): 45+25 no pior caso
+  // (arrancar a andar depois de estar mesmo parado, com o segmento anterior
+  // ainda a pesar na media da janela) dava perto dos 30s sentidos na
+  // pratica. 20/8 continua a suavizar ruido pontual do GPS sem ficar tao
+  // lento a confirmar o inicio real de uma atividade.
+  activityWindowSeconds: 20,
+  activityHysteresisSeconds: 8,
   miniBossLevelStep: 5,
   bossLevelStep: 10,
   maxLevelToGenerate: 100,
