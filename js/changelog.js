@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.8.1",
+    title: "Correção: Calorias Perdidas ao Recarregar",
+    changes: [
+      "Corrigido: as calorias contadas num treino voltavam a 0 sempre que davas refresh à página a meio dele — agora sobrevivem, tal como a distância já sobrevivia.",
+    ],
+  },
+  {
     version: "v2.8.0",
     title: "Arco com Modelo 3D Real",
     changes: [

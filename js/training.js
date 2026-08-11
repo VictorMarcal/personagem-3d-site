@@ -23,6 +23,12 @@ const STORAGE_KEYS = {
   distanciaAcumuladaM: "treino.distanciaAcumuladaM",
   ultimaPosicao: "treino.ultimaPosicao",
   inicioSessao: "treino.inicioSessao",
+  // Calorias/atividade/modo dominante (2026-08-11, bug reportado - "sempre
+  // que dava refresh a pagina, as calorias contadas desapareciam e
+  // voltavam a zero"): so distancia/posicao eram persistidas ate aqui.
+  caloriasAcumuladasKcal: "treino.caloriasAcumuladasKcal",
+  modoTempoAcumuladoMs: "treino.modoTempoAcumuladoMs",
+  atividadeAtiva: "treino.atividadeAtiva",
 };
 
 // Para apresentacao (historico do Perfil, treinos de hoje). Declarado aqui
@@ -266,6 +272,11 @@ function persistAccumulatedTraining() {
   if (lastPosition) {
     localStorage.setItem(STORAGE_KEYS.ultimaPosicao, JSON.stringify(lastPosition));
   }
+  localStorage.setItem(STORAGE_KEYS.caloriasAcumuladasKcal, String(sessionCaloriesKcal));
+  localStorage.setItem(STORAGE_KEYS.modoTempoAcumuladoMs, JSON.stringify(modeTimeAccumMs));
+  if (currentActiveMode) {
+    localStorage.setItem(STORAGE_KEYS.atividadeAtiva, currentActiveMode);
+  }
 }
 
 function clearPersistedTraining() {
@@ -273,6 +284,9 @@ function clearPersistedTraining() {
   localStorage.removeItem(STORAGE_KEYS.distanciaAcumuladaM);
   localStorage.removeItem(STORAGE_KEYS.ultimaPosicao);
   localStorage.removeItem(STORAGE_KEYS.inicioSessao);
+  localStorage.removeItem(STORAGE_KEYS.caloriasAcumuladasKcal);
+  localStorage.removeItem(STORAGE_KEYS.modoTempoAcumuladoMs);
+  localStorage.removeItem(STORAGE_KEYS.atividadeAtiva);
 }
 
 // --- Historico de sessoes individuais (aba de Perfil) ---------------------
@@ -687,11 +701,22 @@ function resumeTrainingIfNeeded() {
   // Nao re-testa km ja percorridos antes do refresh - so os km novos a
   // partir daqui contam para moedas.
   coinsCheckedKm = Math.floor(totalDistanceM / 1000);
-  // Calorias/deteccao de atividade (sessionCaloriesKcal, currentActiveMode,
-  // modeTimeAccumMs, etc.) NAO sao persistidas - um refresh a meio de um
-  // treino reinicia a deteccao do zero (ja com os valores por omissao do
-  // carregamento do script), so a distancia/posicao acima sobrevivem.
-  // Aceitavel: um refresh a meio de um treino ja e um caso raro.
+
+  // Calorias/modo dominante (2026-08-11, bug corrigido - "as calorias
+  // desapareciam e voltavam a zero" a cada refresh a meio de um treino).
+  sessionCaloriesKcal = Number(localStorage.getItem(STORAGE_KEYS.caloriasAcumuladasKcal)) || 0;
+  try {
+    const savedModeTime = localStorage.getItem(STORAGE_KEYS.modoTempoAcumuladoMs);
+    if (savedModeTime) modeTimeAccumMs = JSON.parse(savedModeTime);
+  } catch (e) {
+    // fica no valor por omissao (todos a 0) se o JSON guardado for invalido
+  }
+  // A deteccao em si (janela deslizante, historese - speedSampleBuffer/
+  // pendingMode) nao e persistida, so o ULTIMO modo confirmado antes do
+  // refresh - evita mostrar "Atividade detetada: —" e um "parado" errado
+  // logo na primeira leitura a seguir a retomar, mas a janela recomeca a
+  // encher-se do zero (poucos segundos, aceitavel).
+  currentActiveMode = localStorage.getItem(STORAGE_KEYS.atividadeAtiva) || null;
 
   updateDistanceDisplay();
   showTrainingScreen();
