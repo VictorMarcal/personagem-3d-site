@@ -100,6 +100,49 @@ character.add(shield);
 
 scene.add(character);
 
+// Modelo 3D real do heroi (2026-08-11, a pedido - "assets/Hero.glb").
+// Mesh unica sem esqueleto vinculado (sem animacoes), altura (~2 unidades)
+// e base (min.y=0) ja muito proximas do placeholder acima, por isso
+// usada sem reescalar - so adicionada como filho de `character` (herda
+// posicao/rotacao automaticamente, incl. no movimento/mira da arena).
+// Corpo/arco/escudo placeholder ficam invisiveis (opacidade 0, NAO
+// visible=false) assim que o modelo real estiver pronto - o raycasting
+// do Three.js ignora objetos com visible=false, por isso continuam
+// visible=true para o clique em cada peca (abrir popup de evolucao,
+// equipmentMeshes mais abaixo) continuar a funcionar exatamente como
+// antes, so deixam de aparecer visualmente. A cabeca (nao esta em
+// equipmentMeshes) fica simplesmente escondida.
+let heroModel = null;
+let heroModelReady = false;
+
+function loadHeroModel() {
+  new THREE.GLTFLoader().load(
+    "assets/Hero.glb",
+    (gltf) => {
+      const model = gltf.scene;
+      model.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+      character.add(model);
+      heroModel = model;
+      heroModelReady = true;
+
+      head.visible = false;
+      bowString.visible = false; // so decorativa, pode ficar visible=false (nunca foi raycastable)
+      [body, bow, shield].forEach((mesh) => {
+        mesh.material.transparent = true;
+        mesh.material.opacity = 0;
+      });
+    },
+    undefined,
+    (err) => console.warn("Falha ao carregar assets/Hero.glb, mantem-se o placeholder.", err)
+  );
+}
+loadHeroModel();
+
 // Placeholder do monstro (mesma forma do personagem, cores diferentes),
 // escondido ate uma batalha comecar (js/battle.js)
 const monster = new THREE.Group();

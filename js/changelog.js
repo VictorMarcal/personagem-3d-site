@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.7.3",
+    title: "Herói com Modelo 3D Real",
+    changes: [
+      "O herói (Personagem e Masmorra) ganhou um modelo 3D a sério, em vez das formas geométricas de antes.",
+    ],
+  },
+  {
     version: "v2.7.2",
     title: "Câmara da Arena Mais Dramática",
     changes: [
