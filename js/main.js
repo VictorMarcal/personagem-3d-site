@@ -123,23 +123,56 @@ monster.add(monsterHead);
 monster.visible = false;
 scene.add(monster);
 
+// Arena da Masmorra/Arena (2026-08-11, a pedido - vista top-down com
+// movimento livre por joystick, substitui o palco lateral fixo de antes,
+// secção 9 da documentação). Chao proprio, distinto do chao geral da
+// aba Personagem, visivel so durante uma luta. Eixo Z faz de
+// "profundidade": o monstro fica no centro (Z=0), a personagem arranca
+// perto do fundo (Z positivo, lado mais perto da camara).
+const ARENA_WIDTH = 6;
+const ARENA_DEPTH = 8;
+const ARENA_PLAYER_MARGIN = 0.5; // raio aproximado do modelo, para nao "entrar" nas paredes invisiveis
+const ARENA_PLAYER_START_Z = ARENA_DEPTH / 2 - 1.5;
+
+const arenaFloor = new THREE.Mesh(
+  new THREE.PlaneGeometry(ARENA_WIDTH, ARENA_DEPTH),
+  new THREE.MeshStandardMaterial({ color: 0x24232b })
+);
+arenaFloor.rotation.x = -Math.PI / 2;
+arenaFloor.position.y = 0.01; // acima do chao geral, evita z-fighting
+arenaFloor.receiveShadow = true;
+arenaFloor.visible = false;
+scene.add(arenaFloor);
+
 const NORMAL_CAMERA_POSITION = { x: 0, y: 1.5, z: 4 };
-const BATTLE_CAMERA_POSITION = { x: 0, y: 1.8, z: 7 };
-const BATTLE_SIDE_OFFSET_X = 1.3;
+// Perspetiva angulada de topo (2026-08-11, a pedido - nao e isometrica
+// "verdadeira"/ortografica, mantem a PerspectiveCamera existente so
+// reposicionada bem mais alto e a apontar quase a direito para baixo).
+// Câmara colocada do lado da personagem (Z positivo) para o monstro, mais
+// longe no eixo Z, projetar mais ao centro do ecra e a personagem mais em
+// baixo - tal como pedido.
+const BATTLE_CAMERA_POSITION = { x: 0, y: 10, z: 5 };
 
 function enterBattleView() {
-  character.position.x = -BATTLE_SIDE_OFFSET_X;
-  monster.position.x = BATTLE_SIDE_OFFSET_X;
-  monster.rotation.y = -Math.PI / 2;
+  character.position.set(0, 0, ARENA_PLAYER_START_Z);
+  character.rotation.y = 0;
+  monster.position.set(0, 0, 0);
+  monster.rotation.y = 0;
   monster.visible = true;
+  arenaFloor.visible = true;
 
   camera.position.set(BATTLE_CAMERA_POSITION.x, BATTLE_CAMERA_POSITION.y, BATTLE_CAMERA_POSITION.z);
-  camera.lookAt(0, 1, 0);
+  camera.lookAt(0, 0, 0);
+
+  joystickDirection.x = 0;
+  joystickDirection.z = 0;
 }
 
 function exitBattleView() {
-  character.position.x = 0;
+  character.position.set(0, 0, 0);
+  character.rotation.y = 0;
   monster.visible = false;
+  arenaFloor.visible = false;
 
   camera.position.set(NORMAL_CAMERA_POSITION.x, NORMAL_CAMERA_POSITION.y, NORMAL_CAMERA_POSITION.z);
   camera.lookAt(0, 1, 0);
@@ -149,7 +182,11 @@ function exitBattleView() {
 // caminho ate ao outro e volta, para dar sensacao de impacto em vez dos
 // dois combatentes ficarem sempre estaticos nas mesmas posicoes durante
 // toda a luta. So anima o eixo X (a unica dimensao em que se afastam,
-// ver enterBattleView acima).
+// ver enterBattleView acima). NAO CHAMADA POR AGORA (2026-08-11): a vista
+// da Masmorra/Arena passa a arena top-down com movimento livre, e o ciclo
+// de combate automatico ficou temporariamente desativado ate os modos de
+// ataque do monstro serem definidos (ver js/battle.js) - fica pronta para
+// ser reaproveitada nessa altura.
 const LUNGE_FRACTION = 0.4; // 0-1, quanto do caminho ate ao outro e percorrido
 const LUNGE_OUT_MS = 160;
 const LUNGE_BACK_MS = 200;
@@ -295,7 +332,13 @@ function raycastEquipmentAt(clientX, clientY) {
   }
 }
 
+// Arrastar para rodar a personagem so fora de luta (2026-08-11) - dentro
+// da Masmorra/Arena, character.rotation.y passa a ser controlado pela
+// direcao do movimento (ver updatePlayerMovement abaixo); sem esta guarda,
+// arrastar no ecra durante uma luta rodava a personagem por cima do
+// movimento do joystick.
 canvas.addEventListener("pointerdown", (event) => {
+  if (typeof battleInProgress !== "undefined" && battleInProgress) return;
   isDragging = true;
   lastPointerX = event.clientX;
   pointerDownX = event.clientX;
@@ -368,13 +411,99 @@ function showFloatingCombatText(targetHead, amount, variant) {
   setTimeout(() => el.remove(), 1000);
 }
 
+// --- Joystick virtual + movimento livre na arena (2026-08-11, vista da
+// Masmorra/Arena passa a top-down, secção 9 da documentação) -----------
+//
+// joystickDirection.x/z ficam entre -1 e 1 (fracao do raio maximo do
+// joystick), lidos a cada frame por updatePlayerMovement - nao ha fila de
+// eventos, so o estado "atual" do joystick importa.
+const battleJoystickBaseEl = document.getElementById("battle-joystick-base");
+const battleJoystickKnobEl = document.getElementById("battle-joystick-knob");
+const JOYSTICK_MAX_RADIUS_PX = 40;
+const joystickDirection = { x: 0, z: 0 };
+let joystickPointerId = null;
+let joystickCenter = { x: 0, y: 0 };
+
+function joystickPointerDown(event) {
+  joystickPointerId = event.pointerId;
+  const rect = battleJoystickBaseEl.getBoundingClientRect();
+  joystickCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  battleJoystickBaseEl.setPointerCapture(event.pointerId);
+  joystickPointerMove(event);
+}
+
+// setPointerCapture (chamado acima) garante que este handler continua a
+// receber eventos mesmo quando o dedo sai fisicamente da base do joystick
+// - por isso o deslocamento pode ultrapassar o raio maximo em pixeis, daí
+// o clamp abaixo (o "knob" nunca sai visualmente da base).
+function joystickPointerMove(event) {
+  if (event.pointerId !== joystickPointerId) return;
+  const dx = event.clientX - joystickCenter.x;
+  const dy = event.clientY - joystickCenter.y;
+  const dist = Math.min(JOYSTICK_MAX_RADIUS_PX, Math.hypot(dx, dy));
+  const angle = Math.atan2(dy, dx);
+  const knobX = Math.cos(angle) * dist;
+  const knobY = Math.sin(angle) * dist;
+  battleJoystickKnobEl.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+  joystickDirection.x = knobX / JOYSTICK_MAX_RADIUS_PX;
+  joystickDirection.z = knobY / JOYSTICK_MAX_RADIUS_PX;
+}
+
+function joystickPointerEnd(event) {
+  if (event.pointerId !== joystickPointerId) return;
+  joystickPointerId = null;
+  joystickDirection.x = 0;
+  joystickDirection.z = 0;
+  battleJoystickKnobEl.style.transform = "translate(-50%, -50%)";
+}
+
+battleJoystickBaseEl.addEventListener("pointerdown", joystickPointerDown);
+battleJoystickBaseEl.addEventListener("pointermove", joystickPointerMove);
+battleJoystickBaseEl.addEventListener("pointerup", joystickPointerEnd);
+battleJoystickBaseEl.addEventListener("pointercancel", joystickPointerEnd);
+
+// Velocidade em unidades do mundo (o corpo da personagem tem ~0.8 de
+// diametro, secção 3 do modelo acima) por segundo. joystickDirection.z
+// segue a convencao de ecra (para cima = negativo) - a camara da arena
+// olha do lado +Z para -Z (ver enterBattleView), por isso "joystick para
+// cima" tem mesmo de reduzir a coordenada Z da personagem (andar em
+// direcao ao monstro, no centro da arena) - nao precisa de nenhuma
+// conversao extra de eixo.
+const PLAYER_MOVE_SPEED = 3;
+
+function updatePlayerMovement(dtSeconds) {
+  if (typeof battleInProgress === "undefined" || !battleInProgress) return;
+  if (joystickDirection.x === 0 && joystickDirection.z === 0) return;
+
+  const halfWidth = ARENA_WIDTH / 2 - ARENA_PLAYER_MARGIN;
+  const halfDepth = ARENA_DEPTH / 2 - ARENA_PLAYER_MARGIN;
+  const nextX = character.position.x + joystickDirection.x * PLAYER_MOVE_SPEED * dtSeconds;
+  const nextZ = character.position.z + joystickDirection.z * PLAYER_MOVE_SPEED * dtSeconds;
+  character.position.x = Math.max(-halfWidth, Math.min(halfWidth, nextX));
+  character.position.z = Math.max(-halfDepth, Math.min(halfDepth, nextZ));
+
+  // Personagem vira-se para a direcao em que anda (o arco/escudo, so eles
+  // assimetricos no modelo placeholder - secção 3 - tornam isto visivel).
+  character.rotation.y = Math.atan2(joystickDirection.x, joystickDirection.z);
+}
+
 // Controlado por js/profile.js: poupa GPU/bateria no telemovel enquanto a
 // aba Perfil esta visivel, sem parar o loop de todo (mais simples do que
 // cancelar/reiniciar o requestAnimationFrame).
 let jogoViewVisible = true;
+let lastAnimateFrameMs = Date.now();
 
 function animate() {
   requestAnimationFrame(animate);
-  if (jogoViewVisible) renderer.render(scene, camera);
+  const now = Date.now();
+  // Capado a 50ms (equivalente a 20fps): se a aba ficou em segundo plano
+  // e voltou, evita um "salto" grande de movimento no frame seguinte.
+  const dtSeconds = Math.min(0.05, (now - lastAnimateFrameMs) / 1000);
+  lastAnimateFrameMs = now;
+
+  if (jogoViewVisible) {
+    updatePlayerMovement(dtSeconds);
+    renderer.render(scene, camera);
+  }
 }
 animate();

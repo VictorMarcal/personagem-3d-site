@@ -16,6 +16,7 @@ const battleResultEl = document.getElementById("battle-result");
 const battleStatDestrezaEl = document.getElementById("battle-stat-destreza");
 const battleStatLetalidadeEl = document.getElementById("battle-stat-letalidade");
 const btnBattleBack = document.getElementById("btn-battle-back");
+const battleJoystickEl = document.getElementById("battle-joystick");
 
 // Ultima mensagem em destaque (maior, cor conforme o tipo de evento -
 // "critico"/"miss"/"normal"), as anteriores empilhadas por baixo como
@@ -134,6 +135,17 @@ function updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp) {
   battleMonsterHpTextEl.textContent = `${Math.max(0, Math.round(monsterHp))} / ${monsterMaxHp}`;
 }
 
+// Ciclo de combate por turnos TEMPORARIAMENTE DESATIVADO (2026-08-11): a
+// vista da Masmorra/Arena passou de um palco lateral fixo para uma arena
+// top-down onde a personagem anda livremente por joystick (secção 9 da
+// documentação, a pedido) - falta definir os modos de comportamento/
+// ataque do monstro nesta nova vista, por isso entrar numa luta por
+// agora so mostra a arena e liberta o movimento; o monstro fica parado,
+// sem atacar nem levar dano, e sair e sempre possivel (btnBattleBack fica
+// visivel desde logo, nao so no fim de uma luta resolvida). As funcoes de
+// calculo de dano/esquiva/critico acima (computeBattleDamage, rollDodge,
+// rollCritico, getMonsterCoinRange/awardMonsterCoins) ficam prontas para
+// serem religadas quando os modos do monstro forem definidos.
 async function startBattle(creature) {
   if (battleInProgress) return;
 
@@ -148,80 +160,33 @@ async function startBattle(creature) {
   battleInProgress = true;
 
   // Trocar para a aba Perfil a meio da luta nao a pausava - so parava o
-  // render 3D (jogoViewVisible, js/main.js), o ciclo da luta continuava a
-  // correr por baixo e resolvia-se sozinho, sem o jogador ver. Desativado
-  // enquanto a luta durar, reativado no fim (mesmo padrao do bloqueio entre
-  // abas acima, mas dentro da mesma aba).
+  // render 3D (jogoViewVisible, js/main.js). Desativado enquanto a luta
+  // durar, reativado no fim (mesmo padrao do bloqueio entre abas acima,
+  // mas dentro da mesma aba).
   document.getElementById("btn-nav-perfil").disabled = true;
 
   // Entrar em combate revela a Vida da criatura no card, ganhe ou perca
   // a luta - Ataque/Defesa ficam sempre desconhecidos.
   markCreatureEncountered(creature.level);
 
-  // A vida entra na luta com o que tiver recuperado ate agora (nunca cheia
-  // por garantia) - lutar com vida parcial e uma escolha do jogador, nao
-  // um bloqueio.
-  const playerEnergiaLevel = getEffectiveInvestableStatLevel("energia");
-  const playerMaxHp = computePlayerVida(playerEnergiaLevel);
-  const playerAtaque = computePlayerAtaque(getEffectiveInvestableStatLevel("forca"));
-  const playerDefesa = computePlayerDefesa(getEffectiveInvestableStatLevel("resistencia"));
-  const playerDestreza = computeDestrezaChance(getEffectiveInvestableStatLevel("resistencia"));
-  const playerLetalidade = computeLetalidadeChance(getEffectiveInvestableStatLevel("forca"));
-
+  // Mostradas so para referencia (secção 9) - nenhum dano e calculado
+  // enquanto o ciclo de combate estiver desativado, ver nota acima.
+  const playerMaxHp = computePlayerVida(getEffectiveInvestableStatLevel("energia"));
   const monsterMaxHp = computeCreatureStatValue("vida", creature);
-  const monsterAtaque = computeCreatureStatValue("ataque", creature);
-  const monsterDefesa = computeCreatureStatValue("defesa", creature);
-  // Monstros nao tem Destreza/Letalidade por agora (fora de escopo) - nunca
-  // esquivam nem dao critico, so o jogador tem estas duas mecanicas.
-  const monsterDestreza = 0;
-  const monsterLetalidade = 0;
-
-  let playerHp = getCurrentHp(playerMaxHp);
-  let monsterHp = monsterMaxHp;
-
-  // Regeneracao passa a decorrer tambem DURANTE a luta, nao so fora dela
-  // (2026-08-06, a pedido - antes o relogio de recuperacao ficava
-  // completamente parado enquanto battleInProgress, so retomando a partir
-  // do valor final quando a luta acabava). Aplicada a cada intervalo real
-  // entre acoes (BATTLE_ROUND_DELAY_MS), capada na vida maxima - mesmo
-  // "+X" flutuante verde usado fora de combate (showFloatingCombatText,
-  // js/main.js), so que aqui tambem soma ao mesmo playerHp que o dano usa.
-  // O numero mostrado ja nao e arredondado a um inteiro (2026-08-07,
-  // corrigido a pedido - "tenho 2.6 de recuperacao por segundo mas na
-  // luta so aparecia +2"): mesma formatacao de fora de combate
-  // (showFloatingCombatText usa toFixed(1) para nao-inteiros), agora
-  // tambem em luta.
-  function tickPlayerRegen() {
-    if (playerHp <= 0 || playerHp >= playerMaxHp) return;
-    const before = playerHp;
-    playerHp = Math.min(playerMaxHp, playerHp + computeRegeneracaoPerSecond(playerEnergiaLevel) * (BATTLE_ROUND_DELAY_MS / 1000));
-    const healed = playerHp - before;
-    if (healed > 0) showFloatingCombatText(head, healed, "heal");
-  }
-
-  // Monstros passam a regenerar tambem (2026-08-07, a pedido) - sem status
-  // de Energia proprio, usam uma % da sua Vida MAXIMA por troca de ataques
-  // em vez de vida/segundo (MONSTER_REGEN_PERCENT no Debug), nos mesmos
-  // momentos que tickPlayerRegen acima.
-  function tickMonsterRegen() {
-    if (monsterHp <= 0 || monsterHp >= monsterMaxHp) return;
-    const before = monsterHp;
-    monsterHp = Math.min(monsterMaxHp, monsterHp + monsterMaxHp * (getMonsterRegenPercent() / 100));
-    const healed = monsterHp - before;
-    if (healed > 0) showFloatingCombatText(monsterHead, healed, "heal");
-  }
+  const playerHp = getCurrentHp(playerMaxHp);
 
   characterHudEl.classList.add("hidden");
-  btnBattleBack.classList.add("hidden");
   battleResultEl.textContent = "";
   battleMonsterNameEl.textContent = creature.name;
   battleHudEl.classList.remove("hidden");
   battlePanelEl.classList.remove("hidden");
+  battleJoystickEl.classList.remove("hidden");
+  // Sem ciclo de combate a resolver-se sozinho, sair fica disponivel logo
+  // de entrada (antes so aparecia no fim de uma luta ganha/perdida).
+  btnBattleBack.classList.remove("hidden");
 
-  // Destreza/Letalidade nao mudam durante a luta (fixas no que foi
-  // investido ao entrar), por isso so precisam de ser escritas uma vez.
-  battleStatDestrezaEl.textContent = `${(playerDestreza * 100).toFixed(1)}%`;
-  battleStatLetalidadeEl.textContent = `${(playerLetalidade * 100).toFixed(1)}%`;
+  battleStatDestrezaEl.textContent = `${(computeDestrezaChance(getEffectiveInvestableStatLevel("resistencia")) * 100).toFixed(1)}%`;
+  battleStatLetalidadeEl.textContent = `${(computeLetalidadeChance(getEffectiveInvestableStatLevel("forca")) * 100).toFixed(1)}%`;
 
   battleLogHistory = [];
   battleLogHeadlineEl.textContent = "";
@@ -230,139 +195,24 @@ async function startBattle(creature) {
   viewerEl.classList.add("battle-fullscreen");
   onResize();
   enterBattleView();
-  updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
-  setBattleLog("A batalha começou!");
-  await sleep(BATTLE_ROUND_DELAY_MS);
-  tickPlayerRegen();
-  tickMonsterRegen();
-  updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
-
-  let won = false;
-  let round = 0;
-  let playerHpPercentAtWin = 100;
-
-  while (round < BATTLE_MAX_ROUNDS) {
-    round += 1;
-    refreshTabLock(STORAGE_KEY_BATTLE_TAB_LOCK);
-
-    // Jogador e arqueiro (2026-08-11) - dispara uma flecha em vez do
-    // "lunge" de ataque generico (esse continua a ser usado pelo monstro,
-    // mais abaixo). O bow fica parado no lugar, so a flecha se desloca.
-    // Mira no corpo (nao precisa de ser a cabeca, a pedido) - o numero de
-    // dano continua a aparecer por cima da cabeca (showFloatingCombatText
-    // abaixo), so o alvo do voo da flecha mudou.
-    await shootArrow(bow, monsterBody);
-    if (rollDodge(monsterDestreza)) {
-      showFloatingCombatText(monsterHead, 0, "miss");
-      setBattleLog(`${creature.name} esquivou da tua flecha!`, "miss");
-    } else if (rollCritico(playerLetalidade)) {
-      const critDmg = Math.round(playerAtaque * getLetalidadeMultiplicador());
-      monsterHp -= critDmg;
-      showFloatingCombatText(monsterHead, -critDmg, "critico");
-      setBattleLog(`Crítico! Flecha certeira em ${creature.name}: -${critDmg} Vida`, "critico");
-    } else {
-      const dmgToMonster = computeBattleDamage(playerAtaque, monsterDefesa);
-      monsterHp -= dmgToMonster;
-      showFloatingCombatText(monsterHead, -dmgToMonster, "damage");
-      setBattleLog(`Acertaste uma flecha em ${creature.name}: -${dmgToMonster} Vida`);
-    }
-    updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
-    await sleep(BATTLE_ROUND_DELAY_MS);
-    tickPlayerRegen();
-    tickMonsterRegen();
-    updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
-
-    if (monsterHp <= 0) {
-      won = true;
-      playerHpPercentAtWin = Math.max(0, (playerHp / playerMaxHp) * 100);
-      break;
-    }
-
-    const monsterLungeOriginX = await lungeOut(monster, character);
-    if (rollDodge(playerDestreza)) {
-      showFloatingCombatText(head, 0, "miss");
-      setBattleLog(`Esquivaste do ataque de ${creature.name}!`, "miss");
-    } else if (rollCritico(monsterLetalidade)) {
-      const critDmg = Math.round(monsterAtaque * getLetalidadeMultiplicador());
-      playerHp -= critDmg;
-      showFloatingCombatText(head, -critDmg, "critico");
-      setBattleLog(`Crítico! ${creature.name} atacou-te: -${critDmg} Vida`, "critico");
-    } else {
-      const dmgToPlayer = computeBattleDamage(monsterAtaque, playerDefesa);
-      playerHp -= dmgToPlayer;
-      showFloatingCombatText(head, -dmgToPlayer, "damage");
-      setBattleLog(`${creature.name} atacou-te: -${dmgToPlayer} Vida`);
-    }
-    lungeBack(monster, monsterLungeOriginX);
-    updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
-    await sleep(BATTLE_ROUND_DELAY_MS);
-    tickPlayerRegen();
-    tickMonsterRegen();
-    updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp);
-
-    if (playerHp <= 0) {
-      won = false;
-      break;
-    }
-  }
-
-  // Conta para a conquista "Guerreiro" (numero total de lutas, ganhas ou
-  // perdidas - 2026-08-07) - antes do if/else, aplica-se aos dois casos.
-  incrementTotalBattlesFought();
-
-  if (won) {
-    // Estrelas antes desta vitoria (0 se nunca derrotada) - guardado antes
-    // de markCreatureDefeated atualizar o mapa, para podermos comparar.
-    const previousStars = isCreatureDefeated(creature.level) ? getCreatureStars(creature.level) : 0;
-    const stars = computeStarsForHp(playerHpPercentAtWin);
-    markCreatureDefeated(creature.level, stars);
-
-    // So paga a diferenca de pontos: se ja tinhas 1 estrela (1 ponto) e
-    // agora consegues 3 (3 pontos), recebes so os 2 que faltavam - nunca
-    // paga a mesma vitoria duas vezes nem tira pontos se sair pior.
-    if (stars > previousStars) {
-      const maxPoints = creature.isBoss ? getBossMaxPoints() : creature.isMiniBoss ? getMiniBossMaxPoints() : 0;
-      if (maxPoints > 0) {
-        const previousPoints = previousStars > 0 ? computeBonusPointsForStars(maxPoints, previousStars) : 0;
-        const newPoints = computeBonusPointsForStars(maxPoints, stars);
-        awardBonusPoints(newPoints - previousPoints);
-      }
-    }
-
-    // So paga moedas enquanto ainda nao tinhas 3 estrelas contra esta
-    // criatura (2026-08-07, a pedido - antes pagava em TODA vitoria, mesmo
-    // repetida, o que incentivava "farmar" um monstro ja dominado so pelo
-    // dinheiro). Uma vez a 3 estrelas, re-lutar continua disponivel (para
-    // testar builds, ver stats, etc.) mas deixa de rentabilizar.
-    if (previousStars < 3) awardMonsterCoins(creature);
-    battleResultEl.textContent = `Vitória! Derrotaste ${creature.name}.`;
-  } else {
-    battleResultEl.textContent = `Derrota... ${creature.name} venceu.`;
-  }
-
-  // Fora do if/else porque conquistas como "Guerreiro" (numero de lutas)
-  // tem de ser reavaliadas mesmo numa derrota, nao so numa vitoria.
-  checkAndUnlockAchievements();
-
-  // Guarda a vida com que ficou (ganhando ou perdendo) - e a partir daqui
-  // que a recuperacao por tempo real comeca a contar.
-  setCurrentHp(Math.max(0, playerHp));
-
-  btnBattleBack.classList.remove("hidden");
-  battleInProgress = false;
-  document.getElementById("btn-nav-perfil").disabled = false;
-  releaseTabLock(STORAGE_KEY_BATTLE_TAB_LOCK);
+  updateBattleBars(playerHp, playerMaxHp, monsterMaxHp, monsterMaxHp);
+  setBattleLog("Explora a arena com o joystick - o combate chega em breve.");
 }
 
 function endBattle() {
   battleHudEl.classList.add("hidden");
   battlePanelEl.classList.add("hidden");
+  battleJoystickEl.classList.add("hidden");
   characterHudEl.classList.remove("hidden");
 
   viewerEl.classList.remove("battle-fullscreen");
   onResize();
   exitBattleView();
   renderMonsters(); // pode ter desbloqueado o proximo monstro
+
+  battleInProgress = false;
+  document.getElementById("btn-nav-perfil").disabled = false;
+  releaseTabLock(STORAGE_KEY_BATTLE_TAB_LOCK);
 }
 
 btnBattleBack.addEventListener("click", endBattle);

@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.6.0",
+    title: "Nova Arena da Masmorra",
+    changes: [
+      "A Masmorra/Arena ganhou uma vista nova de cima, tipo jogo mobile, com um joystick virtual para andares pela arena.",
+      "O monstro fica no centro, tu arrancas mais perto de ti — por agora é só para explorares a arena, o combate propriamente dito volta numa próxima atualização.",
+    ],
+  },
+  {
     version: "v2.5.1",
     title: "Correção: Flecha ao Contrário",
     changes: [

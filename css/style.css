@@ -1301,6 +1301,42 @@ main {
 
 #battle-panel .btn-secondary:hover { background: rgba(249, 244, 237, 0.08); }
 
+/* Joystick virtual (2026-08-11, vista da Masmorra/Arena passa a top-down
+   com movimento livre - secção 9 da documentação) - canto inferior
+   esquerdo, para nao sobrepor o #battle-panel centrado acima. touch-action:
+   none impede o browser de fazer scroll/zoom ao arrastar o dedo em cima.
+   O "knob" e posicionado via JS (js/main.js updateJoystickKnobPosition) -
+   a base fica sempre no mesmo sitio, so o knob se desloca dentro dela. */
+#battle-joystick {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  z-index: 5;
+}
+
+#battle-joystick.hidden { display: none; }
+
+#battle-joystick-base {
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  background: rgba(249, 244, 237, 0.12);
+  border: 2px solid rgba(249, 244, 237, 0.35);
+  touch-action: none;
+}
+
+#battle-joystick-knob {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(249, 244, 237, 0.55);
+  position: relative;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 /* ---------- Debug (admin) -------------------------------------------------- */
 
 #debug-card {
