@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.7.1",
+    title: "Chão Novo na Masmorra",
+    changes: [
+      "A arena da Masmorra ganhou um chão 3D a sério, em vez do retângulo cinzento de antes.",
+      "Novo aviso na Masmorra: esta área está em construção, o progresso pode ser perdido enquanto isso durar.",
+    ],
+  },
+  {
     version: "v2.7.0",
     title: "O Herói Ataca!",
     changes: [

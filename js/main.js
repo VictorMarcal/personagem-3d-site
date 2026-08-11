@@ -129,11 +129,19 @@ scene.add(monster);
 // aba Personagem, visivel so durante uma luta. Eixo Z faz de
 // "profundidade": o monstro fica no centro (Z=0), a personagem arranca
 // perto do fundo (Z positivo, lado mais perto da camara).
-const ARENA_WIDTH = 6;
+//
+// ARENA_WIDTH e "let" (nao "const"): comeca no tamanho do chao placeholder
+// abaixo, mas e recalculado se/quando o modelo 3D real (assets/arenaTeste.glb)
+// carregar - ver loadArenaModel mais abaixo. ARENA_DEPTH fica fixo (a
+// escala do modelo real e ajustada para bater com ele, nao o contrario -
+// mantem a câmara/o "sente-se bem" ja validados no chao placeholder).
+let ARENA_WIDTH = 6;
 const ARENA_DEPTH = 8;
 const ARENA_PLAYER_MARGIN = 0.5; // raio aproximado do modelo, para nao "entrar" nas paredes invisiveis
 const ARENA_PLAYER_START_Z = ARENA_DEPTH / 2 - 1.5;
 
+// Chao placeholder (visivel ate o modelo 3D real carregar, ou para sempre
+// se a carga falhar - ver loadArenaModel).
 const arenaFloor = new THREE.Mesh(
   new THREE.PlaneGeometry(ARENA_WIDTH, ARENA_DEPTH),
   new THREE.MeshStandardMaterial({ color: 0x24232b })
@@ -143,6 +151,51 @@ arenaFloor.position.y = 0.01; // acima do chao geral, evita z-fighting
 arenaFloor.receiveShadow = true;
 arenaFloor.visible = false;
 scene.add(arenaFloor);
+
+// Modelo 3D real da arena (2026-08-11, a pedido - "assets/arenaTeste.glb").
+// Carregado uma vez, em segundo plano, assim que o script arranca - pronto
+// muito antes de o jogador conseguir carregar em "Batalhar" pela primeira
+// vez. arenaModelReady so fica true depois de reescalado para bater com
+// ARENA_DEPTH (mantendo as proporcoes X/Z originais do modelo) e
+// recentrado/pousado no chao - so nessa altura arenaFloor (placeholder)
+// deixa de ser usado. Se a carga falhar (ficheiro em falta, erro de rede),
+// fica silenciosamente no placeholder para sempre - nunca bloqueia a luta.
+let arenaModel = null;
+let arenaModelReady = false;
+
+function loadArenaModel() {
+  new THREE.GLTFLoader().load(
+    "assets/arenaTeste.glb",
+    (gltf) => {
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      if (size.z <= 0) return; // modelo vazio/invalido, mantem o placeholder
+
+      // Escala uniforme (preserva as proporcoes do modelo) para a
+      // profundidade (Z) bater com ARENA_DEPTH - a largura resultante (X)
+      // passa a ser o novo ARENA_WIDTH, seja ela qual for.
+      const scale = ARENA_DEPTH / size.z;
+      model.scale.setScalar(scale);
+      model.position.set(0, 0, 0);
+      model.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.receiveShadow = true;
+          obj.castShadow = true;
+        }
+      });
+
+      ARENA_WIDTH = size.x * scale;
+      arenaModel = model;
+      arenaModel.visible = false;
+      scene.add(arenaModel);
+      arenaModelReady = true;
+    },
+    undefined,
+    (err) => console.warn("Falha ao carregar assets/arenaTeste.glb, mantem-se o chao placeholder.", err)
+  );
+}
+loadArenaModel();
 
 const NORMAL_CAMERA_POSITION = { x: 0, y: 1.5, z: 4 };
 // Perspetiva angulada de topo (2026-08-11, a pedido - nao e isometrica
@@ -163,7 +216,11 @@ function enterBattleView() {
   monster.position.set(0, 0, 0);
   monster.rotation.y = 0;
   monster.visible = true;
-  arenaFloor.visible = true;
+
+  // Modelo real assim que estiver pronto (loadArenaModel acima), chao
+  // placeholder ate la (ou para sempre, se a carga tiver falhado).
+  arenaFloor.visible = !arenaModelReady;
+  if (arenaModel) arenaModel.visible = arenaModelReady;
 
   camera.position.set(BATTLE_CAMERA_POSITION.x, BATTLE_CAMERA_POSITION.y, BATTLE_CAMERA_POSITION.z);
   camera.lookAt(0, 0, 0);
@@ -178,6 +235,7 @@ function exitBattleView() {
   character.rotation.y = 0;
   monster.visible = false;
   arenaFloor.visible = false;
+  if (arenaModel) arenaModel.visible = false;
 
   camera.position.set(NORMAL_CAMERA_POSITION.x, NORMAL_CAMERA_POSITION.y, NORMAL_CAMERA_POSITION.z);
   camera.lookAt(0, 1, 0);

@@ -624,6 +624,23 @@ main {
 
 .training-calories-row span { font-weight: 700; color: var(--text); }
 
+/* Aviso persistente de "em construção" (2026-08-11, a pedido - secção da
+   Masmorra enquanto a arena top-down/combate ainda estao a ser
+   trabalhados, secção 9 da documentação) - mesmo estilo do .speed-warning
+   abaixo (aviso persistente, nao um toast efemero), reutilizavel noutras
+   seccoes que venham a precisar do mesmo aviso. */
+.construction-warning {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--accent-200);
+  border: 1px solid var(--accent-400);
+  color: var(--accent-700);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
 .speed-warning {
   margin: 12px 16px 0;
   padding: 12px 14px;
