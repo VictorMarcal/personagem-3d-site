@@ -150,8 +150,12 @@ const NORMAL_CAMERA_POSITION = { x: 0, y: 1.5, z: 4 };
 // reposicionada bem mais alto e a apontar quase a direito para baixo).
 // Câmara colocada do lado da personagem (Z positivo) para o monstro, mais
 // longe no eixo Z, projetar mais ao centro do ecra e a personagem mais em
-// baixo - tal como pedido.
-const BATTLE_CAMERA_POSITION = { x: 0, y: 10, z: 5 };
+// baixo - tal como pedido. Afastada ~1.5x (2026-08-11, a pedido - "heroi e
+// monstros estao muito proximos da camara, da a sensação de ser uma arena
+// pequena") em relacao a (0,10,5) original, mesmo angulo (mesma razao
+// z/y), so mais longe - heroi/monstro ficam menores no ecra, o que por
+// contraste faz a arena parecer maior/mais espacosa.
+const BATTLE_CAMERA_POSITION = { x: 0, y: 15, z: 7.5 };
 
 function enterBattleView() {
   character.position.set(0, 0, ARENA_PLAYER_START_Z);
@@ -166,6 +170,7 @@ function enterBattleView() {
 
   joystickDirection.x = 0;
   joystickDirection.z = 0;
+  heroAttackCooldownMs = 0;
 }
 
 function exitBattleView() {
@@ -481,10 +486,63 @@ function updatePlayerMovement(dtSeconds) {
   const nextZ = character.position.z + joystickDirection.z * PLAYER_MOVE_SPEED * dtSeconds;
   character.position.x = Math.max(-halfWidth, Math.min(halfWidth, nextX));
   character.position.z = Math.max(-halfDepth, Math.min(halfDepth, nextZ));
+}
 
-  // Personagem vira-se para a direcao em que anda (o arco/escudo, so eles
-  // assimetricos no modelo placeholder - secção 3 - tornam isto visivel).
-  character.rotation.y = Math.atan2(joystickDirection.x, joystickDirection.z);
+// Heroi mira/ataca automaticamente (2026-08-11, a pedido) --------------
+//
+// isMonsterInFrustum: Frustum da CAMARA (nao um cone de visao proprio do
+// heroi - simplificacao razoavel, ja que a camara da arena olha sempre
+// para o centro dela, secção 9 da documentação) reconstruido a cada
+// chamada a partir de projectionMatrix/matrixWorldInverse - so testa o
+// PONTO central do monstro, nao a mesh inteira (suficiente aqui, so ha um
+// monstro por luta).
+const battleFrustum = new THREE.Frustum();
+const battleFrustumMatrix = new THREE.Matrix4();
+const monsterFrustumTestPoint = new THREE.Vector3();
+
+function isMonsterInFrustum() {
+  if (!monster.visible) return false;
+  battleFrustumMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  battleFrustum.setFromProjectionMatrix(battleFrustumMatrix);
+  monster.getWorldPosition(monsterFrustumTestPoint);
+  return battleFrustum.containsPoint(monsterFrustumTestPoint);
+}
+
+// O heroi aponta SEMPRE para o monstro que estiver no seu frustrum,
+// mexendo-se ou nao (2026-08-11, a pedido) - substitui a rotacao por
+// direcao de movimento que existia antes. So o arco/escudo (assimetricos
+// no modelo placeholder) tornam a rotacao visivel.
+function updateHeroFacing(monsterVisible) {
+  if (!monsterVisible) return;
+  const dx = monster.position.x - character.position.x;
+  const dz = monster.position.z - character.position.z;
+  if (dx === 0 && dz === 0) return;
+  character.rotation.y = Math.atan2(dx, dz);
+}
+
+// O heroi so ataca PARADO (2026-08-11, a pedido - mexer o joystick
+// cancela/adia o proximo disparo, tem de se largar o joystick para
+// voltar a atacar). HERO_ATTACK_INTERVAL_MS: cadencia dos disparos
+// automaticos: heroAttackCooldownMs desce a cada frame (dtSeconds) so
+// enquanto parado com o monstro a vista, reposto ao maximo assim que
+// dispara ou assim que volta a mexer-se. performHeroAttack (js/battle.js)
+// trata do dano/animacao - so chamada quando a cadencia permite.
+const HERO_ATTACK_INTERVAL_MS = 700;
+let heroAttackCooldownMs = 0;
+
+function updateHeroAutoAttack(dtSeconds, monsterVisible) {
+  if (typeof battleInProgress === "undefined" || !battleInProgress) return;
+
+  const isMoving = joystickDirection.x !== 0 || joystickDirection.z !== 0;
+  if (isMoving || !monsterVisible) {
+    heroAttackCooldownMs = 0;
+    return;
+  }
+
+  heroAttackCooldownMs -= dtSeconds * 1000;
+  if (heroAttackCooldownMs > 0) return;
+  heroAttackCooldownMs = HERO_ATTACK_INTERVAL_MS;
+  if (typeof performHeroAttack === "function") performHeroAttack();
 }
 
 // Controlado por js/profile.js: poupa GPU/bateria no telemovel enquanto a
@@ -503,6 +561,9 @@ function animate() {
 
   if (jogoViewVisible) {
     updatePlayerMovement(dtSeconds);
+    const monsterVisible = typeof battleInProgress !== "undefined" && battleInProgress && isMonsterInFrustum();
+    updateHeroFacing(monsterVisible);
+    updateHeroAutoAttack(dtSeconds, monsterVisible);
     renderer.render(scene, camera);
   }
 }

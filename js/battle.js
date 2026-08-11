@@ -135,17 +135,71 @@ function updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp) {
   battleMonsterHpTextEl.textContent = `${Math.max(0, Math.round(monsterHp))} / ${monsterMaxHp}`;
 }
 
-// Ciclo de combate por turnos TEMPORARIAMENTE DESATIVADO (2026-08-11): a
-// vista da Masmorra/Arena passou de um palco lateral fixo para uma arena
-// top-down onde a personagem anda livremente por joystick (secção 9 da
-// documentação, a pedido) - falta definir os modos de comportamento/
-// ataque do monstro nesta nova vista, por isso entrar numa luta por
-// agora so mostra a arena e liberta o movimento; o monstro fica parado,
-// sem atacar nem levar dano, e sair e sempre possivel (btnBattleBack fica
-// visivel desde logo, nao so no fim de uma luta resolvida). As funcoes de
-// calculo de dano/esquiva/critico acima (computeBattleDamage, rollDodge,
-// rollCritico, getMonsterCoinRange/awardMonsterCoins) ficam prontas para
-// serem religadas quando os modos do monstro forem definidos.
+// Estado da luta em curso, lido/escrito por performHeroAttack abaixo -
+// precisa de viver fora de startBattle (ao contrario do ciclo antigo) para
+// poder ser atualizado a partir do loop de frames de js/main.js
+// (updateHeroAutoAttack), disparado de fora da função startBattle.
+let currentCreature = null;
+let currentPlayerAtaque = 0;
+let currentPlayerLetalidade = 0;
+let currentMonsterDefesa = 0;
+let currentPlayerHp = 0;
+let currentPlayerMaxHp = 0;
+let currentMonsterHp = 0;
+let currentMonsterMaxHp = 0;
+let heroAttackInFlight = false;
+
+// Disparo automatico do heroi (2026-08-11, a pedido - "heroi ataca apenas
+// quando esta parado"): chamada por js/main.js updateHeroAutoAttack so
+// quando o joystick esta parado, o monstro esta no frustrum da camara, e a
+// cadencia (HERO_ATTACK_INTERVAL_MS, js/main.js) o permite - esta função
+// so trata do dano/animação/log, nunca decide QUANDO disparar.
+//
+// Sem esquiva do lado do monstro (rollDodge nao chamado) - os monstros
+// continuam sem Destreza propria (fora de escopo, secção 9), e sem
+// contra-ataque nenhum (modos de comportamento/ataque do monstro ainda
+// por definir). Ao chegar a 0 de Vida, o monstro so para de poder ser
+// atacado (guarda no topo) - ainda NAO ha vitoria/recompensas/persistencia
+// (markCreatureDefeated/awardMonsterCoins/checkAndUnlockAchievements),
+// fica para quando o combate for definido por completo.
+async function performHeroAttack() {
+  if (heroAttackInFlight || !currentCreature || currentMonsterHp <= 0) return;
+  heroAttackInFlight = true;
+
+  await shootArrow(bow, monsterBody);
+
+  if (rollCritico(currentPlayerLetalidade)) {
+    const critDmg = Math.round(currentPlayerAtaque * getLetalidadeMultiplicador());
+    currentMonsterHp = Math.max(0, currentMonsterHp - critDmg);
+    showFloatingCombatText(monsterHead, -critDmg, "critico");
+    setBattleLog(`Crítico! Flecha certeira em ${currentCreature.name}: -${critDmg} Vida`, "critico");
+  } else {
+    const dmgToMonster = computeBattleDamage(currentPlayerAtaque, currentMonsterDefesa);
+    currentMonsterHp = Math.max(0, currentMonsterHp - dmgToMonster);
+    showFloatingCombatText(monsterHead, -dmgToMonster, "damage");
+    setBattleLog(`Acertaste uma flecha em ${currentCreature.name}: -${dmgToMonster} Vida`);
+  }
+
+  updateBattleBars(currentPlayerHp, currentPlayerMaxHp, currentMonsterHp, currentMonsterMaxHp);
+
+  if (currentMonsterHp <= 0) {
+    setBattleLog(`${currentCreature.name} ficou sem Vida! (vitória/recompensas ainda por implementar)`);
+  }
+
+  heroAttackInFlight = false;
+}
+
+// Ciclo de combate por turnos ORIGINAL fica TEMPORARIAMENTE DESATIVADO
+// (2026-08-11): a vista da Masmorra/Arena passou de um palco lateral fixo
+// para uma arena top-down onde o heroi anda livremente por joystick
+// (secção 9 da documentação, a pedido). O heroi ja ataca sozinho quando
+// esta parado com o monstro a vista (performHeroAttack abaixo, chamada
+// por js/main.js updateHeroAutoAttack) - mas o monstro continua idle, sem
+// atacar nem esquivar (rollDodge nunca chamado do lado dele, os modos de
+// comportamento/ataque dele ainda nao foram definidos), e nao ha
+// vitoria/recompensas ainda quando a Vida dele chega a 0 (so para de se
+// poder atacar - ver performHeroAttack). Sair continua sempre possivel
+// (btnBattleBack visivel desde logo, nao so no fim de uma luta resolvida).
 async function startBattle(creature) {
   if (battleInProgress) return;
 
@@ -169,11 +223,18 @@ async function startBattle(creature) {
   // a luta - Ataque/Defesa ficam sempre desconhecidos.
   markCreatureEncountered(creature.level);
 
-  // Mostradas so para referencia (secção 9) - nenhum dano e calculado
-  // enquanto o ciclo de combate estiver desativado, ver nota acima.
-  const playerMaxHp = computePlayerVida(getEffectiveInvestableStatLevel("energia"));
-  const monsterMaxHp = computeCreatureStatValue("vida", creature);
-  const playerHp = getCurrentHp(playerMaxHp);
+  // Estado lido por performHeroAttack (chamada a partir do loop de frames
+  // de js/main.js, fora desta função) - ver comentario acima de
+  // currentCreature.
+  currentCreature = creature;
+  currentPlayerAtaque = computePlayerAtaque(getEffectiveInvestableStatLevel("forca"));
+  currentPlayerLetalidade = computeLetalidadeChance(getEffectiveInvestableStatLevel("forca"));
+  currentMonsterDefesa = computeCreatureStatValue("defesa", creature);
+  currentPlayerMaxHp = computePlayerVida(getEffectiveInvestableStatLevel("energia"));
+  currentMonsterMaxHp = computeCreatureStatValue("vida", creature);
+  currentPlayerHp = getCurrentHp(currentPlayerMaxHp);
+  currentMonsterHp = currentMonsterMaxHp;
+  heroAttackInFlight = false;
 
   characterHudEl.classList.add("hidden");
   battleResultEl.textContent = "";
@@ -195,8 +256,8 @@ async function startBattle(creature) {
   viewerEl.classList.add("battle-fullscreen");
   onResize();
   enterBattleView();
-  updateBattleBars(playerHp, playerMaxHp, monsterMaxHp, monsterMaxHp);
-  setBattleLog("Explora a arena com o joystick - o combate chega em breve.");
+  updateBattleBars(currentPlayerHp, currentPlayerMaxHp, currentMonsterHp, currentMonsterMaxHp);
+  setBattleLog("Para de andar para disparares uma flecha.");
 }
 
 function endBattle() {
@@ -204,6 +265,7 @@ function endBattle() {
   battlePanelEl.classList.add("hidden");
   battleJoystickEl.classList.add("hidden");
   characterHudEl.classList.remove("hidden");
+  currentCreature = null;
 
   viewerEl.classList.remove("battle-fullscreen");
   onResize();

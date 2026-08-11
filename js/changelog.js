@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.7.0",
+    title: "O Herói Ataca!",
+    changes: [
+      "Câmara da arena mais afastada — deixa de parecer tão apertada.",
+      "O herói passa a mirar sempre o monstro à vista e a disparar sozinho quando estás parado — anda com o joystick para reposicionares, para para atacares.",
+      "O monstro ainda não ataca de volta nem há recompensas ao derrotá-lo — isso chega numa próxima atualização.",
+    ],
+  },
+  {
     version: "v2.6.0",
     title: "Nova Arena da Masmorra",
     changes: [
