@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.7.4",
+    title: "Limpeza do Modelo do Herói",
+    changes: [
+      "Removidas as formas geométricas antigas que ainda estavam por baixo do modelo novo do herói.",
+      "Tocar no modelo 3D deixa de abrir os popups de evolução de equipamento — usa os botões Arco/Escudo/Armadura no topo do ecrã (já faziam a mesma coisa).",
+    ],
+  },
+  {
     version: "v2.7.3",
     title: "Herói com Modelo 3D Real",
     changes: [

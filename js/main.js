@@ -37,81 +37,40 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
-// Placeholder do personagem: capsula representando um humanoide
+// Heroi: grupo que recebe o modelo 3D real (assets/Hero.glb, carregado
+// abaixo). `body`/`head`/`bow` deixaram de ser meshes com geometria
+// propria (2026-08-11, a pedido - "remove o placeholder de heroi que
+// tinhamos, agora usamos a mesh original") - ficam como THREE.Object3D
+// simples (sem geometria/material, invisiveis por natureza), so como
+// pontos de referencia de posicao usados por outros sistemas: `head` por
+// showFloatingCombatText (aqui e em js/equipment.js, regeneracao fora de
+// combate) e pela comparacao "e a cabeca do jogador?"; `bow` como origem
+// da flecha em shootArrow (js/battle.js performHeroAttack). O clique-
+// para-evoluir equipamento no modelo 3D (raycasting contra body/bow/
+// shield) foi removido junto com o placeholder - os botoes da mini-lista
+// (#equipment-mini-weapon/shield/armor, js/equipment.js) ja abriam os
+// mesmos popups e continuam a ser o unico caminho agora.
 const character = new THREE.Group();
 
-const body = new THREE.Mesh(
-  new THREE.CapsuleGeometry(0.4, 1.2, 4, 16),
-  new THREE.MeshStandardMaterial({ color: 0x4a90d9 })
-);
+const body = new THREE.Object3D();
 body.position.y = 1;
-body.castShadow = true;
 character.add(body);
 
-const head = new THREE.Mesh(
-  new THREE.SphereGeometry(0.3, 16, 16),
-  new THREE.MeshStandardMaterial({ color: 0xe0b090 })
-);
+const head = new THREE.Object3D();
 head.position.y = 1.9;
-head.castShadow = true;
 character.add(head);
 
-// Equipamentos placeholder, clicaveis para evoluir os status investidos
-// (Energia/Forca/Resistencia - secção 7 da documentação; Foco nao tem
-// peca 3D propria, so o botao "+" do HUD)
-body.userData.equipType = "energia"; // armadura = corpo
-
-// Arco (2026-08-11, era uma espada - personagem passou a arqueiro, secção
-// 9 da documentação): arco parcial de TorusGeometry (a "corda" - abaixo -
-// fecha a abertura entre as duas pontas, dando a silhueta reconhecivel de
-// um arco). BOW_ARC centrado em 0deg (eixo +X local) para as pontas
-// ficarem simetricas acima/abaixo, arqueadas para a frente do personagem.
-const BOW_ARC = Math.PI * (5 / 6); // 150deg
-const bow = new THREE.Mesh(
-  new THREE.TorusGeometry(0.42, 0.035, 8, 24, BOW_ARC),
-  new THREE.MeshStandardMaterial({ color: 0x6b3f1d })
-);
+const bow = new THREE.Object3D();
 bow.position.set(0.55, 1.1, 0);
-bow.rotation.z = -BOW_ARC / 2;
-bow.castShadow = true;
-bow.userData.equipType = "forca";
 character.add(bow);
-
-// Corda do arco - so decorativa, nao entra em equipmentMeshes (nao reage a
-// cliques), liga as duas pontas do arco acima (raio 0.42, arco de 150deg
-// centrado em 0deg -> pontas em +-75deg, ver calculo no comentario acima).
-const bowStringTipY = 0.42 * Math.sin(BOW_ARC / 2);
-const bowString = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.008, 0.008, 2 * bowStringTipY, 6),
-  new THREE.MeshStandardMaterial({ color: 0xe8e0c8 })
-);
-bowString.position.set(0.55 + 0.42 * Math.cos(BOW_ARC / 2), 1.1, 0);
-character.add(bowString);
-
-const shield = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.28, 0.28, 0.08, 16),
-  new THREE.MeshStandardMaterial({ color: 0x8a5a2b })
-);
-shield.position.set(-0.55, 1.1, 0);
-shield.rotation.x = Math.PI / 2;
-shield.castShadow = true;
-shield.userData.equipType = "resistencia";
-character.add(shield);
 
 scene.add(character);
 
 // Modelo 3D real do heroi (2026-08-11, a pedido - "assets/Hero.glb").
 // Mesh unica sem esqueleto vinculado (sem animacoes), altura (~2 unidades)
-// e base (min.y=0) ja muito proximas do placeholder acima, por isso
+// e base (min.y=0) ja muito proximas do placeholder antigo, por isso
 // usada sem reescalar - so adicionada como filho de `character` (herda
 // posicao/rotacao automaticamente, incl. no movimento/mira da arena).
-// Corpo/arco/escudo placeholder ficam invisiveis (opacidade 0, NAO
-// visible=false) assim que o modelo real estiver pronto - o raycasting
-// do Three.js ignora objetos com visible=false, por isso continuam
-// visible=true para o clique em cada peca (abrir popup de evolucao,
-// equipmentMeshes mais abaixo) continuar a funcionar exatamente como
-// antes, so deixam de aparecer visualmente. A cabeca (nao esta em
-// equipmentMeshes) fica simplesmente escondida.
 let heroModel = null;
 let heroModelReady = false;
 
@@ -129,16 +88,9 @@ function loadHeroModel() {
       character.add(model);
       heroModel = model;
       heroModelReady = true;
-
-      head.visible = false;
-      bowString.visible = false; // so decorativa, pode ficar visible=false (nunca foi raycastable)
-      [body, bow, shield].forEach((mesh) => {
-        mesh.material.transparent = true;
-        mesh.material.opacity = 0;
-      });
     },
     undefined,
-    (err) => console.warn("Falha ao carregar assets/Hero.glb, mantem-se o placeholder.", err)
+    (err) => console.warn("Falha ao carregar assets/Hero.glb.", err)
   );
 }
 loadHeroModel();
@@ -418,51 +370,21 @@ window.addEventListener("resize", onResize);
 const ROTATE_SPEED = 0.01; // radianos por pixel arrastado
 let isDragging = false;
 let lastPointerX = 0;
-let pointerDownX = 0;
-let pointerDownY = 0;
-
-// Selecao de equipamento por toque/clique (sem arrastar)
-const TAP_MAX_MOVEMENT_PX = 6;
-const raycaster = new THREE.Raycaster();
-const pointerNDC = new THREE.Vector2();
-const equipmentMeshes = [body, bow, shield];
-
-function raycastEquipmentAt(clientX, clientY) {
-  if (typeof battleInProgress !== "undefined" && battleInProgress) return;
-
-  const rect = canvas.getBoundingClientRect();
-  pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-  pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-
-  raycaster.setFromCamera(pointerNDC, camera);
-  const hits = raycaster.intersectObjects(equipmentMeshes, false);
-  if (hits.length === 0 || !hits[0].object.userData.equipType) return;
-
-  // As 3 pecas tem tabela de tiers/custo por nivel de melhoria (secção 7 da
-  // documentação) - clicar em qualquer uma abre o popup de evolucao com
-  // moedas. Pontos em Energia/Força/Resistência continuam so pelo "+" do
-  // HUD (js/equipment.js btnHudUpgradeByType), nao pelo clique no modelo 3D.
-  const equipType = hits[0].object.userData.equipType;
-  if (equipType === "forca") {
-    openWeaponUpgradeModal();
-  } else if (equipType === "resistencia") {
-    openShieldUpgradeModal();
-  } else if (equipType === "energia") {
-    openArmorUpgradeModal();
-  }
-}
 
 // Arrastar para rodar a personagem so fora de luta (2026-08-11) - dentro
 // da Masmorra/Arena, character.rotation.y passa a ser controlado pela
 // direcao do movimento (ver updatePlayerMovement abaixo); sem esta guarda,
 // arrastar no ecra durante uma luta rodava a personagem por cima do
 // movimento do joystick.
+//
+// Clique-para-evoluir equipamento no modelo 3D removido (2026-08-11,
+// junto com o placeholder - ver comentario acima de `character`): os
+// botoes da mini-lista (#equipment-mini-weapon/shield/armor) ja abriam os
+// mesmos popups e continuam a ser o unico caminho agora.
 canvas.addEventListener("pointerdown", (event) => {
   if (typeof battleInProgress !== "undefined" && battleInProgress) return;
   isDragging = true;
   lastPointerX = event.clientX;
-  pointerDownX = event.clientX;
-  pointerDownY = event.clientY;
   canvas.setPointerCapture(event.pointerId);
 });
 
@@ -476,11 +398,6 @@ canvas.addEventListener("pointermove", (event) => {
 canvas.addEventListener("pointerup", (event) => {
   isDragging = false;
   canvas.releasePointerCapture(event.pointerId);
-
-  const movedDistance = Math.hypot(event.clientX - pointerDownX, event.clientY - pointerDownY);
-  if (movedDistance < TAP_MAX_MOVEMENT_PX) {
-    raycastEquipmentAt(event.clientX, event.clientY);
-  }
 });
 
 canvas.addEventListener("pointercancel", () => {
