@@ -201,6 +201,98 @@ let sessionStartTime = null; // usado para conquistas de ritmo (ex: 5km em menos
 let sessionCaloriesKcal = 0;
 let currentNominalSpeedMps = 0;
 
+// --- Diagnostico do sinal de GPS (2026-08-11, secção 4.2) -----------------
+//
+// Contadores por sessao, gravados em training_sessions.gps_diag (jsonb).
+// Existem porque, ao comparar uma caminhada real com um relogio desportivo,
+// nao havia forma nenhuma de saber ONDE se perdia distancia - a app so
+// guardava o resultado final, nunca a qualidade do sinal que o produziu.
+// Sem isto, qualquer afinacao dos filtros (precisao/movimento minimo) seria
+// um palpite. maxGapMs e o maior intervalo entre leituras consecutivas
+// entregues pelo browser: e o indicador direto de suspensao em segundo
+// plano (ecra bloqueado/troca de app), a principal fraqueza estrutural de
+// um tracker em browser face a uma app nativa - ver requestWakeLock abaixo.
+let gpsDiag = null;
+let lastReadingTimestamp = null;
+
+function resetGpsDiag() {
+  gpsDiag = {
+    leituras: 0,            // total entregue por watchPosition
+    rejeitadasPrecisao: 0,  // accuracy pior que getMaxAccuracyM()
+    rejeitadasVelocidade: 0,// acima do teto de seguranca (getMaxSafeSpeedKmh)
+    abaixoMovimentoMin: 0,  // segmento < getMinMovementM(), nao creditado
+    creditadas: 0,          // segmentos que somaram distancia/calorias
+    paradoIgnorado: 0,      // classificado "parado" (pausa automatica)
+    maxGapMs: 0,            // maior intervalo entre leituras consecutivas
+    somaPrecisaoM: 0,       // para a media de precisao no fim
+  };
+  lastReadingTimestamp = null;
+}
+resetGpsDiag();
+
+// Media de precisao so faz sentido sobre as leituras que chegaram a ser
+// contabilizadas - devolve null numa sessao sem leituras nenhumas.
+function buildGpsDiagRecord() {
+  if (!gpsDiag || gpsDiag.leituras === 0) return null;
+  return {
+    ...gpsDiag,
+    precisaoMediaM: Math.round((gpsDiag.somaPrecisaoM / gpsDiag.leituras) * 10) / 10,
+    maxGapS: Math.round(gpsDiag.maxGapMs / 100) / 10,
+    // Config em vigor na altura - sem isto, um diagnostico antigo fica
+    // impossivel de interpretar depois de alguem mexer no card de Debug.
+    config: {
+      maxAccuracyM: getMaxAccuracyM(),
+      minMovementM: getMinMovementM(),
+      maxSafeSpeedKmh: getMaxSafeSpeedKmh(),
+    },
+  };
+}
+
+// --- Wake Lock (2026-08-11, secção 4.2) ------------------------------------
+//
+// Com o ecra bloqueado ou a app em segundo plano, o browser suspende as
+// leituras de geolocalizacao - distancia real percorrida nesse periodo
+// desaparece por completo, sem aviso nenhum. E a diferenca estrutural mais
+// relevante entre este tracker (browser) e uma app nativa de relogio.
+// A Screen Wake Lock API mantem o ecra ligado enquanto o treino decorre.
+// Nao existe em todos os browsers (Safari/iOS so a partir de 16.4) e pode
+// ser recusada pelo sistema (bateria fraca) - por isso e sempre
+// best-effort, nunca bloqueia o treino se falhar.
+let wakeLockSentinel = null;
+
+async function requestWakeLock() {
+  if (!("wakeLock" in navigator)) return;
+  try {
+    wakeLockSentinel = await navigator.wakeLock.request("screen");
+    // O proprio sistema liberta o lock sempre que a pagina fica escondida;
+    // este handler so limpa a referencia, quem o volta a pedir e o
+    // listener de visibilitychange abaixo.
+    wakeLockSentinel.addEventListener("release", () => {
+      wakeLockSentinel = null;
+    });
+  } catch (e) {
+    console.warn("Wake Lock recusado, o ecra pode desligar-se durante o treino.", e);
+  }
+}
+
+async function releaseWakeLock() {
+  if (!wakeLockSentinel) return;
+  try {
+    await wakeLockSentinel.release();
+  } catch (e) {
+    // ja libertado pelo sistema, nada a fazer
+  }
+  wakeLockSentinel = null;
+}
+
+// Reclama o lock ao voltar ao primeiro plano - sem isto, bloquear o ecra
+// uma vez desligava a protecao para o resto do treino.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && watchId !== null) {
+    requestWakeLock();
+  }
+});
+
 // Soma vitalicia (nao so desta sessao) de distancia descartada por exceder
 // MAX_SPEED_KMH - nunca conta para XP/leaderboard, so para o jogador ver
 // quanto ficou de fora. Sincronizada com o Supabase como o resto do
@@ -230,6 +322,7 @@ function hideSpeedWarning() {
 const caloriesEl = document.getElementById("training-calories");
 const liveStatsEl = document.getElementById("training-live-stats");
 const detectedActivityEl = document.getElementById("training-detected-activity");
+const gpsDiagEl = document.getElementById("training-gps-diag");
 
 // Relogio + velocidade nominal/media ao vivo, por baixo da distancia
 // percorrida (2026-08-06, a pedido - antes so existiam no fim da sessao,
@@ -244,6 +337,27 @@ function updateLiveStatsDisplay() {
   liveStatsEl.textContent =
     `${formatDurationClock(elapsedSeconds)} · nominal ${formatSpeedKmh(currentNominalSpeedMps)} · média ${formatSpeedKmh(avgSpeedMps)}`;
   detectedActivityEl.textContent = `Atividade detetada: ${ACTIVITY_LABEL_PT[currentActiveMode] || "—"}`;
+  updateGpsDiagDisplay();
+}
+
+// Diagnostico ao vivo (secção 4.2) - so para admin (mesmo criterio do card
+// de Debug, js/auth.js applyAdminGate), para um jogador normal nunca ver
+// contadores tecnicos. Serve para poder olhar para o telemovel a MEIO de
+// uma caminhada e perceber logo se ha leituras a ser rejeitadas ou gaps
+// grandes, sem esperar pelo fim da sessao.
+function updateGpsDiagDisplay() {
+  if (!gpsDiagEl) return;
+  const isAdmin = typeof currentProfile !== "undefined" && currentProfile && currentProfile.is_admin;
+  if (!isAdmin || !gpsDiag) {
+    gpsDiagEl.classList.add("hidden");
+    return;
+  }
+  gpsDiagEl.classList.remove("hidden");
+  const wake = !("wakeLock" in navigator) ? "n/d" : wakeLockSentinel ? "on" : "off";
+  gpsDiagEl.textContent =
+    `GPS ${gpsDiag.leituras} · ok ${gpsDiag.creditadas} · <mín ${gpsDiag.abaixoMovimentoMin}` +
+    ` · precisão ${gpsDiag.rejeitadasPrecisao} · veloc. ${gpsDiag.rejeitadasVelocidade}` +
+    ` · parado ${gpsDiag.paradoIgnorado} · gap máx ${(gpsDiag.maxGapMs / 1000).toFixed(0)}s · ecrã ${wake}`;
 }
 
 let liveStatsIntervalId = null;
@@ -417,7 +531,21 @@ function onPositionUpdate(position) {
   const { latitude, longitude, accuracy } = position.coords;
   const timestamp = position.timestamp;
 
+  // Diagnostico (secção 4.2) - conta TODAS as leituras entregues pelo
+  // browser, incluindo as rejeitadas mais abaixo. O gap e medido aqui, no
+  // topo, para apanhar tambem periodos em que so chegaram leituras
+  // imprecisas (senao um periodo inteiro rejeitado por precisao passava
+  // despercebido).
+  gpsDiag.leituras += 1;
+  gpsDiag.somaPrecisaoM += accuracy != null ? accuracy : 0;
+  if (lastReadingTimestamp !== null) {
+    const gapMs = timestamp - lastReadingTimestamp;
+    if (gapMs > gpsDiag.maxGapMs) gpsDiag.maxGapMs = gapMs;
+  }
+  lastReadingTimestamp = timestamp;
+
   if (accuracy != null && accuracy > getMaxAccuracyM()) {
+    gpsDiag.rejeitadasPrecisao += 1;
     return; // leitura pouco confiavel, ignora
   }
 
@@ -445,6 +573,7 @@ function onPositionUpdate(position) {
       // criar uma "bola de neve" (secção 4 da documentação) - com a ancora
       // a avancar sempre, cada leitura e comparada com a mais recente.
       consecutiveSpeedViolations += 1;
+      gpsDiag.rejeitadasVelocidade += 1;
       if (consecutiveSpeedViolations >= SPEED_VIOLATION_GRACE_READINGS) {
         addToDiscardedSpeedDistance(segmentM);
         showSpeedWarning();
@@ -495,6 +624,7 @@ function onPositionUpdate(position) {
       // ancora (antes so a deteccao de atividade fazia isto, via
       // lastPosition acima) para o tempo parado nunca "vazar" para dentro
       // de um credito futuro.
+      gpsDiag.paradoIgnorado += 1;
       lastCountedPosition = { latitude, longitude, timestamp };
     } else {
       const distanceSegmentM = haversineDistance(
@@ -517,9 +647,12 @@ function onPositionUpdate(position) {
         totalDistanceM += distanceSegmentM;
         sessionCaloriesKcal += computeSegmentCalories(currentActiveMode, creditedSpeedKmh, creditedDurationSeconds);
         modeTimeAccumMs[currentActiveMode] = (modeTimeAccumMs[currentActiveMode] || 0) + creditedDurationSeconds * 1000;
+        gpsDiag.creditadas += 1;
         updateDistanceDisplay();
         checkCoinDropsForDistance(totalDistanceM);
         lastCountedPosition = { latitude, longitude, timestamp };
+      } else {
+        gpsDiag.abaixoMovimentoMin += 1;
       }
     }
   }
@@ -550,6 +683,7 @@ function beginWatch() {
     refreshTabLock(STORAGE_KEY_TRAINING_TAB_LOCK);
   }, SAVE_INTERVAL_MS);
   startLiveStatsTicker();
+  requestWakeLock();
 }
 
 function showTrainingScreen() {
@@ -628,6 +762,7 @@ function beginTrainingSession() {
   pendingMode = null;
   pendingModeSinceMs = null;
   modeTimeAccumMs = { caminhar: 0, correr: 0, bicicleta: 0 };
+  resetGpsDiag();
   updateDistanceDisplay();
   showTrainingScreen();
 
@@ -655,6 +790,7 @@ function stopTraining() {
     saveIntervalId = null;
   }
   stopLiveStatsTicker();
+  releaseWakeLock();
 
   const sessionDistanceM = totalDistanceM;
   const sessionDominantMode = getDominantMode();
@@ -681,6 +817,8 @@ function stopTraining() {
       mode: sessionDominantMode,
       duration_seconds: sessionDurationSeconds,
       calories_kcal: sessionCalories,
+      // Diagnostico do sinal (secção 4.2) - null numa sessao sem leituras.
+      gps_diag: buildGpsDiagRecord(),
     });
 
     // Calorias (2026-08-10, secção 5) sao o que conta para XP/pontos/

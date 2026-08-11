@@ -624,6 +624,18 @@ main {
 
 .training-calories-row span { font-weight: 700; color: var(--text); }
 
+/* Diagnostico do sinal de GPS ao vivo (2026-08-11, secção 4.2) - so
+   visivel para admin, deliberadamente discreto/monoespacado: e uma
+   ferramenta de diagnostico, nao informacao de jogo. */
+.training-gps-diag {
+  margin-top: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted-2);
+  word-break: break-word;
+}
+
 /* Aviso persistente de "em construção" (2026-08-11, a pedido - secção da
    Masmorra enquanto a arena top-down/combate ainda estao a ser
    trabalhados, secção 9 da documentação) - mesmo estilo do .speed-warning

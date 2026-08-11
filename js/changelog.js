@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.9.0",
+    title: "Ecrã Não Adormece Durante o Treino",
+    changes: [
+      "O ecrã passa a manter-se ligado enquanto treinas — antes, se bloqueasses o telemóvel, o browser suspendia o GPS e a distância desse período perdia-se.",
+      "Cada treino passa a registar a qualidade do sinal de GPS, para se perceber onde (e se) se perde distância.",
+    ],
+  },
+  {
     version: "v2.8.2",
     title: "Correção: Calorias Infladas ao Ficar Parado",
     changes: [

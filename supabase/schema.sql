@@ -361,6 +361,14 @@ where l.lifetime_calories_kcal = 0;
 -- best_session_distance_m - calorias ja normalizam esforco entre modos).
 alter table public.player_progress add column if not exists best_session_calories_kcal numeric not null default 0;
 
+-- Migracao (2026-08-11, secção 4.2 da documentação): diagnostico do sinal de
+-- GPS por sessao. Coluna unica jsonb em vez de varias colunas - o conjunto de
+-- contadores ainda esta a ser definido (existe precisamente para descobrir
+-- onde se perde distancia numa caminhada real), e uma coluna flexivel evita
+-- uma migracao por cada contador novo. Nullable: sessoes anteriores a esta
+-- data, e sessoes sem leituras nenhumas, ficam a NULL.
+alter table public.training_sessions add column if not exists gps_diag jsonb;
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):
