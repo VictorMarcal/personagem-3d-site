@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.7.2",
+    title: "Câmara da Arena Mais Dramática",
+    changes: [
+      "A câmara da Masmorra desce e aproxima-se — ângulo mais baixo, herói bem maior no ecrã, menos vista de \"drone\".",
+    ],
+  },
+  {
     version: "v2.7.1",
     title: "Chão Novo na Masmorra",
     changes: [

@@ -198,17 +198,27 @@ function loadArenaModel() {
 loadArenaModel();
 
 const NORMAL_CAMERA_POSITION = { x: 0, y: 1.5, z: 4 };
-// Perspetiva angulada de topo (2026-08-11, a pedido - nao e isometrica
-// "verdadeira"/ortografica, mantem a PerspectiveCamera existente so
-// reposicionada bem mais alto e a apontar quase a direito para baixo).
-// Câmara colocada do lado da personagem (Z positivo) para o monstro, mais
-// longe no eixo Z, projetar mais ao centro do ecra e a personagem mais em
-// baixo - tal como pedido. Afastada ~1.5x (2026-08-11, a pedido - "heroi e
-// monstros estao muito proximos da camara, da a sensação de ser uma arena
-// pequena") em relacao a (0,10,5) original, mesmo angulo (mesma razao
-// z/y), so mais longe - heroi/monstro ficam menores no ecra, o que por
-// contraste faz a arena parecer maior/mais espacosa.
-const BATTLE_CAMERA_POSITION = { x: 0, y: 15, z: 7.5 };
+const NORMAL_CAMERA_FOV = 45;
+// Perspetiva angulada de topo (nao e isometrica "verdadeira"/ortografica,
+// mantem a PerspectiveCamera existente so reposicionada/reangulada).
+// Câmara do lado da personagem (Z positivo) para o monstro, mais longe no
+// eixo Z, projetar mais ao centro do ecra e a personagem mais em baixo -
+// tal como pedido. **Reafinada (2026-08-11, comparado a referencias tipo
+// Archero, a pedido - "a nossa camara ainda nao me convence")**: o
+// angulo/distancia anteriores ((0,15,7.5), ~63° a partir da horizontal -
+// quase topo puro) tinham sido afastados uma vez para a arena nao parecer
+// pequena (pedido anterior no mesmo dia), mas isso deixou tudo demasiado
+// "achatado"/distante, sem o efeito dramatico de jogos de referencia como
+// o Archero (angulo bem mais raso, personagem maior no ecra). Baixada
+// para (0,10,10) - 45° a partir da horizontal - e FOV proprio da luta
+// (BATTLE_CAMERA_FOV=55, maior que o normal) para reforcar a perspetiva -
+// heroi fica ~2x maior no ecra (verificado por projecao NDC, nao so a
+// olho). Testado a caber dentro da largura em varios racios de ecra
+// moveis (incl. 375×812, o mais estreito comum) antes de escolher estes
+// valores - um angulo/FOV mais dramaticos ainda (testados: 45°/52° e
+// 45°/50°) cortavam os cantos da arena fora do ecra em telas estreitas.
+const BATTLE_CAMERA_POSITION = { x: 0, y: 10, z: 10 };
+const BATTLE_CAMERA_FOV = 55;
 
 function enterBattleView() {
   character.position.set(0, 0, ARENA_PLAYER_START_Z);
@@ -222,6 +232,8 @@ function enterBattleView() {
   arenaFloor.visible = !arenaModelReady;
   if (arenaModel) arenaModel.visible = arenaModelReady;
 
+  camera.fov = BATTLE_CAMERA_FOV;
+  camera.updateProjectionMatrix();
   camera.position.set(BATTLE_CAMERA_POSITION.x, BATTLE_CAMERA_POSITION.y, BATTLE_CAMERA_POSITION.z);
   camera.lookAt(0, 0, 0);
 
@@ -237,6 +249,8 @@ function exitBattleView() {
   arenaFloor.visible = false;
   if (arenaModel) arenaModel.visible = false;
 
+  camera.fov = NORMAL_CAMERA_FOV;
+  camera.updateProjectionMatrix();
   camera.position.set(NORMAL_CAMERA_POSITION.x, NORMAL_CAMERA_POSITION.y, NORMAL_CAMERA_POSITION.z);
   camera.lookAt(0, 1, 0);
 }
