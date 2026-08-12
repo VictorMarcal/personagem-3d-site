@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.9.1",
+    title: "Equipamento nas Mãos Certas",
+    changes: [
+      "O arco e o escudo passam a ser colocados nos pontos definidos no próprio modelo 3D, em vez de posições aproximadas — as flechas saem agora da mão do herói.",
+      "Novo modelo do herói (ainda em progresso).",
+    ],
+  },
+  {
     version: "v2.9.0",
     title: "Ecrã Não Adormece Durante o Treino",
     changes: [

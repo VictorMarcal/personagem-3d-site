@@ -66,13 +66,30 @@ character.add(bow);
 
 scene.add(character);
 
-// Modelo 3D real do heroi (2026-08-11, a pedido - "assets/Hero.glb").
-// Mesh unica sem esqueleto vinculado (sem animacoes), altura (~2 unidades)
-// e base (min.y=0) ja muito proximas do placeholder antigo, por isso
-// usada sem reescalar - so adicionada como filho de `character` (herda
-// posicao/rotacao automaticamente, incl. no movimento/mira da arena).
+// Modelo 3D real do heroi (2026-08-11, a pedido - "assets/Hero.glb"),
+// adicionado como filho de `character` (herda posicao/rotacao
+// automaticamente, incl. no movimento/mira da arena).
 let heroModel = null;
 let heroModelReady = false;
+// Pontos de encaixe do equipamento definidos NO PROPRIO MODELO (Empties
+// exportados no glTF, 2026-08-12) - substituem as coordenadas fixas que
+// estavam no codigo, que eram um palpite. Ver attachEquipmentToSlots.
+let slotBow = null;
+let slotShield = null;
+
+// Centra o modelo na origem em X/Z e assenta-o no chao (Y=0). O export
+// pode vir deslocado (o de 2026-08-12 veio centrado em X~4.35, porque a
+// personagem nao estava na origem na cena de Blender) - sem isto, como
+// `character` roda sobre si proprio para mirar, o modelo orbitaria em
+// torno de um ponto a varias unidades de distancia. Aplicado ao modelo,
+// nao as meshes: os Empties dos slots sao filhos dele e acompanham.
+function centerAndGroundModel(model) {
+  const box = new THREE.Box3().setFromObject(model);
+  const center = box.getCenter(new THREE.Vector3());
+  model.position.x -= center.x;
+  model.position.z -= center.z;
+  model.position.y -= box.min.y;
+}
 
 function loadHeroModel() {
   new THREE.GLTFLoader().load(
@@ -86,8 +103,21 @@ function loadHeroModel() {
         }
       });
       character.add(model);
+      centerAndGroundModel(model);
       heroModel = model;
       heroModelReady = true;
+
+      slotBow = model.getObjectByName("SlotBow") || null;
+      slotShield = model.getObjectByName("SlotShield") || null;
+
+      // Ancora dos numeros flutuantes (dano/cura) por cima da cabeca -
+      // segue a altura REAL do modelo em vez do 1.9 fixo do placeholder
+      // antigo, senao os numeros ficam a flutuar longe demais quando o
+      // modelo muda de tamanho entre exports.
+      const box = new THREE.Box3().setFromObject(model);
+      head.position.y = box.max.y + 0.15;
+
+      attachEquipmentToSlots();
     },
     undefined,
     (err) => console.warn("Falha ao carregar assets/Hero.glb.", err)
@@ -95,11 +125,34 @@ function loadHeroModel() {
 }
 loadHeroModel();
 
+// Encaixa arco/escudo nos Empties do modelo, herdando posicao E rotacao
+// definidas em Blender. Chamada depois de CADA carregamento (heroi, arco,
+// escudo) porque a ordem de chegada nao e garantida - a primeira chamada
+// que encontrar os dois lados ja emparelhados faz o encaixe. Se o modelo
+// vier sem os Empties, nada acontece e as pecas ficam nas coordenadas
+// fixas de recurso definidas mais abaixo (nao parte nada).
+function attachEquipmentToSlots() {
+  if (slotBow && bow.parent !== slotBow) {
+    // `bow` e a ancora usada como origem da flecha (shootArrow) - passa a
+    // viver dentro do slot, com transformacao local zerada, para herdar
+    // exatamente o que foi definido no modelo.
+    slotBow.add(bow);
+    bow.position.set(0, 0, 0);
+    bow.rotation.set(0, 0, 0);
+  }
+  if (slotShield && shieldModel && shieldModel.parent !== slotShield) {
+    slotShield.add(shieldModel);
+    shieldModel.position.set(0, 0, 0);
+    shieldModel.rotation.set(0, 0, 0);
+  }
+}
+
 // Escudo 3D real (2026-08-11, a pedido - "assets/Shield.glb"). Disco fino
 // (~0.45 unidades de diametro) centrado na propria origem, sem rotacao
-// nenhuma de fabrica - colocado na mesma posicao/lado que o escudo
-// placeholder antigo ocupava (mao esquerda do heroi, lado oposto ao arco
-// em `bow` acima), sem reescalar (tamanho ja parece plausivel para a mao).
+// nenhuma de fabrica. A posicao (-0.55, 1.1, 0) e so um RECURSO para o
+// caso de o modelo do heroi vir sem o Empty "SlotShield" - quando ele
+// existe, attachEquipmentToSlots re-parenta o escudo para la e esta
+// posicao deixa de ter efeito.
 let shieldModel = null;
 let shieldModelReady = false;
 
@@ -118,6 +171,7 @@ function loadShieldModel() {
       character.add(model);
       shieldModel = model;
       shieldModelReady = true;
+      attachEquipmentToSlots();
     },
     undefined,
     (err) => console.warn("Falha ao carregar assets/Shield.glb.", err)
@@ -150,6 +204,7 @@ function loadBowModel() {
       bow.add(model);
       bowModel = model;
       bowModelReady = true;
+      attachEquipmentToSlots();
     },
     undefined,
     (err) => console.warn("Falha ao carregar assets/Bow.glb.", err)
