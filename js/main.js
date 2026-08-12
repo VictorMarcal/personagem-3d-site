@@ -23,8 +23,14 @@ renderer.shadowMap.enabled = true;
 const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
 scene.add(hemiLight);
 
+// Luz principal DE FRENTE para o heroi (2026-08-12, a pedido - estava em
+// (3, 5, 2), sobretudo de cima e do lado direito, o que deixava a frente
+// do modelo na sombra). O heroi olha para +Z em repouso, e as duas camaras
+// (normal e da arena) estao tambem do lado +Z - por isso a luz aqui
+// ilumina o que se ve, nas duas vistas. Mantem alguma elevacao (Y) para
+// dar volume: frontal na perfeicao achataria o modelo.
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-dirLight.position.set(3, 5, 2);
+dirLight.position.set(0, 3.5, 6);
 dirLight.castShadow = true;
 scene.add(dirLight);
 
