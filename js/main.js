@@ -77,18 +77,82 @@ let heroModelReady = false;
 let slotBow = null;
 let slotShield = null;
 
-// Centra o modelo na origem em X/Z e assenta-o no chao (Y=0). O export
-// pode vir deslocado (o de 2026-08-12 veio centrado em X~4.35, porque a
-// personagem nao estava na origem na cena de Blender) - sem isto, como
-// `character` roda sobre si proprio para mirar, o modelo orbitaria em
-// torno de um ponto a varias unidades de distancia. Aplicado ao modelo,
-// nao as meshes: os Empties dos slots sao filhos dele e acompanham.
-function centerAndGroundModel(model) {
-  const box = new THREE.Box3().setFromObject(model);
+// Altura a que o heroi e normalizado, em unidades do mundo - igual a que
+// o modelo tinha antes de vir riggado, para a camara/arena ja afinadas
+// continuarem validas.
+const HERO_TARGET_HEIGHT = 1.8;
+
+// Normaliza um modelo carregado: escala para HERO_TARGET_HEIGHT, centra em
+// X/Z e assenta a base em Y=0.
+//
+// Existe porque cada export chegou com uma convencao diferente e nenhuma
+// delas e "a certa":
+//   - 2026-08-12 (manha): personagem em X~4.35 na cena de Blender, nao na
+//     origem. Como `character` roda sobre si proprio para mirar, o modelo
+//     orbitaria em torno de um ponto a varias unidades de distancia.
+//   - 2026-08-12 (tarde, com rig Mixamo): no `Armature` com escala 0.01
+//     (tipico de FBX importado), o que renderizava o heroi com 1.8 CM de
+//     altura em vez de 1.8 unidades.
+// Normalizar aqui em vez de pedir mais um export torna qualquer ficheiro
+// futuro imune as duas coisas. Aplicado ao GRUPO do modelo, nao as meshes:
+// os soquets de equipamento sao descendentes dele e acompanham escala e
+// posicao, por isso o equipamento continua encaixado e proporcional.
+// Extensao REAL do modelo no mundo. Num modelo riggado usa as posicoes dos
+// OSSOS, nao Box3.setFromObject: num SkinnedMesh os vertices sao colocados
+// pelas matrizes de skinning dos ossos, e nao pela transformacao da propria
+// mesh - a caixa da geometria (bind pose) multiplicada pela matriz da mesh
+// nao corresponde ao que e renderizado. No export de 2026-08-12 dava uma
+// caixa de 4mm com a altura no eixo Z em vez de Y, o que levou a uma
+// tentativa de normalizacao a escalar o modelo 533x. Os ossos dao a
+// resposta certa (cabeca a Y=1.76, pes a Y=0.01). Modelos sem ossos
+// (arena, arco, escudo) continuam a usar setFromObject.
+function computeModelWorldBox(model) {
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  const point = new THREE.Vector3();
+  let hasBones = false;
+  model.traverse((obj) => {
+    if (obj.isBone) {
+      box.expandByPoint(obj.getWorldPosition(point));
+      hasBones = true;
+    }
+  });
+  if (!hasBones) box.setFromObject(model);
+  return box;
+}
+
+function normalizeLoadedModel(model, targetHeight) {
+  let box = computeModelWorldBox(model);
+
+  const height = box.max.y - box.min.y;
+  if (targetHeight && height > 0) {
+    model.scale.multiplyScalar(targetHeight / height);
+    box = computeModelWorldBox(model);
+  }
+
+  // `character` esta na origem com escala 1 no momento do carregamento
+  // (arranque da pagina), por isso coordenadas do mundo == locais ao pai.
   const center = box.getCenter(new THREE.Vector3());
   model.position.x -= center.x;
   model.position.z -= center.z;
   model.position.y -= box.min.y;
+
+  return computeModelWorldBox(model);
+}
+
+// Nomes aceites para cada soquet, por ordem de preferencia - a convencao
+// mudou entre exports ("SlotBow" -> "BowSoquet"), e nao vale a pena obrigar
+// a reexportar so por causa de um nome. O primeiro que existir no modelo e
+// o que conta.
+const BOW_SLOT_NAMES = ["SlotBow", "BowSoquet", "SoquetBow"];
+const SHIELD_SLOT_NAMES = ["SlotShield", "SoquetShield", "ShieldSoquet"];
+
+function findFirstByName(model, names) {
+  for (const name of names) {
+    const found = model.getObjectByName(name);
+    if (found) return found;
+  }
+  return null;
 }
 
 function loadHeroModel() {
@@ -103,20 +167,20 @@ function loadHeroModel() {
         }
       });
       character.add(model);
-      centerAndGroundModel(model);
+      const box = normalizeLoadedModel(model, HERO_TARGET_HEIGHT);
       heroModel = model;
       heroModelReady = true;
 
-      slotBow = model.getObjectByName("SlotBow") || null;
-      slotShield = model.getObjectByName("SlotShield") || null;
+      slotBow = findFirstByName(model, BOW_SLOT_NAMES);
+      slotShield = findFirstByName(model, SHIELD_SLOT_NAMES);
 
       // Ancora dos numeros flutuantes (dano/cura) por cima da cabeca -
       // segue a altura REAL do modelo em vez do 1.9 fixo do placeholder
       // antigo, senao os numeros ficam a flutuar longe demais quando o
       // modelo muda de tamanho entre exports.
-      const box = new THREE.Box3().setFromObject(model);
       head.position.y = box.max.y + 0.15;
 
+      setupHeroAnimation(gltf, model);
       attachEquipmentToSlots();
     },
     undefined,
@@ -124,6 +188,38 @@ function loadHeroModel() {
   );
 }
 loadHeroModel();
+
+// --- Animacao do heroi (2026-08-12, a pedido - "ele tem uma animação de
+// idle, quero que ela toque em loop (para já)") -----------------------------
+//
+// heroMixer e atualizado a cada frame no animate() (com o mesmo dtSeconds
+// ja usado pelo movimento) - sem isso, o modelo fica congelado na bind pose.
+let heroMixer = null;
+let heroIdleAction = null;
+
+function setupHeroAnimation(gltf, model) {
+  if (!gltf.animations || gltf.animations.length === 0) return;
+
+  // O export de 2026-08-12 traz TRES clips praticamente iguais
+  // ("Armature|Idle", "Idle", "Idle.001") - duplicados do proprio
+  // exportador. Toca-se exatamente UM, senao somavam-se uns aos outros.
+  const clip =
+    gltf.animations.find((a) => /^idle$/i.test(a.name)) ||
+    gltf.animations.find((a) => /idle/i.test(a.name)) ||
+    gltf.animations[0];
+
+  // Descarta tracks que animem o proprio no raiz da Armature (a diferenca
+  // entre "Armature|Idle" e "Idle" era exatamente isso): seria "root
+  // motion" a mexer o modelo por dentro, a lutar com a normalizacao acima
+  // e com a posicao controlada pelo joystick na arena. Só os ossos animam.
+  const boneTracks = clip.tracks.filter((t) => !/^Armature\./.test(t.name));
+  const idleClip = new THREE.AnimationClip(clip.name, clip.duration, boneTracks);
+
+  heroMixer = new THREE.AnimationMixer(model);
+  heroIdleAction = heroMixer.clipAction(idleClip);
+  heroIdleAction.setLoop(THREE.LoopRepeat, Infinity);
+  heroIdleAction.play();
+}
 
 // Encaixa arco/escudo nos Empties do modelo, herdando posicao E rotacao
 // definidas em Blender. Chamada depois de CADA carregamento (heroi, arco,
@@ -709,6 +805,10 @@ function animate() {
   lastAnimateFrameMs = now;
 
   if (jogoViewVisible) {
+    // Animacao do heroi (idle em loop) - so enquanto a cena esta visivel,
+    // pelo mesmo motivo do render: nao gastar bateria a animar um modelo
+    // que ninguem esta a ver (aba Perfil aberta).
+    if (heroMixer) heroMixer.update(dtSeconds);
     updatePlayerMovement(dtSeconds);
     const monsterVisible = typeof battleInProgress !== "undefined" && battleInProgress && isMonsterInFrustum();
     updateHeroFacing(monsterVisible);

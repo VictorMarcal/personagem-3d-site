@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.10.0",
+    title: "O Herói Ganhou Vida",
+    changes: [
+      "O herói passa a ter animação: fica com um idle a correr em loop em vez de estar completamente estático.",
+      "O arco e o escudo acompanham agora o movimento das mãos, porque estão ligados aos ossos do modelo.",
+    ],
+  },
+  {
     version: "v2.9.1",
     title: "Equipamento nas Mãos Certas",
     changes: [
