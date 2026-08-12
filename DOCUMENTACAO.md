@@ -129,6 +129,21 @@ A conclusão prática foi que **não havia dados para afinar coisa nenhuma**: a 
 - **Re-pedido em `visibilitychange`**: o sistema liberta o lock sempre que a página fica escondida — sem isto, bloquear o ecrã uma vez desligava a proteção para o resto do treino
 - Sempre **best-effort**: não existe em todos os browsers (Safari/iOS só a partir de 16.4) e pode ser recusado pelo sistema (bateria fraca). Falha silenciosamente com um aviso na consola, nunca bloqueia nem interrompe o treino. O estado atual aparece no diagnóstico ao vivo (`ecrã on/off/n-d`)
 
+**Limitação de fundo confirmada com dados reais (2026-08-12): com o telemóvel bloqueado, não há tracking.** Primeiro teste real depois de o diagnóstico existir — caminhada de 71,6 min com o telemóvel bloqueado e guardado na mochila a meio. Relógio desportivo: ~4,9 km. App: **1,12 km**. O `gps_diag` dessa sessão (id 101) é inequívoco:
+
+| | Sessão de teste, 1 min, ecrã ligado (id 100) | Caminhada real, telemóvel na mochila (id 101) |
+|---|---|---|
+| Duração | 1,0 min | 71,6 min |
+| Leituras de GPS | **103** | **75** |
+| Maior intervalo sem leituras | 1,1 s | **3759 s (62,6 min)** |
+| Precisão média | 3,7 m | 4,6 m |
+
+87% da caminhada decorreu sem uma única leitura. A precisão era boa quando os dados chegavam — simplesmente deixaram de chegar.
+
+- **O Wake Lock não resolve isto, e não pode**: impede o ecrã de se apagar *sozinho* por inatividade, mas não impede (nem tem como) o utilizador carregar no botão de bloquear. Assim que a página fica escondida, o sistema liberta o lock e o browser suspende os callbacks de geolocalização. O teste confirmou exatamente esse padrão: bloquear brevemente e voltar retomava a contagem; bloquear e guardar cortou tudo
+- **Não existe solução em código web**: não há API de geolocalização em segundo plano no browser — nem com Service Worker, nem instalando como PWA. É restrição deliberada do Android/Chrome. Qualquer tentativa de "preencher" o intervalo seria distância fabricada, não medida
+- **Caminhos reais** (nenhum implementado à data): (1) assumir a limitação e avisar bem — aviso ao iniciar e deteção de intervalo grande no fim, para uma sessão que perdeu dados não ser gravada em silêncio como se estivesse correta; (2) empacotar como app nativa (Capacitor ou equivalente), a única forma de ter tracking com o ecrã bloqueado; (3) importar os treinos do próprio relógio (Strava/Google Fit), o que resolve na raiz mas muda a natureza da app
+
 ## 5. Curva de nível do personagem
 
 ```
@@ -150,6 +165,8 @@ Escolhida para não ser nem linear nem exponencial — os incrementos crescem, m
 - **Validação externa**: relógio desportivo do Victor na mesma caminhada da sessão 97 — 359 kcal ativas para 4,97 km/96,9 min; a app captou 4,01 km/81,4 min, e os 270,97 kcal escalam coerentemente com essa proporção (os 95,96 originais não escalavam de todo). O relógio usa frequência cardíaca + perfil pessoal, a app só distância/velocidade — nunca vão coincidir exatamente, mas a ordem de grandeza confirma o recálculo
 - **Tentativa anterior no mesmo dia, revertida por estar errada**: a primeira abordagem procurou "outliers" comparando `calories_kcal / km` com um máximo teórico por modo, e recalculou-os por uma **velocidade de referência fixa** (Caminhar 5, Bicicleta 20 km/h — herdada do reset acima). Dois erros: (1) `kcal/km` não é um indicador válido quando quase não há deslocamento — a sessão 96 (33 min quase parado) foi marcada como "impossível" e baixada para 18,29 kcal, **abaixo do metabolismo em repouso** para esse tempo (~45 kcal a 83 kg), quando o valor original de 58 kcal estava correto; (2) a fórmula da bicicleta é uma tabela por escalões, não monótona em kcal/km — o "máximo teórico" calculado só a partir de uma das pontas do intervalo estava errado, e marcou a sessão 93 como outlier sem o ser. Ambas as alterações foram revertidas antes deste recálculo. **Lição**: usar a duração real gravada, nunca uma velocidade suposta, e desconfiar de rácios normalizados por distância quando a distância é residual
 - Sessões com `calories_kcal = 0` **não** foram tocadas - são normais, antecedem o cutover de calorias (2026-08-10), mesmo padrão de `effective_distance_m` nunca preenchido em sessões anteriores a essa data
+
+**Correção de distância da sessão 101, SQL direto no Supabase (2026-08-12)**: primeira correção feita com **evidência objetiva** em vez de inferência — `gps_diag` (secção 4.2) registou um intervalo único de **3759 s (62,6 min) sem uma única leitura de GPS**, 87% da caminhada, porque o telemóvel foi bloqueado e guardado na mochila (ver "Limitação" na secção 4.2). A app registou 1122,9 m; o relógio desportivo do jogador registou ~4,9 km. `distance_m` corrigida para `4900`, `calories_kcal` recalculada pela mesma metodologia das correções anteriores (velocidade média da própria sessão, 4,11 km/h → MET 2,956 → **292,68 kcal**, era 54,75). `duration_seconds`/`mode` inalterados; **`gps_diag` também não foi apagado** — é o registo factual do que o sinal fez e a própria justificação da correção. Deltas propagados a `lifetime_calories_kcal`/`lifetime_distance_m` (`player_progress` e `leaderboard`, mensais incluídos — sessão do mês corrente) e a `best_session_calories_kcal` (270,97 → 292,68); `best_session_distance_m_caminhar` já era 14 240 m, muito acima de 4900, por isso não mudou. Sem mudança de nível (3166 → 3404 kcal; nível 9 só aos 4167)
 
 | Nível | Calorias p/ subir | Total acumulado |
 |---:|---:|---:|
