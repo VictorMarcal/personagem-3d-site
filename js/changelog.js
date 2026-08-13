@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.11.0",
+    title: "Bicicleta Deixa de Ser Confundida com Corrida",
+    changes: [
+      "A app passa a usar o acelerómetro para perceber se estás mesmo a dar passadas — a subir uma encosta de bicicleta devagar já não é contado como corrida ou caminhada.",
+      "Empurrar a bicicleta a subir passa a contar corretamente como caminhada.",
+    ],
+  },
+  {
     version: "v2.10.0",
     title: "O Herói Ganhou Vida",
     changes: [

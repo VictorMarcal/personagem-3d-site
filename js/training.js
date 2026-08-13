@@ -55,6 +55,122 @@ function classifySpeedKmh(speedKmh) {
   return ACTIVITY_CYCLE;
 }
 
+// --- Desempate por acelerometro / "filtro de passada" (2026-08-12,
+// secção 4.3 da documentação) --------------------------------------------
+//
+// A velocidade sozinha nao distingue "pernas a mexer" de "rodas a rolar".
+// A subir uma encosta de bicicleta a ~8 km/h, a velocidade cai na faixa de
+// CORRER e a sessao era classificada como corrida (reportado: "estar a ser
+// considerado como corrida ou caminhada principalmente em subidas quando
+// na verdade estava de bicicleta") - com o MET errado, as calorias saem
+// erradas atras.
+//
+// Andar e correr produzem uma oscilacao forte e periodica ao ritmo da
+// passada; pedalar produz sobretudo vibracao da estrada, muito mais fraca.
+// Mede-se o DESVIO-PADRAO da magnitude da aceleracao numa janela: alto =
+// ha passada, baixo = nao ha. Serve so de DESEMPATE num sentido (velocidade
+// diz caminhar/correr mas nao ha passada -> bicicleta), nunca o contrario:
+// converter "bicicleta" em "correr" por haver solavancos numa descida
+// esburacada seria pior do que o problema original.
+//
+// Bonus: empurrar a bicicleta a subir passa a ser corretamente CAMINHAR
+// (ha passada, velocidade baixa), que e o que de facto se esta a fazer.
+//
+// Nao existe sem acelerometro ou sem permissao (iOS pede-a explicitamente):
+// nesse caso stepSignalReady fica false e a classificacao e exatamente a
+// de antes, so por velocidade.
+let motionSamples = [];
+let motionListenerAttached = false;
+let stepSignalReady = false;
+
+function onDeviceMotion(event) {
+  const a = event.accelerationIncludingGravity;
+  if (!a || a.x == null) return;
+  const magnitude = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+  const now = Date.now();
+  motionSamples.push({ magnitude, timestamp: now });
+  stepSignalReady = true;
+
+  // Mesma janela da classificacao por velocidade, para as duas decisoes
+  // olharem para o mesmo periodo de tempo.
+  const windowMs = getActivityWindowSeconds() * 1000;
+  while (motionSamples.length > 1 && now - motionSamples[0].timestamp > windowMs) {
+    motionSamples.shift();
+  }
+}
+
+// Desvio-padrao da magnitude na janela. Usar o desvio-padrao (e nao a
+// media) remove a gravidade automaticamente: o que interessa e quanto a
+// aceleracao OSCILA, nao o seu valor absoluto (~9.8 parado).
+function stepSignalIntensity() {
+  if (motionSamples.length < 8) return 0;
+  let soma = 0;
+  for (const s of motionSamples) soma += s.magnitude;
+  const media = soma / motionSamples.length;
+  let somaQuadrados = 0;
+  for (const s of motionSamples) somaQuadrados += (s.magnitude - media) ** 2;
+  return Math.sqrt(somaQuadrados / motionSamples.length);
+}
+
+function hasStepSignal() {
+  return stepSignalIntensity() >= getStepSignalThresholdMs2();
+}
+
+// iOS 13+ exige permissao explicita a partir de um gesto do utilizador -
+// chamada a partir do clique em "Iniciar Treino" (startTraining). No
+// Android basta subscrever o evento.
+async function startMotionSensing() {
+  if (motionListenerAttached) return;
+  if (typeof DeviceMotionEvent === "undefined") return;
+
+  try {
+    if (typeof DeviceMotionEvent.requestPermission === "function") {
+      const resposta = await DeviceMotionEvent.requestPermission();
+      if (resposta !== "granted") return;
+    }
+  } catch (e) {
+    return; // sem permissao, fica so a classificacao por velocidade
+  }
+
+  window.addEventListener("devicemotion", onDeviceMotion);
+  motionListenerAttached = true;
+}
+
+function stopMotionSensing() {
+  if (!motionListenerAttached) return;
+  window.removeEventListener("devicemotion", onDeviceMotion);
+  motionListenerAttached = false;
+  motionSamples = [];
+  stepSignalReady = false;
+}
+
+// Classificacao final: velocidade + desempate de passada.
+function classifyActivity(speedKmh) {
+  const porVelocidade = classifySpeedKmh(speedKmh);
+
+  // "Parado" e uma decisao de deslocamento, nao de passada - nao se mexe
+  // e nao se mexe, venha o acelerometro que vier (ex: pedalar parado num
+  // semaforo continua a ser pausa).
+  if (porVelocidade === ACTIVITY_STOPPED) return porVelocidade;
+  if (!stepSignalReady) return porVelocidade;
+
+  // Registado a cada classificacao (nao so quando desempata) para o
+  // diagnostico ter a distribuicao real do sinal ao longo da sessao.
+  const intensidade = stepSignalIntensity();
+  if (gpsDiag) {
+    gpsDiag.stepSignalSoma += intensidade;
+    gpsDiag.stepSignalAmostras += 1;
+    if (intensidade > gpsDiag.stepSignalMax) gpsDiag.stepSignalMax = intensidade;
+  }
+
+  if ((porVelocidade === ACTIVITY_WALK || porVelocidade === ACTIVITY_RUN) &&
+      intensidade < getStepSignalThresholdMs2()) {
+    if (gpsDiag) gpsDiag.desempatesParaBicicleta += 1;
+    return ACTIVITY_CYCLE;
+  }
+  return porVelocidade;
+}
+
 // Amostras {speedMps, timestamp} dos ultimos getActivityWindowSeconds()
 // segundos - usadas so para a media da janela deslizante acima, nao para o
 // calculo de calorias em si (esse usa a velocidade real de cada segmento).
@@ -91,7 +207,7 @@ let pendingMode = null;
 let pendingModeSinceMs = null;
 
 function updateDetectedActivity(timestamp) {
-  const candidate = classifySpeedKmh(windowAverageSpeedMps() * 3.6);
+  const candidate = classifyActivity(windowAverageSpeedMps() * 3.6);
 
   if (currentActiveMode === null) {
     currentActiveMode = candidate; // primeira leitura da sessao, sem periodo de graca
@@ -225,6 +341,13 @@ function resetGpsDiag() {
     paradoIgnorado: 0,      // classificado "parado" (pausa automatica)
     maxGapMs: 0,            // maior intervalo entre leituras consecutivas
     somaPrecisaoM: 0,       // para a media de precisao no fim
+    // Filtro de passada (secção 4.3) - gravado para poder CALIBRAR o
+    // limiar com dados reais de uma saida de bicicleta/corrida, em vez de
+    // o afinar por palpite.
+    stepSignalSoma: 0,
+    stepSignalAmostras: 0,
+    stepSignalMax: 0,
+    desempatesParaBicicleta: 0, // vezes que o filtro corrigiu caminhar/correr -> bicicleta
   };
   lastReadingTimestamp = null;
 }
@@ -240,10 +363,16 @@ function buildGpsDiagRecord() {
     maxGapS: Math.round(gpsDiag.maxGapMs / 100) / 10,
     // Config em vigor na altura - sem isto, um diagnostico antigo fica
     // impossivel de interpretar depois de alguem mexer no card de Debug.
+    acelerometro: motionListenerAttached,
+    stepSignalMedio: gpsDiag.stepSignalAmostras > 0
+      ? Math.round((gpsDiag.stepSignalSoma / gpsDiag.stepSignalAmostras) * 100) / 100
+      : null,
+    stepSignalMax: Math.round(gpsDiag.stepSignalMax * 100) / 100,
     config: {
       maxAccuracyM: getMaxAccuracyM(),
       minMovementM: getMinMovementM(),
       maxSafeSpeedKmh: getMaxSafeSpeedKmh(),
+      stepSignalThresholdMs2: getStepSignalThresholdMs2(),
     },
   };
 }
@@ -354,10 +483,17 @@ function updateGpsDiagDisplay() {
   }
   gpsDiagEl.classList.remove("hidden");
   const wake = !("wakeLock" in navigator) ? "n/d" : wakeLockSentinel ? "on" : "off";
+  // Passada ao vivo: e com este numero que se calibra o limiar - basta
+  // olhar para o telemovel a pedalar e a andar e ver os dois valores.
+  const passada = !stepSignalReady
+    ? "passada n/d"
+    : `passada ${stepSignalIntensity().toFixed(2)}/${getStepSignalThresholdMs2()}` +
+      ` (${gpsDiag.desempatesParaBicicleta} desemp.)`;
   gpsDiagEl.textContent =
     `GPS ${gpsDiag.leituras} · ok ${gpsDiag.creditadas} · <mín ${gpsDiag.abaixoMovimentoMin}` +
     ` · precisão ${gpsDiag.rejeitadasPrecisao} · veloc. ${gpsDiag.rejeitadasVelocidade}` +
-    ` · parado ${gpsDiag.paradoIgnorado} · gap máx ${(gpsDiag.maxGapMs / 1000).toFixed(0)}s · ecrã ${wake}`;
+    ` · parado ${gpsDiag.paradoIgnorado} · gap máx ${(gpsDiag.maxGapMs / 1000).toFixed(0)}s · ecrã ${wake}` +
+    ` · ${passada}`;
 }
 
 let liveStatsIntervalId = null;
@@ -745,6 +881,12 @@ function startTraining() {
     return;
   }
 
+  // Pedido AQUI (e nao em beginTrainingSession) de proposito: no iOS a
+  // permissao de acelerometro so pode ser pedida a partir de um gesto do
+  // utilizador, e este e o clique. Nao se espera pela resposta - se for
+  // recusada, a classificacao fica so por velocidade (secção 4.3).
+  startMotionSensing();
+
   showTrainingCountdown();
 }
 
@@ -791,6 +933,7 @@ function stopTraining() {
   }
   stopLiveStatsTicker();
   releaseWakeLock();
+  stopMotionSensing();
 
   const sessionDistanceM = totalDistanceM;
   const sessionDominantMode = getDominantMode();
@@ -887,6 +1030,10 @@ function resumeTrainingIfNeeded() {
   updateDistanceDisplay();
   showTrainingScreen();
   beginWatch();
+  // Best-effort apos um refresh: no Android volta a ligar sozinho; no iOS
+  // a permissao exige um gesto do utilizador, por isso pode nao voltar ate
+  // ao proximo treino iniciado a mao (secção 4.3).
+  startMotionSensing();
 }
 
 // --- Treinos de hoje (2026-08-10, secção 17.2) -----------------------------

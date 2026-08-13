@@ -36,7 +36,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v2.10.0</span>
+      <span id="site-version" class="site-version-hero">v2.11.0</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -252,6 +252,9 @@
           </label>
           <label>ACTIVITY_HYSTERESIS_SECONDS <span class="debug-hint">tempo (s) na nova faixa antes de mudar de atividade detetada</span>
             <input type="number" id="dbg-activityHysteresisSeconds" step="1">
+          </label>
+          <label>STEP_SIGNAL_THRESHOLD <span class="debug-hint">oscilação (m/s²) acima da qual há passada — abaixo disto, velocidade de caminhar/correr é tratada como bicicleta</span>
+            <input type="number" id="dbg-stepSignalThresholdMs2" step="0.1">
           </label>
           <label>MINIBOSS_LEVEL_STEP <span class="debug-hint">intervalo de mini-bosses (níveis)</span>
             <input type="number" id="dbg-miniBossLevelStep" step="1">
@@ -595,15 +598,15 @@
   <script src="js/progress-sync.js?v=20260810f"></script>
   <script src="js/leaderboard.js?v=20260810d"></script>
   <script src="js/main.js?v=20260812d"></script>
-  <script src="js/debug.js?v=20260811b"></script>
+  <script src="js/debug.js?v=20260812a"></script>
   <script src="js/equipment.js?v=20260811b"></script>
   <script src="js/experience.js?v=20260810d"></script>
   <script src="js/monsters.js?v=20260806p"></script>
   <script src="js/monthly-medals.js?v=20260810d"></script>
   <script src="js/battle.js?v=20260811e"></script>
-  <script src="js/training.js?v=20260811d"></script>
+  <script src="js/training.js?v=20260812a"></script>
   <script src="js/profile.js?v=20260810f"></script>
-  <script src="js/changelog.js?v=20260812b"></script>
+  <script src="js/changelog.js?v=20260812c"></script>
   <script src="js/achievements.js?v=20260811b"></script>
   <script src="js/orientation.js?v=20260806p"></script>
   <script src="js/nav.js?v=20260810b"></script>

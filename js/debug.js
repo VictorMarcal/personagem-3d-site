@@ -93,6 +93,16 @@ const DEBUG_DEFAULTS = {
   // lento a confirmar o inicio real de uma atividade.
   activityWindowSeconds: 20,
   activityHysteresisSeconds: 8,
+  // Desempate por acelerometro (2026-08-12, secção 4.3) - so a velocidade
+  // nao distingue "pernas a mexer" de "rodas a rolar": a subir de bicicleta
+  // devagar a velocidade cai nas faixas de caminhar/correr e a atividade
+  // era mal classificada. Andar/correr produzem uma oscilacao forte ao
+  // ritmo da passada; pedalar produz so vibracao da estrada, muito mais
+  // fraca. Este e o desvio-padrao (m/s2) da magnitude da aceleracao acima
+  // do qual se considera que HA passada. Valor de partida por calibrar com
+  // dados reais - gps_diag grava a intensidade medida de cada sessao
+  // precisamente para isso.
+  stepSignalThresholdMs2: 1.2,
   miniBossLevelStep: 5,
   bossLevelStep: 10,
   maxLevelToGenerate: 100,
@@ -155,6 +165,7 @@ function getActivityWalkMaxKmh() { return getDebugValue("activityWalkMaxKmh"); }
 function getActivityRunMaxKmh() { return getDebugValue("activityRunMaxKmh"); }
 function getActivityWindowSeconds() { return getDebugValue("activityWindowSeconds"); }
 function getActivityHysteresisSeconds() { return getDebugValue("activityHysteresisSeconds"); }
+function getStepSignalThresholdMs2() { return getDebugValue("stepSignalThresholdMs2"); }
 function getMiniBossLevelStep() { return getDebugValue("miniBossLevelStep"); }
 function getBossLevelStep() { return getDebugValue("bossLevelStep"); }
 function getMaxLevelToGenerate() { return getDebugValue("maxLevelToGenerate"); }
@@ -199,6 +210,7 @@ const debugVarInputs = {
   activityRunMaxKmh: document.getElementById("dbg-activityRunMaxKmh"),
   activityWindowSeconds: document.getElementById("dbg-activityWindowSeconds"),
   activityHysteresisSeconds: document.getElementById("dbg-activityHysteresisSeconds"),
+  stepSignalThresholdMs2: document.getElementById("dbg-stepSignalThresholdMs2"),
   miniBossLevelStep: document.getElementById("dbg-miniBossLevelStep"),
   bossLevelStep: document.getElementById("dbg-bossLevelStep"),
   maxLevelToGenerate: document.getElementById("dbg-maxLevelToGenerate"),
