@@ -144,6 +144,21 @@ A conclusão prática foi que **não havia dados para afinar coisa nenhuma**: a 
 - **Não existe solução em código web**: não há API de geolocalização em segundo plano no browser — nem com Service Worker, nem instalando como PWA. É restrição deliberada do Android/Chrome. Qualquer tentativa de "preencher" o intervalo seria distância fabricada, não medida
 - **Caminhos reais** (nenhum implementado à data): (1) assumir a limitação e avisar bem — aviso ao iniciar e deteção de intervalo grande no fim, para uma sessão que perdeu dados não ser gravada em silêncio como se estivesse correta; (2) empacotar como app nativa (Capacitor ou equivalente), a única forma de ter tracking com o ecrã bloqueado; (3) importar os treinos do próprio relógio (Strava/Google Fit), o que resolve na raiz mas muda a natureza da app
 
+### 4.3 Filtro de passada (desempate por acelerómetro)
+
+**Problema** (2026-08-12, reportado depois de uma saída real de bicicleta): *"estar a ser considerado como corrida ou caminhada principalmente em subidas quando na verdade estava de bicicleta"*. A velocidade sozinha não distingue **pernas a mexer** de **rodas a rolar** — a subir uma encosta a ~8 km/h a velocidade cai na faixa de `correr` (6,5-14), e com o MET errado as calorias saem erradas atrás (correr a 8 km/h ≈ 8,6 MET contra 4,0 do ciclismo).
+
+**Solução** (`js/training.js`): andar e correr produzem uma oscilação forte e periódica ao ritmo da passada; pedalar produz sobretudo vibração da estrada, muito mais fraca. Mede-se o **desvio-padrão da magnitude da aceleração** (`DeviceMotionEvent.accelerationIncludingGravity`) numa janela igual à da classificação por velocidade (`getActivityWindowSeconds()`), e usa-se como desempate em `classifyActivity()`.
+
+- **Desvio-padrão, não média**: remove a gravidade automaticamente — o que interessa é quanto a aceleração **oscila**, não o seu valor absoluto (~9,8 parado)
+- **Desempate num só sentido**: velocidade diz `caminhar`/`correr` **mas não há passada** → `bicicleta`. Nunca o contrário — converter `bicicleta` em `correr` por causa de solavancos numa descida esburacada seria pior que o problema original
+- **`parado` nunca é desempatado**: é uma decisão de deslocamento, não de passada (pedalar parado num semáforo continua a ser pausa automática)
+- **Bónus**: empurrar a bicicleta a subir passa a ser corretamente `caminhar` (há passada, velocidade baixa) — que é o que de facto se está a fazer
+- **`STEP_SIGNAL_THRESHOLD = 1.2` m/s²** (ajustável no Debug) — **valor de partida, por calibrar com dados reais**. Testado com sinais sintéticos: a pedalar (≈0,35) reclassifica corretamente 3 e 8 km/h para `bicicleta`; a pé (≈2,11) mantém `caminhar`/`correr` intactos
+- **Degrada com segurança**: sem acelerómetro, sem permissão (iOS 13+ exige-a a partir de um gesto do utilizador — pedida no clique de "Iniciar Treino"), ou com menos de 8 amostras, `stepSignalReady` fica `false` e a classificação é **exatamente** a de antes, só por velocidade
+- **Mesma limitação do GPS**: com o ecrã bloqueado o `devicemotion` também para (secção 4.2). Não acrescenta nenhuma limitação nova
+- **Instrumentado para calibração**: `gps_diag` grava `stepSignalMedio`/`stepSignalMax`/`desempatesParaBicicleta` e o limiar em vigor; o diagnóstico ao vivo mostra `passada <medido>/<limiar> (<n> desemp.)`. A ideia é afinar o limiar com uma saída real de bicicleta e outra a pé, **com dados**, em vez de por palpite
+
 ## 5. Curva de nível do personagem
 
 ```
