@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.12.1",
+    title: "Correção: Calorias a Menos com Falhas de GPS",
+    changes: [
+      "Corrigido: treinos com falhas de sinal ficavam com muito menos calorias do que o esforço real — um treino de bicicleta de 18 km chegou a contar só um terço.",
+      "As calorias passam a ser calculadas no fim do treino a partir da distância e duração totais, em vez de somadas troço a troço.",
+      "Os treinos já afetados foram recalculados.",
+    ],
+  },
+  {
     version: "v2.12.0",
     title: "Territórios por Descobrir",
     changes: [

@@ -263,6 +263,37 @@ function computeSegmentCalories(activity, speedKmh, durationSeconds) {
   return met * getPesoKg() * (durationSeconds / 3600);
 }
 
+// Calorias GRAVADAS no fim da sessao (2026-08-14, secção 4.4) - calculadas
+// a partir dos TOTAIS da sessao (distancia e duracao reais), nao da soma
+// das fatias por segmento.
+//
+// Porque: somar por segmento depende de o GPS entregar leituras com
+// regularidade, e quando isso falha o tempo perde-se. Duas sessoes reais do
+// Bernardo com falhas de sinal de 7 minutos ficaram com 32% e 66% das
+// calorias esperadas (186 kcal para 18.5km de bicicleta, quando o relogio
+// dele marcava um total do dia coerente com ~584). A distancia sobrevive a
+// uma falha (o segmento seguinte e creditado em linha reta), mas o tempo
+// creditado nao - e capado a getActivityWindowSeconds() por segmento, teto
+// posto em 2026-08-11 para resolver o problema OPOSTO (calorias infladas
+// por tempo parado, secção 4.1). Ou seja, um erro tinha sido trocado por
+// outro.
+//
+// Os totais nao tem esse problema: a duracao e relogio de parede e a
+// distancia e a soma do que de facto contou. Validado contra os dois casos
+// extremos ja conhecidos - a sessao de 33 min quase parado da 58 kcal (pouco
+// acima do metabolismo em repouso, que era o valor correto) e as sessoes do
+// Bernardo passam a bater certo com o relogio dele dentro de ~10%.
+//
+// A soma por segmento (sessionCaloriesKcal) CONTINUA a existir, so que
+// apenas para o mostrador ao vivo durante o treino: ali um erro nao
+// persiste, e ter feedback imediato a cada leitura vale mais que a precisao.
+function computeSessionCaloriesFromTotals(distanceM, durationSeconds, mode) {
+  if (!durationSeconds || durationSeconds <= 0) return 0;
+  const hours = durationSeconds / 3600;
+  const avgSpeedKmh = distanceM / 1000 / hours;
+  return computeMetForActivity(mode, avgSpeedKmh) * getPesoKg() * hours;
+}
+
 // Tempo (ms) acumulado em cada atividade nesta sessao - decide o "modo
 // dominante" (o que ocupou mais tempo), gravado em training_sessions.mode
 // e usado pelas conquistas de ritmo/recorde pessoal por modo (secção 10).
@@ -348,19 +379,53 @@ function resetGpsDiag() {
     stepSignalAmostras: 0,
     stepSignalMax: 0,
     desempatesParaBicicleta: 0, // vezes que o filtro corrigiu caminhar/correr -> bicicleta
+    // Pontos cegos tapados em 2026-08-14: o diagnostico dizia o TAMANHO de
+    // uma falha de sinal mas nunca a RAZAO - nao dava para distinguir "o
+    // telemovel foi bloqueado" de "o GPS nao conseguiu fixar".
+    errosTimeout: 0,        // GPS nao fixou a tempo (code 3)
+    errosPosicaoIndisp: 0,  // sem sinal (code 2)
+    errosPermissao: 0,      // permissao retirada a meio (code 1)
+    msEscondido: 0,         // tempo com a pagina escondida (ecra bloqueado/troca de app)
+    vezesEscondido: 0,
+    wakeLockAtivo: false,   // chegou a estar ativo em algum momento da sessao
   };
   lastReadingTimestamp = null;
+  hiddenSinceMs = null;
 }
+
+// Tempo que a pagina passou escondida durante o treino - indicador direto
+// de "o telemovel foi bloqueado / trocou-se de app", a principal causa
+// suspeita das falhas de sinal (secção 4.2).
+let hiddenSinceMs = null;
+
+document.addEventListener("visibilitychange", () => {
+  if (watchId === null || !gpsDiag) return;
+  if (document.visibilityState === "hidden") {
+    hiddenSinceMs = Date.now();
+    gpsDiag.vezesEscondido += 1;
+  } else if (hiddenSinceMs !== null) {
+    gpsDiag.msEscondido += Date.now() - hiddenSinceMs;
+    hiddenSinceMs = null;
+  }
+});
+
 resetGpsDiag();
 
 // Media de precisao so faz sentido sobre as leituras que chegaram a ser
 // contabilizadas - devolve null numa sessao sem leituras nenhumas.
 function buildGpsDiagRecord() {
   if (!gpsDiag || gpsDiag.leituras === 0) return null;
+  // Se a sessao terminar com a pagina ainda escondida, o periodo em curso
+  // nunca chegou a ser fechado pelo visibilitychange - fecha-se aqui.
+  if (hiddenSinceMs !== null) {
+    gpsDiag.msEscondido += Date.now() - hiddenSinceMs;
+    hiddenSinceMs = null;
+  }
   return {
     ...gpsDiag,
     precisaoMediaM: Math.round((gpsDiag.somaPrecisaoM / gpsDiag.leituras) * 10) / 10,
     maxGapS: Math.round(gpsDiag.maxGapMs / 100) / 10,
+    segundosEscondido: Math.round(gpsDiag.msEscondido / 1000),
     // Config em vigor na altura - sem isto, um diagnostico antigo fica
     // impossivel de interpretar depois de alguem mexer no card de Debug.
     acelerometro: motionListenerAttached,
@@ -393,6 +458,7 @@ async function requestWakeLock() {
   if (!("wakeLock" in navigator)) return;
   try {
     wakeLockSentinel = await navigator.wakeLock.request("screen");
+    if (gpsDiag) gpsDiag.wakeLockAtivo = true;
     // O proprio sistema liberta o lock sempre que a pagina fica escondida;
     // este handler so limpa a referencia, quem o volta a pedir e o
     // listener de visibilitychange abaixo.
@@ -815,6 +881,16 @@ function recordDiscoveredHexForTraining(latitude, longitude) {
 function onPositionError(error) {
   distanceEl.textContent = "GPS indisponível";
   console.error("Erro de geolocalizacao:", error.message);
+
+  // Contabilizado a partir de 2026-08-14: estes erros nunca passam por
+  // onPositionUpdate, por isso um periodo inteiro em que o GPS falhou a
+  // fixar aparecia no diagnostico so como "silencio", indistinguivel do
+  // telemovel bloqueado. Codigos da Geolocation API: 1 PERMISSION_DENIED,
+  // 2 POSITION_UNAVAILABLE, 3 TIMEOUT.
+  if (!gpsDiag) return;
+  if (error.code === 1) gpsDiag.errosPermissao += 1;
+  else if (error.code === 2) gpsDiag.errosPosicaoIndisp += 1;
+  else if (error.code === 3) gpsDiag.errosTimeout += 1;
 }
 
 function beginWatch() {
@@ -952,9 +1028,16 @@ function stopTraining() {
 
   const sessionDistanceM = totalDistanceM;
   const sessionDominantMode = getDominantMode();
-  const sessionCalories = sessionCaloriesKcal;
   const sessionEndTime = Date.now();
   const sessionDurationSeconds = sessionStartTime ? (sessionEndTime - sessionStartTime) / 1000 : null;
+  // Valor GRAVADO vem dos totais da sessao, nao da soma por segmento - ver
+  // computeSessionCaloriesFromTotals. sessionCaloriesKcal (soma ao vivo)
+  // continua a servir so para o mostrador durante o treino.
+  const sessionCalories = computeSessionCaloriesFromTotals(
+    sessionDistanceM,
+    sessionDurationSeconds,
+    sessionDominantMode
+  );
 
   const discardReasons = [];
   if (sessionDistanceM <= 0) discardReasons.push("sem distância percorrida");
