@@ -46,6 +46,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `assets/Hero.glb` | Modelo 3D do herói (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Shield.glb` | Modelo 3D do escudo (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Bow.glb` | Modelo 3D do arco (secção 9), carregado por `js/main.js` via `GLTFLoader` |
+| `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa Leaflet da aba Missões — ver secção 18 |
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — histórico/registo, não é lido pelo site nem pelo Supabase |
 | `.mcp.json` | Liga o Claude Code ao projeto Supabase via MCP (`--project-ref=vnqjaepjfqlhgmlrhzlr`), token vem de uma variável de ambiente (`SUPABASE_ACCESS_TOKEN`), nunca gravado no ficheiro. Desde 2026-08-03, migrações novas são aplicadas diretamente via este MCP (`apply_migration`) em vez de copiar/colar SQL manualmente no dashboard — `supabase/schema.sql` continua a ser atualizado a cada migração, só como registo/referência |
 
@@ -560,8 +561,40 @@ Hoje os dados são guardados em unidades "de cálculo" (metros, m/s) e só a apr
 
 **Nota**: metas diárias de calorias **não entram como conquista** — vão entrar de outra forma, através de um **painel de Missões** novo (ver 17.2), ainda por especificar.
 
-### 17.2 Painel de Missões (sub-aba já criada, conteúdo ainda por especificar)
+### 17.2 Painel de Missões (base de exploração implementada em 2026-08-14 — ver secção 18)
 
-Mencionado de passagem a propósito das conquistas de calorias: vai existir um ecrã de Missões, distinto do card de Conquistas (secção 10) — é onde metas diárias (ex: calorias do dia) vivem, em vez de serem conquistas permanentes. **Já tem casa** (2026-08-10): sub-aba "Missões" dentro do separador Mundo (secção 12), visível com um cartão "Em breve", sem conteúdo real ainda. Sem desenho nenhum do conteúdo em si (estrutura, tipos de missão, recompensas, se é diário/semanal) — só o nome, o propósito e agora também o lugar na navegação ficaram estabelecidos.
+Mencionado de passagem a propósito das conquistas de calorias: vai existir um ecrã de Missões, distinto do card de Conquistas (secção 10) — é onde metas diárias (ex: calorias do dia) vivem, em vez de serem conquistas permanentes. **Já tem casa** (2026-08-10): sub-aba "Missões" dentro do separador Mundo (secção 12). **A base de missões por localização (descoberta de território por hexágonos) foi implementada em 2026-08-14 — ver secção 18.** Falta ainda a camada de missões propriamente dita (metas, recompensas, diário vs semanal), deliberadamente adiada até haver dados reais de quantos hexágonos rende um treino típico.
 
 **Reestruturação de navegação — implementada em duas iterações no mesmo dia (2026-08-10)**: primeiro Treino integrou-se no separador Personagem e Batalhas passou a chamar-se Arena (4 separadores em vez de 5) — mas ao discutir a ideia percebeu-se que fazia mais sentido agrupar Treino com PvE/PvP/Missões (o que se *faz*), separado de Personagem (quem *és* - stats/equipamento). Estrutura final: separador **Mundo** (era "Arena"/"Batalhas", passa a ser o separador de arranque) com sub-navegação própria (padrão das abas do Leaderboard) — **Campo** (era "Treino", sub-aba default), **Masmorra** (PvE, era "Arena"/"Batalhas"), **Arena** (PvP, "Em breve") e **Missões** ("Em breve", ver acima). Vocabulário deliberadamente "de MMORPG" (Mundo/Campo/Masmorra/Arena/Missões), a pedido explícito. Ver detalhe técnico na secção 12. Este item sai do backlog.
+
+## 18. Descoberta de território (missões por localização)
+
+Base das missões baseadas na localização do jogador, a pedido (2026-08-14). O mundo é dividido em **hexágonos** e cada um onde o jogador nunca esteve conta como "descoberto" — recompensa variar de percurso em vez de repetir sempre o mesmo trajeto.
+
+**Hexágonos, não quadrados**, a pedido explícito. Usa-se **H3** (indexação hexagonal hierárquica da Uber, `h3-js` via CDN, build UMD como o resto — secção 2) em vez de matemática própria: grelhas hexagonais sobre uma esfera são exatamente o tipo de coisa que corre mal quando se improvisa.
+
+**Resolução 9** (`HEX_RESOLUTION`, ajustável no Debug) — escolhida com números medidos no próprio browser, não estimados:
+
+| Resolução | Diâmetro | Área | Hexágonos numa caminhada de 5 km |
+|---:|---:|---:|---:|
+| 8 | 1122 m | 0,80 km² | ~5 (grosseiro demais) |
+| **9** | **427 m** | **0,114 km²** | **~14** |
+| 10 | 160 m | 0,016 km² | ~37 (acende dezenas à volta do quarteirão) |
+
+Confirmado depois com uma caminhada simulada de 2 km em linha reta: **8 hexágonos** descobertos, e **0 novos** ao repetir exatamente o mesmo percurso.
+
+**Privacidade — decisão deliberada**: guarda-se o **ID da célula H3**, nunca coordenadas. Até aqui a app nunca tinha guardado nada sobre *onde* se treina (só distância/duração/calorias); a resolução 9 significa que o registo diz "esteve nesta zona de ~427 m", nunca "esteve nesta rua, a esta hora".
+
+**Implementação** (`js/hexes.js`):
+
+- `recordPositionHex(lat, lon)` é chamada **só em segmentos que contaram como deslocamento real** (`js/training.js`, dentro do bloco que credita distância) — se fosse chamada em todas as leituras, a deriva de GPS com o jogador parado "descobriria" hexágonos vizinhos onde nunca se pôs o pé
+- **Cache local + fila de envio**, mesmo padrão de `training_sessions` (secção 15): cada descoberta é um **evento discreto**, não um snapshot — se a rede falhar no momento, não há sincronização posterior que a reponha, tem de ficar em segurança em `localStorage` até ser confirmada
+- Tabela `discovered_hexes` (`user_id`, `hex_id`, `resolution`, `first_seen_at`), chave primária `(user_id, hex_id)` — reenviar uma célula já gravada é um no-op, não um erro. RLS com `(select auth.uid())` (secção 16), incluindo política de `delete` para o "Repor personagem" do Debug poder limpar também as descobertas
+- **`resolution` gravada em cada linha**: os IDs H3 são específicos da resolução. Mudar a resolução no Debug **não apaga** o histórico — as células antigas ficam, apenas deixam de contar enquanto a resolução em vigor for outra
+- Degrada em silêncio se o `h3-js` ainda não tiver carregado (CDN lento/offline): perde-se a descoberta dessa leitura, o treino em si nunca é afetado
+
+**Mapa** (aba Missões, Leaflet + OpenStreetMap): desenha os hexágonos descobertos como polígonos (`h3.cellToBoundary` devolve `[[lat, lng], ...]`, exatamente o formato que o `L.polygon` espera) e enquadra automaticamente na zona explorada. **Só é criado quando a sub-aba é aberta pela primeira vez** (`js/nav.js`) — não faz sentido descarregar mapa e tiles a quem nunca lá entra, sobretudo em dados móveis antes de um treino. `invalidateSize()` ao abrir, porque o Leaflet calcula dimensão 0 se o contentor estava escondido quando o mapa foi criado.
+
+**O que ainda NÃO existe**: missões, metas e recompensas. Só a exploração é registada e mostrada, com um aviso "Em construção" no ecrã. Adiado de propósito — desenhar "descobre N zonas esta semana" sem saber quantos hexágonos rende um treino real seria escolher o N por palpite, o mesmo erro já cometido (e corrigido com dados) nas calorias e no GPS.
+
+**Limitação herdada**: como toda a deteção depende do GPS, só conta com o treino a decorrer e o ecrã ligado (secção 4.2).
