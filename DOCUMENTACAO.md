@@ -160,7 +160,20 @@ A conclusão prática foi que **não havia dados para afinar coisa nenhuma**: a 
 - **Degrada com segurança**: sem acelerómetro, sem permissão (iOS 13+ exige-a a partir de um gesto do utilizador — pedida no clique de "Iniciar Treino"), ou com menos de 8 amostras, `stepSignalReady` fica `false` e a classificação é **exatamente** a de antes, só por velocidade
 - **Mesma limitação do GPS**: com o ecrã bloqueado o `devicemotion` também para (secção 4.2). Não acrescenta nenhuma limitação nova
 - **Instrumentado para calibração**: `gps_diag` grava `stepSignalMedio`/`stepSignalMax`/`desempatesParaBicicleta` e o limiar em vigor; o diagnóstico ao vivo mostra `passada <medido>/<limiar> (<n> desemp.)`. A ideia é afinar o limiar com uma saída real de bicicleta e outra a pé, **com dados**, em vez de por palpite
-- **Primeiros dados reais (2026-08-14) dizem que o limiar não serve**: numa saída de bicicleta a intensidade média foi **4,26**; numa caminhada, **5,83**. O limiar está em **1,2** — ou seja, pedalar fica 3,5× acima dele e **o desempate praticamente nunca dispara**. A premissa do desenho ("pedalar produz sobretudo vibração da estrada, muito mais fraca") não se confirma: entre a vibração da estrada, o telemóvel no bolso e o esforço fora do selim, a oscilação é grande. Subir o limiar para ~5 separaria estas duas sessões, mas é ajustar a duas amostras e a sobreposição é provável. **O discriminador certo é a frequência, não a amplitude** — a passada é uma oscilação periódica a ~1,5-3,5 Hz, a vibração da estrada é irregular e de frequência mais alta; contar cadência (picos por segundo) distinguiria, medir desvio-padrão não. Por decidir, deliberadamente à espera de mais dados
+- **Os dados reais (2026-08-14) dizem que a amplitude não serve como discriminador.** Três sessões com o modo real confirmado:
+
+| Sessão | Realidade | Velocidade | Intensidade média | Máximo | Máx/Média |
+|---|---|---:|---:|---:|---:|
+| 103 | Bicicleta | 22,3 km/h | 4,26 | 20,46 | 4,8× |
+| 105 | Bicicleta | 11,5 km/h | 4,51 | 16,38 | 3,6× |
+| 104 | Caminhada | 4,2 km/h | **5,83** | 8,26 | 1,4× |
+
+  O limiar está em **1,2** — pedalar fica 3,5× acima, por isso **o desempate praticamente nunca dispara**. Pior: a caminhada tem intensidade **maior** que as duas idas de bicicleta, o que inverte a premissa do desenho ("pedalar produz vibração muito mais fraca"). Subir o limiar para ~5 separaria estas três, mas seria ajustar a três médias, e a coluna Máx/Média mostra porque falharia: pedalar é irregular (picos de 3-5× a média, da estrada), andar é regular (1,4×) — em piso mau ou fora do selim a bicicleta ultrapassa qualquer limiar de amplitude.
+
+- **Confirmado no terreno pelo jogador**, os dois modos de falha: a subir devagar deu "caminhar"; **em reta deu "corrida"** — e este é o mais revelador, porque pedalar em linha reta é o caso mais suave que existe. Se nem aí o sinal desce abaixo de 1,2, a vibração de base de uma bicicleta em asfalto está sempre acima do limiar.
+- **O discriminador certo é a frequência, não a amplitude**: a passada é periódica (~1,5-2,5 Hz a andar, ~2,5-3,5 Hz a correr), a vibração da estrada é irregular. É o único sinal **intrínseco à atividade** — não depende do percurso, da velocidade nem do terreno. `stepCadenceHz()` (contagem de picos acima de `média + 0,5×desvio`, O(n)) foi acrescentada em 2026-08-14 e **valida em sinal sintético**: 2,5 Hz → 2,50 detetado; 1,8 Hz → 1,80; ruído de banda larga com amplitude **maior** que os dois → 14,7 Hz, fora da banda. Ou seja, separa exatamente onde a amplitude falha
+- **Uma alternativa que foi considerada e rejeitada**: usar a velocidade máxima da sessão ("ninguém corre a 45 km/h, logo foi bicicleta"). Funcionou nos casos reais que tínhamos, mas o jogador apontou a falha — *nada garante que uma volta de bicicleta tenha descidas*. Numa volta plana a 11 km/h constantes a regra nunca dispara. Fica como sinal auxiliar (a distribuição de velocidades passou a ser gravada), nunca como decisor
+- **Estado atual: só recolhe, não decide.** `gps_diag` passou a gravar **histogramas** (intensidade, cadência, velocidade) e não apenas média/máximo — dois perfis muito diferentes podem ter a mesma média, e era essa ambiguidade que impedia decidir. Os limites dos baldes vão gravados em cada registo, senão um histograma antigo fica ilegível depois de os baldes mudarem. A decisão de qual discriminador usar fica para quando houver saídas reais de bicicleta e a pé com estes dados — depois de duas tentativas falhadas de afinar limiares por palpite no mesmo dia
 
 ### 4.4 Calorias gravadas: totais da sessão, não soma por segmento
 
@@ -187,6 +200,21 @@ Reportado pelo Bernardo ("as calorias não fazem sentido; a app dele dizia 720 k
 
 **Compromisso assumido**: numa sessão com GPS perfeito e intensidade muito variável, a média pode subestimar face à soma por segmento (o MET da bicicleta é convexo na velocidade — trechos rápidos valem desproporcionadamente mais). A sessão de 3h10 do Skllrx, que teve GPS impecável (5435 leituras, falha máxima de 1,2 s), dava 2274 kcal por segmento e 1792 pelos totais. **Recalculada também (a pedido, 2026-08-14)**, para todo o histórico seguir a mesma regra — a coerência valeu mais do que o ganho num caso que depende de condições que não se conseguem garantir. Consequência aceite explicitamente: o jogador desceu de **nível 10 para 9** (5678,39 → 5196,17 kcal; o nível 10 começa aos 5385), ficando a 189 kcal de o reconquistar. Não perdeu pontos já investidos — `awardPointsIfNeeded` (`js/equipment.js`) só credita ao **subir**, nunca retira.
 
+
+### 4.5 Correção manual do modo — **temporário, para remover**
+
+**Existe para ser removido.** Enquanto a deteção automática não for fiável (secção 4.3), o jogador pode corrigir o modo de um treino já concluído, na lista "Treinos de hoje". Quando a afinação estiver boa, apaga-se — foi construído isolado precisamente para isso: um bloco delimitado em `js/training.js` (entre os marcadores `CORRECAO MANUAL DO MODO — TEMPORARIO` e `FIM DO BLOCO TEMPORARIO`), a chamada a `renderModeFixControl`/`wireModeFixControls` em `renderTodaysTrainings`, e a regra `.training-mode-fix` no CSS.
+
+**Porquê**: a velocidade sozinha não distingue pedalar de andar/correr quando o ritmo cai na mesma faixa, e o desempate por acelerómetro mede amplitude, que se provou não separar. Sem isto, um treino mal classificado só se corrigia com SQL direto na base de dados — o que aconteceu várias vezes em 2026-08-14.
+
+**Não contraria a decisão original** de não escolher o modo *antes* do treino (secção 4.1): corrige **depois**, e só quando a app se enganou.
+
+**Como funciona**: mudar o modo recalcula as calorias com a **mesma regra dos totais** do fim de um treino (secção 4.4) — é literalmente reavaliar a fórmula com outro MET.
+
+Dois detalhes que não são óbvios:
+
+- **O sync é `await` direto, não o `queueProgressSync` com debounce.** Quando o delta de calorias é negativo (ex: corrida → bicicleta), escrever só no `localStorage` não chega: a reconciliação no arranque (secção 14.1) faz `max(local, servidor)` nos campos que só crescem e **restauraria o valor antigo, mais alto**. Os dois lados têm de ficar iguais antes de qualquer outra coisa correr.
+- **Os recordes por modo são recalculados a partir das sessões**, não ajustados por delta (`recomputeRecordsFromSessions`): ao mudar o modo de uma sessão, o recorde do modo de origem pode ter de **descer** para o segundo melhor, e isso não se exprime como um delta.
 ## 5. Curva de nível do personagem
 
 ```
