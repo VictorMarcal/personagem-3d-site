@@ -124,60 +124,275 @@ async function hydrateHexesFromSupabase() {
   renderHexMap();
 }
 
-// --- Mapa (Leaflet + OpenStreetMap) ---------------------------------------
+// --- Mapa de territorio ----------------------------------------------------
 //
-// Carregado a pedido, so quando a sub-aba Missoes e aberta pela primeira vez
-// (js/nav.js) - nao faz sentido descarregar mapa e tiles a quem nunca la
-// entra, sobretudo em dados moveis antes de um treino.
+// NAO e um mapa real. A pedido: "em vez de mostrar o mapa real, gostava que
+// fosse algo tipo [jogo de estrategia hexagonal] - imagina uma textura de
+// terreno e vais pintando os hexagonos por cima; a textura esta a preto e
+// branco excepto nas areas ja descobertas".
+//
+// Por isso o terreno e GERADO POR CODIGO (ruido determinista a partir das
+// coordenadas) e desenhado num canvas. O Leaflet fica so como motor de
+// pan/zoom e de projecao geografica - sem tiles, sem pedidos de rede, sem
+// atribuicao, sem depender de nenhum servico externo.
+//
+// O mapa e GLOBAL: nao ha nenhuma regiao fixa no codigo. O terreno existe em
+// todo o lado e cada jogador ve a cores a zona onde treinou. Para o Skllrx
+// isso desenha aproximadamente o distrito de Braga, porque foi so onde
+// explorou; para outro jogador sera outra area, sem uma linha de codigo
+// diferente.
 const hexMapEl = document.getElementById("hex-map");
 const hexCountEl = document.getElementById("hex-count");
 let hexMap = null;
-let hexLayer = null;
+let hexCanvas = null;
 
 function renderHexCount() {
   if (hexCountEl) hexCountEl.textContent = String(getDiscoveredHexCount());
+}
+
+// --- Terreno procedural ----------------------------------------------------
+//
+// Ruido de valor com interpolacao suave. Determinista: a mesma coordenada da
+// sempre o mesmo terreno, em qualquer dispositivo e em qualquer visita, sem
+// ser preciso guardar ou descarregar nada.
+function terrainHash(x, y) {
+  const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return n - Math.floor(n);
+}
+
+function terrainSmoothNoise(x, y) {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const xf = x - xi;
+  const yf = y - yi;
+  // Curva suave (3t^2-2t^3) em vez de interpolacao linear: a linear deixa
+  // artefactos em losango nas fronteiras entre celulas de ruido.
+  const u = xf * xf * (3 - 2 * xf);
+  const v = yf * yf * (3 - 2 * yf);
+  const a = terrainHash(xi, yi);
+  const b = terrainHash(xi + 1, yi);
+  const c = terrainHash(xi, yi + 1);
+  const d = terrainHash(xi + 1, yi + 1);
+  return a * (1 - u) * (1 - v) + b * u * (1 - v) + c * (1 - u) * v + d * u * v;
+}
+
+// A frequencia do ruido acompanha o tamanho do hexagono que esta a ser
+// pintado. Sem isto, hexagonos vizinhos caem em celulas de ruido diferentes
+// e o mapa sai granulado - parece estatica, nao terreno. A regra: um passo
+// de um hexagono deve valer ~0.08 de unidade de ruido, para que as manchas
+// de agua/floresta/rocha tenham sempre a dimensao de varios hexagonos.
+// Consequencia: o terreno e auto-semelhante (as formas repetem-se a cada
+// escala), mas cada hexagono descoberto e sempre desenhado a frequencia da
+// resolucao 9, por isso a sua cor nunca muda.
+function terrainFrequencyFor(resolution) {
+  return (0.08 * 111000) / H3_CELL_DIAMETER_M[resolution];
+}
+
+// Duas oitavas: a primeira da as massas grandes, a segunda parte-as em
+// detalhe.
+function terrainValue(lat, lng, freq) {
+  return (
+    terrainSmoothNoise(lat * freq, lng * freq) * 0.65 +
+    terrainSmoothNoise(lat * freq * 3.1, lng * freq * 3.1) * 0.35
+  );
+}
+
+// Faixas de "altitude" ficticias.
+const TERRAIN_BANDS = [
+  { max: 0.33, color: [58, 110, 140] },   // agua
+  { max: 0.39, color: [206, 186, 140] },  // areia / margem
+  { max: 0.58, color: [122, 158, 82] },   // relva
+  { max: 0.76, color: [74, 112, 62] },    // floresta
+  { max: 1.01, color: [138, 128, 114] },  // rocha
+];
+
+function terrainColorAt(lat, lng, freq) {
+  const value = terrainValue(lat, lng, freq);
+  for (const band of TERRAIN_BANDS) {
+    if (value < band.max) return band.color;
+  }
+  return TERRAIN_BANDS[TERRAIN_BANDS.length - 1].color;
+}
+
+// Por explorar: a mesma textura, sem cor e escurecida. Continua a ver-se a
+// FORMA do terreno (era esse o pedido, em vez de preto solido), mas le-se de
+// imediato como "ainda nao fui la".
+function toFogColor([r, g, b]) {
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+  const dim = Math.round(lum * 0.48);
+  return `rgb(${dim},${dim},${dim})`;
+}
+
+function toDiscoveredColor([r, g, b]) {
+  return `rgb(${r},${g},${b})`;
+}
+
+// A grelha de fundo acompanha o zoom. Os hexagonos de descoberta (resolucao
+// 9, ~427m) desenhados ao nivel de um pais seriam dezenas de milhar de
+// poligonos de 1px - lento e ilegivel. Escolhe-se a resolucao pelo tamanho
+// que os hexagonos teriam NO ECRA, e nao por uma tabela de niveis de zoom:
+// assim o resultado e o mesmo em qualquer latitude e em qualquer tamanho de
+// ecra. Nunca passa da resolucao 9 - mais fino que a propria descoberta nao
+// acrescenta informacao nenhuma.
+// Diametro aproximado da celula H3 por resolucao (cada nivel e ~2.65x maior
+// que o seguinte). Ancorado nos ~427m da resolucao 9 que a app ja anuncia ao
+// jogador; so precisa de estar certo na proporcao.
+const H3_CELL_DIAMETER_M = { 2: 390000, 3: 148000, 4: 56000, 5: 21300, 6: 8060, 7: 3050, 8: 1150, 9: 435 };
+const MIN_BACKDROP_RESOLUTION = 2;
+const BACKDROP_TARGET_PX = 34;
+
+function backdropResolutionForView() {
+  const size = hexMap.getSize();
+  const a = hexMap.containerPointToLatLng([0, size.y / 2]);
+  const b = hexMap.containerPointToLatLng([100, size.y / 2]);
+  const metersPerPixel = hexMap.distance(a, b) / 100;
+
+  let best = MIN_BACKDROP_RESOLUTION;
+  let bestErr = Infinity;
+  for (let res = MIN_BACKDROP_RESOLUTION; res <= 9; res += 1) {
+    const err = Math.abs(H3_CELL_DIAMETER_M[res] / metersPerPixel - BACKDROP_TARGET_PX);
+    if (err < bestErr) {
+      bestErr = err;
+      best = res;
+    }
+  }
+  return best;
+}
+
+function fillHexPath(ctx, cellId) {
+  const boundary = h3.cellToBoundary(cellId);
+  ctx.beginPath();
+  boundary.forEach(([lat, lng], i) => {
+    const p = hexMap.latLngToContainerPoint([lat, lng]);
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  });
+  ctx.closePath();
+}
+
+// So as celulas dentro do viewport (o H3 recorta ao poligono): o custo do
+// desenho nao cresce com o tamanho do mundo, so com o tamanho do ecra.
+// Ainda assim, um viewport largo numa resolucao fina pode dar milhares de
+// celulas - se acontecer, sobe-se um nivel ate caber num orcamento seguro.
+const MAX_BACKDROP_CELLS = 2500;
+
+function backdropCellsFor(viewport, startResolution) {
+  for (let resolution = startResolution; resolution >= MIN_BACKDROP_RESOLUTION; resolution -= 1) {
+    let cells;
+    try {
+      cells = h3.polygonToCells(viewport, resolution);
+    } catch (e) {
+      return { cells: [], resolution };
+    }
+    if (cells.length <= MAX_BACKDROP_CELLS) return { cells, resolution };
+  }
+  return { cells: [], resolution: MIN_BACKDROP_RESOLUTION };
+}
+
+function drawHexMap() {
+  if (!hexMap || !hexCanvas) return;
+
+  const size = hexMap.getSize();
+  if (size.x === 0 || size.y === 0) return;
+
+  const ratio = window.devicePixelRatio || 1;
+  if (hexCanvas.width !== Math.round(size.x * ratio) || hexCanvas.height !== Math.round(size.y * ratio)) {
+    hexCanvas.width = Math.round(size.x * ratio);
+    hexCanvas.height = Math.round(size.y * ratio);
+    hexCanvas.style.width = `${size.x}px`;
+    hexCanvas.style.height = `${size.y}px`;
+  }
+
+  const ctx = hexCanvas.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, size.x, size.y);
+
+  const mapBounds = hexMap.getBounds();
+  const viewport = [
+    [mapBounds.getNorth(), mapBounds.getWest()],
+    [mapBounds.getNorth(), mapBounds.getEast()],
+    [mapBounds.getSouth(), mapBounds.getEast()],
+    [mapBounds.getSouth(), mapBounds.getWest()],
+  ];
+
+  const discovered = getDiscoveredHexIds();
+  const discoveryResolution = getHexResolution();
+  const { cells, resolution } = backdropCellsFor(viewport, backdropResolutionForView());
+  const backdropFreq = terrainFrequencyFor(resolution);
+
+  ctx.lineWidth = 0.5;
+  ctx.strokeStyle = "rgba(0,0,0,0.22)";
+  cells.forEach((cell) => {
+    const [lat, lng] = h3.cellToLatLng(cell);
+    const color = terrainColorAt(lat, lng, backdropFreq);
+    // Quando a grelha de fundo coincide com a de descoberta, os hexagonos ja
+    // descobertos sao pintados aqui a cores - evita desenhar duas vezes o
+    // mesmo poligono.
+    const isDiscovered = resolution === discoveryResolution && discovered.has(cell);
+    fillHexPath(ctx, cell);
+    ctx.fillStyle = isDiscovered ? toDiscoveredColor(color) : toFogColor(color);
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  // Afastado, os hexagonos descobertos sao mais pequenos que a grelha de
+  // fundo - desenha-os por cima para o progresso continuar visivel a
+  // qualquer zoom, em vez de desaparecer ao afastar.
+  if (resolution !== discoveryResolution) {
+    const discoveryFreq = terrainFrequencyFor(discoveryResolution);
+    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    discovered.forEach((cell) => {
+      const [lat, lng] = h3.cellToLatLng(cell);
+      if (!mapBounds.contains([lat, lng])) return;
+      fillHexPath(ctx, cell);
+      ctx.fillStyle = toDiscoveredColor(terrainColorAt(lat, lng, discoveryFreq));
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
 }
 
 function renderHexMap() {
   renderHexCount();
   if (!hexMapEl || typeof L === "undefined" || typeof h3 === "undefined") return;
 
-  const hexIds = [...getDiscoveredHexIds()];
-
   if (hexMap === null) {
-    hexMap = L.map(hexMapEl, { attributionControl: true });
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(hexMap);
-    hexLayer = L.layerGroup().addTo(hexMap);
+    hexMap = L.map(hexMapEl, {
+      attributionControl: false, // sem tiles de terceiros, nao ha nada a atribuir
+      minZoom: 4,
+      maxZoom: 16,
+    });
     // Vista por omissao ate haver descobertas (Portugal continental).
     hexMap.setView([39.5, -8.0], 6);
+
+    hexCanvas = document.createElement("canvas");
+    hexCanvas.className = "hex-map-canvas";
+    hexMapEl.appendChild(hexCanvas);
+
+    // Redesenha durante o movimento, nao so no fim: o canvas vive no
+    // contentor do mapa e nao num pane do Leaflet, por isso nao e arrastado
+    // automaticamente - tem de ser redesenhado em coordenadas de ecra.
+    hexMap.on("move zoom resize", drawHexMap);
   }
 
-  hexLayer.clearLayers();
-  if (hexIds.length === 0) return;
+  const hexIds = [...getDiscoveredHexIds()];
+  if (hexIds.length > 0) {
+    // O enquadramento segue as descobertas do proprio jogador - e isto que
+    // faz o mapa global mostrar "a minha zona" sem nenhuma regiao no codigo.
+    const bounds = [];
+    hexIds.forEach((id) => h3.cellToBoundary(id).forEach((p) => bounds.push(p)));
+    hexMap.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 });
+  }
 
-  const bounds = [];
-  hexIds.forEach((id) => {
-    // cellToBoundary devolve [[lat, lng], ...] - exatamente o formato que o
-    // L.polygon espera, sem conversao.
-    const boundary = h3.cellToBoundary(id);
-    L.polygon(boundary, {
-      color: "#c9702f",
-      weight: 1,
-      fillColor: "#d98a4a",
-      fillOpacity: 0.35,
-    }).addTo(hexLayer);
-    boundary.forEach((p) => bounds.push(p));
-  });
-
-  hexMap.fitBounds(bounds, { padding: [20, 20], maxZoom: 15 });
+  drawHexMap();
 }
 
 // O Leaflet calcula mal o tamanho quando o contentor estava escondido
 // (display:none) no momento em que o mapa foi criado - a sub-aba Missoes
 // esta escondida ate ser aberta. invalidateSize() forca o recalculo.
 function refreshHexMapSize() {
-  if (hexMap) hexMap.invalidateSize();
+  if (hexMap) {
+    hexMap.invalidateSize();
+    drawHexMap();
+  }
 }

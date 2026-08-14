@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v3.2.0",
+    title: "Mapa de Exploração",
+    changes: [
+      "O mapa dos Territórios deixa de ser um mapa de estradas e passa a ser um mapa de jogo: um terreno de hexágonos com água, praia, campo, floresta e montanha.",
+      "O mundo inteiro está lá, mas a cinzento e apagado — só ganha cor onde já treinaste. Quanto mais exploras, mais mapa acendes.",
+      "Podes arrastar e aproximar o mapa à vontade; os teus hexágonos continuam visíveis mesmo quando afastas.",
+    ],
+  },
+  {
     version: "v3.1.0",
     title: "Corrigir o Tipo de Treino",
     changes: [

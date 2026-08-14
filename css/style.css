@@ -646,7 +646,21 @@ main {
   width: 100%;
   border-radius: var(--r-md);
   margin-top: 12px;
-  background: var(--surface-2);
+  /* Fundo escuro: o terreno e desenhado no canvas, isto e so o que se ve
+     nas margens enquanto o desenho nao cobre tudo. */
+  background: #10151c;
+  overflow: hidden;
+}
+
+/* Canvas do terreno procedural (js/hexes.js). Fica por cima dos panes do
+   Leaflet - que aqui nao tem tiles, so serve de motor de pan/zoom - e nao
+   intercepta o rato/dedo, para o arrastar continuar a chegar ao mapa. */
+.hex-map-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 450;
+  pointer-events: none;
 }
 
 .hex-count-row {
