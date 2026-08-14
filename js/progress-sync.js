@@ -145,9 +145,108 @@ async function migrateLocalProgressToSupabase(userId, existingDisplayName) {
   return snapshot;
 }
 
-// Jogador a repetir login (possivelmente noutro dispositivo): o Supabase
-// e a fonte de verdade, sobrescreve o localStorage para o resto do codigo
-// continuar a funcionar sem alteracoes.
+// --- Reconciliacao no arranque (2026-08-14, secção 14.1) -------------------
+//
+// Antes disto o arranque era TUDO-OU-NADA: ou hidratava do servidor (e
+// apagava mutacoes locais por confirmar), ou confiava inteiramente no local
+// (e ignorava tudo o que o servidor soubesse de novo). Bug real: as calorias
+// vitalicias foram corrigidas por SQL na base de dados, mas o telemovel
+// tinha uma mutacao pendente - saltou a hidratacao, continuou a mostrar
+// nivel 4 em vez de 10, e o proximo sync bem-sucedido teria APAGADO a
+// correcao ao subir o valor local antigo.
+//
+// A observacao que resolve isto: a esmagadora maioria dos campos de
+// progresso SO CRESCE. Para esses, o merge correto nao precisa de saber
+// quem escreveu por ultimo - basta o MAXIMO, que e seguro nos dois
+// sentidos (treino novo ainda por sincronizar E correcao feita no servidor).
+const MONOTONIC_PROGRESS_FIELDS = [
+  "lifetime_distance_m",
+  "lifetime_calories_kcal",
+  "last_awarded_level",
+  "best_session_distance_m",
+  "best_session_distance_m_caminhar",
+  "best_session_distance_m_bicicleta",
+  "best_session_calories_kcal",
+  "total_trainings_completed",
+  "best_pace_mps",
+  "best_pace_mps_caminhar",
+  "best_pace_mps_bicicleta",
+  "best_streak_days",
+  "discarded_speed_distance_m",
+  "total_moedas_ganhas",
+  "total_moedas_gastas",
+  "total_battles_fought",
+  "distinct_months_trained",
+  // Niveis investidos/de equipamento tambem so sobem no jogo normal (gastam
+  // pontos/moedas, nunca sao devolvidos). Um reset feito SO por SQL, sem
+  // limpar o dispositivo, seria desfeito por isto - e uma operacao de
+  // administracao rara, e o custo de nao proteger o caso normal e maior.
+  "nivel_energia",
+  "nivel_forca",
+  "nivel_resistencia",
+  "nivel_arma",
+  "nivel_escudo",
+  "nivel_armadura",
+];
+
+// Estes sobem E descem (gastar moedas, investir pontos), por isso o maximo
+// nao serve - o valor mais alto pode ser simplesmente o mais antigo. Aqui
+// mantem-se a regra anterior: se ha mutacao local por confirmar, o local e
+// mais recente; senao, manda o servidor. `peso_kg` e uma preferencia, mesma
+// logica.
+const LAST_WRITER_PROGRESS_FIELDS = ["unspent_points", "moedas", "peso_kg"];
+
+function mergeDefeatedCreatures(local, server) {
+  const merged = { ...(server || {}) };
+  Object.entries(local || {}).forEach(([level, stars]) => {
+    merged[level] = Math.max(Number(merged[level]) || 0, Number(stars) || 0);
+  });
+  return merged;
+}
+
+// Reconcilia o estado local com o do servidor e devolve o resultado, ja
+// escrito no localStorage. Corre em TODOS os arranques.
+function reconcileProgressWithServer(serverProgress) {
+  const local = readLocalProgressSnapshot();
+  const localHasPendingChanges = localStorage.getItem(SYNC_PENDING_KEY) === "true";
+  const merged = { ...serverProgress };
+
+  MONOTONIC_PROGRESS_FIELDS.forEach((field) => {
+    merged[field] = Math.max(Number(local[field]) || 0, Number(serverProgress[field]) || 0);
+  });
+
+  LAST_WRITER_PROGRESS_FIELDS.forEach((field) => {
+    if (localHasPendingChanges) merged[field] = local[field];
+    else if (serverProgress[field] == null) merged[field] = local[field];
+  });
+
+  // Colecoes: uniao, nunca substituicao - uma conquista desbloqueada num
+  // dispositivo nao pode desaparecer por o outro nao a conhecer.
+  merged.defeated_creatures = mergeDefeatedCreatures(local.defeated_creatures, serverProgress.defeated_creatures);
+  merged.encountered_creatures = [
+    ...new Set([...(local.encountered_creatures || []), ...(serverProgress.encountered_creatures || [])]),
+  ].sort((a, b) => a - b);
+  merged.unlocked_achievements = {
+    ...(serverProgress.unlocked_achievements || {}),
+    ...(local.unlocked_achievements || {}),
+  };
+
+  hydrateLocalStorageFromProgress(merged);
+  return merged;
+}
+
+// O merge trouxe alguma coisa que o servidor ainda nao tem? Compara so os
+// campos que o snapshot local produz - a linha do servidor traz colunas
+// extra (user_id, updated_at, colunas geradas) que nao interessam aqui.
+function mergedDiffersFromServer(merged, serverProgress) {
+  return Object.keys(readLocalProgressSnapshot()).some(
+    (field) => JSON.stringify(merged[field]) !== JSON.stringify(serverProgress[field])
+  );
+}
+
+// Jogador a repetir login (possivelmente noutro dispositivo): escreve o
+// estado (ja reconciliado, ver acima) no localStorage, para o resto do
+// codigo continuar a funcionar sem alteracoes.
 function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEY_LIFETIME_M, String(progress.lifetime_distance_m));
   localStorage.setItem(STORAGE_KEY_LIFETIME_KCAL, String(progress.lifetime_calories_kcal || 0));

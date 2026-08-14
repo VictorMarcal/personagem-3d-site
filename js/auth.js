@@ -145,14 +145,24 @@ async function bootstrapAfterLogin(user) {
     const progress = await fetchProgress(user.id);
     if (!progress) {
       await migrateLocalProgressToSupabase(user.id, profile.display_name);
-    } else if (localStorage.getItem(SYNC_PENDING_KEY) === "true") {
-      // Ha uma mutacao local por confirmar no Supabase (ver queueProgressSync,
-      // js/progress-sync.js) - hidratar aqui apagaria essa mutacao em
-      // silencio, sobrepondo-a com um estado do servidor mais antigo. Em vez
-      // disso confia-se no local (mais recente) e tenta-se reenviar mais
-      // abaixo, assim que readyForSync ficar true.
     } else {
-      hydrateLocalStorageFromProgress(progress);
+      // RECONCILIA sempre, em vez de escolher um dos lados (2026-08-14,
+      // secção 14.1). Antes era tudo-ou-nada: com uma mutacao local por
+      // confirmar saltava-se a hidratacao por completo e confiava-se no
+      // dispositivo - o que significava ignorar qualquer alteracao feita do
+      // lado do servidor. Bug real: calorias corrigidas por SQL nunca
+      // chegavam ao telemovel (mostrava nivel 4 em vez de 10) e o sync
+      // seguinte teria apagado a correcao. reconcileProgressWithServer faz
+      // o merge campo a campo (maximo nos campos que so crescem, uniao nas
+      // colecoes) - nenhum dos lados perde informacao.
+      const merged = reconcileProgressWithServer(progress);
+      // Marca para subir o resultado do merge, para o servidor convergir
+      // tambem (o sync efetivo so dispara quando readyForSync fica true,
+      // mais abaixo). Sem isto, o que o dispositivo soubesse de novo ficava
+      // so no dispositivo ate a proxima mutacao qualquer.
+      if (mergedDiffersFromServer(merged, progress)) {
+        localStorage.setItem(SYNC_PENDING_KEY, "true");
+      }
     }
   } catch (err) {
     console.error("Falha ao migrar/hidratar progresso:", err);

@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.13.0",
+    title: "Progresso Sempre Sincronizado",
+    changes: [
+      "Corrigido: em certos casos o telemóvel ficava com um nível/progresso desatualizado e não recuperava sozinho — chegou a mostrar nível 4 em vez de 10.",
+      "O arranque passa a juntar o que está no telemóvel com o que está no servidor, campo a campo, em vez de escolher só um dos lados. Nenhum dos dois perde informação.",
+    ],
+  },
+  {
     version: "v2.12.1",
     title: "Correção: Calorias a Menos com Falhas de GPS",
     changes: [
