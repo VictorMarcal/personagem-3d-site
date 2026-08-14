@@ -551,7 +551,13 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 
 **Validação de treino por calorias (fórmula MET) em vez de velocidade — concluída (2026-08-10)**: motor de deteção automática + MET implementado em 2026-08-10 (peso corporal, janela deslizante + histerese, fórmulas ACSM/Compendium, teto de segurança único, UI do painel de Treino) e o cutover da unidade base completado no mesmo dia (nova curva de nível recalibrada para kcal, migração retroativa do progresso de todos os jogadores, leaderboard e medalhas mensais a rankear por calorias). Todo o conteúdo já migrou para as secções 4.1, 5, 10 e 14 — este item saiu do backlog. **Fase 2, não implementada**: acelerómetro (`DeviceMotionEvent`) como desempate na zona cinzenta 6.5-9 km/h da deteção automática, e correção manual da classificação no resumo final da sessão — ambas ficam para uma iteração futura, sem data.
 
-### 17.1 Base de dados — unidades mais legíveis — **decidido: não fazer (2026-08-10)**
+### 17.1 Base de dados — unidades mais legíveis — **resolvido com colunas geradas (2026-08-14)**
+
+**Resolução final (2026-08-14)**: o cenário previsto na decisão abaixo — ler as tabelas diretamente no dashboard do Supabase — chegou, e seguiu-se exatamente o caminho que ela prescrevia: **colunas `generated always as ... stored`**, só de leitura, sem tocar nas colunas de cálculo. `training_sessions` ganhou `distance_km`, `duration_hours` e `duration_hms` (`hh:mm:ss`, o formato do pedido original); `player_progress`/`leaderboard`/`monthly_medals` ganharam os equivalentes em km. Não podem dessincronizar-se do valor original (o Postgres deriva-as), não exigiram nenhuma alteração ao código, e removem-se com um `drop column`. As colunas em metros/segundos continuam a ser a fonte de verdade para toda a aritmética. `duration_hms` é construída só com funções `IMMUTABLE` (`floor`/`mod`/`lpad`/`||`) — requisito das colunas geradas; `to_char(interval)` **não** serve, é `STABLE`.
+
+---
+
+**Decisão original (2026-08-10): não fazer** — mantida na íntegra abaixo, porque continua a valer para a parte que interessa (não substituir as colunas de cálculo).
 
 Hoje os dados são guardados em unidades "de cálculo" (metros, m/s) e só a apresentação ao jogador converte para km/km-h (nota em 4.1/5). Item levantado: guardar diretamente em unidades mais legíveis — **hh:mm:ss** (duração, em vez de segundos), **Km** (distância, em vez de metros).
 

@@ -405,3 +405,40 @@ create policy "discovered_hexes_delete_own" on public.discovered_hexes
 -- → Users no dashboard, ou "select id, email from auth.users;"):
 --
 -- update public.profiles set is_admin = true where id = '<o-teu-uid>';
+
+-- Migracao (2026-08-14, secção 17.1 da documentação): colunas GERADAS com
+-- unidades legiveis, para ler as tabelas diretamente no dashboard do
+-- Supabase. So de leitura, derivadas pelo Postgres - nao podem
+-- dessincronizar-se e nao exigem alteracoes ao codigo da app. As colunas em
+-- metros/segundos continuam a ser a fonte de verdade de toda a aritmetica
+-- (somas do leaderboard, limiares de conquistas, pace, ordenacoes).
+--
+-- duration_hms usa so funcoes IMMUTABLE (floor/mod/lpad/||), requisito das
+-- colunas geradas - to_char(interval) NAO serve, e STABLE.
+alter table public.training_sessions
+  add column if not exists distance_km numeric
+    generated always as (round(distance_m / 1000.0, 3)) stored,
+  add column if not exists duration_hours numeric
+    generated always as (round(duration_seconds / 3600.0, 4)) stored,
+  add column if not exists duration_hms text
+    generated always as (
+      lpad(floor(duration_seconds / 3600)::text, 2, '0') || ':' ||
+      lpad(floor(mod(duration_seconds, 3600) / 60)::text, 2, '0') || ':' ||
+      lpad(floor(mod(duration_seconds, 60))::text, 2, '0')
+    ) stored;
+
+alter table public.player_progress
+  add column if not exists lifetime_distance_km numeric
+    generated always as (round(lifetime_distance_m / 1000.0, 3)) stored,
+  add column if not exists best_session_distance_km numeric
+    generated always as (round(best_session_distance_m / 1000.0, 3)) stored;
+
+alter table public.leaderboard
+  add column if not exists lifetime_distance_km numeric
+    generated always as (round(lifetime_distance_m / 1000.0, 3)) stored,
+  add column if not exists monthly_distance_km numeric
+    generated always as (round(monthly_distance_m / 1000.0, 3)) stored;
+
+alter table public.monthly_medals
+  add column if not exists distance_km numeric
+    generated always as (round(distance_m / 1000.0, 3)) stored;
