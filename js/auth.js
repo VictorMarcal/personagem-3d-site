@@ -50,7 +50,7 @@ document.getElementById("btn-google-signin").addEventListener("click", () => {
   });
 });
 
-// --- Gate do card de Debug e HUD -------------------------------------------
+// --- HUD ------------------------------------------------------------------
 
 // Mostra o nome escolhido no lugar de "Personagem 3D" no cabecalho (2026-08-06,
 // a pedido - antes ficava so num span sr-only, nunca visivel) - o leaderboard
@@ -61,11 +61,11 @@ function applyDisplayNameToHud() {
   }
 }
 
-function applyAdminGate() {
-  if (currentProfile && currentProfile.is_admin) {
-    document.getElementById("debug-card").classList.remove("hidden");
-  }
-}
+// O card de Debug era a unica coisa que este gate mostrava; foi removido em
+// 2026-08-14 (ver cabecalho de js/game-config.js). `is_admin` continua em
+// profiles e continua a ser a fronteira real de seguranca nas politicas RLS
+// - so deixou de haver UI dependente dele.
+function applyAdminGate() {}
 
 // --- Primeiro login: perfil, nome, migracao/hidratacao do progresso -------
 
@@ -122,7 +122,7 @@ function promptForDisplayName(userId) {
 
 // Cada passo tem o seu proprio try/catch: uma falha (ex: rede instavel no
 // telemovel a meio do login) nunca deve impedir os passos seguintes de
-// correr - em particular, refreshAllAfterConfigChange() no fim tem de
+// correr - em particular, refreshAllUi() no fim tem de
 // correr sempre que o perfil foi carregado, para os cartoes de Monstros/
 // Conquistas nunca ficarem vazios por causa de um erro noutro passo.
 // migrateLocalProgressToSupabase/hydrateLocalStorageFromProgress vivem em
@@ -197,7 +197,7 @@ async function bootstrapAfterLogin(user) {
 
   // Re-renderiza tudo com os dados hidratados/migrados (funcao existente em
   // js/debug.js) - corre sempre, mesmo que os passos acima tenham falhado.
-  refreshAllAfterConfigChange();
+  refreshAllUi();
 
   try {
     renderLeaderboardCard();

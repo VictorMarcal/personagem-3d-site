@@ -360,7 +360,6 @@ function awardBonusPoints(amount) {
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, String(getUnspentPoints() + amount));
   queueProgressSync();
   renderStatsHud();
-  renderDebugCharacterInfo();
 }
 
 function renderStatsHud() {
@@ -564,7 +563,6 @@ function upgradeEquipmentType(type) {
   queueProgressSync();
 
   renderStatsHud();
-  renderDebugCharacterInfo();
 }
 
 Object.entries(btnHudUpgradeByType).forEach(([type, btn]) => {

@@ -37,7 +37,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v2.13.0</span>
+      <span id="site-version" class="site-version-hero">v3.0.0</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -146,178 +146,6 @@
           </div>
         </div>
       </div>
-
-      <section id="debug-card" class="card hidden">
-        <div class="modal-header">
-          <h2 class="card-title">Debug</h2>
-          <button id="btn-toggle-debug-card" class="btn-secondary">Esconder</button>
-        </div>
-
-        <div id="debug-card-body">
-        <div class="debug-vars">
-          <label>LEVEL_BASE <span class="debug-hint">XP base p/ nível (1 XP = 1 kcal)</span>
-            <input type="number" id="dbg-levelBase" step="1">
-          </label>
-          <label>LEVEL_EXP <span class="debug-hint">expoente da curva de nível</span>
-            <input type="number" id="dbg-levelExp" step="0.01">
-          </label>
-          <label>STAT_BASE_VIDA <span class="debug-hint">valor base da Vida</span>
-            <input type="number" id="dbg-statBaseVida" step="1">
-          </label>
-          <label>STAT_FLAT_VIDA <span class="debug-hint">bónus fixo por nível de equipamento</span>
-            <input type="number" id="dbg-statFlatVida" step="1">
-          </label>
-          <label>STAT_PERCENT_VIDA <span class="debug-hint">percentagem × nível (ex: 0.89 = 89%)</span>
-            <input type="number" id="dbg-statPercentVida" step="0.01">
-          </label>
-          <label>STAT_BASE_ATAQUE <span class="debug-hint">valor base do Ataque</span>
-            <input type="number" id="dbg-statBaseAtaque" step="1">
-          </label>
-          <label>STAT_FLAT_ATAQUE <span class="debug-hint">bónus fixo por nível de equipamento</span>
-            <input type="number" id="dbg-statFlatAtaque" step="1">
-          </label>
-          <label>STAT_PERCENT_ATAQUE <span class="debug-hint">percentagem × nível (ex: 0.16 = 16%)</span>
-            <input type="number" id="dbg-statPercentAtaque" step="0.01">
-          </label>
-          <label>STAT_BASE_DEFESA <span class="debug-hint">valor base da Defesa</span>
-            <input type="number" id="dbg-statBaseDefesa" step="1">
-          </label>
-          <label>STAT_FLAT_DEFESA <span class="debug-hint">bónus fixo por nível de equipamento</span>
-            <input type="number" id="dbg-statFlatDefesa" step="1">
-          </label>
-          <label>STAT_PERCENT_DEFESA <span class="debug-hint">percentagem × nível (ex: 0.45 = 45%)</span>
-            <input type="number" id="dbg-statPercentDefesa" step="0.01">
-          </label>
-          <label>PLAYER_BASE_VIDA <span class="debug-hint">vida base do jogador (antes de equip./Energia)</span>
-            <input type="number" id="dbg-playerBaseVida" step="1">
-          </label>
-          <label>PLAYER_BASE_ATAQUE <span class="debug-hint">ataque base do jogador (antes de equip./Força)</span>
-            <input type="number" id="dbg-playerBaseAtaque" step="1">
-          </label>
-          <label>PLAYER_BASE_DEFESA <span class="debug-hint">defesa base do jogador (antes de equip./Resistência)</span>
-            <input type="number" id="dbg-playerBaseDefesa" step="1">
-          </label>
-          <label>ENERGIA_EXPONENT <span class="debug-hint">expoente de Vida = Energia^x</span>
-            <input type="number" id="dbg-energiaExponent" step="0.01">
-          </label>
-          <label>FORCA_EXPONENT <span class="debug-hint">expoente de Ataque = Força^x</span>
-            <input type="number" id="dbg-forcaExponent" step="0.01">
-          </label>
-          <label>RESISTENCIA_EXPONENT <span class="debug-hint">expoente de Defesa = Resistência^x</span>
-            <input type="number" id="dbg-resistenciaExponent" step="0.01">
-          </label>
-          <label>DESTREZA_BASE <span class="debug-hint">esquiva base, em pontos % (2 = 2%)</span>
-            <input type="number" id="dbg-destrezaBase" step="0.1">
-          </label>
-          <label>DESTREZA_EXPONENT <span class="debug-hint">expoente de Destreza = base + (Resistência+bónus)^x</span>
-            <input type="number" id="dbg-destrezaExponent" step="0.01">
-          </label>
-          <label>LETALIDADE_BASE <span class="debug-hint">crítico base, em pontos % (1 = 1%)</span>
-            <input type="number" id="dbg-letalidadeBase" step="0.1">
-          </label>
-          <label>LETALIDADE_EXPONENT <span class="debug-hint">expoente de Letalidade = base + (Força+bónus)^x</span>
-            <input type="number" id="dbg-letalidadeExponent" step="0.01">
-          </label>
-          <label>LETALIDADE_MULTIPLICADOR <span class="debug-hint">dano do crítico = Ataque × x (ignora Defesa)</span>
-            <input type="number" id="dbg-letalidadeMultiplicador" step="0.1">
-          </label>
-          <label>REGENERACAO_BASE <span class="debug-hint">regeneração base, vida/segundo</span>
-            <input type="number" id="dbg-regeneracaoBase" step="0.01">
-          </label>
-          <label>REGENERACAO_EXPONENT <span class="debug-hint">expoente de Regeneração = base + (Energia+bónus)^x</span>
-            <input type="number" id="dbg-regeneracaoExponent" step="0.01">
-          </label>
-          <label>LEVEL_UP_POINTS <span class="debug-hint">pontos de status por nível subido</span>
-            <input type="number" id="dbg-levelUpPoints" step="1">
-          </label>
-          <label>MAX_ACCURACY_M <span class="debug-hint">precisão máx. de GPS aceite (m)</span>
-            <input type="number" id="dbg-maxAccuracyM" step="1">
-          </label>
-          <label>MIN_MOVEMENT_M <span class="debug-hint">movimento mín. para contar (m)</span>
-            <input type="number" id="dbg-minMovementM" step="1">
-          </label>
-          <label>MAX_SAFE_SPEED_KMH <span class="debug-hint">teto único de segurança (km/h) - erro de GPS/veículo, não decide esforço</span>
-            <input type="number" id="dbg-maxSafeSpeedKmh" step="1">
-          </label>
-          <label>ACTIVITY_STOPPED_MAX_KMH <span class="debug-hint">abaixo disto = parado (pausa automática)</span>
-            <input type="number" id="dbg-activityStoppedMaxKmh" step="0.1">
-          </label>
-          <label>ACTIVITY_WALK_MAX_KMH <span class="debug-hint">teto da faixa "caminhar" na deteção automática</span>
-            <input type="number" id="dbg-activityWalkMaxKmh" step="0.1">
-          </label>
-          <label>ACTIVITY_RUN_MAX_KMH <span class="debug-hint">teto da faixa "correr" na deteção automática (acima = bicicleta)</span>
-            <input type="number" id="dbg-activityRunMaxKmh" step="0.1">
-          </label>
-          <label>ACTIVITY_WINDOW_SECONDS <span class="debug-hint">janela deslizante (s) para a velocidade média de classificação</span>
-            <input type="number" id="dbg-activityWindowSeconds" step="1">
-          </label>
-          <label>ACTIVITY_HYSTERESIS_SECONDS <span class="debug-hint">tempo (s) na nova faixa antes de mudar de atividade detetada</span>
-            <input type="number" id="dbg-activityHysteresisSeconds" step="1">
-          </label>
-          <label>STEP_SIGNAL_THRESHOLD <span class="debug-hint">oscilação (m/s²) acima da qual há passada — abaixo disto, velocidade de caminhar/correr é tratada como bicicleta</span>
-            <input type="number" id="dbg-stepSignalThresholdMs2" step="0.1">
-          </label>
-          <label>HEX_RESOLUTION <span class="debug-hint">resolução H3 dos hexágonos de descoberta (9 ≈ 427m de diâmetro)</span>
-            <input type="number" id="dbg-hexResolution" step="1">
-          </label>
-          <label>MINIBOSS_LEVEL_STEP <span class="debug-hint">intervalo de mini-bosses (níveis)</span>
-            <input type="number" id="dbg-miniBossLevelStep" step="1">
-          </label>
-          <label>BOSS_LEVEL_STEP <span class="debug-hint">intervalo de bosses (níveis)</span>
-            <input type="number" id="dbg-bossLevelStep" step="1">
-          </label>
-          <label>MAX_LEVEL_TO_GENERATE <span class="debug-hint">nível máximo gerado</span>
-            <input type="number" id="dbg-maxLevelToGenerate" step="1">
-          </label>
-          <label>MINIBOSS_MAX_POINTS <span class="debug-hint">pontos máx. por mini-boss (depende da vida restante)</span>
-            <input type="number" id="dbg-miniBossMaxPoints" step="1">
-          </label>
-          <label>BOSS_MAX_POINTS <span class="debug-hint">pontos máx. por boss (depende da vida restante)</span>
-            <input type="number" id="dbg-bossMaxPoints" step="1">
-          </label>
-          <label>BATTLE_DEFENSE_PERCENT <span class="debug-hint">% da defesa subtraída no dano (ex: 0.6 = 60%)</span>
-            <input type="number" id="dbg-battleDefensePercent" step="0.01">
-          </label>
-          <label>BATTLE_FLOOR_PERCENT <span class="debug-hint">dano mínimo, % do próprio ataque</span>
-            <input type="number" id="dbg-battleFloorPercent" step="0.01">
-          </label>
-          <label>DAMAGE_VARIANCE_MIN <span class="debug-hint">variação aleatória do dano (0.8 = entre 80% e 100%)</span>
-            <input type="number" id="dbg-damageVarianceMin" step="0.01">
-          </label>
-          <label>MONSTER_REGEN_PERCENT <span class="debug-hint">% da Vida máxima do monstro recuperada a cada troca de ataques</span>
-            <input type="number" id="dbg-monsterRegenPercent" step="0.1">
-          </label>
-        </div>
-
-        <div class="debug-row">
-          <button id="btn-save-debug-vars" class="btn-secondary">Guardar</button>
-          <button id="btn-reset-debug-vars" class="btn-secondary">Repor todos os padrões</button>
-        </div>
-        <p id="debug-vars-status" class="debug-status"></p>
-
-        <hr class="debug-divider">
-
-        <label class="debug-label" for="input-sim-factor">
-          Simular distância pelo tempo (m por segundo real, em vez de GPS)
-        </label>
-        <div class="debug-row">
-          <input type="number" id="input-sim-factor" min="0.1" step="0.1" value="1">
-          <button id="btn-toggle-sim-distance" class="btn-secondary">Iniciar simulação</button>
-        </div>
-        <p id="sim-distance-status" class="debug-status"></p>
-
-        <hr class="debug-divider">
-
-        <div id="debug-character-info">
-          <p>Pontos disponíveis: <span id="debug-points-value">0</span></p>
-          <p>Status investidos — Energia <span id="debug-level-energia">0</span> · Força <span id="debug-level-forca">0</span> · Resistência <span id="debug-level-resistencia">0</span></p>
-        </div>
-
-        <hr class="debug-divider">
-
-        <button id="btn-reset-character" class="btn-secondary btn-danger">Repor personagem e distância</button>
-        </div>
-      </section>
     </div>
 
     <!-- ===== Separador: Mundo (era "Arena"/"Batalhas") ===== -->
@@ -605,20 +433,20 @@
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/storage-keys.js?v=20260814a"></script>
   <script src="js/tab-lock.js?v=20260806p"></script>
-  <script src="js/auth.js?v=20260814b"></script>
+  <script src="js/auth.js?v=20260814c"></script>
   <script src="js/progress-sync.js?v=20260814a"></script>
   <script src="js/leaderboard.js?v=20260810d"></script>
   <script src="js/main.js?v=20260812d"></script>
-  <script src="js/debug.js?v=20260814a"></script>
-  <script src="js/equipment.js?v=20260811b"></script>
-  <script src="js/experience.js?v=20260810d"></script>
+  <script src="js/game-config.js?v=20260814a"></script>
+  <script src="js/equipment.js?v=20260814a"></script>
+  <script src="js/experience.js?v=20260814a"></script>
   <script src="js/monsters.js?v=20260806p"></script>
   <script src="js/monthly-medals.js?v=20260810d"></script>
   <script src="js/battle.js?v=20260811e"></script>
   <script src="js/hexes.js?v=20260814a"></script>
-  <script src="js/training.js?v=20260814b"></script>
+  <script src="js/training.js?v=20260814c"></script>
   <script src="js/profile.js?v=20260810f"></script>
-  <script src="js/changelog.js?v=20260814c"></script>
+  <script src="js/changelog.js?v=20260814d"></script>
   <script src="js/achievements.js?v=20260811b"></script>
   <script src="js/orientation.js?v=20260806p"></script>
   <script src="js/nav.js?v=20260814a"></script>

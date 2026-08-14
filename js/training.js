@@ -672,11 +672,8 @@ let consecutiveSpeedViolations = 0;
 // Moedas encontradas a treinar (secção 7 da documentação): 50% de chance a
 // cada quilometro REAL (nao efetivo - "encontrar" moedas e sobre esforco
 // fisico bruto, nao sobre o modo de treino) de encontrar entre 1 e 20.
-// rollCoinDropsForKm e partilhada com o simulador de distancia do Debug
-// (js/debug.js tickSimDistance) - cada chamador guarda o seu PROPRIO
-// contador de km ja testados (coinsCheckedKm aqui, simCoinsCheckedKm la),
-// nunca partilhado, senao uma sessao real e uma simulada interferiam uma
-// com a outra.
+// coinsCheckedKm guarda quantos km inteiros ja foram testados nesta sessao,
+// para o teste correr exatamente uma vez por km cruzado.
 const COIN_FIND_CHANCE = 0.5;
 const COIN_FIND_MIN = 1;
 const COIN_FIND_MAX = 20;

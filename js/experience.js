@@ -122,7 +122,6 @@ function updateXPDisplay(liveSessionKcal = 0) {
   xpProgressTextEl.textContent = `${Math.round(info.distanceIntoLevel).toLocaleString("pt-BR")} XP — faltam ${remaining.toLocaleString("pt-BR")} para o Nível ${info.level + 1}`;
   xpBarFillEl.style.width = `${progressPct}%`;
 
-  renderDebugCharacterInfo();
 }
 
 updateXPDisplay();

@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v3.0.0",
+    title: "Nova Escala de Níveis",
+    changes: [
+      "Cada nível passa a custar bastante mais XP — a progressão fica mais lenta e com mais margem para crescer. Os níveis atuais foram recalculados nesta nova escala.",
+      "Não perdes nada: as calorias, os pontos investidos, o equipamento e as conquistas ficam todos exatamente como estavam.",
+      "Corrigido: o nível mostrado podia ser diferente de telemóvel para telemóvel. Agora a fórmula é a mesma para toda a gente, sempre.",
+    ],
+  },
+  {
     version: "v2.13.0",
     title: "Progresso Sempre Sincronizado",
     changes: [
