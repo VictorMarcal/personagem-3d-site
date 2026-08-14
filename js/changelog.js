@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v3.1.0",
+    title: "Corrigir o Tipo de Treino",
+    changes: [
+      "Se a app se enganar no tipo de treino (é fácil confundir pedalar devagar com correr), passas a poder corrigi-lo na lista de Treinos de Hoje — as calorias são recalculadas automaticamente.",
+      "A app começa a medir a cadência do movimento durante o treino, para aprender a distinguir pedalar de correr sozinha. Quando acertar de forma fiável, a correção manual desaparece.",
+    ],
+  },
+  {
     version: "v3.0.0",
     title: "Nova Escala de Níveis",
     changes: [

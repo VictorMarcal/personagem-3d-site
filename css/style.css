@@ -624,6 +624,21 @@ main {
 
 .training-calories-row span { font-weight: 700; color: var(--text); }
 
+/* Correcao manual do modo de treino - TEMPORARIO (2026-08-14, secção 4.3).
+   Remover junto com o bloco correspondente em js/training.js quando a
+   deteccao automatica for fiavel. Discreto de proposito: e uma correcao de
+   excecao, nao uma escolha que se espera do jogador a cada treino. */
+.training-mode-fix {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm, 6px);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 11px;
+  font-family: inherit;
+}
+
 /* Mapa de territorios descobertos (2026-08-14, secção 18). Altura fixa: o
    Leaflet precisa de um contentor com altura definida, senao colapsa a 0. */
 #hex-map {

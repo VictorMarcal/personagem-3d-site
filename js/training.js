@@ -116,6 +116,69 @@ function hasStepSignal() {
   return stepSignalIntensity() >= getStepSignalThresholdMs2();
 }
 
+// --- Cadencia (2026-08-14, secção 4.3) -------------------------------------
+//
+// A amplitude (desvio-padrao acima) provou nao separar as atividades: numa
+// saida de bicicleta mediu 4.26/4.51 e numa caminhada 5.83 - pedalar oscila
+// TANTO ou MAIS do que andar, e os maximos sao 3 a 5x a media (a estrada da
+// solavancos) contra 1.4x a andar (a passada e regular). O jogador
+// confirmou os dois falhancos no terreno: a subir devagar deu "caminhar", em
+// reta deu "corrida".
+//
+// O que distingue de facto e a FREQUENCIA, nao a forca: andar e correr sao
+// um movimento periodico (~1.5-2.5 Hz a andar, ~2.5-3.5 Hz a correr);
+// pedalar produz vibracao irregular sem ritmo dominante nessa banda. E um
+// sinal INTRINSECO a atividade - nao depende do percurso ter descidas, nem
+// da velocidade, ao contrario de tudo o resto que temos.
+//
+// Isto ainda NAO decide nada: so mede e grava, para podermos escolher o
+// discriminador com dados em vez de a olho (ja falhamos duas vezes hoje a
+// afinar limiares por palpite). Contagem de picos e O(n) - barata o
+// suficiente para correr a cada leitura de GPS.
+function stepCadenceHz() {
+  if (motionSamples.length < 16) return 0;
+
+  let soma = 0;
+  for (const s of motionSamples) soma += s.magnitude;
+  const media = soma / motionSamples.length;
+  const desvio = stepSignalIntensity();
+  // Limiar de deteccao proporcional ao proprio sinal: um pico so conta se
+  // se destacar do ruido de fundo desta janela, e nao por um valor absoluto
+  // (que voltaria a ser um numero escolhido a olho).
+  const limiarPico = media + desvio * 0.5;
+
+  let picos = 0;
+  for (let i = 1; i < motionSamples.length - 1; i++) {
+    const m = motionSamples[i].magnitude;
+    if (m > limiarPico && m >= motionSamples[i - 1].magnitude && m > motionSamples[i + 1].magnitude) {
+      picos += 1;
+    }
+  }
+
+  const duracaoS = (motionSamples[motionSamples.length - 1].timestamp - motionSamples[0].timestamp) / 1000;
+  return duracaoS > 0 ? picos / duracaoS : 0;
+}
+
+// Histogramas em vez de so media/maximo: duas distribuicoes muito diferentes
+// podem ter a mesma media (ex: quase sempre baixo com picos raros, contra
+// sempre a meio), e era exatamente essa ambiguidade que impedia decidir com
+// os dados que tinhamos. Limites escolhidos para cobrir as faixas que
+// interessam: cadencia de andar (1.5-2.5 Hz) e correr (2.5-3.5 Hz) ficam em
+// baldes proprios.
+const STEP_INTENSITY_BUCKETS = [1, 2, 3, 5, 8, 12, 20];
+const STEP_CADENCE_BUCKETS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5];
+// Limites alinhados com as faixas de classificacao por velocidade (2/6.5/14
+// km/h, ver classifySpeedKmh) mais alguns acima, para se ver quanto tempo a
+// sessao passou em cada faixa e nao so a media.
+const SPEED_BUCKETS = [2, 6.5, 10, 14, 20, 25, 35];
+
+function bucketIndex(value, limits) {
+  for (let i = 0; i < limits.length; i++) {
+    if (value < limits[i]) return i;
+  }
+  return limits.length;
+}
+
 // iOS 13+ exige permissao explicita a partir de um gesto do utilizador -
 // chamada a partir do clique em "Iniciar Treino" (startTraining). No
 // Android basta subscrever o evento.
@@ -161,6 +224,13 @@ function classifyActivity(speedKmh) {
     gpsDiag.stepSignalSoma += intensidade;
     gpsDiag.stepSignalAmostras += 1;
     if (intensidade > gpsDiag.stepSignalMax) gpsDiag.stepSignalMax = intensidade;
+    gpsDiag.stepIntensityHist[bucketIndex(intensidade, STEP_INTENSITY_BUCKETS)] += 1;
+
+    // Cadencia: so mede e grava, nao decide nada ainda (ver stepCadenceHz).
+    const cadencia = stepCadenceHz();
+    gpsDiag.stepCadenceSoma += cadencia;
+    if (cadencia > gpsDiag.stepCadenceMax) gpsDiag.stepCadenceMax = cadencia;
+    gpsDiag.stepCadenceHist[bucketIndex(cadencia, STEP_CADENCE_BUCKETS)] += 1;
   }
 
   if ((porVelocidade === ACTIVITY_WALK || porVelocidade === ACTIVITY_RUN) &&
@@ -379,6 +449,20 @@ function resetGpsDiag() {
     stepSignalAmostras: 0,
     stepSignalMax: 0,
     desempatesParaBicicleta: 0, // vezes que o filtro corrigiu caminhar/correr -> bicicleta
+    // Distribuicoes, nao so media/maximo (2026-08-14): duas realidades muito
+    // diferentes podem ter a mesma media, e era essa ambiguidade que impedia
+    // decidir. Ver STEP_INTENSITY_BUCKETS/STEP_CADENCE_BUCKETS.
+    stepIntensityHist: new Array(STEP_INTENSITY_BUCKETS.length + 1).fill(0),
+    stepCadenceHist: new Array(STEP_CADENCE_BUCKETS.length + 1).fill(0),
+    stepCadenceSoma: 0,
+    stepCadenceMax: 0,
+    // Distribuicao de velocidades (2026-08-14): a regra "houve descidas, logo
+    // nao foi a correr" so funciona se o percurso TIVER descidas - numa volta
+    // plana nunca dispara. Guardar a distribuicao permite ver, com dados de
+    // varias saidas, se ha algum padrao de velocidade que separe as
+    // atividades independentemente do terreno.
+    velocidadeMaxKmh: 0,
+    velocidadeHist: new Array(SPEED_BUCKETS.length + 1).fill(0),
     // Pontos cegos tapados em 2026-08-14: o diagnostico dizia o TAMANHO de
     // uma falha de sinal mas nunca a RAZAO - nao dava para distinguir "o
     // telemovel foi bloqueado" de "o GPS nao conseguiu fixar".
@@ -433,6 +517,16 @@ function buildGpsDiagRecord() {
       ? Math.round((gpsDiag.stepSignalSoma / gpsDiag.stepSignalAmostras) * 100) / 100
       : null,
     stepSignalMax: Math.round(gpsDiag.stepSignalMax * 100) / 100,
+    stepCadenceMedioHz: gpsDiag.stepSignalAmostras > 0
+      ? Math.round((gpsDiag.stepCadenceSoma / gpsDiag.stepSignalAmostras) * 100) / 100
+      : null,
+    stepCadenceMaxHz: Math.round(gpsDiag.stepCadenceMax * 100) / 100,
+    // Limites incluidos no proprio registo: sem isto, um histograma antigo
+    // fica impossivel de ler depois de os baldes mudarem.
+    stepIntensityBuckets: STEP_INTENSITY_BUCKETS,
+    stepCadenceBuckets: STEP_CADENCE_BUCKETS,
+    speedBuckets: SPEED_BUCKETS,
+    velocidadeMaxKmh: Math.round(gpsDiag.velocidadeMaxKmh * 10) / 10,
     config: {
       maxAccuracyM: getMaxAccuracyM(),
       minMovementM: getMinMovementM(),
@@ -798,6 +892,10 @@ function onPositionUpdate(position) {
     updateDetectedActivity(timestamp);
     currentNominalSpeedMps = speedMps;
 
+    // Distribuicao de velocidades (secção 4.3) - so recolha, nao decide nada.
+    gpsDiag.velocidadeHist[bucketIndex(speedKmh, SPEED_BUCKETS)] += 1;
+    if (speedKmh > gpsDiag.velocidadeMaxKmh) gpsDiag.velocidadeMaxKmh = speedKmh;
+
     // Distancia/calorias medidas a partir de lastCountedPosition, NAO de
     // lastPosition (2026-08-11) - pode ser uma leitura mais antiga que a
     // usada acima para velocidade/deteccao, para segmentos pequenos
@@ -1146,7 +1244,7 @@ async function renderTodaysTrainings() {
 
   const { data, error } = await supabaseClient
     .from("training_sessions")
-    .select("distance_m, duration_seconds, mode, calories_kcal")
+    .select("id, distance_m, duration_seconds, mode, calories_kcal")
     .eq("user_id", currentUserId)
     .gte("started_at", startOfToday.toISOString())
     .order("started_at", { ascending: false });
@@ -1164,10 +1262,128 @@ async function renderTodaysTrainings() {
       const km = formatDistanceKm(Number(s.distance_m) || 0);
       const minutes = Math.round((Number(s.duration_seconds) || 0) / 60);
       const kcal = Math.round(Number(s.calories_kcal) || 0);
-      return `<li>${modeLabel} — ${km} · ${minutes} min · ${kcal} kcal</li>`;
+      return `<li>${modeLabel} — ${km} · ${minutes} min · ${kcal} kcal${renderModeFixControl(s)}</li>`;
     })
     .join("");
+
+  wireModeFixControls();
 }
+
+// ===========================================================================
+// CORRECAO MANUAL DO MODO — TEMPORARIO (2026-08-14)
+// ===========================================================================
+// Bloco deliberadamente isolado: existe so enquanto a deteccao automatica de
+// atividade nao for fiavel, e a intencao e REMOVE-LO por inteiro quando for
+// (a pedido: "quando acharmos que a afinacao esta perfeita, retiramos o modo
+// de ajuste manual"). Para o tirar: apagar esta seccao, a chamada a
+// renderModeFixControl/wireModeFixControls em renderTodaysTrainings acima, e
+// o CSS .training-mode-fix.
+//
+// Porque existe: a velocidade sozinha nao distingue pedalar de andar/correr
+// quando o ritmo cai na mesma faixa (reportado no terreno: a subir devagar
+// deu "caminhar", em reta deu "corrida"), e o desempate por acelerometro
+// mede AMPLITUDE, que se provou nao separar as atividades (secção 4.3).
+// Enquanto nao houver um discriminador que funcione, isto garante que
+// nenhum treino fica mal contado - e evita ter de corrigir a mao na base de
+// dados, como aconteceu varias vezes.
+//
+// Nao contraria a decisao original de nao escolher o modo ANTES do treino:
+// isto corrige DEPOIS, so quando a app se enganou.
+const MODE_FIX_OPTIONS = ["caminhar", "correr", "bicicleta"];
+
+function renderModeFixControl(session) {
+  const options = MODE_FIX_OPTIONS.map(
+    (m) => `<option value="${m}"${m === session.mode ? " selected" : ""}>${MODE_LABEL_PT[m]}</option>`
+  ).join("");
+  return `<select class="training-mode-fix" data-session-id="${session.id}" aria-label="Corrigir tipo de treino">${options}</select>`;
+}
+
+function wireModeFixControls() {
+  trainingTodayListEl.querySelectorAll(".training-mode-fix").forEach((select) => {
+    select.addEventListener("change", () => {
+      changeSessionMode(Number(select.dataset.sessionId), select.value);
+    });
+  });
+}
+
+// Recalcula as calorias com a MESMA regra dos totais usada no fim de um
+// treino (secção 4.4) - mudar o modo e literalmente reavaliar essa formula.
+async function changeSessionMode(sessionId, newMode) {
+  const { data: session, error } = await supabaseClient
+    .from("training_sessions")
+    .select("distance_m, duration_seconds, mode, calories_kcal")
+    .eq("id", sessionId)
+    .single();
+
+  if (error || !session || session.mode === newMode) return;
+
+  const newCalories = computeSessionCaloriesFromTotals(
+    Number(session.distance_m),
+    Number(session.duration_seconds),
+    newMode
+  );
+  const deltaKcal = newCalories - Number(session.calories_kcal);
+
+  const { error: updateError } = await supabaseClient
+    .from("training_sessions")
+    .update({ mode: newMode, calories_kcal: newCalories })
+    .eq("id", sessionId);
+
+  if (updateError) {
+    showGameToast("Não foi possível corrigir o treino", "aviso");
+    return;
+  }
+
+  // Agregados locais. CUIDADO: quando o delta e negativo, escrever so no
+  // localStorage nao chega - a reconciliacao no arranque (secção 14.1) faz
+  // max(local, servidor) nos campos que so crescem, e restauraria o valor
+  // antigo, mais alto. Por isso o sync abaixo e AWAIT direto, nao o
+  // queueProgressSync com debounce: os dois lados tem de ficar iguais antes
+  // de qualquer outra coisa correr.
+  localStorage.setItem(STORAGE_KEY_LIFETIME_KCAL, String(Math.max(0, getLifetimeCaloriesKcal() + deltaKcal)));
+  localStorage.setItem(STORAGE_KEY_MONTHLY_KCAL, String(Math.max(0, getMonthlyCaloriesKcal() + deltaKcal)));
+  await recomputeRecordsFromSessions();
+  await syncProgressToSupabase();
+
+  showGameToast(`Treino corrigido para ${MODE_LABEL_PT[newMode]}`, "medalha");
+  refreshAllUi();
+}
+
+// Recordes por modo (distancia/ritmo) e recorde de calorias sao recalculados
+// A PARTIR das sessoes, nao ajustados por delta: ao mudar o modo de uma
+// sessao, o recorde de um modo pode ter de descer para a segunda melhor, e
+// isso nao se consegue exprimir como um delta.
+async function recomputeRecordsFromSessions() {
+  const { data, error } = await supabaseClient
+    .from("training_sessions")
+    .select("distance_m, duration_seconds, mode, calories_kcal")
+    .eq("user_id", currentUserId);
+
+  if (error || !data) return;
+
+  const bestDistance = { caminhar: 0, correr: 0, bicicleta: 0 };
+  const bestPace = { caminhar: 0, correr: 0, bicicleta: 0 };
+  let bestCalories = 0;
+
+  data.forEach((s) => {
+    const mode = s.mode;
+    if (!(mode in bestDistance)) return;
+    const distance = Number(s.distance_m) || 0;
+    const duration = Number(s.duration_seconds) || 0;
+    bestDistance[mode] = Math.max(bestDistance[mode], distance);
+    if (duration > 0) bestPace[mode] = Math.max(bestPace[mode], distance / duration);
+    bestCalories = Math.max(bestCalories, Number(s.calories_kcal) || 0);
+  });
+
+  localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M, String(bestDistance.correr));
+  localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M_CAMINHAR, String(bestDistance.caminhar));
+  localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M_BICICLETA, String(bestDistance.bicicleta));
+  localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS, String(bestPace.correr));
+  localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS_CAMINHAR, String(bestPace.caminhar));
+  localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS_BICICLETA, String(bestPace.bicicleta));
+  localStorage.setItem(STORAGE_KEY_BEST_SESSION_CALORIES_KCAL, String(bestCalories));
+}
+// ===== FIM DO BLOCO TEMPORARIO =============================================
 
 btnStart.addEventListener("click", startTraining);
 btnStop.addEventListener("click", stopTraining);
