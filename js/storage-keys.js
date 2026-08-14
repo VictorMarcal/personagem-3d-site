@@ -127,3 +127,10 @@ const STORAGE_KEY_BATTLE_TAB_LOCK = "personagem.lockBatalhaAba";
 // formula de calorias/MET planeada (secção 17 da documentação). Omissão
 // de 70kg para quem ainda não preencheu (DEFAULT_WEIGHT_KG, js/equipment.js).
 const STORAGE_KEY_WEIGHT_KG = "personagem.pesoKg";
+
+// Hexagonos H3 ja descobertos (secção 18) - cache local do que esta em
+// discovered_hexes no Supabase, mais uma fila do que ainda falta enviar
+// (mesmo padrao de training_sessions: cada descoberta e um evento discreto,
+// nao um snapshot, por isso nao pode simplesmente ser reenviada por cima).
+const STORAGE_KEY_DISCOVERED_HEXES = "personagem.hexagonosDescobertos";
+const STORAGE_KEY_DISCOVERED_HEXES_QUEUE = "personagem.hexagonosPorEnviar";

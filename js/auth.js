@@ -225,6 +225,16 @@ async function bootstrapAfterLogin(user) {
     queueProgressSync();
   }
   flushTrainingSessionQueue();
+
+  // Territorios descobertos (secção 18) - o Supabase e a fonte de verdade,
+  // a cache local pode estar vazia (dispositivo novo) ou desatualizada.
+  // Try/catch proprio, como o resto do arranque: uma falha aqui nao pode
+  // impedir o jogo de arrancar.
+  try {
+    await hydrateHexesFromSupabase();
+  } catch (err) {
+    console.error("Falha ao carregar territórios descobertos:", err);
+  }
 }
 
 supabaseClient.auth.onAuthStateChange((_event, session) => {

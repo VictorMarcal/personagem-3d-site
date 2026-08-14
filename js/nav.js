@@ -113,6 +113,15 @@
   function showMundoSubtab(subtab) {
     Object.entries(subButtons).forEach(([key, btn]) => btn.classList.toggle("active", key === subtab));
     Object.entries(subPanes).forEach(([key, pane]) => pane.classList.toggle("active", key === subtab));
+
+    // O Leaflet calcula o tamanho do mapa a partir do contentor - se este
+    // estava escondido (display:none) quando o mapa foi criado, fica com
+    // dimensao 0 e so aparece um canto cinzento. Recalcular ao abrir a aba
+    // resolve, e desenhar aqui evita descarregar tiles a quem nunca la vai.
+    if (subtab === "missoes") {
+      if (typeof renderHexMap === "function") renderHexMap();
+      if (typeof refreshHexMapSize === "function") refreshHexMapSize();
+    }
   }
 
   Object.entries(subButtons).forEach(([key, btn]) => {

@@ -369,6 +369,37 @@ alter table public.player_progress add column if not exists best_session_calorie
 -- data, e sessoes sem leituras nenhumas, ficam a NULL.
 alter table public.training_sessions add column if not exists gps_diag jsonb;
 
+-- Migracao (2026-08-14, secção 18 da documentação): descoberta de territorio
+-- por hexagonos H3 - base das missoes por localizacao. Guarda o ID da celula
+-- H3, NAO coordenadas (escolha de privacidade: na resolucao 9 cada celula tem
+-- ~427m de diametro, o registo diz "esteve nesta zona", nunca "esteve nesta
+-- rua"). `resolution` fica em cada linha porque os IDs H3 sao especificos da
+-- resolucao - muda-la nao apaga o historico, so deixa de contar as antigas.
+create table if not exists public.discovered_hexes (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  hex_id text not null,
+  resolution smallint not null,
+  first_seen_at timestamptz not null default now(),
+  primary key (user_id, hex_id)
+);
+
+create index if not exists discovered_hexes_user_res_idx
+  on public.discovered_hexes (user_id, resolution);
+create index if not exists discovered_hexes_user_seen_idx
+  on public.discovered_hexes (user_id, first_seen_at);
+
+alter table public.discovered_hexes enable row level security;
+
+create policy "discovered_hexes_select_own" on public.discovered_hexes
+  for select using ((select auth.uid()) = user_id);
+
+create policy "discovered_hexes_insert_own" on public.discovered_hexes
+  for insert with check ((select auth.uid()) = user_id);
+
+-- Necessario para o "Repor personagem" do Debug limpar tambem as descobertas.
+create policy "discovered_hexes_delete_own" on public.discovered_hexes
+  for delete using ((select auth.uid()) = user_id);
+
 -- Depois do TEU primeiro login real no site (para a tua linha em profiles
 -- existir), corre isto à parte, substituindo pelo teu uid (Authentication
 -- → Users no dashboard, ou "select id, email from auth.users;"):

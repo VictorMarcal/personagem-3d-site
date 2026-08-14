@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v2.12.0",
+    title: "Territórios por Descobrir",
+    changes: [
+      "Nova aba Missões: o mapa está dividido em hexágonos e cada zona onde treinas pela primeira vez fica acesa no teu mapa pessoal.",
+      "Treina em sítios novos para descobrir mais território — repetir o mesmo percurso não acende nada de novo.",
+      "As missões e recompensas em si chegam a seguir; por agora só a exploração é registada.",
+    ],
+  },
+  {
     version: "v2.11.0",
     title: "Bicicleta Deixa de Ser Confundida com Corrida",
     changes: [

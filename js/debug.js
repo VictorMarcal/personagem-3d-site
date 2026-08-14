@@ -103,6 +103,14 @@ const DEBUG_DEFAULTS = {
   // dados reais - gps_diag grava a intensidade medida de cada sessao
   // precisamente para isso.
   stepSignalThresholdMs2: 1.2,
+  // Resolucao H3 dos hexagonos de descoberta (secção 18). 9 = ~427m de
+  // diametro, ~0.11 km2, ~14 hexagonos numa caminhada de 5km - medido, nao
+  // estimado. A 8 (1122m) seriam so ~5 por caminhada, grosseiro demais; a
+  // 10 (160m) seriam ~37, acende dezenas so a dar a volta ao quarteirao.
+  // ATENCAO: os IDs H3 sao especificos da resolucao - mudar isto NAO apaga
+  // o historico (a coluna `resolution` fica gravada em cada linha), mas as
+  // celulas ja descobertas noutra resolucao deixam de contar.
+  hexResolution: 9,
   miniBossLevelStep: 5,
   bossLevelStep: 10,
   maxLevelToGenerate: 100,
@@ -166,6 +174,7 @@ function getActivityRunMaxKmh() { return getDebugValue("activityRunMaxKmh"); }
 function getActivityWindowSeconds() { return getDebugValue("activityWindowSeconds"); }
 function getActivityHysteresisSeconds() { return getDebugValue("activityHysteresisSeconds"); }
 function getStepSignalThresholdMs2() { return getDebugValue("stepSignalThresholdMs2"); }
+function getHexResolution() { return getDebugValue("hexResolution"); }
 function getMiniBossLevelStep() { return getDebugValue("miniBossLevelStep"); }
 function getBossLevelStep() { return getDebugValue("bossLevelStep"); }
 function getMaxLevelToGenerate() { return getDebugValue("maxLevelToGenerate"); }
@@ -211,6 +220,7 @@ const debugVarInputs = {
   activityWindowSeconds: document.getElementById("dbg-activityWindowSeconds"),
   activityHysteresisSeconds: document.getElementById("dbg-activityHysteresisSeconds"),
   stepSignalThresholdMs2: document.getElementById("dbg-stepSignalThresholdMs2"),
+  hexResolution: document.getElementById("dbg-hexResolution"),
   miniBossLevelStep: document.getElementById("dbg-miniBossLevelStep"),
   bossLevelStep: document.getElementById("dbg-bossLevelStep"),
   maxLevelToGenerate: document.getElementById("dbg-maxLevelToGenerate"),
@@ -436,6 +446,8 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEY_TOTAL_MOEDAS_GASTAS);
   localStorage.removeItem(STORAGE_KEY_TOTAL_BATTLES);
   localStorage.removeItem(STORAGE_KEY_DISTINCT_MONTHS_TRAINED);
+  localStorage.removeItem(STORAGE_KEY_DISCOVERED_HEXES);
+  localStorage.removeItem(STORAGE_KEY_DISCOVERED_HEXES_QUEUE);
 
   // O historico de treinos (aba Perfil) vive numa tabela a parte
   // (training_sessions) - sem isto o reset local nao mexia nele e o
@@ -447,6 +459,16 @@ function resetCharacterAndDistance() {
       .eq("user_id", currentUserId)
       .then(({ error }) => {
         if (error) console.warn("Falha ao apagar historico de treinos:", error);
+      });
+    // Territorios descobertos vivem numa tabela a parte (secção 18) - sem
+    // isto o reset local nao lhes mexia e o mapa voltava a encher-se no
+    // proximo login a partir do Supabase.
+    supabaseClient
+      .from("discovered_hexes")
+      .delete()
+      .eq("user_id", currentUserId)
+      .then(({ error }) => {
+        if (error) console.warn("Falha ao apagar territorios descobertos:", error);
       });
   }
 

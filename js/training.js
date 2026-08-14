@@ -786,6 +786,10 @@ function onPositionUpdate(position) {
         gpsDiag.creditadas += 1;
         updateDistanceDisplay();
         checkCoinDropsForDistance(totalDistanceM);
+        // Descoberta de territorio (secção 18) - so em segmentos que de
+        // facto contaram como deslocamento, para deriva de GPS parado nao
+        // "descobrir" hexagonos vizinhos sem lá se ter ido.
+        recordDiscoveredHexForTraining(latitude, longitude);
         lastCountedPosition = { latitude, longitude, timestamp };
       } else {
         gpsDiag.abaixoMovimentoMin += 1;
@@ -795,6 +799,17 @@ function onPositionUpdate(position) {
 
   lastPosition = { latitude, longitude, timestamp };
   if (!lastCountedPosition) lastCountedPosition = { latitude, longitude, timestamp };
+}
+
+// Descoberta de hexagonos durante o treino (secção 18). Envolve
+// recordPositionHex (js/hexes.js) so para dar o feedback ao jogador - o
+// toast e a atualizacao do contador vivem aqui, a mecanica em si vive la.
+function recordDiscoveredHexForTraining(latitude, longitude) {
+  if (typeof recordPositionHex !== "function") return;
+  const { isNew } = recordPositionHex(latitude, longitude);
+  if (!isNew) return;
+  showGameToast("Nova zona descoberta!", "medalha");
+  renderHexCount();
 }
 
 function onPositionError(error) {

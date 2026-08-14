@@ -624,6 +624,33 @@ main {
 
 .training-calories-row span { font-weight: 700; color: var(--text); }
 
+/* Mapa de territorios descobertos (2026-08-14, secção 18). Altura fixa: o
+   Leaflet precisa de um contentor com altura definida, senao colapsa a 0. */
+#hex-map {
+  height: 320px;
+  width: 100%;
+  border-radius: var(--r-md);
+  margin-top: 12px;
+  background: var(--surface-2);
+}
+
+.hex-count-row {
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.hex-count-row span {
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text);
+}
+
+.hex-map-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted-2);
+}
+
 /* Diagnostico do sinal de GPS ao vivo (2026-08-11, secção 4.2) - so
    visivel para admin, deliberadamente discreto/monoespacado: e uma
    ferramenta de diagnostico, nao informacao de jogo. */
