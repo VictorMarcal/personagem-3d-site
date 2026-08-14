@@ -532,6 +532,29 @@ Card com todos os valores públicos ajustáveis em tempo real (sem precisar de e
 - **Debug é admin-only**: flag `is_admin` em `profiles`, alterável só manualmente via SQL Editor — nunca exposta a nenhum caminho do cliente (fronteira real de segurança são as políticas RLS, não a UI escondida)
 - Falhas de rede a meio do arranque pós-login não travam o resto do jogo — cada passo (perfil, migração/hidratação, nome, leaderboard) tem o seu próprio `try/catch`, para os cartões de Monstros/Conquistas nunca ficarem vazios por causa de um erro noutro passo
 
+### 14.1 Reconciliação no arranque (merge campo a campo)
+
+**O arranque reconcilia sempre local + servidor, campo a campo** (`reconcileProgressWithServer`, `js/progress-sync.js`, 2026-08-14). Nunca escolhe um dos lados por inteiro.
+
+**O problema que isto resolve**: antes era tudo-ou-nada — se houvesse uma mutação local por confirmar (`SYNC_PENDING_KEY`), a hidratação era **saltada por completo** e confiava-se no dispositivo; caso contrário, o servidor sobrepunha-se ao local. Ambas as metades estavam certas isoladamente e erradas em conjunto:
+
+- Confiar no servidor apaga um treino acabado de fazer e ainda por sincronizar (bug real de 2026-08-04, foi por isso que a regra do "pendente" nasceu)
+- Confiar no local ignora tudo o que o servidor saiba de novo — **bug real de 2026-08-14**: as calorias vitalícias foram corrigidas por SQL (secção 4.4), o telemóvel tinha uma mutação pendente, e por isso continuava a mostrar **nível 4 em vez de 10**. Pior: o `updated_at` do servidor mostrava que o próximo sync bem-sucedido teria **apagado a correção**, subindo o valor local antigo por cima
+
+**A observação que destrava**: a esmagadora maioria dos campos de progresso **só cresce**. Para esses não é preciso saber quem escreveu por último — basta o **máximo**, que está correto nos dois sentidos ao mesmo tempo.
+
+| Tipo de campo | Regra | Exemplos |
+|---|---|---|
+| Monotónicos (só sobem) | `max(local, servidor)` | `lifetime_calories_kcal`, `lifetime_distance_m`, `best_session_*`, `best_pace_*`, `total_*`, `last_awarded_level`, níveis investidos e de equipamento |
+| Sobem e descem | Local se houver mutação pendente, senão servidor | `moedas`, `unspent_points`, `peso_kg` |
+| Coleções | União (nunca substituição) | `unlocked_achievements`, `encountered_creatures`; `defeated_creatures` faz `max` das estrelas por criatura |
+
+Depois do merge, se o resultado diferir do que está no servidor, marca-se sincronização pendente para o servidor **também** convergir — a reconciliação é bidirecional, não só uma leitura.
+
+**Caveat conhecido**: um reset feito **só por SQL**, sem limpar o dispositivo, seria desfeito pelos campos monotónicos (o telemóvel voltaria a empurrar os valores antigos, mais altos). É uma operação de administração rara e o custo de não proteger o caso normal é maior — mas convém limpar também o `localStorage` do dispositivo ao fazer um reset desses.
+
+**Testado nos cinco cenários** antes de aplicar, incluindo os dois que antes eram mutuamente exclusivos: correção do servidor a chegar ao dispositivo com mutação pendente (nível 4 → 10 ✓) e treino local por sincronizar a não ser apagado pelo servidor ✓.
+
 ## 15. Aba de Perfil e histórico de treinos
 
 - **Navegação visível: barra de separadores fixa no fundo do ecrã** (`#tab-bar`, `js/nav.js`, tema "Campo Aberto" 2026-08-06) com **4 separadores** (2026-08-10, eram 5 até aqui — ver secção 17.3 para o histórico completo da mudança, incluindo uma iteração intermédia no mesmo dia) — **Personagem** 🧍 (cena 3D + XP + HUD de stats/pontos, "quem és"), **Mundo** 🗺️ (era "Arena"/"Batalhas", "o que fazes" — ver abaixo), **Troféus** 🏅, **Perfil** 📊. **Mundo é o separador de arranque** (não Personagem), para "Iniciar Treino" continuar a ser a primeira coisa visível ao abrir a app. Personagem/Mundo/Troféus são 3 `.pane` dentro do mesmo container `#view-jogo` (alternadas via `data-pane-name`/`classList.toggle("active")`, nunca desmontadas do DOM); Perfil continua a ser um container à parte (`#view-perfil`). Os dois botões antigos no cabeçalho (`#btn-nav-jogo`/`#btn-nav-perfil`) continuam no DOM mas invisíveis (`.legacy-nav`, `aria-hidden`) — `js/nav.js` limita-se a clicar neles por baixo dos panos, para `js/profile.js`/`js/battle.js` continuarem a funcionar sem alterações (incluindo o bloqueio de navegação para o Perfil durante uma luta, secção acima). O separador ativo sobrevive a um refresh (`localStorage`, chave `ui.separadorAtivo`, preferência por dispositivo, nunca sincronizada) — `js/nav.js` não precisou de nenhuma alteração de fundo para nenhuma das reestruturações, é inteiramente genérico (itera `.pane`/`.tab-btn`, sem nenhuma referência a nomes de separador hardcoded)
