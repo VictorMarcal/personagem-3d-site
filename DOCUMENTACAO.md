@@ -142,6 +142,8 @@ A conclusão prática foi que **não havia dados para afinar coisa nenhuma**: a 
 87% da caminhada decorreu sem uma única leitura. A precisão era boa quando os dados chegavam — simplesmente deixaram de chegar.
 
 - **O Wake Lock não resolve isto, e não pode**: impede o ecrã de se apagar *sozinho* por inatividade, mas não impede (nem tem como) o utilizador carregar no botão de bloquear. Assim que a página fica escondida, o sistema liberta o lock e o browser suspende os callbacks de geolocalização. O teste confirmou exatamente esse padrão: bloquear brevemente e voltar retomava a contagem; bloquear e guardar cortou tudo
+- **Pontos cegos do diagnóstico, tapados em 2026-08-14**: até aqui o registo dizia o **tamanho** de uma falha de sinal mas nunca a **razão** — era impossível distinguir "o telemóvel foi bloqueado" de "o GPS não conseguiu fixar". Faltavam três coisas, agora gravadas: (1) **erros de geolocalização por tipo** (`errosTimeout`/`errosPosicaoIndisp`/`errosPermissao`) — estes passam por `onPositionError` e **nunca** por `onPositionUpdate`, por isso um período inteiro sem fix aparecia apenas como silêncio; (2) **tempo com a página escondida** (`segundosEscondido`/`vezesEscondido`, via `visibilitychange`) — indicador direto de ecrã bloqueado ou troca de app; (3) **se o Wake Lock chegou a estar ativo** (`wakeLockAtivo`)
+- **Comparação entre dispositivos (2026-08-14)** mostra que o problema não é do código: uma saída de 3h10 do Skllrx teve **5435 leituras, uma a cada 2,1 s, falha máxima de 1,2 s** e precisão de 1,2 m — impecável. Nas sessões do Bernardo no mesmo período, as leituras chegam a cada 6-7 s (3 a 6× menos frequentes) e com pior precisão, com falhas de ~7 min. Aponta para poupança de energia agressiva, telemóvel bloqueado ou browser diferente — a distinguir com os contadores novos acima
 - **Não existe solução em código web**: não há API de geolocalização em segundo plano no browser — nem com Service Worker, nem instalando como PWA. É restrição deliberada do Android/Chrome. Qualquer tentativa de "preencher" o intervalo seria distância fabricada, não medida
 - **Caminhos reais** (nenhum implementado à data): (1) assumir a limitação e avisar bem — aviso ao iniciar e deteção de intervalo grande no fim, para uma sessão que perdeu dados não ser gravada em silêncio como se estivesse correta; (2) empacotar como app nativa (Capacitor ou equivalente), a única forma de ter tracking com o ecrã bloqueado; (3) importar os treinos do próprio relógio (Strava/Google Fit), o que resolve na raiz mas muda a natureza da app
 
@@ -159,6 +161,32 @@ A conclusão prática foi que **não havia dados para afinar coisa nenhuma**: a 
 - **Degrada com segurança**: sem acelerómetro, sem permissão (iOS 13+ exige-a a partir de um gesto do utilizador — pedida no clique de "Iniciar Treino"), ou com menos de 8 amostras, `stepSignalReady` fica `false` e a classificação é **exatamente** a de antes, só por velocidade
 - **Mesma limitação do GPS**: com o ecrã bloqueado o `devicemotion` também para (secção 4.2). Não acrescenta nenhuma limitação nova
 - **Instrumentado para calibração**: `gps_diag` grava `stepSignalMedio`/`stepSignalMax`/`desempatesParaBicicleta` e o limiar em vigor; o diagnóstico ao vivo mostra `passada <medido>/<limiar> (<n> desemp.)`. A ideia é afinar o limiar com uma saída real de bicicleta e outra a pé, **com dados**, em vez de por palpite
+- **Primeiros dados reais (2026-08-14) dizem que o limiar não serve**: numa saída de bicicleta a intensidade média foi **4,26**; numa caminhada, **5,83**. O limiar está em **1,2** — ou seja, pedalar fica 3,5× acima dele e **o desempate praticamente nunca dispara**. A premissa do desenho ("pedalar produz sobretudo vibração da estrada, muito mais fraca") não se confirma: entre a vibração da estrada, o telemóvel no bolso e o esforço fora do selim, a oscilação é grande. Subir o limiar para ~5 separaria estas duas sessões, mas é ajustar a duas amostras e a sobreposição é provável. **O discriminador certo é a frequência, não a amplitude** — a passada é uma oscilação periódica a ~1,5-3,5 Hz, a vibração da estrada é irregular e de frequência mais alta; contar cadência (picos por segundo) distinguiria, medir desvio-padrão não. Por decidir, deliberadamente à espera de mais dados
+
+### 4.4 Calorias gravadas: totais da sessão, não soma por segmento
+
+**Regra atual (2026-08-14)**: o valor de calorias **gravado** em `training_sessions.calories_kcal` (e o que conta para XP/nível/leaderboard) é calculado no fim da sessão a partir dos **totais**:
+
+```
+v_média = distância_total / duração_total
+kcal = MET(modo_dominante, v_média) × peso_kg × (duração_total / 3600)
+```
+
+A soma por segmento (`sessionCaloriesKcal`) **continua a existir**, mas apenas para o mostrador ao vivo durante o treino — ali um erro não persiste, e ter feedback imediato a cada leitura vale mais do que a precisão.
+
+**Porquê a mudança**: somar fatias por segmento depende de o GPS entregar leituras com regularidade. Quando falha, a **distância sobrevive** (o segmento seguinte é creditado em linha reta desde a última âncora) mas o **tempo não** — está capado a `getActivityWindowSeconds()` por segmento, teto introduzido a 2026-08-11 para resolver o problema **oposto** (calorias infladas por tempo parado, secção 4.1). Na prática, um erro tinha sido trocado por outro.
+
+Reportado pelo Bernardo ("as calorias não fazem sentido; a app dele dizia 720 kcal no total"). Duas sessões dele, ambas com falhas de sinal de ~7 minutos:
+
+| Sessão | Gravado | Pelos totais | % do esperado |
+|---|---:|---:|---:|
+| Bicicleta, 18,5 km, 49:47 | 186,0 | **584,3** | 32% |
+| Caminhada, 1,0 km, 14:51 | 43,1 | **65,5** | 66% |
+| **Total do dia** | **229** | **650** | vs 720 no relógio dele |
+
+**Validado contra os dois extremos conhecidos antes de aplicar** — a fórmula reproduz exatamente os valores que já sabíamos serem corretos, incluindo o caso oposto que a correção de 2026-08-11 tinha resolvido (33 min quase parado → 58,4 kcal, pouco acima do metabolismo em repouso). Não reintroduz esse problema: com velocidade média quase nula, o próprio MET cai para ~1,3.
+
+**Compromisso assumido**: numa sessão com GPS perfeito e intensidade muito variável, a média pode subestimar face à soma por segmento (o MET da bicicleta é convexo na velocidade — trechos rápidos valem desproporcionadamente mais). A sessão de 3h10 do Skllrx, que teve GPS impecável (5435 leituras, falha máxima de 1,2 s), dá 2274 kcal por segmento e 1792 pelos totais; **essa não foi recalculada**, por ter sido medida com dados fiáveis. Preferiu-se a regra simples e robusta à otimização de um caso que depende de condições que não se podem garantir.
 
 ## 5. Curva de nível do personagem
 
