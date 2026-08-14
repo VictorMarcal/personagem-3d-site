@@ -46,7 +46,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `assets/Hero.glb` | Modelo 3D do herói (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Shield.glb` | Modelo 3D do escudo (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Bow.glb` | Modelo 3D do arco (secção 9), carregado por `js/main.js` via `GLTFLoader` |
-| `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa Leaflet da aba Missões — ver secção 18 |
+| `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de terreno procedural da aba Missões — ver secção 18 |
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — histórico/registo, não é lido pelo site nem pelo Supabase |
 | `.mcp.json` | Liga o Claude Code ao projeto Supabase via MCP (`--project-ref=vnqjaepjfqlhgmlrhzlr`), token vem de uma variável de ambiente (`SUPABASE_ACCESS_TOKEN`), nunca gravado no ficheiro. Desde 2026-08-03, migrações novas são aplicadas diretamente via este MCP (`apply_migration`) em vez de copiar/colar SQL manualmente no dashboard — `supabase/schema.sql` continua a ser atualizado a cada migração, só como registo/referência |
 
@@ -677,8 +677,24 @@ Confirmado depois com uma caminhada simulada de 2 km em linha reta: **8 hexágon
 - **`resolution` gravada em cada linha**: os IDs H3 são específicos da resolução. Mudar a resolução no Debug **não apaga** o histórico — as células antigas ficam, apenas deixam de contar enquanto a resolução em vigor for outra
 - Degrada em silêncio se o `h3-js` ainda não tiver carregado (CDN lento/offline): perde-se a descoberta dessa leitura, o treino em si nunca é afetado
 
-**Mapa** (aba Missões, Leaflet + OpenStreetMap): desenha os hexágonos descobertos como polígonos (`h3.cellToBoundary` devolve `[[lat, lng], ...]`, exatamente o formato que o `L.polygon` espera) e enquadra automaticamente na zona explorada. **Só é criado quando a sub-aba é aberta pela primeira vez** (`js/nav.js`) — não faz sentido descarregar mapa e tiles a quem nunca lá entra, sobretudo em dados móveis antes de um treino. `invalidateSize()` ao abrir, porque o Leaflet calcula dimensão 0 se o contentor estava escondido quando o mapa foi criado.
-
 **O que ainda NÃO existe**: missões, metas e recompensas. Só a exploração é registada e mostrada, com um aviso "Em construção" no ecrã. Adiado de propósito — desenhar "descobre N zonas esta semana" sem saber quantos hexágonos rende um treino real seria escolher o N por palpite, o mesmo erro já cometido (e corrigido com dados) nas calorias e no GPS.
 
 **Limitação herdada**: como toda a deteção depende do GPS, só conta com o treino a decorrer e o ecrã ligado (secção 4.2).
+
+### 18.1 Mapa de território (v3.2.0, 2026-08-14)
+
+O mapa **deixou de ser um mapa real**. A pedido: *"em vez de mostrar o mapa real, gostava que fosse algo tipo [jogo de estratégia hexagonal] — imagina uma textura de terreno e vais pintando os hexágonos por cima; a textura está a preto e branco excepto nas áreas já descobertas"*.
+
+**O terreno é gerado por código.** Ruído de valor determinista a partir das coordenadas (`terrainHash` → `terrainSmoothNoise` → `terrainValue`, duas oitavas), classificado em cinco faixas de "altitude" fictícia: água, areia, relva, floresta, rocha. Desenhado num `<canvas>` por cima do Leaflet, que passou a servir **só de motor de pan/zoom e de projeção geográfica** — sem tiles, sem pedidos de rede, sem atribuição, sem depender de nenhum serviço externo. Determinista significa que a mesma coordenada dá sempre o mesmo terreno, em qualquer telemóvel e em qualquer visita, sem guardar nem descarregar nada.
+
+**O mapa é global — não há nenhuma região no código.** Correção explícita do pedido inicial: *"quero o mapa completo, mas para mim só aparece [a zona de] Braga porque é a única área que descobri; para outros players será outra área"*. O terreno existe em todo o lado e o `fitBounds` segue as descobertas do próprio jogador. Para o Skllrx isso enquadra aproximadamente o distrito de Braga, porque foi só onde explorou; para o Bernardo será outra zona, **sem uma linha de código diferente**.
+
+**Por explorar = a mesma textura, sem cor e escurecida** (luminância × 0,48), não preto sólido: continua a ver-se a *forma* do terreno — era esse o pedido — mas lê-se de imediato como "ainda não fui lá".
+
+**A grelha de fundo acompanha o zoom.** Os hexágonos de descoberta (resolução 9, ~427 m) desenhados ao nível de um país seriam dezenas de milhar de polígonos de 1 px — lento e ilegível. A resolução é escolhida pelo tamanho que os hexágonos teriam **no ecrã** (alvo ~34 px, via metros-por-pixel do próprio Leaflet), e não por uma tabela de níveis de zoom: assim o resultado é o mesmo em qualquer latitude e em qualquer tamanho de ecrã. Nunca passa da resolução 9 — mais fino que a própria descoberta não acrescenta informação. Quando a grelha de fundo é mais grosseira que a de descoberta, os hexágonos descobertos são redesenhados por cima, para o progresso continuar visível a qualquer zoom em vez de desaparecer ao afastar.
+
+**A frequência do ruído acompanha a resolução desenhada.** Primeira tentativa usou frequência fixa e o mapa saiu granulado — parecia estática, não terreno: hexágonos vizinhos caíam em células de ruído diferentes. Regra atual: um passo de um hexágono vale ~0,08 de unidade de ruído, para as manchas terem sempre a dimensão de vários hexágonos. Consequência aceite: o terreno é auto-semelhante (as formas repetem-se a cada escala), mas cada hexágono **descoberto** é sempre desenhado à frequência da resolução 9, por isso **a sua cor nunca muda**.
+
+**Orçamento de células** (`MAX_BACKDROP_CELLS = 2500`): só se desenham as células dentro do viewport (o H3 recorta ao polígono), por isso o custo cresce com o tamanho do ecrã e não com o tamanho do mundo. Se mesmo assim exceder, sobe-se um nível de resolução até caber. Medido no browser: 23 ms no pior caso (mundo inteiro, zoom 4, 2351 células), 6 ms num viewport de telemóvel.
+
+**Ainda é criado só quando a sub-aba é aberta pela primeira vez** (`js/nav.js`), e `invalidateSize()` ao abrir, porque o Leaflet calcula dimensão 0 se o contentor estava escondido quando o mapa foi criado. O canvas vive no contentor do mapa e não num pane do Leaflet — por isso não é arrastado automaticamente e tem de ser redesenhado a cada `move`/`zoom`, em coordenadas de ecrã; `pointer-events: none` para o arrastar continuar a chegar ao mapa.
