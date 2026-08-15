@@ -7,12 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
-    version: "v3.7.0",
-    title: "XP São as Calorias Totais",
+    version: "v3.8.0",
+    title: "Tempo Parado Conta como Pausa",
     changes: [
-      "O XP passa a ser as calorias totais, incluindo as que gastas em repouso durante as pausas — o teu corpo gastou-as, por isso contam.",
-      "O XP ganho aparece agora no resumo do fim do treino.",
-      "Durante o treino, o painel mostra os mesmos campos que vais ver no fim: tempo ativo, em pausa e total, calorias ativas e totais.",
+      "O tempo em que a app deteta que estás parado passa a contar como tempo em pausa, mesmo que não tenhas carregado em Pausa. Parado é parado.",
+      "Por causa disso, a tua velocidade média passa a ser a velocidade a que andaste mesmo — num treino de teste subiu de 1,6 para 4,4 km/h.",
+      "O XP são as calorias ativas: estar parado não rende XP. As calorias totais continuam a aparecer, porque o teu corpo gastou-as.",
+      "O XP ganho aparece no resumo do fim do treino, e o painel durante o treino mostra os mesmos números que vais ver no fim.",
     ],
   },
   {

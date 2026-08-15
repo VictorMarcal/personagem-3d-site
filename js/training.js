@@ -43,6 +43,7 @@ const STORAGE_KEYS = {
   // nao transformar o tempo parado em tempo de treino.
   pausaTotalMs: "treino.pausaTotalMs",
   pausaInicioMs: "treino.pausaInicioMs",
+  pausaAutoMs: "treino.pausaAutoMs",
 };
 
 // Para apresentacao (historico do Perfil, treinos de hoje). Declarado aqui
@@ -723,9 +724,18 @@ function updateLiveStatsDisplay() {
   set("live-active-time", formatDurationClock(elapsedSeconds));
   set("live-paused-time", formatDurationClock(pausedSeconds));
   set("live-total-time", formatDurationClock(elapsedSeconds + pausedSeconds));
-  set("live-active-kcal", `${Math.round(sessionCaloriesKcal)} kcal`);
-  set("live-total-kcal", `${Math.round(sessionCaloriesKcal + restingKcal)} kcal`);
-  updateDistanceDisplay();
+  // A MESMA formula do fim (computeSessionCaloriesFromTotals), nao a soma ao
+  // vivo por segmento: as duas dao valores diferentes (a soma por segmento e
+  // capada, secção 4.4) e o numero saltava ao terminar o treino.
+  const activeKcal = computeSessionCaloriesFromTotals(
+    totalDistanceM,
+    elapsedSeconds,
+    getDominantMode(),
+    sessionMovingSeconds
+  );
+  set("live-active-kcal", `${Math.round(activeKcal)} kcal`);
+  set("live-total-kcal", `${Math.round(activeKcal + restingKcal)} kcal`);
+  updateDistanceDisplay(activeKcal);
 
   updateGpsDiagDisplay();
 }
@@ -777,10 +787,15 @@ function currentRestingKcal() {
   return 1.0 * getPesoKg() * (currentPausedMs() / 3600000);
 }
 
-function updateDistanceDisplay() {
+// activeKcal e opcional: quando quem chama ja o calculou, reaproveita-se em
+// vez de o recalcular (updateLiveStatsDisplay corre a cada segundo).
+function updateDistanceDisplay(activeKcal) {
   distanceEl.textContent = formatDistanceKm(totalDistanceM);
-  // XP = calorias TOTAIS (secção 4.7).
-  caloriesEl.textContent = `${Math.round(sessionCaloriesKcal + currentRestingKcal())} kcal`;
+  // XP = calorias ATIVAS (secção 4.7).
+  const kcal = activeKcal !== undefined
+    ? activeKcal
+    : computeSessionCaloriesFromTotals(totalDistanceM, activeElapsedSeconds(), getDominantMode(), sessionMovingSeconds);
+  caloriesEl.textContent = `${Math.round(kcal)} kcal`;
 }
 
 // Treino acumulado: copia persistida em localStorage, salva a cada 10s
@@ -793,6 +808,7 @@ function persistAccumulatedTraining() {
   localStorage.setItem(STORAGE_KEYS.caloriasAcumuladasKcal, String(sessionCaloriesKcal));
   localStorage.setItem(STORAGE_KEYS.modoTempoAcumuladoMs, JSON.stringify(modeTimeAccumMs));
   localStorage.setItem(STORAGE_KEYS.tempoMovimentoS, String(sessionMovingSeconds));
+  localStorage.setItem(STORAGE_KEYS.pausaAutoMs, String(autoPausedMs));
   if (currentActiveMode) {
     localStorage.setItem(STORAGE_KEYS.atividadeAtiva, currentActiveMode);
   }
@@ -947,6 +963,12 @@ function onPositionUpdate(position) {
       gpsDiag.msSemLeituras += gapMs;
       gpsDiag.gapsLongos += 1;
     }
+    // Se ate agora a app tinha classificado "parado", este intervalo foi
+    // tempo parado - vai para o tempo em pausa, nao para o tempo ativo.
+    // Feito por incrementos e nao por transicoes de estado: assim uma falha
+    // de sinal a meio de uma paragem tambem conta, e nao ha estado aberto
+    // para fechar em cada saida possivel da funcao.
+    if (currentActiveMode === ACTIVITY_STOPPED) autoPausedMs += gapMs;
   }
   lastReadingTimestamp = timestamp;
 
@@ -1218,7 +1240,9 @@ function beginTrainingSession() {
   sessionCaloriesKcal = 0;
   sessionMovingSeconds = 0;
   pausedTotalMs = 0;
+  autoPausedMs = 0;
   pauseStartedMs = null;
+  localStorage.removeItem(STORAGE_KEYS.pausaAutoMs);
   localStorage.removeItem(STORAGE_KEYS.pausaTotalMs);
   localStorage.removeItem(STORAGE_KEYS.pausaInicioMs);
   currentNominalSpeedMps = 0;
@@ -1258,6 +1282,10 @@ const MIN_TRAINING_DURATION_SECONDS = 10;
 // esses 500 m - e ao retomar nao ha um salto em linha reta a ser creditado.
 let pauseStartedMs = null;
 let pausedTotalMs = 0;
+// Tempo que a app DETETOU como parado (pausa automatica, secção 4.1). Conta
+// para "tempo em pausa" tal como a pausa carregada a mao: parado e parado,
+// quer tenha sido o jogador a dizer, quer tenha sido a app a perceber.
+let autoPausedMs = 0;
 let pauseTickerId = null;
 
 function isTrainingPaused() {
@@ -1267,7 +1295,7 @@ function isTrainingPaused() {
 // Duracao real do treino: relogio de parede menos o tempo em pausa (incluindo
 // a pausa a decorrer, se estiver uma aberta).
 function currentPausedMs() {
-  return pausedTotalMs + (pauseStartedMs !== null ? Date.now() - pauseStartedMs : 0);
+  return pausedTotalMs + autoPausedMs + (pauseStartedMs !== null ? Date.now() - pauseStartedMs : 0);
 }
 
 function activeElapsedSeconds() {
@@ -1369,7 +1397,7 @@ function stopTraining() {
   // deixa-la entrar aqui diluiria a velocidade media e, na bicicleta, a
   // faixa de MET (secção 4.6).
   const sessionDurationSeconds = sessionStartTime
-    ? Math.max(0, (sessionEndTime - sessionStartTime - pausedTotalMs) / 1000)
+    ? Math.max(0, (sessionEndTime - sessionStartTime - pausedTotalMs - autoPausedMs) / 1000)
     : null;
   // Valor GRAVADO vem dos totais da sessao, nao da soma por segmento - ver
   // computeSessionCaloriesFromTotals. sessionCaloriesKcal (soma ao vivo)
@@ -1384,13 +1412,13 @@ function stopTraining() {
 
   // Calorias durante as pausas: 1 MET, o metabolismo em repouso.
   //
-  // XP = calorias TOTAIS, por decisao do jogador (2026-08-15). Eu tinha
-  // argumentado a favor de so as ativas contarem; a decisao foi a contraria
-  // e a razao e boa: o corpo gastou as duas. Consequencia assumida - deixar
-  // um treino em pausa acumula ~1 MET x peso por hora (uns 88 kcal/h para
-  // 88 kg). O valor ATIVO continua gravado a parte, para se poder ver de
-  // onde veio a diferenca.
-  const sessionPausedSeconds = Math.round(pausedTotalMs / 1000);
+  // XP = calorias ATIVAS (decisao final do jogador, 2026-08-15). As totais
+  // continuam a ser mostradas e gravadas, porque o corpo gastou-as - mas o
+  // que o jogo premeia e o esforco, nao o tempo parado. Com o tempo parado
+  // detetado a contar tambem como pausa, isto significa que estar parado
+  // nao rende XP nenhum, seja a paragem carregada a mao ou percebida pela
+  // propria app.
+  const sessionPausedSeconds = Math.round((pausedTotalMs + autoPausedMs) / 1000);
   const sessionRestingCalories = 1.0 * getPesoKg() * (sessionPausedSeconds / 3600);
   const sessionTotalCalories = sessionCalories + sessionRestingCalories;
 
@@ -1418,8 +1446,9 @@ function stopTraining() {
       // continua a ser so o ATIVO, que e o que conta para XP.
       paused_seconds: sessionPausedSeconds,
       // calories_kcal e o valor de XP, ou seja o TOTAL. O ativo fica a parte.
-      calories_kcal: sessionTotalCalories,
-      calories_active_kcal: sessionCalories,
+      // calories_kcal e o valor de XP, ou seja o ATIVO.
+      calories_kcal: sessionCalories,
+      calories_total_kcal: sessionTotalCalories,
       // Diagnostico do sinal (secção 4.2) - null numa sessao sem leituras.
       gps_diag: buildGpsDiagRecord(),
     });
@@ -1428,12 +1457,12 @@ function stopTraining() {
     // leaderboard/medalhas mensais. Distancia efetiva deixou de existir
     // (2026-08-10) - conquistas de distancia/ritmo/recorde por modo
     // (secção 10) passam a usar a distancia/velocidade REAL diretamente.
-    addToLifetimeCalories(sessionTotalCalories);
-    addToMonthlyCalories(sessionTotalCalories);
+    addToLifetimeCalories(sessionCalories);
+    addToMonthlyCalories(sessionCalories);
     addToLifetimeDistance(sessionDistanceM);
     addToMonthlyDistance(sessionDistanceM);
     incrementTotalTrainingsCompleted();
-    checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, sessionDominantMode, sessionTotalCalories);
+    checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, sessionDominantMode, sessionCalories);
     renderMonsters(); // pode ter desbloqueado monstros novos
 
     showTrainingSummary({
@@ -1443,7 +1472,7 @@ function stopTraining() {
       pausedSeconds: sessionPausedSeconds,
       activeKcal: sessionCalories,
       totalKcal: sessionTotalCalories,
-      xp: sessionTotalCalories,
+      xp: sessionCalories,
     });
   }
 
@@ -1488,6 +1517,7 @@ function resumeTrainingIfNeeded() {
   // Pausa (secção 4.7): se a pagina foi recarregada a meio de uma pausa, ela
   // continua aberta - senao o tempo parado passava a contar como treino.
   pausedTotalMs = Number(localStorage.getItem(STORAGE_KEYS.pausaTotalMs)) || 0;
+  autoPausedMs = Number(localStorage.getItem(STORAGE_KEYS.pausaAutoMs)) || 0;
   const pausaGuardada = Number(localStorage.getItem(STORAGE_KEYS.pausaInicioMs)) || 0;
   try {
     const savedModeTime = localStorage.getItem(STORAGE_KEYS.modoTempoAcumuladoMs);
@@ -1616,12 +1646,12 @@ async function changeSessionMode(sessionId, newMode) {
   );
   // O repouso das pausas nao depende do modo - so a parte ativa e que muda.
   const restingCalories = 1.0 * getPesoKg() * ((Number(session.paused_seconds) || 0) / 3600);
-  const newCalories = newActiveCalories + restingCalories;
+  const newCalories = newActiveCalories;
   const deltaKcal = newCalories - Number(session.calories_kcal);
 
   const { error: updateError } = await supabaseClient
     .from("training_sessions")
-    .update({ mode: newMode, calories_kcal: newCalories, calories_active_kcal: newActiveCalories })
+    .update({ mode: newMode, calories_kcal: newCalories, calories_total_kcal: newActiveCalories + restingCalories })
     .eq("id", sessionId);
 
   if (updateError) {
