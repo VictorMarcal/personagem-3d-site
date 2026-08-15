@@ -302,23 +302,41 @@ Ao terminar, um popup com sete valores. Separa sempre **ativo** de **total** —
 | Tempo total | os dois somados |
 | Distância | distância creditada |
 | Velocidade média | distância ÷ **tempo ativo** |
-| Calorias (XP) | só o tempo ativo — é o mesmo número |
+| Calorias ativas | esforço do tempo ativo |
+| Calorias totais | ativas + 1 MET sobre o tempo em pausa |
+| XP ganho | igual às calorias **totais** |
 
 **"Tempo em pausa" inclui o que a app detetou como parado**, não só o que se carregou à mão. Parado é parado, quer tenha sido o jogador a dizer, quer tenha sido a app a perceber (secção 4.1). Acumulado por incrementos, não por transições de estado: assim uma falha de sinal a meio de uma paragem também conta, e não há um estado aberto para fechar em cada saída possível da função.
 
-**Uma só linha de calorias, e é o XP.** A distinção entre "ativas" e "totais" foi **removida do ecrã** a pedido: *"provoca sensação de injustiça quando olhado para o valor de XP"* — ver 31 kcal totais e ganhar 20 de XP fazia parecer que o jogo estava a tirar alguma coisa. Só se mostra o número que conta.
+#### XP = gasto total, e porquê
 
-As calorias das pausas continuam a ser calculadas (1 MET, metabolismo em repouso) e gravadas em `calories_total_kcal`; **só deixaram de aparecer**. Ficam lá para uma pergunta futura sobre gasto real, sem custarem nada agora.
+A separação entre "ativas" e "totais" **não era esforço contra repouso** — era só *que relógio estava a andar*. A equação do ACSM tem um `+3,5` que se traduz em **1 MET × horas**, por isso as calorias "ativas" **já incluíam** o repouso do tempo ativo. Contar o repouso de um lado e não do outro era arbitrário, e era daí que vinha a sensação de injustiça ao olhar para o XP.
 
-*(A regra oscilou no mesmo dia: XP passou a totais e voltou a ativas. Fica registado o destino, não o caminho — XP são as calorias do tempo ativo.)*
+No treino de teste (0,41 km, 5:30 ativo, 70 kg), das 20 kcal "ativas", **6,4 eram só estar vivo**.
+
+Para caminhar/correr, o gasto total colapsa em algo muito simples:
+
+```
+kcal = peso × (0,476 × km  +  horas TOTAIS)
+```
+
+Esforço pela distância, mais 1 MET pelo tempo que o treino durou — **sem ser preciso decidir que relógio estava a contar**. Verificado: 70 × (0,476 × 0,41 + 0,25) = 31,2, e a app deu 31.
+
+Na bicicleta não colapsa assim, porque o MET vem de uma tabela por faixas em vez de uma reta, mas a lógica é a mesma.
+
+É também o que o relógio do Bernardo chama **Total Kilocalories** (742, contra 647 de *Active*) — a única referência externa que temos para validar.
+
+**As duas continuam a aparecer** no ecrã, ativas e totais, com o XP a seguir. O jogador vê de onde vem o número em vez de ter de confiar nele.
+
+*(A regra oscilou algumas vezes em 2026-08-15: totais → ativas → totais. Fica registado o destino e o argumento, não o caminho.)*
 
 **Efeito lateral que vale mais que a própria mudança**: a **velocidade média** passa a ser sobre o tempo ativo. Num treino de teste com 5 min a andar e 10 min parado, saiu **4,4 km/h** onde antes saía 1,6 km/h. E como é dessa velocidade que sai o MET, as calorias deixam de ser diluídas pelo tempo parado — o mesmo problema da secção 4.6, agora tapado também pelo lado do tempo.
 
-Na base de dados: **`calories_kcal` é o valor de XP, ou seja o ATIVO** — assim tudo o que já o lia (leaderboard, gráficos do Perfil, recorde de sessão, conquistas) continua a referir-se ao número certo sem mudar uma linha. `calories_total_kcal` e `paused_seconds` são novas e informativas.
+Na base de dados: **`calories_kcal` é o valor de XP, ou seja o TOTAL** — assim tudo o que já o lia (leaderboard, gráficos do Perfil, recorde de sessão, conquistas) continua a referir-se ao número certo sem mudar uma linha. `calories_active_kcal` e `paused_seconds` são novas e informativas.
 
 **Os mesmos campos aparecem ao vivo** no painel acima do botão (`.live-grid`), e com **a mesma fórmula do fim** (`computeSessionCaloriesFromTotals`), não a soma ao vivo por segmento: as duas dão valores diferentes (a soma por segmento é capada, secção 4.4) e o número saltava ao terminar o treino — 19 kcal no painel, 38 no resumo, no mesmo treino.
 
-Verificado no browser (5 min a andar + 10 min parado): tempo ativo **5:30**, em pausa **9:30**, total **15:00**, **20 XP** — os mesmos números no painel ao vivo e no resumo. Os 30 s de diferença entre os 10 min parados e os 9:30 contados são a histerese antes de a app confirmar "parado", e estão certos.
+Verificado no browser (5 min a andar + 10 min parado): tempo ativo **5:30**, em pausa **9:30**, total **15:00**, 20 kcal ativas, 31 totais, **31 XP** — os mesmos números no painel ao vivo e no resumo, e o XP vitalício subiu exatamente 31. Os 30 s de diferença entre os 10 min parados e os 9:30 contados são a histerese antes de a app confirmar "parado", e estão certos.
 
 ## 5. Curva de nível do personagem
 

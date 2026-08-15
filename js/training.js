@@ -732,7 +732,10 @@ function updateLiveStatsDisplay() {
     getDominantMode(),
     sessionMovingSeconds
   );
-  updateDistanceDisplay(activeKcal);
+  const restingKcal = currentRestingKcal();
+  set("live-active-kcal", `${Math.round(activeKcal)} kcal`);
+  set("live-total-kcal", `${Math.round(activeKcal + restingKcal)} kcal`);
+  updateDistanceDisplay(activeKcal + restingKcal);
 
   updateGpsDiagDisplay();
 }
@@ -788,10 +791,10 @@ function currentRestingKcal() {
 // vez de o recalcular (updateLiveStatsDisplay corre a cada segundo).
 function updateDistanceDisplay(activeKcal) {
   distanceEl.textContent = formatDistanceKm(totalDistanceM);
-  // XP = calorias ATIVAS (secção 4.7).
+  // XP = gasto total (secção 4.7). Quem chama ja o traz somado.
   const kcal = activeKcal !== undefined
     ? activeKcal
-    : computeSessionCaloriesFromTotals(totalDistanceM, activeElapsedSeconds(), getDominantMode(), sessionMovingSeconds);
+    : computeSessionCaloriesFromTotals(totalDistanceM, activeElapsedSeconds(), getDominantMode(), sessionMovingSeconds) + currentRestingKcal();
   caloriesEl.textContent = `${Math.round(kcal)} kcal`;
 }
 
@@ -1367,10 +1370,8 @@ function showTrainingSummary({ mode, distanceM, activeSeconds, pausedSeconds, ac
   set("summary-total-time", formatDurationClock(activeSeconds + pausedSeconds));
   set("summary-distance", `${(distanceM / 1000).toFixed(2)} km`);
   set("summary-speed", `${avgSpeedKmh.toFixed(1)} km/h`);
-  // Uma so linha de calorias, que E o XP (2026-08-15, a pedido). Ver as
-  // duas lado a lado - ativas e totais - com o XP a seguir so a mais baixa
-  // dava sensacao de injustica. O total continua gravado na base de dados,
-  // so deixou de aparecer.
+  set("summary-active-kcal", `${Math.round(activeKcal)} kcal`);
+  set("summary-total-kcal", `${Math.round(totalKcal)} kcal`);
   set("summary-xp", formatXP(xp));
 
   summaryModal.classList.remove("hidden");
@@ -1411,12 +1412,21 @@ function stopTraining() {
 
   // Calorias durante as pausas: 1 MET, o metabolismo em repouso.
   //
-  // XP = calorias ATIVAS (decisao final do jogador, 2026-08-15). As totais
-  // continuam a ser mostradas e gravadas, porque o corpo gastou-as - mas o
-  // que o jogo premeia e o esforco, nao o tempo parado. Com o tempo parado
-  // detetado a contar tambem como pausa, isto significa que estar parado
-  // nao rende XP nenhum, seja a paragem carregada a mao ou percebida pela
-  // propria app.
+  // XP = GASTO TOTAL: o esforco do tempo ativo mais 1 MET (repouso) sobre
+  // o tempo em pausa.
+  //
+  // Decidido depois de perceber que a separacao anterior nao era
+  // esforco-contra-repouso, era so "que relogio estava a andar": a equacao
+  // do ACSM tem um +3,5 que se traduz em 1 MET x horas, por isso as
+  // calorias "ativas" JA incluiam o repouso do tempo ativo. Contar o
+  // repouso de um lado e nao do outro era arbitrario.
+  //
+  // Para caminhar/correr o total colapsa em algo muito simples:
+  //   peso x (0,476 x km + horas TOTAIS)
+  // ou seja esforco pela distancia + 1 MET pelo tempo que o treino durou,
+  // sem ser preciso decidir que relogio estava a contar. E tambem o que o
+  // relogio do Bernardo chama "Total Kilocalories" - a unica referencia
+  // externa que temos para validar.
   const sessionPausedSeconds = Math.round((pausedTotalMs + autoPausedMs) / 1000);
   const sessionRestingCalories = 1.0 * getPesoKg() * (sessionPausedSeconds / 3600);
   const sessionTotalCalories = sessionCalories + sessionRestingCalories;
@@ -1445,9 +1455,10 @@ function stopTraining() {
       // continua a ser so o ATIVO, que e o que conta para XP.
       paused_seconds: sessionPausedSeconds,
       // calories_kcal e o valor de XP, ou seja o TOTAL. O ativo fica a parte.
-      // calories_kcal e o valor de XP, ou seja o ATIVO.
-      calories_kcal: sessionCalories,
-      calories_total_kcal: sessionTotalCalories,
+      // calories_kcal e o valor de XP, ou seja o TOTAL. A parte ativa fica
+      // a parte, para se poder sempre ver de onde veio a diferenca.
+      calories_kcal: sessionTotalCalories,
+      calories_active_kcal: sessionCalories,
       // Diagnostico do sinal (secção 4.2) - null numa sessao sem leituras.
       gps_diag: buildGpsDiagRecord(),
     });
@@ -1456,12 +1467,12 @@ function stopTraining() {
     // leaderboard/medalhas mensais. Distancia efetiva deixou de existir
     // (2026-08-10) - conquistas de distancia/ritmo/recorde por modo
     // (secção 10) passam a usar a distancia/velocidade REAL diretamente.
-    addToLifetimeCalories(sessionCalories);
-    addToMonthlyCalories(sessionCalories);
+    addToLifetimeCalories(sessionTotalCalories);
+    addToMonthlyCalories(sessionTotalCalories);
     addToLifetimeDistance(sessionDistanceM);
     addToMonthlyDistance(sessionDistanceM);
     incrementTotalTrainingsCompleted();
-    checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, sessionDominantMode, sessionCalories);
+    checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, sessionDominantMode, sessionTotalCalories);
     renderMonsters(); // pode ter desbloqueado monstros novos
 
     showTrainingSummary({
@@ -1471,7 +1482,7 @@ function stopTraining() {
       pausedSeconds: sessionPausedSeconds,
       activeKcal: sessionCalories,
       totalKcal: sessionTotalCalories,
-      xp: sessionCalories,
+      xp: sessionTotalCalories,
     });
   }
 
@@ -1645,12 +1656,12 @@ async function changeSessionMode(sessionId, newMode) {
   );
   // O repouso das pausas nao depende do modo - so a parte ativa e que muda.
   const restingCalories = 1.0 * getPesoKg() * ((Number(session.paused_seconds) || 0) / 3600);
-  const newCalories = newActiveCalories;
+  const newCalories = newActiveCalories + restingCalories;
   const deltaKcal = newCalories - Number(session.calories_kcal);
 
   const { error: updateError } = await supabaseClient
     .from("training_sessions")
-    .update({ mode: newMode, calories_kcal: newCalories, calories_total_kcal: newActiveCalories + restingCalories })
+    .update({ mode: newMode, calories_kcal: newCalories, calories_active_kcal: newActiveCalories })
     .eq("id", sessionId);
 
   if (updateError) {
