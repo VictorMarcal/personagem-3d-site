@@ -12,8 +12,8 @@ const CHANGELOG = [
     changes: [
       "O tempo em que a app deteta que estás parado passa a contar como tempo em pausa, mesmo que não tenhas carregado em Pausa. Parado é parado.",
       "Por causa disso, a tua velocidade média passa a ser a velocidade a que andaste mesmo — num treino de teste subiu de 1,6 para 4,4 km/h.",
-      "O XP são as calorias ativas: estar parado não rende XP. As calorias totais continuam a aparecer, porque o teu corpo gastou-as.",
-      "O XP ganho aparece no resumo do fim do treino, e o painel durante o treino mostra os mesmos números que vais ver no fim.",
+      "Passa a haver um só número de calorias, que é o teu XP — estar parado não rende XP.",
+      "O resumo do fim do treino mostra os mesmos números que vês durante o treino.",
     ],
   },
   {

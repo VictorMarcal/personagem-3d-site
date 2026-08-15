@@ -716,7 +716,6 @@ function updateLiveStatsDisplay() {
   // o treino tem de ser o que se ve no fim, senao os numeros parecem mudar
   // sozinhos ao terminar.
   const pausedSeconds = currentPausedMs() / 1000;
-  const restingKcal = currentRestingKcal();
   const set = (id, value) => {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
@@ -733,8 +732,6 @@ function updateLiveStatsDisplay() {
     getDominantMode(),
     sessionMovingSeconds
   );
-  set("live-active-kcal", `${Math.round(activeKcal)} kcal`);
-  set("live-total-kcal", `${Math.round(activeKcal + restingKcal)} kcal`);
   updateDistanceDisplay(activeKcal);
 
   updateGpsDiagDisplay();
@@ -1370,8 +1367,10 @@ function showTrainingSummary({ mode, distanceM, activeSeconds, pausedSeconds, ac
   set("summary-total-time", formatDurationClock(activeSeconds + pausedSeconds));
   set("summary-distance", `${(distanceM / 1000).toFixed(2)} km`);
   set("summary-speed", `${avgSpeedKmh.toFixed(1)} km/h`);
-  set("summary-active-kcal", `${Math.round(activeKcal)} kcal`);
-  set("summary-total-kcal", `${Math.round(totalKcal)} kcal`);
+  // Uma so linha de calorias, que E o XP (2026-08-15, a pedido). Ver as
+  // duas lado a lado - ativas e totais - com o XP a seguir so a mais baixa
+  // dava sensacao de injustica. O total continua gravado na base de dados,
+  // so deixou de aparecer.
   set("summary-xp", formatXP(xp));
 
   summaryModal.classList.remove("hidden");
