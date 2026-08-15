@@ -710,6 +710,23 @@ function updateLiveStatsDisplay() {
   liveStatsEl.textContent =
     `${formatDurationClock(elapsedSeconds)} · nominal ${formatSpeedKmh(currentNominalSpeedMps)} · média ${formatSpeedKmh(avgSpeedMps)}`;
   detectedActivityEl.textContent = `Atividade detetada: ${ACTIVITY_LABEL_PT[currentActiveMode] || "—"}`;
+
+  // Os mesmos campos que o resumo do fim (secção 4.7) - o que se ve durante
+  // o treino tem de ser o que se ve no fim, senao os numeros parecem mudar
+  // sozinhos ao terminar.
+  const pausedSeconds = currentPausedMs() / 1000;
+  const restingKcal = currentRestingKcal();
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+  set("live-active-time", formatDurationClock(elapsedSeconds));
+  set("live-paused-time", formatDurationClock(pausedSeconds));
+  set("live-total-time", formatDurationClock(elapsedSeconds + pausedSeconds));
+  set("live-active-kcal", `${Math.round(sessionCaloriesKcal)} kcal`);
+  set("live-total-kcal", `${Math.round(sessionCaloriesKcal + restingKcal)} kcal`);
+  updateDistanceDisplay();
+
   updateGpsDiagDisplay();
 }
 
@@ -754,9 +771,16 @@ function stopLiveStatsTicker() {
   }
 }
 
+// Calorias em repouso acumuladas nas pausas ate agora (1 MET) - a parcela
+// que separa as "ativas" das "totais" (secção 4.7).
+function currentRestingKcal() {
+  return 1.0 * getPesoKg() * (currentPausedMs() / 3600000);
+}
+
 function updateDistanceDisplay() {
   distanceEl.textContent = formatDistanceKm(totalDistanceM);
-  caloriesEl.textContent = `${Math.round(sessionCaloriesKcal)} kcal`;
+  // XP = calorias TOTAIS (secção 4.7).
+  caloriesEl.textContent = `${Math.round(sessionCaloriesKcal + currentRestingKcal())} kcal`;
 }
 
 // Treino acumulado: copia persistida em localStorage, salva a cada 10s
@@ -1304,7 +1328,7 @@ function finishFromPause() {
 // Resumo no fim do treino (secção 4.7). Separa sempre ATIVO de TOTAL: o
 // jogador tem de conseguir ver de onde vem a diferenca, senao "porque e que
 // o treino diz 40 minutos se eu estive uma hora na rua" volta a ser pergunta.
-function showTrainingSummary({ mode, distanceM, activeSeconds, pausedSeconds, activeKcal, totalKcal }) {
+function showTrainingSummary({ mode, distanceM, activeSeconds, pausedSeconds, activeKcal, totalKcal, xp }) {
   const set = (id, value) => {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
@@ -1320,6 +1344,7 @@ function showTrainingSummary({ mode, distanceM, activeSeconds, pausedSeconds, ac
   set("summary-speed", `${avgSpeedKmh.toFixed(1)} km/h`);
   set("summary-active-kcal", `${Math.round(activeKcal)} kcal`);
   set("summary-total-kcal", `${Math.round(totalKcal)} kcal`);
+  set("summary-xp", formatXP(xp));
 
   summaryModal.classList.remove("hidden");
 }
@@ -1357,9 +1382,14 @@ function stopTraining() {
     sessionMoving
   );
 
-  // Calorias durante as pausas: 1 MET, o metabolismo em repouso. So as
-  // ATIVAS contam para XP/leaderboard - as totais sao informacao para o
-  // jogador, porque o corpo gastou as duas.
+  // Calorias durante as pausas: 1 MET, o metabolismo em repouso.
+  //
+  // XP = calorias TOTAIS, por decisao do jogador (2026-08-15). Eu tinha
+  // argumentado a favor de so as ativas contarem; a decisao foi a contraria
+  // e a razao e boa: o corpo gastou as duas. Consequencia assumida - deixar
+  // um treino em pausa acumula ~1 MET x peso por hora (uns 88 kcal/h para
+  // 88 kg). O valor ATIVO continua gravado a parte, para se poder ver de
+  // onde veio a diferenca.
   const sessionPausedSeconds = Math.round(pausedTotalMs / 1000);
   const sessionRestingCalories = 1.0 * getPesoKg() * (sessionPausedSeconds / 3600);
   const sessionTotalCalories = sessionCalories + sessionRestingCalories;
@@ -1387,8 +1417,9 @@ function stopTraining() {
       // Tempo em pausa e calorias totais (secção 4.7) - calories_kcal
       // continua a ser so o ATIVO, que e o que conta para XP.
       paused_seconds: sessionPausedSeconds,
-      calories_kcal: sessionCalories,
-      calories_total_kcal: sessionTotalCalories,
+      // calories_kcal e o valor de XP, ou seja o TOTAL. O ativo fica a parte.
+      calories_kcal: sessionTotalCalories,
+      calories_active_kcal: sessionCalories,
       // Diagnostico do sinal (secção 4.2) - null numa sessao sem leituras.
       gps_diag: buildGpsDiagRecord(),
     });
@@ -1397,12 +1428,12 @@ function stopTraining() {
     // leaderboard/medalhas mensais. Distancia efetiva deixou de existir
     // (2026-08-10) - conquistas de distancia/ritmo/recorde por modo
     // (secção 10) passam a usar a distancia/velocidade REAL diretamente.
-    addToLifetimeCalories(sessionCalories);
-    addToMonthlyCalories(sessionCalories);
+    addToLifetimeCalories(sessionTotalCalories);
+    addToMonthlyCalories(sessionTotalCalories);
     addToLifetimeDistance(sessionDistanceM);
     addToMonthlyDistance(sessionDistanceM);
     incrementTotalTrainingsCompleted();
-    checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, sessionDominantMode, sessionCalories);
+    checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, sessionDominantMode, sessionTotalCalories);
     renderMonsters(); // pode ter desbloqueado monstros novos
 
     showTrainingSummary({
@@ -1412,6 +1443,7 @@ function stopTraining() {
       pausedSeconds: sessionPausedSeconds,
       activeKcal: sessionCalories,
       totalKcal: sessionTotalCalories,
+      xp: sessionTotalCalories,
     });
   }
 
@@ -1570,23 +1602,26 @@ function wireModeFixControls() {
 async function changeSessionMode(sessionId, newMode) {
   const { data: session, error } = await supabaseClient
     .from("training_sessions")
-    .select("distance_m, duration_seconds, moving_seconds, mode, calories_kcal")
+    .select("distance_m, duration_seconds, moving_seconds, paused_seconds, mode, calories_kcal")
     .eq("id", sessionId)
     .single();
 
   if (error || !session || session.mode === newMode) return;
 
-  const newCalories = computeSessionCaloriesFromTotals(
+  const newActiveCalories = computeSessionCaloriesFromTotals(
     Number(session.distance_m),
     Number(session.duration_seconds),
     newMode,
     Number(session.moving_seconds) || 0
   );
+  // O repouso das pausas nao depende do modo - so a parte ativa e que muda.
+  const restingCalories = 1.0 * getPesoKg() * ((Number(session.paused_seconds) || 0) / 3600);
+  const newCalories = newActiveCalories + restingCalories;
   const deltaKcal = newCalories - Number(session.calories_kcal);
 
   const { error: updateError } = await supabaseClient
     .from("training_sessions")
-    .update({ mode: newMode, calories_kcal: newCalories })
+    .update({ mode: newMode, calories_kcal: newCalories, calories_active_kcal: newActiveCalories })
     .eq("id", sessionId);
 
   if (updateError) {

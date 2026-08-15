@@ -7,11 +7,19 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v3.7.0",
+    title: "XP São as Calorias Totais",
+    changes: [
+      "O XP passa a ser as calorias totais, incluindo as que gastas em repouso durante as pausas — o teu corpo gastou-as, por isso contam.",
+      "O XP ganho aparece agora no resumo do fim do treino.",
+      "Durante o treino, o painel mostra os mesmos campos que vais ver no fim: tempo ativo, em pausa e total, calorias ativas e totais.",
+    ],
+  },
+  {
     version: "v3.6.0",
     title: "Resumo no Fim do Treino",
     changes: [
       "Ao terminares um treino aparece um resumo: tipo de treino, tempo ativo, tempo em pausa, tempo total, distância, velocidade média e calorias — separadas entre ativas e totais.",
-      "As calorias das pausas aparecem porque o corpo gastou-as, mas só as ativas contam para XP.",
       "Durante o treino passa a haver só um botão, «Pausa», no sítio do «Iniciar Treino». O Terminar está dentro do popup da pausa, para não se acabar um treino por engano.",
       "Corrigido: os botões de treino apareciam mesmo quando não havia treino nenhum a decorrer.",
     ],

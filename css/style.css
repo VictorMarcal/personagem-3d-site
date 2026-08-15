@@ -2070,3 +2070,22 @@ main {
 
 /* Controlado via JS (js/orientation.js) */
 #rotate-overlay.visible { display: flex; }
+
+/* Os mesmos campos do resumo, ao vivo dentro do painel de treino
+   (secção 4.7). Mais discreto que no popup - ali e o destaque, aqui e
+   informacao de fundo enquanto se anda. */
+.live-grid {
+  margin: 10px 0 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.live-grid dd { font-size: 14px; }
+
+/* XP em destaque no resumo: e o que o jogador ganhou. */
+.summary-xp-row {
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+}
+
+dd.summary-xp-row { color: var(--accent); font-size: 17px; }
