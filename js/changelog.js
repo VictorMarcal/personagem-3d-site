@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v3.11.0",
+    title: "Treinos de Hoje em Cards",
+    changes: [
+      "Cada treino que já fizeste hoje aparece agora no seu próprio card, com a mesma cara do painel de treino: o tipo em cima, a distância em grande, e os tempos e calorias por baixo.",
+      "Antes era uma linha só de texto que não mostrava o tempo em pausa nem separava as calorias.",
+      "Nos treinos anteriores a hoje, os campos que ainda não eram guardados aparecem como «—» em vez de zero — não é que não tenha havido pausa, é que não se sabe.",
+    ],
+  },
+  {
     version: "v3.10.0",
     title: "Calorias de Bicicleta Mais Certas",
     changes: [

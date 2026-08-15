@@ -1595,6 +1595,42 @@ function resumeTrainingIfNeeded() {
 // pedido novo filtrado por "hoje" na hora local do dispositivo).
 const trainingTodayListEl = document.getElementById("training-today-list");
 
+// Cada treino de hoje e um CARD com a mesma cara do painel de treino
+// (2026-08-15, a pedido): o tipo em cima onde o painel tem "Distancia
+// percorrida", a distancia em grande, e a mesma grelha de tempos e calorias.
+// A linha de velocidade e a de "atividade detetada" nao entram - num treino
+// ja terminado nao ha nada "a detetar".
+//
+// Sessoes anteriores a 2026-08-15 nao tem paused_seconds nem
+// calories_active_kcal (secção 4.7). Nesses casos mostra-se "—" em vez de um
+// zero, que seria uma afirmacao falsa: nao e que nao houve pausa, e que nao
+// se sabe.
+function renderTrainingCard(s) {
+  const desconhecido = "—";
+  const activeSeconds = Number(s.duration_seconds) || 0;
+  const pausedRaw = s.paused_seconds;
+  const activeKcalRaw = s.calories_active_kcal;
+  const temPausa = pausedRaw !== null && pausedRaw !== undefined;
+  const temAtivas = activeKcalRaw !== null && activeKcalRaw !== undefined;
+  const pausedSeconds = Number(pausedRaw) || 0;
+
+  const linha = (rotulo, valor) => `<dt>${rotulo}</dt><dd>${valor}</dd>`;
+
+  return `<li class="training-card">
+      <p class="training-label">${MODE_LABEL_PT[s.mode] || "Treino"}</p>
+      <p class="training-distance">${formatDistanceKm(Number(s.distance_m) || 0)}</p>
+      <dl class="summary-grid">
+        ${linha("Tempo ativo", formatDurationClock(activeSeconds))}
+        ${linha("Tempo em pausa", temPausa ? formatDurationClock(pausedSeconds) : desconhecido)}
+        ${linha("Tempo total", temPausa ? formatDurationClock(activeSeconds + pausedSeconds) : desconhecido)}
+        ${linha("Calorias ativas", temAtivas ? `${Math.round(Number(activeKcalRaw))} kcal` : desconhecido)}
+        ${linha("Calorias totais", `${Math.round(Number(s.calories_kcal) || 0)} kcal`)}
+      </dl>
+      <p class="training-calories-row">XP: <span>${Math.round(Number(s.calories_kcal) || 0)} kcal</span></p>
+      ${renderModeFixControl(s)}
+    </li>`;
+}
+
 async function renderTodaysTrainings() {
   if (!trainingTodayListEl || !currentUserId) return;
 
@@ -1603,7 +1639,7 @@ async function renderTodaysTrainings() {
 
   const { data, error } = await supabaseClient
     .from("training_sessions")
-    .select("id, distance_m, duration_seconds, mode, calories_kcal")
+    .select("id, distance_m, duration_seconds, paused_seconds, mode, calories_kcal, calories_active_kcal")
     .eq("user_id", currentUserId)
     .gte("started_at", startOfToday.toISOString())
     .order("started_at", { ascending: false });
@@ -1615,16 +1651,7 @@ async function renderTodaysTrainings() {
     return;
   }
 
-  trainingTodayListEl.innerHTML = data
-    .map((s) => {
-      const modeLabel = MODE_LABEL_PT[s.mode] || "Treino";
-      const km = formatDistanceKm(Number(s.distance_m) || 0);
-      const minutes = Math.round((Number(s.duration_seconds) || 0) / 60);
-      const kcal = Math.round(Number(s.calories_kcal) || 0);
-      return `<li>${modeLabel} — ${km} · ${minutes} min · ${kcal} kcal${renderModeFixControl(s)}</li>`;
-    })
-    .join("");
-
+  trainingTodayListEl.innerHTML = data.map(renderTrainingCard).join("");
   wireModeFixControls();
 }
 

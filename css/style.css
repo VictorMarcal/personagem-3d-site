@@ -922,11 +922,12 @@ main {
 
 .panel-screen.hidden { display: none; }
 
+/* O contentor deixou de ser um card com fundo proprio (2026-08-15): agora
+   os cards sao os proprios treinos, e dois fundos encaixados um no outro
+   ficavam pesados. Fica so o rotulo "Treinos de hoje" e a pilha. */
 #training-today-card {
   margin-top: 4px;
-  padding: 14px 16px;
-  border-radius: var(--r-md);
-  background: var(--surface);
+  padding: 0;
 }
 
 .training-today-list {
@@ -935,8 +936,29 @@ main {
   color: var(--text);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
+  list-style: none;
 }
+
+/* Card de um treino ja feito - a mesma cara do painel de treino ao vivo
+   (#training-readout), so que mais compacto: e um resumo, nao o ecra
+   principal. Ver renderTrainingCard em js/training.js. */
+.training-card {
+  padding: 18px 18px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  text-align: center;
+}
+
+.training-card .training-distance { font-size: 38px; }
+
+.training-card .summary-grid {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.training-card .training-mode-fix { margin: 10px 0 0; }
 
 .training-today-empty {
   font-size: 13px;

@@ -310,6 +310,18 @@ Não existe "Parar Treino" no ecrã principal. Terminar vive **dentro** do popup
 
 **Relação com a pausa automática** (secção 4.1): são coisas diferentes e complementares. A automática deteta que se está parado e para de creditar distância, mas o relógio continua; esta é explícita e para o relógio também.
 
+#### "Treinos de hoje": um card por treino (2026-08-15)
+
+Cada treino já concluído aparece num **card com a mesma cara do painel de treino ao vivo**: o tipo de treino onde o painel tem "Distância percorrida", a distância em grande, e a mesma grelha de tempos e calorias. A pedido, desenhado por cima de um screenshot do próprio painel.
+
+**Não entram** a linha de velocidade nem "Atividade detetada" — num treino já terminado não há nada a detetar, e a velocidade média já vive no resumo do fim.
+
+Antes era uma linha de texto (`Bicicleta — 25.40 km · 62 min · 877 kcal`) que tinha ficado **desalinhada** com o resto: os minutos passaram a ser só o tempo ativo e as calorias passaram a ser o total, mas a linha não dizia nem uma coisa nem outra — quem olhasse não conseguia reconciliar "62 min" com o "1:16:00" do ecrã de fim de treino.
+
+**Sessões anteriores a 2026-08-15** não têm `paused_seconds` nem `calories_active_kcal`. Nesses campos mostra-se **"—"**, não zero: zero seria uma afirmação falsa (não é que não tenha havido pausa, é que não se sabe).
+
+O contentor "Treinos de hoje" deixou de ter fundo próprio — dois fundos encaixados um no outro ficavam pesados agora que os cards são os treinos.
+
 #### Resumo no fim do treino
 
 Ao terminar, um popup com sete valores. Separa sempre **ativo** de **total** — sem isso, *"porque é que o treino diz 40 minutos se eu estive uma hora na rua?"* volta a ser pergunta:
