@@ -314,7 +314,7 @@ Não existe "Parar Treino" no ecrã principal. Terminar vive **dentro** do popup
 
 Cada treino já concluído aparece num **card com a mesma cara do painel de treino ao vivo**: o tipo de treino onde o painel tem "Distância percorrida", a distância em grande, e a mesma grelha de tempos e calorias. A pedido, desenhado por cima de um screenshot do próprio painel.
 
-**A velocidade média conta só o tempo ativo** (distância ÷ tempo ativo), tanto no card como no painel ao vivo e no resumo do fim — o tempo parado não a puxa para baixo. Nas sessões antigas, em que  era o relógio de parede, sai naturalmente mais baixa; é o melhor que esses dados dão.
+**A velocidade média conta só o tempo ativo** (distância ÷ tempo ativo), tanto no card como no painel ao vivo e no resumo do fim — o tempo parado não a puxa para baixo. Nas sessões antigas, em que `duration_seconds` era o relógio de parede e não o tempo ativo, sai naturalmente mais baixa; é o melhor que esses dados dão.
 
 **Não entra** a linha "Atividade detetada" — num treino já terminado não há nada a detetar.
 
