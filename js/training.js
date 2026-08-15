@@ -475,6 +475,10 @@ let currentNominalSpeedMps = 0;
 // entregues pelo browser: e o indicador direto de suspensao em segundo
 // plano (ecra bloqueado/troca de app), a principal fraqueza estrutural de
 // um tracker em browser face a uma app nativa - ver requestWakeLock abaixo.
+// Acima disto, um intervalo entre leituras deixa de ser jitter e passa a ser
+// tempo morto - o GPS a 1 Hz nunca falha 30 s sem motivo.
+const LONG_GAP_MS = 30000;
+
 let gpsDiag = null;
 let lastReadingTimestamp = null;
 
@@ -518,6 +522,21 @@ function resetGpsDiag() {
     msEscondido: 0,         // tempo com a pagina escondida (ecra bloqueado/troca de app)
     vezesEscondido: 0,
     wakeLockAtivo: false,   // chegou a estar ativo em algum momento da sessao
+    // Pontos cegos tapados em 2026-08-15, depois de uma saida do Bernardo
+    // (iOS) com wakeLockAtivo:false e leituras de 70 em 70 segundos. O
+    // diagnostico dizia que o wake lock nunca esteve ativo, mas nao dizia
+    // se a API nem sequer existe (Safari so a tem desde iOS 16.4) ou se foi
+    // pedida e recusada - sao problemas diferentes, com respostas diferentes.
+    wakeLockSuportado: "wakeLock" in navigator,
+    wakeLockPedidos: 0,     // vezes que se tentou obter
+    wakeLockObtidos: 0,     // vezes que se conseguiu
+    wakeLockErro: null,     // nome do erro da ultima recusa
+    // Tempo morto MEDIDO PELAS PROPRIAS LEITURAS, sem depender do
+    // visibilitychange: no iOS o JS congela ao bloquear o ecra e o evento
+    // nem sempre chega, por isso msEscondido pode estar a sub-contar. Se
+    // este valor for muito maior que msEscondido, e essa a explicacao.
+    msSemLeituras: 0,       // soma dos intervalos acima de LONG_GAP_MS
+    gapsLongos: 0,
   };
   lastReadingTimestamp = null;
   hiddenSinceMs = null;
@@ -556,6 +575,10 @@ function buildGpsDiagRecord() {
     precisaoMediaM: Math.round((gpsDiag.somaPrecisaoM / gpsDiag.leituras) * 10) / 10,
     maxGapS: Math.round(gpsDiag.maxGapMs / 100) / 10,
     segundosEscondido: Math.round(gpsDiag.msEscondido / 1000),
+    // Comparar os dois: se "semLeituras" for muito maior que "escondido", o
+    // visibilitychange nao esta a apanhar as pausas (tipico do iOS a
+    // bloquear o ecra).
+    segundosSemLeituras: Math.round(gpsDiag.msSemLeituras / 1000),
     // Config em vigor na altura - sem isto, um diagnostico antigo fica
     // impossivel de interpretar depois de alguem mexer no card de Debug.
     acelerometro: motionListenerAttached,
@@ -596,9 +619,13 @@ let wakeLockSentinel = null;
 
 async function requestWakeLock() {
   if (!("wakeLock" in navigator)) return;
+  if (gpsDiag) gpsDiag.wakeLockPedidos += 1;
   try {
     wakeLockSentinel = await navigator.wakeLock.request("screen");
-    if (gpsDiag) gpsDiag.wakeLockAtivo = true;
+    if (gpsDiag) {
+      gpsDiag.wakeLockAtivo = true;
+      gpsDiag.wakeLockObtidos += 1;
+    }
     // O proprio sistema liberta o lock sempre que a pagina fica escondida;
     // este handler so limpa a referencia, quem o volta a pedir e o
     // listener de visibilitychange abaixo.
@@ -606,6 +633,7 @@ async function requestWakeLock() {
       wakeLockSentinel = null;
     });
   } catch (e) {
+    if (gpsDiag) gpsDiag.wakeLockErro = e && e.name ? e.name : String(e);
     console.warn("Wake Lock recusado, o ecra pode desligar-se durante o treino.", e);
   }
 }
@@ -881,6 +909,10 @@ function onPositionUpdate(position) {
   if (lastReadingTimestamp !== null) {
     const gapMs = timestamp - lastReadingTimestamp;
     if (gapMs > gpsDiag.maxGapMs) gpsDiag.maxGapMs = gapMs;
+    if (gapMs > LONG_GAP_MS) {
+      gpsDiag.msSemLeituras += gapMs;
+      gpsDiag.gapsLongos += 1;
+    }
   }
   lastReadingTimestamp = timestamp;
 
