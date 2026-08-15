@@ -266,7 +266,11 @@ O que sobra é o **outro** problema, independente: a app mediu 18,35 km onde o r
 
 ### 4.7 Pausa do treino (2026-08-15)
 
-Botão **Pausar Treino** durante o treino. Abre um popup com o tempo em pausa a correr e duas saídas: **Retomar** e **Terminar**.
+**Durante o treino há UM só botão: "Pausa"**, no mesmo lugar onde estava o "Iniciar Treino". Abre um popup com o tempo em pausa a correr e duas saídas: **Retomar** e **Terminar**.
+
+Não existe "Parar Treino" no ecrã principal. Terminar vive **dentro** do popup da pausa — acabar um treino não deve estar a um toque de distância de um engano, e obriga a passar por um ecrã que mostra o que se está a terminar.
+
+*(Bug corrigido no mesmo dia: a regra `#training-screen { display: flex }` tinha mais especificidade que `.hidden`, por isso os botões do treino apareciam mesmo sem treino a decorrer. Regra removida — nunca definir `display` num seletor de id sobre um elemento que é escondido por classe.)*
 
 **O tempo em pausa não conta para a duração da sessão** — e isto não é cosmética. A duração entra diretamente nas calorias (secção 4.4) e, na bicicleta, escolhe a faixa de MET (secção 4.6). Meia hora de café a contar como treino diluía a velocidade média e baixava a faixa: exatamente o erro que a secção 4.6 acabou de corrigir.
 
@@ -285,6 +289,27 @@ Botão **Pausar Treino** durante o treino. Abre um popup com o tempo em pausa a 
 **"Terminar" fecha a pausa antes de acabar o treino** (`finishFromPause`), para o tempo dessa pausa não entrar na sessão, e depois segue o caminho normal do `stopTraining()`.
 
 **Relação com a pausa automática** (secção 4.1): são coisas diferentes e complementares. A automática deteta que se está parado e para de creditar distância, mas o relógio continua; esta é explícita e para o relógio também.
+
+#### Resumo no fim do treino
+
+Ao terminar, um popup com sete valores. Separa sempre **ativo** de **total** — sem isso, *"porque é que o treino diz 40 minutos se eu estive uma hora na rua?"* volta a ser pergunta:
+
+| Campo | O que é |
+|---|---|
+| Tipo de treino | modo dominante (Caminhar/Correr/Bicicleta) |
+| Tempo ativo | relógio menos as pausas — é o que vai para `duration_seconds` |
+| Tempo em pausa | soma das pausas explícitas |
+| Tempo total | os dois somados |
+| Distância | distância creditada |
+| Velocidade média | distância ÷ **tempo ativo** |
+| Calorias ativas | o que conta para XP |
+| Calorias totais | ativas + repouso durante as pausas |
+
+**As calorias das pausas são 1 MET** — o metabolismo em repouso. O corpo gastou-as, por isso aparecem; mas **só as ativas contam para XP, leaderboard e conquistas**, senão bastava deixar o treino em pausa a tarde toda para subir de nível.
+
+Na base de dados: `paused_seconds` e `calories_total_kcal` são novas; `calories_kcal` continua a ser **só o ativo**, para nada do que já existia mudar de significado.
+
+Exemplo verificado no browser (6 km, 40 min ativos, 20 min de pausa, 70 kg): 9,0 km/h → 5,29 MET → **247 kcal ativas**; mais 1 MET × 70 kg × 0,333 h = 23 kcal de pausa → **270 kcal totais**.
 
 ## 5. Curva de nível do personagem
 
