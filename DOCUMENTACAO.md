@@ -304,15 +304,21 @@ Ao terminar, um popup com sete valores. Separa sempre **ativo** de **total** —
 | Velocidade média | distância ÷ **tempo ativo** |
 | Calorias ativas | só o tempo ativo |
 | Calorias totais | ativas + repouso durante as pausas |
-| XP ganho | igual às calorias **totais** |
+| XP ganho | igual às calorias **ativas** |
 
-**XP = calorias totais.** As calorias das pausas são **1 MET**, o metabolismo em repouso. Eu tinha argumentado a favor de só as ativas contarem para XP; a decisão do jogador (2026-08-15) foi a contrária, e a razão é boa: **o corpo gastou as duas**. Consequência assumida: deixar um treino em pausa acumula ~1 MET × peso por hora (uns 88 kcal/h para 88 kg). O valor ativo continua gravado à parte, para se poder sempre ver de onde veio a diferença.
+**"Tempo em pausa" inclui o que a app detetou como parado**, não só o que se carregou à mão. Parado é parado, quer tenha sido o jogador a dizer, quer tenha sido a app a perceber (secção 4.1). Acumulado por incrementos, não por transições de estado: assim uma falha de sinal a meio de uma paragem também conta, e não há um estado aberto para fechar em cada saída possível da função.
 
-Na base de dados: **`calories_kcal` é o valor de XP, ou seja o TOTAL** — assim tudo o que já o lia (leaderboard, gráficos do Perfil, recorde de sessão, conquistas) continua a referir-se ao número certo sem mudar uma linha. `calories_active_kcal` e `paused_seconds` são novas e informativas.
+**XP = calorias ativas.** As calorias das pausas são **1 MET**, o metabolismo em repouso — continuam a ser mostradas e gravadas, porque o corpo gastou-as, mas o jogo premeia esforço, não tempo parado. Com o tempo parado detetado a contar como pausa, isto significa que **estar parado não rende XP nenhum**.
 
-**Os mesmos campos aparecem ao vivo** no painel acima do botão, durante o treino (`.live-grid`): o que se vê a andar tem de ser o que se vê no fim, senão os números pareciam mudar sozinhos ao terminar.
+*(Isto oscilou no mesmo dia: XP passou a totais e voltou a ativas. Fica registado o destino, não o caminho — XP são as ativas.)*
 
-Exemplo verificado no browser (6 km, 40 min ativos, 20 min de pausa, 70 kg): 9,0 km/h → 5,29 MET → **247 kcal ativas**; mais 1 MET × 70 kg × 0,333 h = 23 kcal de pausa → **270 kcal totais = 270 XP**. Confirmado que o XP vitalício subiu exatamente 270.
+**Efeito lateral que vale mais que a própria mudança**: a **velocidade média** passa a ser sobre o tempo ativo. Num treino de teste com 5 min a andar e 10 min parado, saiu **4,4 km/h** onde antes saía 1,6 km/h. E como é dessa velocidade que sai o MET, as calorias deixam de ser diluídas pelo tempo parado — o mesmo problema da secção 4.6, agora tapado também pelo lado do tempo.
+
+Na base de dados: **`calories_kcal` é o valor de XP, ou seja o ATIVO** — assim tudo o que já o lia (leaderboard, gráficos do Perfil, recorde de sessão, conquistas) continua a referir-se ao número certo sem mudar uma linha. `calories_total_kcal` e `paused_seconds` são novas e informativas.
+
+**Os mesmos campos aparecem ao vivo** no painel acima do botão (`.live-grid`), e com **a mesma fórmula do fim** (`computeSessionCaloriesFromTotals`), não a soma ao vivo por segmento: as duas dão valores diferentes (a soma por segmento é capada, secção 4.4) e o número saltava ao terminar o treino — 19 kcal no painel, 38 no resumo, no mesmo treino.
+
+Verificado no browser (5 min a andar + 10 min parado): tempo ativo **5:30**, em pausa **9:30**, total **15:00**, 20 kcal ativas, 31 totais, **20 XP** — os mesmos números no painel ao vivo e no resumo. Os 30 s de diferença entre os 10 min parados e os 9:30 contados são a histerese antes de a app confirmar "parado", e estão certos.
 
 ## 5. Curva de nível do personagem
 
