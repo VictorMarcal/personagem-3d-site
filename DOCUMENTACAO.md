@@ -302,14 +302,17 @@ Ao terminar, um popup com sete valores. Separa sempre **ativo** de **total** —
 | Tempo total | os dois somados |
 | Distância | distância creditada |
 | Velocidade média | distância ÷ **tempo ativo** |
-| Calorias ativas | o que conta para XP |
+| Calorias ativas | só o tempo ativo |
 | Calorias totais | ativas + repouso durante as pausas |
+| XP ganho | igual às calorias **totais** |
 
-**As calorias das pausas são 1 MET** — o metabolismo em repouso. O corpo gastou-as, por isso aparecem; mas **só as ativas contam para XP, leaderboard e conquistas**, senão bastava deixar o treino em pausa a tarde toda para subir de nível.
+**XP = calorias totais.** As calorias das pausas são **1 MET**, o metabolismo em repouso. Eu tinha argumentado a favor de só as ativas contarem para XP; a decisão do jogador (2026-08-15) foi a contrária, e a razão é boa: **o corpo gastou as duas**. Consequência assumida: deixar um treino em pausa acumula ~1 MET × peso por hora (uns 88 kcal/h para 88 kg). O valor ativo continua gravado à parte, para se poder sempre ver de onde veio a diferença.
 
-Na base de dados: `paused_seconds` e `calories_total_kcal` são novas; `calories_kcal` continua a ser **só o ativo**, para nada do que já existia mudar de significado.
+Na base de dados: **`calories_kcal` é o valor de XP, ou seja o TOTAL** — assim tudo o que já o lia (leaderboard, gráficos do Perfil, recorde de sessão, conquistas) continua a referir-se ao número certo sem mudar uma linha. `calories_active_kcal` e `paused_seconds` são novas e informativas.
 
-Exemplo verificado no browser (6 km, 40 min ativos, 20 min de pausa, 70 kg): 9,0 km/h → 5,29 MET → **247 kcal ativas**; mais 1 MET × 70 kg × 0,333 h = 23 kcal de pausa → **270 kcal totais**.
+**Os mesmos campos aparecem ao vivo** no painel acima do botão, durante o treino (`.live-grid`): o que se vê a andar tem de ser o que se vê no fim, senão os números pareciam mudar sozinhos ao terminar.
+
+Exemplo verificado no browser (6 km, 40 min ativos, 20 min de pausa, 70 kg): 9,0 km/h → 5,29 MET → **247 kcal ativas**; mais 1 MET × 70 kg × 0,333 h = 23 kcal de pausa → **270 kcal totais = 270 XP**. Confirmado que o XP vitalício subiu exatamente 270.
 
 ## 5. Curva de nível do personagem
 
