@@ -721,6 +721,8 @@ Ponto branco com halo azul e anel a pulsar. **Azul de propósito**: o dourado j�
 
 Uma leitura de GPS ao abrir o mapa (`getCurrentPosition`), **não** um `watchPosition` permanente — gastaria bateria a olhar para um ecrã parado. Durante um treino, o ponto acompanha: `js/training.js` chama `setMapPlayerPosition()` a cada leitura, **antes** de qualquer filtro (é só a posição no ecrã, não conta distância nenhuma).
 
+**Botão "recentrar"** (canto superior direito, alvo de 40 px para o dedo, azul como o ponto do jogador — é o mesmo assunto: onde estou): volta a pedir a posição e voa até lá em 1,2 s. Sem GPS cai para o centro do território, para o botão nunca ficar sem fazer nada. `maximumAge: 60000` na leitura, por isso carregar várias vezes seguidas reaproveita a última posição em vez de acordar o GPS de novo. `L.DomEvent.disableClickPropagation` — sem isso, clicar no botão também arrastava o mapa por baixo.
+
 #### Entrada no mapa
 
 A pedido: *"sempre que entramos neste modo, o mapa tem uma vista geral do país e depois faz zoom para o sítio em que estás"*. Abre no zoom 6 (o suficiente para se ver um país em qualquer parte do mundo), espera 900 ms e voa até à posição em 2,6 s. **Centrada no jogador**, não numa região fixa. Sem GPS, cai para o centro do território já descoberto. Respeita `prefers-reduced-motion` — quem tem isso ligado entra direto na posição, sem voo.
