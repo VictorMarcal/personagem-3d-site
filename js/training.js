@@ -29,6 +29,10 @@ const STORAGE_KEYS = {
   caloriasAcumuladasKcal: "treino.caloriasAcumuladasKcal",
   modoTempoAcumuladoMs: "treino.modoTempoAcumuladoMs",
   atividadeAtiva: "treino.atividadeAtiva",
+  // Tempo EM MOVIMENTO (2026-08-15, secção 4.6) - distinto da duracao de
+  // relogio de parede. Sem isto o MET da bicicleta sai de uma velocidade
+  // media diluida pelo tempo parado.
+  tempoMovimentoS: "treino.tempoMovimentoS",
 };
 
 // Para apresentacao (historico do Perfil, treinos de hoje). Declarado aqui
@@ -312,6 +316,13 @@ function computeWalkOrRunMet(speedKmh, isRunning) {
   return vo2 / 3.5;
 }
 
+// Modos cujo MET vem de uma TABELA POR FAIXAS e nao de uma formula linear.
+// A distincao nao e cosmetica - decide se a velocidade pode ou nao ser
+// diluida pelo tempo parado (ver computeSessionCaloriesFromTotals).
+function metIsBracketed(activity) {
+  return activity === ACTIVITY_CYCLE;
+}
+
 function computeCyclingMet(speedKmh) {
   if (speedKmh < 16) return 4.0;
   if (speedKmh < 19) return 6.8;
@@ -357,9 +368,43 @@ function computeSegmentCalories(activity, speedKmh, durationSeconds) {
 // A soma por segmento (sessionCaloriesKcal) CONTINUA a existir, so que
 // apenas para o mostrador ao vivo durante o treino: ali um erro nao
 // persiste, e ter feedback imediato a cada leitura vale mais que a precisao.
-function computeSessionCaloriesFromTotals(distanceM, durationSeconds, mode) {
+// CORRECAO 2026-08-15 (secção 4.6), provada contra o relogio do Bernardo:
+// a bicicleta precisa do tempo EM MOVIMENTO, nao do relogio de parede.
+//
+// Porque so a bicicleta: a caminhada/corrida usa a equacao do ACSM, que e
+// LINEAR na velocidade. Substituindo v = d/t na formula, o t corta-se:
+//
+//   kcal = peso x (0,476 x distancia_km + horas)
+//
+// ou seja, o tempo parado entra sozinho a 1 MET - exatamente o metabolismo
+// em repouso, que e o valor certo. A diluicao cancela-se por construcao, e
+// por isso nunca deu problema a andar a pe.
+//
+// A bicicleta usa uma TABELA POR FAIXAS. Aí a diluicao nao se cancela: cai-se
+// numa faixa mais baixa E aplica-se essa faixa ao tempo todo. Medido na
+// sessao 108 do Bernardo (21,94 km reais em 52:41 de movimento, dentro de
+// 1:24:29 de relogio):
+//
+//   errado : 18,35 km / 1,4053 h = 13,1 km/h -> 4,0 MET -> 495 kcal
+//   certo  : 21,94 km / 0,8781 h = 24,9 km/h -> 10,0 MET -> 773 kcal
+//   relogio: 742 kcal totais
+//
+// O tempo parado passa a contar a 1 MET, como ja acontecia a pe.
+function computeSessionCaloriesFromTotals(distanceM, durationSeconds, mode, movingSeconds) {
   if (!durationSeconds || durationSeconds <= 0) return 0;
   const hours = durationSeconds / 3600;
+
+  if (metIsBracketed(mode)) {
+    // Sessoes antigas nao trazem tempo de movimento: sem ele nao ha nada
+    // melhor a fazer do que o calculo antigo (nao se inventa um valor).
+    const movingHours = movingSeconds > 0 ? Math.min(movingSeconds, durationSeconds) / 3600 : 0;
+    if (movingHours > 0) {
+      const movingSpeedKmh = distanceM / 1000 / movingHours;
+      const restingHours = Math.max(0, hours - movingHours);
+      return computeMetForActivity(mode, movingSpeedKmh) * getPesoKg() * movingHours + 1.0 * getPesoKg() * restingHours;
+    }
+  }
+
   const avgSpeedKmh = distanceM / 1000 / hours;
   return computeMetForActivity(mode, avgSpeedKmh) * getPesoKg() * hours;
 }
@@ -416,6 +461,7 @@ let sessionStartTime = null; // usado para conquistas de ritmo (ex: 5km em menos
 // do ultimo segmento aceite (instantanea), distinta da media da sessao
 // inteira mostrada ao lado.
 let sessionCaloriesKcal = 0;
+let sessionMovingSeconds = 0;
 let currentNominalSpeedMps = 0;
 
 // --- Diagnostico do sinal de GPS (2026-08-11, secção 4.2) -----------------
@@ -684,6 +730,7 @@ function persistAccumulatedTraining() {
   }
   localStorage.setItem(STORAGE_KEYS.caloriasAcumuladasKcal, String(sessionCaloriesKcal));
   localStorage.setItem(STORAGE_KEYS.modoTempoAcumuladoMs, JSON.stringify(modeTimeAccumMs));
+  localStorage.setItem(STORAGE_KEYS.tempoMovimentoS, String(sessionMovingSeconds));
   if (currentActiveMode) {
     localStorage.setItem(STORAGE_KEYS.atividadeAtiva, currentActiveMode);
   }
@@ -948,6 +995,13 @@ function onPositionUpdate(position) {
         totalDistanceM += distanceSegmentM;
         sessionCaloriesKcal += computeSegmentCalories(currentActiveMode, creditedSpeedKmh, creditedDurationSeconds);
         modeTimeAccumMs[currentActiveMode] = (modeTimeAccumMs[currentActiveMode] || 0) + creditedDurationSeconds * 1000;
+        // Tempo em movimento (secção 4.6): usa o intervalo REAL, sem o teto
+        // de getActivityWindowSeconds(). O teto existe para nao inflacionar
+        // calorias por segmento; aqui e o contrario - se o GPS falhou 5
+        // minutos a meio de uma descida, esses 5 minutos foram de facto a
+        // pedalar e tem de contar, senao a velocidade de movimento sai
+        // absurdamente alta e a faixa de MET dispara.
+        sessionMovingSeconds += rawDurationSeconds;
         gpsDiag.creditadas += 1;
         updateDistanceDisplay();
         checkCoinDropsForDistance(totalDistanceM);
@@ -1088,6 +1142,7 @@ function beginTrainingSession() {
   sessionStartTime = Date.now();
   coinsCheckedKm = 0;
   sessionCaloriesKcal = 0;
+  sessionMovingSeconds = 0;
   currentNominalSpeedMps = 0;
   speedSampleBuffer = [];
   currentActiveMode = null;
@@ -1132,10 +1187,12 @@ function stopTraining() {
   // Valor GRAVADO vem dos totais da sessao, nao da soma por segmento - ver
   // computeSessionCaloriesFromTotals. sessionCaloriesKcal (soma ao vivo)
   // continua a servir so para o mostrador durante o treino.
+  const sessionMoving = sessionMovingSeconds;
   const sessionCalories = computeSessionCaloriesFromTotals(
     sessionDistanceM,
     sessionDurationSeconds,
-    sessionDominantMode
+    sessionDominantMode,
+    sessionMoving
   );
 
   const discardReasons = [];
@@ -1156,6 +1213,8 @@ function stopTraining() {
       // mao, a sessao pode ter passado por mais que uma atividade.
       mode: sessionDominantMode,
       duration_seconds: sessionDurationSeconds,
+      // Tempo em movimento (secção 4.6) - o MET da bicicleta sai daqui.
+      moving_seconds: sessionMoving,
       calories_kcal: sessionCalories,
       // Diagnostico do sinal (secção 4.2) - null numa sessao sem leituras.
       gps_diag: buildGpsDiagRecord(),
@@ -1211,6 +1270,7 @@ function resumeTrainingIfNeeded() {
   // Calorias/modo dominante (2026-08-11, bug corrigido - "as calorias
   // desapareciam e voltavam a zero" a cada refresh a meio de um treino).
   sessionCaloriesKcal = Number(localStorage.getItem(STORAGE_KEYS.caloriasAcumuladasKcal)) || 0;
+  sessionMovingSeconds = Number(localStorage.getItem(STORAGE_KEYS.tempoMovimentoS)) || 0;
   try {
     const savedModeTime = localStorage.getItem(STORAGE_KEYS.modoTempoAcumuladoMs);
     if (savedModeTime) modeTimeAccumMs = JSON.parse(savedModeTime);
@@ -1315,7 +1375,7 @@ function wireModeFixControls() {
 async function changeSessionMode(sessionId, newMode) {
   const { data: session, error } = await supabaseClient
     .from("training_sessions")
-    .select("distance_m, duration_seconds, mode, calories_kcal")
+    .select("distance_m, duration_seconds, moving_seconds, mode, calories_kcal")
     .eq("id", sessionId)
     .single();
 
@@ -1324,7 +1384,8 @@ async function changeSessionMode(sessionId, newMode) {
   const newCalories = computeSessionCaloriesFromTotals(
     Number(session.distance_m),
     Number(session.duration_seconds),
-    newMode
+    newMode,
+    Number(session.moving_seconds) || 0
   );
   const deltaKcal = newCalories - Number(session.calories_kcal);
 
@@ -1360,7 +1421,7 @@ async function changeSessionMode(sessionId, newMode) {
 async function recomputeRecordsFromSessions() {
   const { data, error } = await supabaseClient
     .from("training_sessions")
-    .select("distance_m, duration_seconds, mode, calories_kcal")
+    .select("distance_m, duration_seconds, moving_seconds, mode, calories_kcal")
     .eq("user_id", currentUserId);
 
   if (error || !data) return;

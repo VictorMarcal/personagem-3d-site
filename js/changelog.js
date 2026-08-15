@@ -7,6 +7,17 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v3.4.0",
+    title: "Calorias de Bicicleta Corrigidas",
+    changes: [
+      "As voltas de bicicleta estavam a contar calorias a menos — até um terço. A app usava a velocidade média incluindo o tempo parado, e uma paragem longa fazia uma volta a sério parecer um passeio.",
+      "Agora a app mede o tempo em que estiveste mesmo a andar e é essa a velocidade que conta; o tempo parado conta como descanso.",
+      "Comparado com os dados de um relógio desportivo, o erro passou de 33% para menos de 10%.",
+      "Só afeta a bicicleta. A pé as contas já estavam certas, por causa da fórmula usada.",
+      "Os treinos antigos ficam como estão — não havia como saber quanto tempo estiveste parado.",
+    ],
+  },
+  {
     version: "v3.3.0",
     title: "Mapa de Exploração",
     changes: [
