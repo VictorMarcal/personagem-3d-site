@@ -689,9 +689,13 @@ Confirmado depois com uma caminhada simulada de 2 km em linha reta: **8 hexágon
 
 | Nível | O que é | Tratamento |
 |---|---|---|
-| 1 | Por explorar | cinzento, `blur(4px)`, `brightness(0.45)` |
+| 1 | Por explorar | cinzento, `blur(12px)`, `brightness(0.45)` |
 | 2 | Distrito desbloqueado | o mesmo, × 1,7 de brilho |
-| 3 | Hexágono descoberto | a cores, `blur(1.5px)`, `saturate(1.35)` |
+| 3 | Hexágono descoberto | a cores, `blur(12px)`, `saturate(2.2)` |
+
+**Estes valores foram escolhidos pelo jogador no mockup**, não por mim: desfoque no máximo nas duas camadas, saturação no máximo, **sem linhas de grelha** (`SHOW_GRID_LINES = false`) mas **com** o sombreado por hexágono (`SHOW_HEX_SHADING = true`) — o mosaico continua a ler-se pelas manchas, sem malha desenhada por cima da imagem. O desfoque forte é o ponto: isto não é para se ler como um mapa, é para se ler como textura.
+
+Nota de processo: numa primeira passagem enviei os valores de origem em vez destes. O mockup tinha código que repunha os sliders a cada carregamento, na suposição errada de que era o browser a mexer neles — estava a apagar a afinação feita à mão. Esse código foi removido; o que está no HTML do mockup são os valores escolhidos.
 
 O nível 2 continua a cinzento de propósito: o que se ganhou ao desbloquear um distrito foi **saber que aquilo é teu para explorar**, não o terreno em si.
 
