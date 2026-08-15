@@ -264,6 +264,28 @@ O que sobra é o **outro** problema, independente: a app mediu 18,35 km onde o r
 
 **Sessões antigas não têm `moving_seconds`** e ficam com o cálculo anterior. Não se inventa um valor retroativo: a coluna é `null` e o código volta à fórmula antiga quando ela falta.
 
+### 4.7 Pausa do treino (2026-08-15)
+
+Botão **Pausar Treino** durante o treino. Abre um popup com o tempo em pausa a correr e duas saídas: **Retomar** e **Terminar**.
+
+**O tempo em pausa não conta para a duração da sessão** — e isto não é cosmética. A duração entra diretamente nas calorias (secção 4.4) e, na bicicleta, escolhe a faixa de MET (secção 4.6). Meia hora de café a contar como treino diluía a velocidade média e baixava a faixa: exatamente o erro que a secção 4.6 acabou de corrigir.
+
+**O GPS continua ligado durante a pausa**, mas as leituras só servem para **reancorar a posição**. Quem pausa, anda 500 m e retoma não ganha esses 500 m — e ao retomar não há um salto em linha reta a ser creditado, porque as âncoras (`lastPosition`/`lastCountedPosition`) são limpas. Verificado no browser com posições simuladas:
+
+| Situação | Distância creditada |
+|---|---|
+| A andar 500 m normalmente | **+500 m** |
+| A andar 1 km **em pausa** | **0 m** |
+| Primeira leitura ao retomar | só o troço novo, sem o salto |
+
+**Sem forma de fechar o popup por fora** (nem fundo clicável, nem tecla): as únicas saídas são Retomar e Terminar. Fechar por engano deixaria o treino a contar tempo parado.
+
+**Sobrevive a um refresh**: `pausaTotalMs` e `pausaInicioMs` ficam em `localStorage`, e ao recarregar a pausa reabre com o contador a continuar de onde ia — não a reiniciar do zero. Sem isto, um refresh a meio de uma pausa transformava o tempo parado em tempo de treino.
+
+**"Terminar" fecha a pausa antes de acabar o treino** (`finishFromPause`), para o tempo dessa pausa não entrar na sessão, e depois segue o caminho normal do `stopTraining()`.
+
+**Relação com a pausa automática** (secção 4.1): são coisas diferentes e complementares. A automática deteta que se está parado e para de creditar distância, mas o relógio continua; esta é explícita e para o relógio também.
+
 ## 5. Curva de nível do personagem
 
 ```
