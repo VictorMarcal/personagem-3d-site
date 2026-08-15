@@ -10,7 +10,8 @@ const CHANGELOG = [
     version: "v3.11.0",
     title: "Treinos de Hoje em Cards",
     changes: [
-      "Cada treino que já fizeste hoje aparece agora no seu próprio card, com a mesma cara do painel de treino: o tipo em cima, a distância em grande, e os tempos e calorias por baixo.",
+      "Cada treino que já fizeste hoje aparece agora no seu próprio card, com a mesma cara do painel de treino: o tipo em cima, a distância em grande, e os tempos, a velocidade média e as calorias por baixo.",
+      "A velocidade média conta só o tempo ativo — o tempo parado não a puxa para baixo.",
       "Antes era uma linha só de texto que não mostrava o tempo em pausa nem separava as calorias.",
       "Nos treinos anteriores a hoje, os campos que ainda não eram guardados aparecem como «—» em vez de zero — não é que não tenha havido pausa, é que não se sabe.",
     ],

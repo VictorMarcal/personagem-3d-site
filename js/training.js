@@ -751,6 +751,7 @@ function updateLiveStatsDisplay() {
   set("live-active-time", formatDurationClock(elapsedSeconds));
   set("live-paused-time", formatDurationClock(pausedSeconds));
   set("live-total-time", formatDurationClock(elapsedSeconds + pausedSeconds));
+  set("live-speed", elapsedSeconds > 0 ? formatSpeedKmh(totalDistanceM / elapsedSeconds) : "0.0 km/h");
   // A MESMA formula do fim (computeSessionCaloriesFromTotals), nao a soma ao
   // vivo por segmento: as duas dao valores diferentes (a soma por segmento e
   // capada, secção 4.4) e o numero saltava ao terminar o treino.
@@ -1623,6 +1624,7 @@ function renderTrainingCard(s) {
         ${linha("Tempo ativo", formatDurationClock(activeSeconds))}
         ${linha("Tempo em pausa", temPausa ? formatDurationClock(pausedSeconds) : desconhecido)}
         ${linha("Tempo total", temPausa ? formatDurationClock(activeSeconds + pausedSeconds) : desconhecido)}
+        ${linha("Velocidade média", activeSeconds > 0 ? formatSpeedKmh((Number(s.distance_m) || 0) / activeSeconds) : desconhecido)}
         ${linha("Calorias ativas", temAtivas ? `${Math.round(Number(activeKcalRaw))} kcal` : desconhecido)}
         ${linha("Calorias totais", `${Math.round(Number(s.calories_kcal) || 0)} kcal`)}
       </dl>
