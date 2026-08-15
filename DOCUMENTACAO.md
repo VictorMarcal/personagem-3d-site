@@ -46,7 +46,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `assets/Hero.glb` | Modelo 3D do herói (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Shield.glb` | Modelo 3D do escudo (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Bow.glb` | Modelo 3D do arco (secção 9), carregado por `js/main.js` via `GLTFLoader` |
-| `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de terreno procedural da aba Missões — ver secção 18 |
+| `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de satélite desfocado da aba Missões — ver secção 18 |
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — histórico/registo, não é lido pelo site nem pelo Supabase |
 | `.mcp.json` | Liga o Claude Code ao projeto Supabase via MCP (`--project-ref=vnqjaepjfqlhgmlrhzlr`), token vem de uma variável de ambiente (`SUPABASE_ACCESS_TOKEN`), nunca gravado no ficheiro. Desde 2026-08-03, migrações novas são aplicadas diretamente via este MCP (`apply_migration`) em vez de copiar/colar SQL manualmente no dashboard — `supabase/schema.sql` continua a ser atualizado a cada migração, só como registo/referência |
 
@@ -681,20 +681,65 @@ Confirmado depois com uma caminhada simulada de 2 km em linha reta: **8 hexágon
 
 **Limitação herdada**: como toda a deteção depende do GPS, só conta com o treino a decorrer e o ecrã ligado (secção 4.2).
 
-### 18.1 Mapa de território (v3.2.0, 2026-08-14)
+### 18.1 Mapa de território (v3.3.0, 2026-08-15)
 
-O mapa **deixou de ser um mapa real**. A pedido: *"em vez de mostrar o mapa real, gostava que fosse algo tipo [jogo de estratégia hexagonal] — imagina uma textura de terreno e vais pintando os hexágonos por cima; a textura está a preto e branco excepto nas áreas já descobertas"*.
+**Satélite real usado como textura, não como mapa.** A pedido: *"imagina o mapa em vista satélite mas com um desfoque"*. A imagem (Esri World Imagery) aparece desfocada, sem cor e escurecida onde ainda não se treinou — não se lê como um mapa de estradas, lê-se como território por descobrir.
 
-**O terreno é gerado por código.** Ruído de valor determinista a partir das coordenadas (`terrainHash` → `terrainSmoothNoise` → `terrainValue`, duas oitavas), classificado em cinco faixas de "altitude" fictícia: água, areia, relva, floresta, rocha. Desenhado num `<canvas>` por cima do Leaflet, que passou a servir **só de motor de pan/zoom e de projeção geográfica** — sem tiles, sem pedidos de rede, sem atribuição, sem depender de nenhum serviço externo. Determinista significa que a mesma coordenada dá sempre o mesmo terreno, em qualquer telemóvel e em qualquer visita, sem guardar nem descarregar nada.
+**Três níveis de conhecimento do mundo**, todos a partir da **mesma** imagem — o que os distingue é o filtro CSS e o recorte:
 
-**O mapa é global — não há nenhuma região no código.** Correção explícita do pedido inicial: *"quero o mapa completo, mas para mim só aparece [a zona de] Braga porque é a única área que descobri; para outros players será outra área"*. O terreno existe em todo o lado e o `fitBounds` segue as descobertas do próprio jogador. Para o Skllrx isso enquadra aproximadamente o distrito de Braga, porque foi só onde explorou; para o Bernardo será outra zona, **sem uma linha de código diferente**.
+| Nível | O que é | Tratamento |
+|---|---|---|
+| 1 | Por explorar | cinzento, `blur(4px)`, `brightness(0.45)` |
+| 2 | Distrito desbloqueado | o mesmo, × 1,7 de brilho |
+| 3 | Hexágono descoberto | a cores, `blur(1.5px)`, `saturate(1.35)` |
 
-**Por explorar = a mesma textura, sem cor e escurecida** (luminância × 0,48), não preto sólido: continua a ver-se a *forma* do terreno — era esse o pedido — mas lê-se de imediato como "ainda não fui lá".
+O nível 2 continua a cinzento de propósito: o que se ganhou ao desbloquear um distrito foi **saber que aquilo é teu para explorar**, não o terreno em si.
 
-**A grelha de fundo acompanha o zoom.** Os hexágonos de descoberta (resolução 9, ~427 m) desenhados ao nível de um país seriam dezenas de milhar de polígonos de 1 px — lento e ilegível. A resolução é escolhida pelo tamanho que os hexágonos teriam **no ecrã** (alvo ~34 px, via metros-por-pixel do próprio Leaflet), e não por uma tabela de níveis de zoom: assim o resultado é o mesmo em qualquer latitude e em qualquer tamanho de ecrã. Nunca passa da resolução 9 — mais fino que a própria descoberta não acrescenta informação. Quando a grelha de fundo é mais grosseira que a de descoberta, os hexágonos descobertos são redesenhados por cima, para o progresso continuar visível a qualquer zoom em vez de desaparecer ao afastar.
+**Nenhuma região está escrita no código.** Vale para tudo nesta secção. O distrito é identificado a partir dos próprios hexágonos e o enquadramento segue o jogador. Para o Skllrx dá Braga porque foi só onde treinou; para o Bernardo dará o distrito dele, sem uma linha diferente.
 
-**A frequência do ruído acompanha a resolução desenhada.** Primeira tentativa usou frequência fixa e o mapa saiu granulado — parecia estática, não terreno: hexágonos vizinhos caíam em células de ruído diferentes. Regra atual: um passo de um hexágono vale ~0,08 de unidade de ruído, para as manchas terem sempre a dimensão de vários hexágonos. Consequência aceite: o terreno é auto-semelhante (as formas repetem-se a cada escala), mas cada hexágono **descoberto** é sempre desenhado à frequência da resolução 9, por isso **a sua cor nunca muda**.
+#### Como o distrito é descoberto
 
-**Orçamento de células** (`MAX_BACKDROP_CELLS = 2500`): só se desenham as células dentro do viewport (o H3 recorta ao polígono), por isso o custo cresce com o tamanho do ecrã e não com o tamanho do mundo. Se mesmo assim exceder, sobe-se um nível de resolução até caber. Medido no browser: 23 ms no pior caso (mundo inteiro, zoom 4, 2351 células), 6 ms num viewport de telemóvel.
+Reverse-geocoding no Nominatim (OSM) com `polygon_geojson=1&zoom=8`, que devolve **a fronteira administrativa real**. Três cuidados, todos por causa do limite de **1 pedido por segundo** do serviço:
 
-**Ainda é criado só quando a sub-aba é aberta pela primeira vez** (`js/nav.js`), e `invalidateSize()` ao abrir, porque o Leaflet calcula dimensão 0 se o contentor estava escondido quando o mapa foi criado. O canvas vive no contentor do mapa e não num pane do Leaflet — por isso não é arrastado automaticamente e tem de ser redesenhado a cada `move`/`zoom`, em coordenadas de ecrã; `pointer-events: none` para o arrastar continuar a chegar ao mapa.
+- **Uma amostra por zona grande** (H3 resolução 5, ~21 km), não um pedido por hexágono
+- **Máximo 4 pedidos por abertura** do mapa, espaçados 1,1 s
+- **Cache em `localStorage`** (`STORAGE_KEY_DISTRICTS`: zonas já perguntadas + fronteiras recebidas) — reabrir o mapa não gasta pedidos nenhuns, e só se perguntam zonas **novas**
+
+`polygon_threshold=0.0008` pede a simplificação da fronteira ao servidor: menos vértices para desenhar e para recortar, sem perder a forma.
+
+Falha de rede ou serviço em baixo = fica por identificar e tenta-se noutra abertura. O resto do mapa nunca é afetado.
+
+**`MIN_HEXES_FOR_DISTRICT = 3`**: o distrito só se revela depois de lá se ter descoberto um pedaço. Senão bastava passar de carro pela fronteira para ganhar o distrito inteiro. A contagem é feita **localmente**, ponto-a-ponto contra o polígono (`pointInGeoJson`, ray casting), por isso reavalia-se sozinha à medida que se descobrem hexágonos — sem pedidos novos.
+
+#### Onde estás
+
+Ponto branco com halo azul e anel a pulsar. **Azul de propósito**: o dourado já é do território e do contorno do distrito, o jogador tem de se distinguir dos dois num relance.
+
+Uma leitura de GPS ao abrir o mapa (`getCurrentPosition`), **não** um `watchPosition` permanente — gastaria bateria a olhar para um ecrã parado. Durante um treino, o ponto acompanha: `js/training.js` chama `setMapPlayerPosition()` a cada leitura, **antes** de qualquer filtro (é só a posição no ecrã, não conta distância nenhuma).
+
+#### Entrada no mapa
+
+A pedido: *"sempre que entramos neste modo, o mapa tem uma vista geral do país e depois faz zoom para o sítio em que estás"*. Abre no zoom 6 (o suficiente para se ver um país em qualquer parte do mundo), espera 900 ms e voa até à posição em 2,6 s. **Centrada no jogador**, não numa região fixa. Sem GPS, cai para o centro do território já descoberto. Respeita `prefers-reduced-motion` — quem tem isso ligado entra direto na posição, sem voo.
+
+**O nevoeiro alivia com o zoom** (`--hexmap-fog-lift`, de 1× no zoom 12 a 2× no zoom 7). Sem isto a vista geral era uma mancha preta ilegível — o país não se reconhecia. Assim a vista geral lê-se e o nevoeiro só fica cerrado ao perto, que é onde a exploração se nota.
+
+#### Grelha e desenho
+
+A grelha hexagonal é desenhada num `<canvas>` por cima das três camadas, com um leve sombreado por hexágono (dá a leitura de "peça" em vez de fotografia contínua) e o contorno dourado da **união** do território (`h3.cellsToMultiPolygon`) — não de cada hexágono, senão a fronteira sai um emaranhado de linhas.
+
+A resolução da grelha acompanha o zoom, escolhida pelo tamanho aparente **no ecrã** (alvo ~40 px, via metros-por-pixel do próprio Leaflet) e não por uma tabela de níveis de zoom: assim o resultado é igual em qualquer latitude e em qualquer tamanho de ecrã. Nunca passa da resolução 9. Teto de `MAX_GRID_CELLS = 4000`.
+
+**Duas coordenadas diferentes, de propósito:**
+
+- o **canvas** desenha em coordenadas de ecrã e é redesenhado a cada `move` — vive num pane arrastado pelo Leaflet, por isso a translação é anulada com um `transform` inverso
+- os **recortes** (`clip-path`) usam *layer points*, cuja origem só muda no zoom — por isso só se recalculam em `zoom`/`viewreset`. A fronteira de um distrito tem milhares de vértices; recalculá-la a cada frame de arrasto custava caro sem necessidade
+
+Medido no browser: **5 ms** por redesenho num viewport de telemóvel.
+
+#### Custo assumido
+
+Voltámos a depender de tiles externas: pedidos de rede ao navegar e mapa vazio offline — ao contrário do terreno gerado por código da v3.2.0, que não tinha esse problema mas também não tinha o realismo do satélite. Decisão do jogador depois de ver os dois lado a lado. As três camadas usam a **mesma** URL de tile, por isso o browser só descarrega cada tile uma vez; as outras duas saem da cache HTTP.
+
+Continua a ser criado só quando a sub-aba é aberta pela primeira vez (`js/nav.js`), com `invalidateSize()` ao abrir — o Leaflet calcula dimensão 0 se o contentor estava escondido quando o mapa foi criado.
+
+**Mockup**: `mockup-mapa.html` (não versionado) é a página onde isto foi desenhado e afinado com sliders ao vivo, antes de entrar na app. Serve para voltar a afinar sem mexer no código da app.
