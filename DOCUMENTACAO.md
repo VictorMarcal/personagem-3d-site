@@ -690,34 +690,70 @@ Confirmado depois com uma caminhada simulada de 2 km em linha reta: **8 hexágon
 | Nível | O que é | Tratamento |
 |---|---|---|
 | 1 | Por explorar | cinzento, `blur(12px)`, `brightness(0.45)` |
-| 2 | Distrito desbloqueado | o mesmo, × 1,7 de brilho |
+| 2 | Concelho desbloqueado | o mesmo, × 1,7 de brilho |
 | 3 | Hexágono descoberto | a cores, `blur(12px)`, `saturate(2.2)` |
 
 **Estes valores foram escolhidos pelo jogador no mockup**, não por mim: desfoque no máximo nas duas camadas, saturação no máximo, **sem linhas de grelha** (`SHOW_GRID_LINES = false`) mas **com** o sombreado por hexágono (`SHOW_HEX_SHADING = true`) — o mosaico continua a ler-se pelas manchas, sem malha desenhada por cima da imagem. O desfoque forte é o ponto: isto não é para se ler como um mapa, é para se ler como textura.
 
 Nota de processo: numa primeira passagem enviei os valores de origem em vez destes. O mockup tinha código que repunha os sliders a cada carregamento, na suposição errada de que era o browser a mexer neles — estava a apagar a afinação feita à mão. Esse código foi removido; o que está no HTML do mockup são os valores escolhidos.
 
-O nível 2 continua a cinzento de propósito: o que se ganhou ao desbloquear um distrito foi **saber que aquilo é teu para explorar**, não o terreno em si.
+O nível 2 continua a cinzento de propósito: o que se ganhou ao desbloquear um concelho foi **saber que aquilo é teu para explorar**, não o terreno em si.
 
-**Nenhuma região está escrita no código.** Vale para tudo nesta secção. O distrito é identificado a partir dos próprios hexágonos e o enquadramento segue o jogador. Para o Skllrx dá Braga porque foi só onde treinou; para o Bernardo dará o distrito dele, sem uma linha diferente.
+**Nenhuma região está escrita no código.** Vale para tudo nesta secção. O concelho é identificado a partir dos próprios hexágonos e o enquadramento segue o jogador. Para o Skllrx dá Braga porque foi só onde treinou; para o Bernardo dará o concelho dele, sem uma linha diferente.
 
-#### Como o distrito é descoberto
+#### Concelho, não distrito
 
-Reverse-geocoding no Nominatim (OSM) com `polygon_geojson=1&zoom=8`, que devolve **a fronteira administrativa real**. Três cuidados, todos por causa do limite de **1 pedido por segundo** do serviço:
+O que se **desbloqueia é o concelho**. O distrito é grande demais para ser objetivo:
 
-- **Uma amostra por zona grande** (H3 resolução 5, ~21 km), não um pedido por hexágono
-- **Máximo 4 pedidos por abertura** do mapa, espaçados 1,1 s
-- **Cache em `localStorage`** (`STORAGE_KEY_DISTRICTS`: zonas já perguntadas + fronteiras recebidas) — reabrir o mapa não gasta pedidos nenhuns, e só se perguntam zonas **novas**
+| | Distrito | Concelho |
+|---|---|---|
+| Quantos em Portugal | 18 | **308** |
+| Tamanho (Braga) | 56 × 83 km | **17 × 19 km** |
+| Fronteira (simplificada) | 13,8 KB / 594 vértices | **1,9 KB / 79 vértices** |
+
+Desbloqueias um distrito uma vez e passam-se meses sem acontecer mais nada; um concelho atravessa-se numa volta de bicicleta. E o contador só faz sentido assim — *"14 de 308"* é uma coleção, *"1 de 18"* não é nada. Como bónus, a fronteira do concelho é 7× mais leve para desenhar e para recortar.
+
+O distrito **fica**, mas só como nível de cima na vista geral.
+
+#### Como o concelho é descoberto
+
+O `reverse` do Nominatim **não serve**: salta do distrito (nível 6) direto para a freguesia (nível 8) em todos os zooms testados (8, 9, 10, 11) — o concelho (nível 7) nunca aparece, e a freguesia tem 2 km de lado, pequena demais. São precisos três passos:
+
+1. `reverse` (`zoom=11`) → a freguesia do ponto
+2. `details` (`addressdetails=1`) → a hierarquia administrativa acima dela, com os `osm_id` de cada nível
+3. `lookup` → as fronteiras do concelho **e** do distrito, num pedido só (o `lookup` aceita vários ids)
+
+Verificado no ponto de Braga: freguesia `R4135545` (nível 8) → concelho `R4115866` (nível 7) → distrito `R3738284` (nível 6).
+
+**Só se pergunta quando é preciso.** O serviço permite 1 pedido por segundo, por isso:
+
+- um hexágono só gera pedidos se **não cair dentro de nenhum concelho já conhecido** — e isso testa-se localmente, de graça (`pointInGeoJson`, ray casting). O custo é ~3 pedidos por concelho **novo** e **zero** enquanto se anda pelos já conhecidos
+- amostragem a H3 resolução 6 (~8 km), mais fina que o concelho mais pequeno, para nenhum passar despercebido
+- máximo 2 concelhos novos por abertura do mapa, com 1,1 s entre pedidos
+- cache em `localStorage` (`STORAGE_KEY_DISTRICTS`, com número de versão — a versão antiga guardava distritos e é deitada fora)
 
 `polygon_threshold=0.0008` pede a simplificação da fronteira ao servidor: menos vértices para desenhar e para recortar, sem perder a forma.
 
 Falha de rede ou serviço em baixo = fica por identificar e tenta-se noutra abertura. O resto do mapa nunca é afetado.
 
-**`MIN_HEXES_FOR_DISTRICT = 3`**: o distrito só se revela depois de lá se ter descoberto um pedaço. Senão bastava passar de carro pela fronteira para ganhar o distrito inteiro. A contagem é feita **localmente**, ponto-a-ponto contra o polígono (`pointInGeoJson`, ray casting), por isso reavalia-se sozinha à medida que se descobrem hexágonos — sem pedidos novos.
+**`MIN_HEXES_FOR_REGION = 3`**: o concelho só se revela depois de lá se ter descoberto um pedaço. Senão bastava passar de carro pela fronteira para ganhar o concelho inteiro. A contagem é feita **localmente** contra o polígono, por isso reavalia-se sozinha à medida que se descobrem hexágonos — sem pedidos novos.
+
+#### Distrito na vista geral, concelhos ao aproximar
+
+A pedido: *"quero que Braga Distrito só apareça numa vista geral; depois de dar zoom in aparecem os nomes dos concelhos desbloqueados"*.
+
+- **abaixo do zoom 11**: contorno e nome do distrito (`distrito de Braga`), mais discreto — é o nível de cima
+- **do zoom 11 para cima**: contornos e nomes dos concelhos desbloqueados
+
+**Nunca os dois ao mesmo tempo**, e o distrito escrito por extenso: o concelho e o distrito têm muitas vezes o mesmo nome (Braga e Braga) e, lado a lado, parecia um bug. O zoom 11 é o ponto em que um concelho ocupa praticamente o ecrã de um telemóvel, que é quando faz sentido ler os nomes.
+
+A camada mais clara (nível 2) é recortada aos **concelhos**, não ao distrito — é o que de facto se desbloqueou. Na vista geral vê-se por isso o contorno do distrito com manchas acesas lá dentro: os concelhos já conquistados.
+
+Só aparece o distrito que tenha pelo menos um concelho desbloqueado.
 
 #### Onde estás
 
-Ponto branco com halo azul e anel a pulsar. **Azul de propósito**: o dourado já é do território e do contorno do distrito, o jogador tem de se distinguir dos dois num relance.
+Ponto branco com halo azul e anel a pulsar. **Azul de propósito**: o dourado já é do território e dos contornos das regiões, o jogador tem de se distinguir dos dois num relance.
 
 Uma leitura de GPS ao abrir o mapa (`getCurrentPosition`), **não** um `watchPosition` permanente — gastaria bateria a olhar para um ecrã parado. Durante um treino, o ponto acompanha: `js/training.js` chama `setMapPlayerPosition()` a cada leitura, **antes** de qualquer filtro (é só a posição no ecrã, não conta distância nenhuma).
 
