@@ -7,6 +7,16 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v3.6.0",
+    title: "Resumo no Fim do Treino",
+    changes: [
+      "Ao terminares um treino aparece um resumo: tipo de treino, tempo ativo, tempo em pausa, tempo total, distância, velocidade média e calorias — separadas entre ativas e totais.",
+      "As calorias das pausas aparecem porque o corpo gastou-as, mas só as ativas contam para XP.",
+      "Durante o treino passa a haver só um botão, «Pausa», no sítio do «Iniciar Treino». O Terminar está dentro do popup da pausa, para não se acabar um treino por engano.",
+      "Corrigido: os botões de treino apareciam mesmo quando não havia treino nenhum a decorrer.",
+    ],
+  },
+  {
     version: "v3.5.0",
     title: "Pausar o Treino",
     changes: [

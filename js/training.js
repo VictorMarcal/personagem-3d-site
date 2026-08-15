@@ -1,12 +1,13 @@
 const startScreen = document.getElementById("start-screen");
 const trainingScreen = document.getElementById("training-screen");
 const btnStart = document.getElementById("btn-start-treino");
-const btnStop = document.getElementById("btn-stop-treino");
 const btnPause = document.getElementById("btn-pause-treino");
 const btnResume = document.getElementById("btn-resume-treino");
 const btnFinish = document.getElementById("btn-finish-treino");
 const pauseModal = document.getElementById("training-pause-modal");
 const pauseElapsedEl = document.getElementById("pause-elapsed");
+const summaryModal = document.getElementById("training-summary-modal");
+const btnSummaryClose = document.getElementById("btn-summary-close");
 const distanceEl = document.getElementById("training-distance");
 const speedWarningEl = document.getElementById("speed-warning");
 
@@ -1300,6 +1301,29 @@ function finishFromPause() {
   stopTraining();
 }
 
+// Resumo no fim do treino (secção 4.7). Separa sempre ATIVO de TOTAL: o
+// jogador tem de conseguir ver de onde vem a diferenca, senao "porque e que
+// o treino diz 40 minutos se eu estive uma hora na rua" volta a ser pergunta.
+function showTrainingSummary({ mode, distanceM, activeSeconds, pausedSeconds, activeKcal, totalKcal }) {
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+  const activeHours = activeSeconds / 3600;
+  const avgSpeedKmh = activeHours > 0 ? distanceM / 1000 / activeHours : 0;
+
+  set("summary-mode", MODE_LABEL_PT[mode] || "—");
+  set("summary-active-time", formatDurationClock(activeSeconds));
+  set("summary-paused-time", formatDurationClock(pausedSeconds));
+  set("summary-total-time", formatDurationClock(activeSeconds + pausedSeconds));
+  set("summary-distance", `${(distanceM / 1000).toFixed(2)} km`);
+  set("summary-speed", `${avgSpeedKmh.toFixed(1)} km/h`);
+  set("summary-active-kcal", `${Math.round(activeKcal)} kcal`);
+  set("summary-total-kcal", `${Math.round(totalKcal)} kcal`);
+
+  summaryModal.classList.remove("hidden");
+}
+
 function stopTraining() {
   if (watchId !== null) {
     navigator.geolocation.clearWatch(watchId);
@@ -1333,6 +1357,13 @@ function stopTraining() {
     sessionMoving
   );
 
+  // Calorias durante as pausas: 1 MET, o metabolismo em repouso. So as
+  // ATIVAS contam para XP/leaderboard - as totais sao informacao para o
+  // jogador, porque o corpo gastou as duas.
+  const sessionPausedSeconds = Math.round(pausedTotalMs / 1000);
+  const sessionRestingCalories = 1.0 * getPesoKg() * (sessionPausedSeconds / 3600);
+  const sessionTotalCalories = sessionCalories + sessionRestingCalories;
+
   const discardReasons = [];
   if (sessionDistanceM <= 0) discardReasons.push("sem distância percorrida");
   if (sessionDurationSeconds == null || sessionDurationSeconds < MIN_TRAINING_DURATION_SECONDS) {
@@ -1353,7 +1384,11 @@ function stopTraining() {
       duration_seconds: sessionDurationSeconds,
       // Tempo em movimento (secção 4.6) - o MET da bicicleta sai daqui.
       moving_seconds: sessionMoving,
+      // Tempo em pausa e calorias totais (secção 4.7) - calories_kcal
+      // continua a ser so o ATIVO, que e o que conta para XP.
+      paused_seconds: sessionPausedSeconds,
       calories_kcal: sessionCalories,
+      calories_total_kcal: sessionTotalCalories,
       // Diagnostico do sinal (secção 4.2) - null numa sessao sem leituras.
       gps_diag: buildGpsDiagRecord(),
     });
@@ -1369,6 +1404,15 @@ function stopTraining() {
     incrementTotalTrainingsCompleted();
     checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, sessionDominantMode, sessionCalories);
     renderMonsters(); // pode ter desbloqueado monstros novos
+
+    showTrainingSummary({
+      mode: sessionDominantMode,
+      distanceM: sessionDistanceM,
+      activeSeconds: sessionDurationSeconds,
+      pausedSeconds: sessionPausedSeconds,
+      activeKcal: sessionCalories,
+      totalKcal: sessionTotalCalories,
+    });
   }
 
   totalDistanceM = 0;
@@ -1602,8 +1646,8 @@ async function recomputeRecordsFromSessions() {
 // ===== FIM DO BLOCO TEMPORARIO =============================================
 
 btnStart.addEventListener("click", startTraining);
-btnStop.addEventListener("click", stopTraining);
 btnPause.addEventListener("click", pauseTraining);
+btnSummaryClose.addEventListener("click", () => summaryModal.classList.add("hidden"));
 btnResume.addEventListener("click", resumeTraining);
 btnFinish.addEventListener("click", finishFromPause);
 
