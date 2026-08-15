@@ -653,12 +653,12 @@ main {
      --hexmap-fog-lift e o unico que muda em runtime (js/hexes.js): alivia o
      escurecimento nos zooms afastados, senao a vista geral do pais fica uma
      mancha preta ilegivel. */
-  --hexmap-blur-fog: 4px;
-  --hexmap-blur-clear: 1.5px;
+  --hexmap-blur-fog: 12px;
+  --hexmap-blur-clear: 12px;
   --hexmap-dark: 0.45;
   --hexmap-fog-lift: 1;
   --hexmap-district-lift: 1.7;
-  --hexmap-sat: 1.35;
+  --hexmap-sat: 2.2;
 }
 
 /* Tres niveis de conhecimento do mundo, todos a partir da MESMA imagem de

@@ -246,6 +246,12 @@ const H3_CELL_DIAMETER_M = { 5: 21300, 6: 8060, 7: 3050, 8: 1150, 9: 435 };
 const GRID_TARGET_PX = 40;
 const MAX_GRID_CELLS = 4000;
 
+// Escolhas do jogador no mockup: SEM linhas de grelha, mas COM o sombreado
+// por hexagono - o mosaico continua a ler-se pelas manchas, sem a malha
+// desenhada por cima da imagem.
+const SHOW_GRID_LINES = false;
+const SHOW_HEX_SHADING = true;
+
 function gridResolution() {
   const size = hexMap.getSize();
   const a = hexMap.containerPointToLatLng([0, size.y / 2]);
@@ -308,20 +314,24 @@ function drawHexGrid() {
   const discovered = getDiscoveredHexIds();
   const discoveryRes = getHexResolution();
 
-  cells.forEach((cell) => {
-    const isMine = res === discoveryRes && discovered.has(cell);
-    const path = new Path2D(hexPathIn(cell, project));
-    if (!isMine) {
-      // Leve variacao de escuridao por hexagono: da a leitura de "peca" em
-      // vez de fotografia continua.
-      const jitter = Math.abs(Math.sin(parseInt(cell.slice(-6), 16) || 1)) * 0.16;
-      ctx.fillStyle = `rgba(6,10,16,${0.1 + jitter})`;
-      ctx.fill(path);
-    }
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = isMine ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.35)";
-    ctx.stroke(path);
-  });
+  if (SHOW_GRID_LINES || SHOW_HEX_SHADING) {
+    cells.forEach((cell) => {
+      const isMine = res === discoveryRes && discovered.has(cell);
+      const path = new Path2D(hexPathIn(cell, project));
+      if (SHOW_HEX_SHADING && !isMine) {
+        // Leve variacao de escuridao por hexagono: da a leitura de "peca" em
+        // vez de fotografia continua.
+        const jitter = Math.abs(Math.sin(parseInt(cell.slice(-6), 16) || 1)) * 0.16;
+        ctx.fillStyle = `rgba(6,10,16,${0.1 + jitter})`;
+        ctx.fill(path);
+      }
+      if (SHOW_GRID_LINES) {
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = isMine ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.35)";
+        ctx.stroke(path);
+      }
+    });
+  }
 
   // Contorno da UNIAO do territorio, nao de cada hexagono - senao a fronteira
   // sai um emaranhado de linhas.
