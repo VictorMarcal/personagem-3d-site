@@ -215,6 +215,55 @@ Dois detalhes que não são óbvios:
 
 - **O sync é `await` direto, não o `queueProgressSync` com debounce.** Quando o delta de calorias é negativo (ex: corrida → bicicleta), escrever só no `localStorage` não chega: a reconciliação no arranque (secção 14.1) faz `max(local, servidor)` nos campos que só crescem e **restauraria o valor antigo, mais alto**. Os dois lados têm de ficar iguais antes de qualquer outra coisa correr.
 - **Os recordes por modo são recalculados a partir das sessões**, não ajustados por delta (`recomputeRecordsFromSessions`): ao mudar o modo de uma sessão, o recorde do modo de origem pode ter de **descer** para o segundo melhor, e isso não se exprime como um delta.
+
+### 4.6 Tempo em movimento: a bicicleta não pode usar o relógio de parede (2026-08-15)
+
+**Descoberto com o relógio do Bernardo**, comparado com a sessão 108 registada pela app:
+
+| | Relógio | App |
+|---|---|---|
+| Tempo decorrido | 1:24:29 | 1:24:19 |
+| Tempo em movimento | **0:52:41** | não era medido |
+| Distância | 21,94 km | 18,35 km |
+| Calorias | 742 totais / 647 ativas | **495** |
+
+A duração batia certo ao segundo. As calorias estavam **33% abaixo**.
+
+**A causa**: `computeSessionCaloriesFromTotals` calculava a velocidade média dividindo a distância pelo **relógio de parede**. Com 32 minutos parados dentro de uma hora e meia, 21,94 km a 24,9 km/h reais viram 13,1 km/h — e a tabela de MET da bicicleta cai de **10,0** (vigoroso) para **4,0** (lazer). Depois esse 4,0 é aplicado ao tempo todo.
+
+**Porque é que a pé nunca deu problema** — e vale a pena perceber, porque é o que delimita a correção. A equação do ACSM é **linear** na velocidade. Substituindo `v = d/t`, o `t` corta-se:
+
+```
+kcal = peso × (0,476 × distância_km + horas)
+```
+
+O tempo parado entra sozinho a 1 MET, ou seja, exatamente o metabolismo em repouso. **A diluição cancela-se por construção.** Foi por isso que a sessão de 33 min quase parado deu 58 kcal, que era o valor certo (secção 4.4).
+
+A bicicleta usa uma **tabela por faixas**, não uma fórmula linear. Aí não há cancelamento nenhum: cai-se numa faixa mais baixa *e* aplica-se essa faixa ao tempo todo. O erro é duplo e no mesmo sentido.
+
+**A correção**: passa a gravar-se `moving_seconds` (soma dos intervalos reais dos segmentos que contaram como deslocamento) e, para modos com MET por faixas (`metIsBracketed`, hoje só a bicicleta):
+
+```
+kcal = MET(distância / tempo_em_movimento) × peso × horas_em_movimento
+     + 1,0 × peso × horas_paradas
+```
+
+O tempo parado passa a contar a 1 MET, como já acontecia a pé.
+
+**O tempo em movimento usa o intervalo real, sem o teto de `getActivityWindowSeconds()`** — ao contrário do que se credita por segmento. O teto existe para não inflacionar calorias; aqui seria o contrário: se o GPS falhou 5 minutos a meio de uma descida, esses 5 minutos foram mesmo a pedalar, e ignorá-los faria a velocidade de movimento disparar para uma faixa absurda.
+
+**Validação contra o relógio** (88 kg):
+
+| | kcal | Erro vs 742 |
+|---|---|---|
+| Fórmula antiga | 496 | −33% |
+| Nova, com a distância da app | 665 | −10% |
+| Nova, com a distância do relógio | 819 | +10% |
+
+O que sobra é o **outro** problema, independente: a app mediu 18,35 km onde o relógio mediu 21,94 (−16%), por causa das falhas de GPS (72 leituras em 84 minutos, falha máxima de 319 s, 704 s de ecrã escondido, sem wake lock — secção 4.2).
+
+**Sessões antigas não têm `moving_seconds`** e ficam com o cálculo anterior. Não se inventa um valor retroativo: a coluna é `null` e o código volta à fórmula antiga quando ela falta.
+
 ## 5. Curva de nível do personagem
 
 ```
