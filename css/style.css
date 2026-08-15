@@ -737,8 +737,10 @@ main {
   .hex-recenter-btn.locating { animation: none; opacity: 0.6; }
 }
 
-/* Nome do distrito desbloqueado, escrito sobre o mapa. */
-.hex-district-label {
+/* Nome da regiao desbloqueada, escrito sobre o mapa. Nunca aparecem os dois
+   ao mesmo tempo (js/hexes.js): distrito na vista geral, concelhos ao
+   aproximar - com nomes muitas vezes iguais, ficava ilegivel. */
+.hex-region-label {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -746,6 +748,14 @@ main {
   color: #ffdca5;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
   white-space: nowrap;
+}
+
+/* O distrito e o nivel de cima: mais discreto que o concelho. */
+.hex-region-label.distrito {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: rgba(255, 220, 165, 0.75);
 }
 
 /* Onde estas. Azul-branco de proposito: o dourado ja e do territorio e do

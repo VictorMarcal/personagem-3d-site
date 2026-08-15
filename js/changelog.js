@@ -12,8 +12,9 @@ const CHANGELOG = [
     changes: [
       "O mapa dos Territórios passa a mostrar o mundo real visto de satélite, mas desfocado e às escuras — como um mapa de jogo por descobrir.",
       "Os hexágonos onde já treinaste ficam a cores e nítidos. Quanto mais exploras, mais mundo acendes.",
-      "Ao descobrires 3 zonas no mesmo distrito, o distrito inteiro clareia e o seu contorno aparece com o nome — mesmo nas partes onde ainda não puseste os pés.",
-      "Um ponto azul mostra onde estás.",
+      "Ao descobrires 3 zonas no mesmo concelho, o concelho inteiro clareia e o seu contorno aparece com o nome — mesmo nas partes onde ainda não puseste os pés. São 308 em Portugal, dá para colecionar.",
+      "Afasta o mapa e vês o distrito; aproxima e vês os nomes dos concelhos que já conquistaste.",
+      "Um ponto azul mostra onde estás, e há um botão para recentrar o mapa em ti.",
       "Sempre que abres o mapa, ele começa na vista do país e voa até ao sítio onde estás.",
     ],
   },

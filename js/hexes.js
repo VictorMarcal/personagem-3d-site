@@ -138,7 +138,7 @@ async function hydrateHexesFromSupabase() {
 //   3. hexagono descoberto   - a cores e quase nitido
 //
 // Nada disto tem uma regiao escrita no codigo: o distrito e identificado a
-// partir dos proprios hexagonos (identifyDistricts) e o enquadramento segue o
+// partir dos proprios hexagonos (identifyRegions) e o enquadramento segue o
 // jogador. Para o Skllrx da Braga porque foi so onde treinou; para outro
 // jogador dara o distrito dele.
 const MAP_TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -152,17 +152,19 @@ const MAP_FLY_DURATION_S = 2.6;
 
 // Um distrito so se revela depois de la se ter descoberto um pedaco - senao
 // bastava passar de carro pela fronteira para ganhar o distrito inteiro.
-const MIN_HEXES_FOR_DISTRICT = 3;
+const MIN_HEXES_FOR_REGION = 3;
 
 const hexMapEl = document.getElementById("hex-map");
 const hexCountEl = document.getElementById("hex-count");
 const hexDistrictEl = document.getElementById("hex-district");
 let hexMap = null;
 let hexCanvas = null;
-let hexDistrictLayer = null;
+let hexConcelhoLayer = null;
+let hexDistritoLayer = null;
 let playerMarker = null;
 let playerLatLng = null;
-let unlockedDistricts = [];
+let unlockedConcelhos = [];
+let unlockedDistritos = [];
 let territoryOutline = [];
 
 function renderHexCount() {
@@ -228,7 +230,7 @@ function updateClips() {
   hexMap.getPane("hexclear").style.clipPath = hexParts.length ? `path("${hexParts.join(" ")}")` : `path("M0 0Z")`;
 
   const districtParts = [];
-  unlockedDistricts.forEach(({ geojson }) => {
+  unlockedConcelhos.forEach(({ geojson }) => {
     const polys = geojson.type === "Polygon" ? [geojson.coordinates] : geojson.coordinates;
     polys.forEach((poly) => poly.forEach((ring) => districtParts.push(ringPathIn(ring, project))));
   });
@@ -367,58 +369,148 @@ function redrawHexMap() {
   updateFogLift();
 }
 
-// --- distritos -------------------------------------------------------------
+// --- concelhos e distritos -------------------------------------------------
 //
-// Nao ha nenhum distrito escrito no codigo: pergunta-se ao Nominatim (OSM) em
-// que unidade administrativa cai cada zona ja descoberta e guarda-se a
-// fronteira que vier. O servico permite 1 pedido por segundo, por isso o
-// resultado fica em cache e so se perguntam zonas NOVAS - abrir o mapa outra
-// vez nao gasta pedidos nenhuns.
+// Nao ha nenhuma regiao escrita no codigo: pergunta-se ao Nominatim (OSM) em
+// que unidade administrativa cai cada zona descoberta e guarda-se a fronteira
+// que vier.
+//
+// O que se DESBLOQUEIA e o CONCELHO, nao o distrito. Um distrito e grande
+// demais para ser objetivo (Braga: 56 x 83 km) - desbloqueia-se uma vez e
+// passam-se meses sem acontecer mais nada. Um concelho (Braga: 17 x 19 km)
+// atravessa-se numa volta de bicicleta, e sao 308 em Portugal em vez de 18.
+// O distrito fica como o nivel de cima, so na vista geral.
+//
+// Chegar ao concelho da trabalho: o `reverse` do Nominatim salta do distrito
+// (nivel 6) direto para a freguesia (nivel 8) em todos os zooms - o concelho
+// (nivel 7) nunca aparece. Por isso sao tres passos:
+//   1. reverse   -> a freguesia do ponto
+//   2. details   -> a hierarquia administrativa acima dela
+//   3. lookup    -> as fronteiras do concelho E do distrito, num pedido so
+// A fronteira do concelho vem 7x mais leve que a do distrito (1,9 KB contra
+// 13,8 KB), por isso desenhar e recortar sai mais barato do que antes.
 const NOMINATIM_GAP_MS = 1100;
-const DISTRICT_SAMPLES_PER_OPEN = 4;
+const REGION_LOOKUPS_PER_OPEN = 2;
+const REGION_CACHE_VERSION = 2;
 
-function loadDistrictCache() {
+// Nivel administrativo em Portugal: 7 = concelho/municipio, 6 = distrito.
+const ADMIN_LEVEL_CONCELHO = 7;
+const ADMIN_LEVEL_DISTRITO = 6;
+
+// Abaixo deste zoom mostra-se o distrito; a partir dele, os concelhos. Um
+// concelho ocupa praticamente o ecra de um telemovel no zoom 11, por isso e
+// dai para cima que faz sentido ler os nomes deles.
+const CONCELHO_LABEL_MIN_ZOOM = 11;
+
+function loadRegionCache() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY_DISTRICTS) || "{}");
+    // Versao antiga guardava distritos: deita-se fora, e so cache.
+    if (parsed.v !== REGION_CACHE_VERSION) return { v: REGION_CACHE_VERSION, concelhos: [], distritos: [] };
     return {
-      asked: Array.isArray(parsed.asked) ? parsed.asked : [],
-      districts: Array.isArray(parsed.districts) ? parsed.districts : [],
+      v: REGION_CACHE_VERSION,
+      concelhos: Array.isArray(parsed.concelhos) ? parsed.concelhos : [],
+      distritos: Array.isArray(parsed.distritos) ? parsed.distritos : [],
     };
   } catch (e) {
-    return { asked: [], districts: [] };
+    return { v: REGION_CACHE_VERSION, concelhos: [], distritos: [] };
   }
 }
 
-function saveDistrictCache(cache) {
+function saveRegionCache(cache) {
   localStorage.setItem(STORAGE_KEY_DISTRICTS, JSON.stringify(cache));
 }
 
 const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function identifyDistricts() {
-  const cache = loadDistrictCache();
-  const asked = new Set(cache.asked);
+// Um hexagono so vale a pena perguntar se ainda nao cai dentro de nenhum
+// concelho conhecido - e isso testa-se aqui, de graca. Assim o custo e de
+// ~3 pedidos por concelho NOVO e zero enquanto se anda pelos ja conhecidos,
+// em vez de um pedido por zona grande do mapa.
+function regionCandidates(cache, limit) {
+  const known = cache.concelhos.map((c) => c.geojson);
+  const seen = new Set();
+  const out = [];
+  for (const cell of getDiscoveredHexIds()) {
+    const [lat, lng] = h3.cellToLatLng(cell);
+    if (known.some((gj) => pointInGeoJson(lat, lng, gj))) continue;
+    // Uma amostra por zona de ~8 km (resolucao 6) - mais fina que o concelho
+    // mais pequeno, para nenhum passar despercebido.
+    const coarse = h3.cellToParent(cell, 6);
+    if (seen.has(coarse)) continue;
+    seen.add(coarse);
+    out.push([lat, lng]);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
 
-  // Uma amostra por zona grande (resolucao 5, ~21km): chega para apanhar
-  // todos os distritos tocados sem fazer um pedido por hexagono.
-  const pending = new Map();
-  getDiscoveredHexIds().forEach((cell) => {
-    const coarse = h3.cellToParent(cell, 5);
-    if (!asked.has(coarse) && !pending.has(coarse)) pending.set(coarse, h3.cellToLatLng(cell));
-  });
+async function fetchJson(url) {
+  const response = await fetch(url);
+  return response.json();
+}
 
-  const batch = [...pending.entries()].slice(0, DISTRICT_SAMPLES_PER_OPEN);
-  if (batch.length === 0) return;
+// Devolve { concelho, distrito } com nome, id e fronteira, ou null.
+async function resolveRegionAt(lat, lng) {
+  const freguesia = await fetchJson(
+    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&zoom=11`
+  );
+  if (!freguesia || !freguesia.osm_id) return null;
+  await sleepMs(NOMINATIM_GAP_MS);
 
-  for (const [coarse, [lat, lng]] of batch) {
+  const osmType = String(freguesia.osm_type || "R")[0].toUpperCase();
+  const details = await fetchJson(
+    `https://nominatim.openstreetmap.org/details?osmtype=${osmType}&osmid=${freguesia.osm_id}&addressdetails=1&format=json`
+  );
+  const hierarquia = (details && details.address) || [];
+  const concelho = hierarquia.find((a) => Number(a.admin_level) === ADMIN_LEVEL_CONCELHO && a.osm_id);
+  const distrito = hierarquia.find((a) => Number(a.admin_level) === ADMIN_LEVEL_DISTRITO && a.osm_id);
+  if (!concelho) return null;
+  await sleepMs(NOMINATIM_GAP_MS);
+
+  // As duas fronteiras num pedido so (o lookup aceita varios ids).
+  const ids = [concelho, distrito].filter(Boolean).map((a) => `${String(a.osm_type)[0].toUpperCase()}${a.osm_id}`);
+  const shapes = await fetchJson(
+    `https://nominatim.openstreetmap.org/lookup?osm_ids=${ids.join(",")}&format=jsonv2&polygon_geojson=1&polygon_threshold=0.0008`
+  );
+  const byId = new Map((shapes || []).map((s) => [s.osm_id, s]));
+
+  const shapeConcelho = byId.get(concelho.osm_id);
+  if (!shapeConcelho || !shapeConcelho.geojson) return null;
+
+  const shapeDistrito = distrito ? byId.get(distrito.osm_id) : null;
+  return {
+    concelho: {
+      osmId: concelho.osm_id,
+      name: concelho.localname || shapeConcelho.name,
+      distritoOsmId: distrito ? distrito.osm_id : null,
+      geojson: shapeConcelho.geojson,
+    },
+    distrito:
+      shapeDistrito && shapeDistrito.geojson
+        ? { osmId: distrito.osm_id, name: distrito.localname, geojson: shapeDistrito.geojson }
+        : null,
+  };
+}
+
+async function identifyRegions() {
+  const cache = loadRegionCache();
+  const candidates = regionCandidates(cache, REGION_LOOKUPS_PER_OPEN);
+  if (candidates.length === 0) return;
+
+  let changed = false;
+  for (const [lat, lng] of candidates) {
     try {
-      // polygon_threshold simplifica a fronteira no servidor: menos vertices
-      // para desenhar e para recortar, sem perder a forma do distrito.
-      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&zoom=8&polygon_geojson=1&polygon_threshold=0.0008`;
-      const data = await (await fetch(url)).json();
-      asked.add(coarse);
-      if (data && data.geojson && data.osm_id && !cache.districts.some((d) => d.osmId === data.osm_id)) {
-        cache.districts.push({ osmId: data.osm_id, name: data.name || data.display_name, geojson: data.geojson });
+      const found = await resolveRegionAt(lat, lng);
+      if (found) {
+        if (!cache.concelhos.some((c) => c.osmId === found.concelho.osmId)) {
+          cache.concelhos.push(found.concelho);
+          changed = true;
+        }
+        if (found.distrito && !cache.distritos.some((d) => d.osmId === found.distrito.osmId)) {
+          cache.distritos.push(found.distrito);
+          changed = true;
+        }
       }
     } catch (e) {
       // Sem rede ou servico em baixo: fica por identificar e tenta-se noutra
@@ -427,40 +519,76 @@ async function identifyDistricts() {
     await sleepMs(NOMINATIM_GAP_MS);
   }
 
-  cache.asked = [...asked];
-  saveDistrictCache(cache);
-  applyDistricts(cache);
+  if (changed) {
+    saveRegionCache(cache);
+    applyRegions(cache);
+  }
 }
 
-function applyDistricts(cache) {
+function applyRegions(cache) {
   if (!hexMap) return;
 
-  unlockedDistricts = cache.districts.filter((d) => countHexesInside(d.geojson) >= MIN_HEXES_FOR_DISTRICT);
+  unlockedConcelhos = cache.concelhos.filter((c) => countHexesInside(c.geojson) >= MIN_HEXES_FOR_REGION);
+  // So se mostra o distrito que tem pelo menos um concelho ja desbloqueado.
+  const distritosAtivos = new Set(unlockedConcelhos.map((c) => c.distritoOsmId));
+  unlockedDistritos = cache.distritos.filter((d) => distritosAtivos.has(d.osmId));
 
-  hexDistrictLayer.clearLayers();
-  unlockedDistricts.forEach(({ name, geojson }) => {
+  hexConcelhoLayer.clearLayers();
+  unlockedConcelhos.forEach(({ name, geojson }) => {
     L.geoJSON(geojson, {
       pane: "hexdistrict",
       interactive: false,
       style: { color: "#ffd48a", weight: 2, opacity: 0.9, dashArray: "7 5", fill: true, fillColor: "#ffcf80", fillOpacity: 0.05 },
-    }).addTo(hexDistrictLayer);
+    }).addTo(hexConcelhoLayer);
 
     L.marker(L.geoJSON(geojson).getBounds().getCenter(), {
       pane: "hexdistrict",
       interactive: false,
       keyboard: false,
-      icon: L.divIcon({ className: "hex-district-label", html: name, iconSize: null }),
-    }).addTo(hexDistrictLayer);
+      icon: L.divIcon({ className: "hex-region-label", html: name, iconSize: null }),
+    }).addTo(hexConcelhoLayer);
+  });
+
+  hexDistritoLayer.clearLayers();
+  unlockedDistritos.forEach(({ name, geojson }) => {
+    L.geoJSON(geojson, {
+      pane: "hexdistrict",
+      interactive: false,
+      style: { color: "#ffd48a", weight: 1.5, opacity: 0.6, dashArray: "10 7", fill: false },
+    }).addTo(hexDistritoLayer);
+
+    // "distrito de X" por extenso: o concelho e o distrito tem muitas vezes
+    // o mesmo nome (Braga e Braga) e sem isto parecia um bug.
+    L.marker(L.geoJSON(geojson).getBounds().getCenter(), {
+      pane: "hexdistrict",
+      interactive: false,
+      keyboard: false,
+      icon: L.divIcon({ className: "hex-region-label distrito", html: `distrito de ${name}`, iconSize: null }),
+    }).addTo(hexDistritoLayer);
   });
 
   if (hexDistrictEl) {
-    hexDistrictEl.textContent = unlockedDistricts.length
-      ? unlockedDistricts.map((d) => d.name).join(", ")
+    hexDistrictEl.textContent = unlockedConcelhos.length
+      ? unlockedConcelhos.map((c) => c.name).join(", ")
       : "nenhum ainda";
   }
+
+  updateRegionZoomLevel();
   updateClips();
 }
 
+// A pedido: o distrito so aparece na vista geral; a partir do momento em que
+// se aproxima, quem se ve sao os concelhos desbloqueados. Nunca os dois ao
+// mesmo tempo - com nomes iguais, ficava ilegivel.
+function updateRegionZoomLevel() {
+  if (!hexMap || !hexConcelhoLayer || !hexDistritoLayer) return;
+  const perto = hexMap.getZoom() >= CONCELHO_LABEL_MIN_ZOOM;
+
+  if (perto && !hexMap.hasLayer(hexConcelhoLayer)) hexMap.addLayer(hexConcelhoLayer);
+  if (!perto && hexMap.hasLayer(hexConcelhoLayer)) hexMap.removeLayer(hexConcelhoLayer);
+  if (!perto && !hexMap.hasLayer(hexDistritoLayer)) hexMap.addLayer(hexDistritoLayer);
+  if (perto && hexMap.hasLayer(hexDistritoLayer)) hexMap.removeLayer(hexDistritoLayer);
+}
 // --- onde estas ------------------------------------------------------------
 //
 // Chamada tambem por js/training.js a cada leitura de GPS, para o ponto
@@ -576,7 +704,8 @@ function createHexMap() {
   hexCanvas.className = "hex-map-canvas";
   hexMap.getPane("hexgrid").appendChild(hexCanvas);
 
-  hexDistrictLayer = L.layerGroup([], { pane: "hexdistrict" }).addTo(hexMap);
+  hexConcelhoLayer = L.layerGroup([], { pane: "hexdistrict" });
+  hexDistritoLayer = L.layerGroup([], { pane: "hexdistrict" });
 
   playerMarker = L.marker([0, 0], {
     pane: "hexplayer",
@@ -592,6 +721,8 @@ function createHexMap() {
   // recortes so mudam quando muda o zoom.
   hexMap.on("move zoom viewreset resize", redrawHexMap);
   hexMap.on("zoom zoomend viewreset resize", updateClips);
+  // Distrito na vista geral, concelhos ao aproximar.
+  hexMap.on("zoomend", updateRegionZoomLevel);
 }
 
 // Sempre que se entra no mapa: vista geral e depois voo ate onde estas, a
@@ -620,9 +751,9 @@ function renderHexMap() {
   if (hexMap === null) createHexMap();
 
   rebuildTerritoryOutline();
-  applyDistricts(loadDistrictCache());
+  applyRegions(loadRegionCache());
   redrawHexMap();
-  identifyDistricts();
+  identifyRegions();
   enterHexMapMode();
 }
 
