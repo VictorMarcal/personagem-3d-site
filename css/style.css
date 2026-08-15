@@ -691,6 +691,52 @@ main {
   left: 0;
 }
 
+/* Botao "recentrar em mim" (js/hexes.js). Azul como o ponto do jogador -
+   e o mesmo assunto: onde estou. Alvo de 40px para o dedo. */
+.hex-recenter-btn {
+  width: 40px;
+  height: 40px;
+  margin: 10px 10px 0 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(140, 220, 255, 0.35);
+  border-radius: 50%;
+  background: rgba(16, 21, 28, 0.82);
+  color: #9fdcff;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.hex-recenter-btn:hover {
+  background: rgba(28, 38, 50, 0.92);
+  color: #d9f2ff;
+}
+
+.hex-recenter-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* Enquanto o GPS nao responde. */
+.hex-recenter-btn.locating {
+  animation: hex-recenter-wait 1s ease-in-out infinite;
+}
+
+@keyframes hex-recenter-wait {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hex-recenter-btn.locating { animation: none; opacity: 0.6; }
+}
+
 /* Nome do distrito desbloqueado, escrito sobre o mapa. */
 .hex-district-label {
   font-size: 12px;

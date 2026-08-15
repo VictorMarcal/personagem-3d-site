@@ -489,6 +489,48 @@ function locatePlayer() {
   });
 }
 
+// Botao "recentrar": volta a apanhar a posicao e voa ate la. Sem GPS
+// (negado, ou ainda sem resposta) cai para o centro do territorio ja
+// descoberto, para o botao nunca ficar sem fazer nada.
+async function recenterOnPlayer(ev) {
+  if (ev) L.DomEvent.stop(ev);
+  const btn = hexMapEl.querySelector(".hex-recenter-btn");
+  if (btn) btn.classList.add("locating");
+
+  const target = (await locatePlayer()) || territoryCenter();
+  if (btn) btn.classList.remove("locating");
+  if (!target) return;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    hexMap.setView(target, MAP_HOME_ZOOM, { animate: false });
+    return;
+  }
+  hexMap.flyTo(target, MAP_HOME_ZOOM, { duration: 1.2 });
+}
+
+function addRecenterControl() {
+  const Recenter = L.Control.extend({
+    options: { position: "topright" },
+    onAdd() {
+      const btn = L.DomUtil.create("button", "hex-recenter-btn");
+      btn.type = "button";
+      btn.title = "Recentrar em mim";
+      btn.setAttribute("aria-label", "Recentrar em mim");
+      btn.innerHTML =
+        '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+        '<circle cx="12" cy="12" r="4"></circle>' +
+        '<circle cx="12" cy="12" r="8"></circle>' +
+        '<path d="M12 1v3M12 20v3M1 12h3M20 12h3"></path>' +
+        "</svg>";
+      // Sem isto, clicar no botao tambem arrasta/zooma o mapa por baixo.
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.on(btn, "click", recenterOnPlayer);
+      return btn;
+    },
+  });
+  hexMap.addControl(new Recenter());
+}
+
 // Centro do territorio ja descoberto - usado quando o GPS esta negado ou
 // ainda nao respondeu.
 function territoryCenter() {
@@ -543,6 +585,8 @@ function createHexMap() {
     opacity: 0, // so aparece quando ha posicao real
     icon: L.divIcon({ className: "hex-player-dot", html: "<i></i>", iconSize: [14, 14], iconAnchor: [7, 7] }),
   }).addTo(hexMap);
+
+  addRecenterControl();
 
   // O canvas trabalha em coordenadas de ecra: redesenha a cada movimento. Os
   // recortes so mudam quando muda o zoom.
