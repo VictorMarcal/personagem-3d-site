@@ -272,10 +272,16 @@ function drawHexGrid() {
   const size = hexMap.getSize();
   if (size.x === 0 || size.y === 0) return;
 
+  // Largura E altura: so a largura nao chega. No telemovel a barra de
+  // endereco recolhe/aparece e muda so a altura do contentor - o canvas
+  // ficava curto e a grelha acabava a meio, com uma costura horizontal a
+  // atravessar o mapa.
   const ratio = window.devicePixelRatio || 1;
-  if (hexCanvas.width !== Math.round(size.x * ratio)) {
-    hexCanvas.width = Math.round(size.x * ratio);
-    hexCanvas.height = Math.round(size.y * ratio);
+  const wantW = Math.round(size.x * ratio);
+  const wantH = Math.round(size.y * ratio);
+  if (hexCanvas.width !== wantW || hexCanvas.height !== wantH) {
+    hexCanvas.width = wantW;
+    hexCanvas.height = wantH;
     hexCanvas.style.width = `${size.x}px`;
     hexCanvas.style.height = `${size.y}px`;
   }
@@ -426,7 +432,7 @@ function applyDistricts(cache) {
     L.geoJSON(geojson, {
       pane: "hexdistrict",
       interactive: false,
-      style: { color: "#ffd48a", weight: 2, opacity: 0.9, dashArray: "7 5", fill: false },
+      style: { color: "#ffd48a", weight: 2, opacity: 0.9, dashArray: "7 5", fill: true, fillColor: "#ffcf80", fillOpacity: 0.05 },
     }).addTo(hexDistrictLayer);
 
     L.marker(L.geoJSON(geojson).getBounds().getCenter(), {
