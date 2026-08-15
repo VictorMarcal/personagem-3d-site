@@ -7,12 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
-    version: "v3.2.0",
+    version: "v3.3.0",
     title: "Mapa de Exploração",
     changes: [
-      "O mapa dos Territórios deixa de ser um mapa de estradas e passa a ser um mapa de jogo: um terreno de hexágonos com água, praia, campo, floresta e montanha.",
-      "O mundo inteiro está lá, mas a cinzento e apagado — só ganha cor onde já treinaste. Quanto mais exploras, mais mapa acendes.",
-      "Podes arrastar e aproximar o mapa à vontade; os teus hexágonos continuam visíveis mesmo quando afastas.",
+      "O mapa dos Territórios passa a mostrar o mundo real visto de satélite, mas desfocado e às escuras — como um mapa de jogo por descobrir.",
+      "Os hexágonos onde já treinaste ficam a cores e nítidos. Quanto mais exploras, mais mundo acendes.",
+      "Ao descobrires 3 zonas no mesmo distrito, o distrito inteiro clareia e o seu contorno aparece com o nome — mesmo nas partes onde ainda não puseste os pés.",
+      "Um ponto azul mostra onde estás.",
+      "Sempre que abres o mapa, ele começa na vista do país e voa até ao sítio onde estás.",
     ],
   },
   {

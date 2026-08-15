@@ -134,3 +134,9 @@ const STORAGE_KEY_WEIGHT_KG = "personagem.pesoKg";
 // nao um snapshot, por isso nao pode simplesmente ser reenviada por cima).
 const STORAGE_KEY_DISCOVERED_HEXES = "personagem.hexagonosDescobertos";
 const STORAGE_KEY_DISCOVERED_HEXES_QUEUE = "personagem.hexagonosPorEnviar";
+
+// Distritos ja identificados a partir dos hexagonos (secção 18.1) - guarda
+// nome + fronteira vinda do Nominatim, mais a lista de zonas grandes ja
+// perguntadas. E uma CACHE de um servico externo com limite de 1 pedido por
+// segundo: sem isto, abrir o mapa dispararia pedidos de cada vez.
+const STORAGE_KEY_DISTRICTS = "personagem.distritosDescobertos";

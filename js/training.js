@@ -837,6 +837,10 @@ function onPositionUpdate(position) {
   }
   lastReadingTimestamp = timestamp;
 
+  // Ponto "onde estas" no mapa de territorio (secção 18.1). Antes de
+  // qualquer filtro: e so a posicao no ecra, nao conta distancia nenhuma.
+  if (typeof setMapPlayerPosition === "function") setMapPlayerPosition(latitude, longitude);
+
   if (accuracy != null && accuracy > getMaxAccuracyM()) {
     gpsDiag.rejeitadasPrecisao += 1;
     return; // leitura pouco confiavel, ignora

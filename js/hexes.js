@@ -124,275 +124,455 @@ async function hydrateHexesFromSupabase() {
   renderHexMap();
 }
 
+
 // --- Mapa de territorio ----------------------------------------------------
 //
-// NAO e um mapa real. A pedido: "em vez de mostrar o mapa real, gostava que
-// fosse algo tipo [jogo de estrategia hexagonal] - imagina uma textura de
-// terreno e vais pintando os hexagonos por cima; a textura esta a preto e
-// branco excepto nas areas ja descobertas".
+// Imagem de satelite real usada como TEXTURA, nao como mapa: desfocada, sem
+// cor e escurecida onde ainda nao se treinou. A pedido (2026-08-15):
+// "imagina o mapa em vista satelite mas com um desfoque".
 //
-// Por isso o terreno e GERADO POR CODIGO (ruido determinista a partir das
-// coordenadas) e desenhado num canvas. O Leaflet fica so como motor de
-// pan/zoom e de projecao geografica - sem tiles, sem pedidos de rede, sem
-// atribuicao, sem depender de nenhum servico externo.
+// Tres niveis de conhecimento do mundo, do mais escuro ao mais claro:
+//   1. por explorar          - cinzento, desfocado, escuro
+//   2. distrito desbloqueado - o mesmo, um pouco mais claro (sabes que e teu
+//                              para explorar, mas ainda nao la puseste os pes)
+//   3. hexagono descoberto   - a cores e quase nitido
 //
-// O mapa e GLOBAL: nao ha nenhuma regiao fixa no codigo. O terreno existe em
-// todo o lado e cada jogador ve a cores a zona onde treinou. Para o Skllrx
-// isso desenha aproximadamente o distrito de Braga, porque foi so onde
-// explorou; para outro jogador sera outra area, sem uma linha de codigo
-// diferente.
+// Nada disto tem uma regiao escrita no codigo: o distrito e identificado a
+// partir dos proprios hexagonos (identifyDistricts) e o enquadramento segue o
+// jogador. Para o Skllrx da Braga porque foi so onde treinou; para outro
+// jogador dara o distrito dele.
+const MAP_TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const MAP_MAX_ZOOM = 17;
+
+// Entrada no mapa: vista geral e depois voo ate onde estas.
+const MAP_OVERVIEW_ZOOM = 6;
+const MAP_HOME_ZOOM = 14;
+const MAP_FLY_DELAY_MS = 900;
+const MAP_FLY_DURATION_S = 2.6;
+
+// Um distrito so se revela depois de la se ter descoberto um pedaco - senao
+// bastava passar de carro pela fronteira para ganhar o distrito inteiro.
+const MIN_HEXES_FOR_DISTRICT = 3;
+
 const hexMapEl = document.getElementById("hex-map");
 const hexCountEl = document.getElementById("hex-count");
+const hexDistrictEl = document.getElementById("hex-district");
 let hexMap = null;
 let hexCanvas = null;
+let hexDistrictLayer = null;
+let playerMarker = null;
+let playerLatLng = null;
+let unlockedDistricts = [];
+let territoryOutline = [];
 
 function renderHexCount() {
   if (hexCountEl) hexCountEl.textContent = String(getDiscoveredHexCount());
 }
 
-// --- Terreno procedural ----------------------------------------------------
-//
-// Ruido de valor com interpolacao suave. Determinista: a mesma coordenada da
-// sempre o mesmo terreno, em qualquer dispositivo e em qualquer visita, sem
-// ser preciso guardar ou descarregar nada.
-function terrainHash(x, y) {
-  const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
-  return n - Math.floor(n);
+// --- geometria -------------------------------------------------------------
+
+function hexPathIn(cellId, project) {
+  let d = "";
+  h3.cellToBoundary(cellId).forEach(([lat, lng], i) => {
+    const p = project([lat, lng]);
+    d += (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1) + " ";
+  });
+  return d + "Z";
 }
 
-function terrainSmoothNoise(x, y) {
-  const xi = Math.floor(x);
-  const yi = Math.floor(y);
-  const xf = x - xi;
-  const yf = y - yi;
-  // Curva suave (3t^2-2t^3) em vez de interpolacao linear: a linear deixa
-  // artefactos em losango nas fronteiras entre celulas de ruido.
-  const u = xf * xf * (3 - 2 * xf);
-  const v = yf * yf * (3 - 2 * yf);
-  const a = terrainHash(xi, yi);
-  const b = terrainHash(xi + 1, yi);
-  const c = terrainHash(xi, yi + 1);
-  const d = terrainHash(xi + 1, yi + 1);
-  return a * (1 - u) * (1 - v) + b * u * (1 - v) + c * (1 - u) * v + d * u * v;
+// GeoJSON vem em [lng, lat]; o Leaflet projeta em [lat, lng].
+function ringPathIn(ring, project) {
+  let d = "";
+  ring.forEach(([lng, lat], i) => {
+    const p = project([lat, lng]);
+    d += (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1) + " ";
+  });
+  return d + "Z";
 }
 
-// A frequencia do ruido acompanha o tamanho do hexagono que esta a ser
-// pintado. Sem isto, hexagonos vizinhos caem em celulas de ruido diferentes
-// e o mapa sai granulado - parece estatica, nao terreno. A regra: um passo
-// de um hexagono deve valer ~0.08 de unidade de ruido, para que as manchas
-// de agua/floresta/rocha tenham sempre a dimensao de varios hexagonos.
-// Consequencia: o terreno e auto-semelhante (as formas repetem-se a cada
-// escala), mas cada hexagono descoberto e sempre desenhado a frequencia da
-// resolucao 9, por isso a sua cor nunca muda.
-function terrainFrequencyFor(resolution) {
-  return (0.08 * 111000) / H3_CELL_DIAMETER_M[resolution];
-}
-
-// Duas oitavas: a primeira da as massas grandes, a segunda parte-as em
-// detalhe.
-function terrainValue(lat, lng, freq) {
-  return (
-    terrainSmoothNoise(lat * freq, lng * freq) * 0.65 +
-    terrainSmoothNoise(lat * freq * 3.1, lng * freq * 3.1) * 0.35
-  );
-}
-
-// Faixas de "altitude" ficticias.
-const TERRAIN_BANDS = [
-  { max: 0.33, color: [58, 110, 140] },   // agua
-  { max: 0.39, color: [206, 186, 140] },  // areia / margem
-  { max: 0.58, color: [122, 158, 82] },   // relva
-  { max: 0.76, color: [74, 112, 62] },    // floresta
-  { max: 1.01, color: [138, 128, 114] },  // rocha
-];
-
-function terrainColorAt(lat, lng, freq) {
-  const value = terrainValue(lat, lng, freq);
-  for (const band of TERRAIN_BANDS) {
-    if (value < band.max) return band.color;
+function pointInRing(lat, lng, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if ((yi > lat) !== (yj > lat) && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
   }
-  return TERRAIN_BANDS[TERRAIN_BANDS.length - 1].color;
+  return inside;
 }
 
-// Por explorar: a mesma textura, sem cor e escurecida. Continua a ver-se a
-// FORMA do terreno (era esse o pedido, em vez de preto solido), mas le-se de
-// imediato como "ainda nao fui la".
-function toFogColor([r, g, b]) {
-  const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-  const dim = Math.round(lum * 0.48);
-  return `rgb(${dim},${dim},${dim})`;
+function pointInGeoJson(lat, lng, gj) {
+  const polys = gj.type === "Polygon" ? [gj.coordinates] : gj.coordinates;
+  return polys.some((poly) => pointInRing(lat, lng, poly[0]) && !poly.slice(1).some((hole) => pointInRing(lat, lng, hole)));
 }
 
-function toDiscoveredColor([r, g, b]) {
-  return `rgb(${r},${g},${b})`;
+function countHexesInside(gj) {
+  let n = 0;
+  getDiscoveredHexIds().forEach((cell) => {
+    const [lat, lng] = h3.cellToLatLng(cell);
+    if (pointInGeoJson(lat, lng, gj)) n += 1;
+  });
+  return n;
 }
 
-// A grelha de fundo acompanha o zoom. Os hexagonos de descoberta (resolucao
-// 9, ~427m) desenhados ao nivel de um pais seriam dezenas de milhar de
-// poligonos de 1px - lento e ilegivel. Escolhe-se a resolucao pelo tamanho
-// que os hexagonos teriam NO ECRA, e nao por uma tabela de niveis de zoom:
-// assim o resultado e o mesmo em qualquer latitude e em qualquer tamanho de
-// ecra. Nunca passa da resolucao 9 - mais fino que a propria descoberta nao
-// acrescenta informacao nenhuma.
-// Diametro aproximado da celula H3 por resolucao (cada nivel e ~2.65x maior
-// que o seguinte). Ancorado nos ~427m da resolucao 9 que a app ja anuncia ao
-// jogador; so precisa de estar certo na proporcao.
-const H3_CELL_DIAMETER_M = { 2: 390000, 3: 148000, 4: 56000, 5: 21300, 6: 8060, 7: 3050, 8: 1150, 9: 435 };
-const MIN_BACKDROP_RESOLUTION = 2;
-const BACKDROP_TARGET_PX = 34;
+// --- recortes --------------------------------------------------------------
+//
+// Trabalham em "layer points", cuja origem so muda no zoom: nao e preciso
+// recalcula-los ao arrastar, e a fronteira de um distrito tem milhares de
+// vertices.
+function updateClips() {
+  if (!hexMap) return;
+  const project = (ll) => hexMap.latLngToLayerPoint(ll);
 
-function backdropResolutionForView() {
+  const hexParts = [];
+  getDiscoveredHexIds().forEach((c) => hexParts.push(hexPathIn(c, project)));
+  hexMap.getPane("hexclear").style.clipPath = hexParts.length ? `path("${hexParts.join(" ")}")` : `path("M0 0Z")`;
+
+  const districtParts = [];
+  unlockedDistricts.forEach(({ geojson }) => {
+    const polys = geojson.type === "Polygon" ? [geojson.coordinates] : geojson.coordinates;
+    polys.forEach((poly) => poly.forEach((ring) => districtParts.push(ringPathIn(ring, project))));
+  });
+  hexMap.getPane("hexdistrictfog").style.clipPath = districtParts.length ? `path("${districtParts.join(" ")}")` : `path("M0 0Z")`;
+}
+
+// --- grelha ----------------------------------------------------------------
+//
+// A grelha acompanha o zoom: os hexagonos de descoberta (resolucao 9, ~427m)
+// desenhados ao nivel de um pais seriam dezenas de milhar de poligonos de
+// 1px. Escolhe-se a resolucao pelo tamanho aparente NO ECRA, e nao por uma
+// tabela de niveis de zoom - assim o resultado e igual em qualquer latitude e
+// em qualquer tamanho de ecra.
+const H3_CELL_DIAMETER_M = { 5: 21300, 6: 8060, 7: 3050, 8: 1150, 9: 435 };
+const GRID_TARGET_PX = 40;
+const MAX_GRID_CELLS = 4000;
+
+function gridResolution() {
   const size = hexMap.getSize();
   const a = hexMap.containerPointToLatLng([0, size.y / 2]);
   const b = hexMap.containerPointToLatLng([100, size.y / 2]);
   const metersPerPixel = hexMap.distance(a, b) / 100;
 
-  let best = MIN_BACKDROP_RESOLUTION;
+  let best = 9;
   let bestErr = Infinity;
-  for (let res = MIN_BACKDROP_RESOLUTION; res <= 9; res += 1) {
-    const err = Math.abs(H3_CELL_DIAMETER_M[res] / metersPerPixel - BACKDROP_TARGET_PX);
-    if (err < bestErr) {
-      bestErr = err;
-      best = res;
-    }
+  for (const res of [5, 6, 7, 8, 9]) {
+    const err = Math.abs(H3_CELL_DIAMETER_M[res] / metersPerPixel - GRID_TARGET_PX);
+    if (err < bestErr) { bestErr = err; best = res; }
   }
   return best;
 }
 
-function fillHexPath(ctx, cellId) {
-  const boundary = h3.cellToBoundary(cellId);
-  ctx.beginPath();
-  boundary.forEach(([lat, lng], i) => {
-    const p = hexMap.latLngToContainerPoint([lat, lng]);
-    if (i === 0) ctx.moveTo(p.x, p.y);
-    else ctx.lineTo(p.x, p.y);
-  });
-  ctx.closePath();
+// Recalculado so quando ha descobertas novas, nao a cada frame.
+function rebuildTerritoryOutline() {
+  const ids = [...getDiscoveredHexIds()];
+  territoryOutline = ids.length ? h3.cellsToMultiPolygon(ids).flat() : [];
 }
 
-// So as celulas dentro do viewport (o H3 recorta ao poligono): o custo do
-// desenho nao cresce com o tamanho do mundo, so com o tamanho do ecra.
-// Ainda assim, um viewport largo numa resolucao fina pode dar milhares de
-// celulas - se acontecer, sobe-se um nivel ate caber num orcamento seguro.
-const MAX_BACKDROP_CELLS = 2500;
-
-function backdropCellsFor(viewport, startResolution) {
-  for (let resolution = startResolution; resolution >= MIN_BACKDROP_RESOLUTION; resolution -= 1) {
-    let cells;
-    try {
-      cells = h3.polygonToCells(viewport, resolution);
-    } catch (e) {
-      return { cells: [], resolution };
-    }
-    if (cells.length <= MAX_BACKDROP_CELLS) return { cells, resolution };
-  }
-  return { cells: [], resolution: MIN_BACKDROP_RESOLUTION };
-}
-
-function drawHexMap() {
+function drawHexGrid() {
   if (!hexMap || !hexCanvas) return;
-
   const size = hexMap.getSize();
   if (size.x === 0 || size.y === 0) return;
 
   const ratio = window.devicePixelRatio || 1;
-  if (hexCanvas.width !== Math.round(size.x * ratio) || hexCanvas.height !== Math.round(size.y * ratio)) {
+  if (hexCanvas.width !== Math.round(size.x * ratio)) {
     hexCanvas.width = Math.round(size.x * ratio);
     hexCanvas.height = Math.round(size.y * ratio);
     hexCanvas.style.width = `${size.x}px`;
     hexCanvas.style.height = `${size.y}px`;
   }
+  // O canvas vive num pane arrastado pelo Leaflet - anula-se essa translacao
+  // para poder desenhar em coordenadas de ecra.
+  const origin = hexMap.containerPointToLayerPoint([0, 0]);
+  hexCanvas.style.transform = `translate(${origin.x}px, ${origin.y}px)`;
 
   const ctx = hexCanvas.getContext("2d");
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.clearRect(0, 0, size.x, size.y);
 
-  const mapBounds = hexMap.getBounds();
+  const bounds = hexMap.getBounds();
   const viewport = [
-    [mapBounds.getNorth(), mapBounds.getWest()],
-    [mapBounds.getNorth(), mapBounds.getEast()],
-    [mapBounds.getSouth(), mapBounds.getEast()],
-    [mapBounds.getSouth(), mapBounds.getWest()],
+    [bounds.getNorth(), bounds.getWest()], [bounds.getNorth(), bounds.getEast()],
+    [bounds.getSouth(), bounds.getEast()], [bounds.getSouth(), bounds.getWest()],
   ];
+  const res = gridResolution();
+  let cells = [];
+  try { cells = h3.polygonToCells(viewport, res); } catch (e) { cells = []; }
+  if (cells.length > MAX_GRID_CELLS) cells = [];
 
+  const project = (ll) => hexMap.latLngToContainerPoint(ll);
   const discovered = getDiscoveredHexIds();
-  const discoveryResolution = getHexResolution();
-  const { cells, resolution } = backdropCellsFor(viewport, backdropResolutionForView());
-  const backdropFreq = terrainFrequencyFor(resolution);
+  const discoveryRes = getHexResolution();
 
-  ctx.lineWidth = 0.5;
-  ctx.strokeStyle = "rgba(0,0,0,0.22)";
   cells.forEach((cell) => {
-    const [lat, lng] = h3.cellToLatLng(cell);
-    const color = terrainColorAt(lat, lng, backdropFreq);
-    // Quando a grelha de fundo coincide com a de descoberta, os hexagonos ja
-    // descobertos sao pintados aqui a cores - evita desenhar duas vezes o
-    // mesmo poligono.
-    const isDiscovered = resolution === discoveryResolution && discovered.has(cell);
-    fillHexPath(ctx, cell);
-    ctx.fillStyle = isDiscovered ? toDiscoveredColor(color) : toFogColor(color);
-    ctx.fill();
-    ctx.stroke();
+    const isMine = res === discoveryRes && discovered.has(cell);
+    const path = new Path2D(hexPathIn(cell, project));
+    if (!isMine) {
+      // Leve variacao de escuridao por hexagono: da a leitura de "peca" em
+      // vez de fotografia continua.
+      const jitter = Math.abs(Math.sin(parseInt(cell.slice(-6), 16) || 1)) * 0.16;
+      ctx.fillStyle = `rgba(6,10,16,${0.1 + jitter})`;
+      ctx.fill(path);
+    }
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = isMine ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.35)";
+    ctx.stroke(path);
   });
 
-  // Afastado, os hexagonos descobertos sao mais pequenos que a grelha de
-  // fundo - desenha-os por cima para o progresso continuar visivel a
-  // qualquer zoom, em vez de desaparecer ao afastar.
-  if (resolution !== discoveryResolution) {
-    const discoveryFreq = terrainFrequencyFor(discoveryResolution);
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
-    discovered.forEach((cell) => {
-      const [lat, lng] = h3.cellToLatLng(cell);
-      if (!mapBounds.contains([lat, lng])) return;
-      fillHexPath(ctx, cell);
-      ctx.fillStyle = toDiscoveredColor(terrainColorAt(lat, lng, discoveryFreq));
-      ctx.fill();
+  // Contorno da UNIAO do territorio, nao de cada hexagono - senao a fronteira
+  // sai um emaranhado de linhas.
+  if (territoryOutline.length) {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,214,150,0.9)";
+    ctx.shadowColor = "rgba(255,190,110,0.9)";
+    ctx.shadowBlur = 8;
+    territoryOutline.forEach((ring) => {
+      ctx.beginPath();
+      ring.forEach(([lat, lng], i) => {
+        const p = project([lat, lng]);
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
       ctx.stroke();
     });
+    ctx.shadowBlur = 0;
   }
+}
+
+// Afastado, o escurecimento deixa o pais irreconhecivel - o nevoeiro passa a
+// ser so uma mancha preta. Alivia-se com o zoom: vista geral legivel,
+// nevoeiro cerrado ao perto, que e onde a exploracao se nota.
+function updateFogLift() {
+  const t = Math.min(1, Math.max(0, (12 - hexMap.getZoom()) / 5));
+  hexMapEl.style.setProperty("--hexmap-fog-lift", String(1 + t));
+}
+
+function redrawHexMap() {
+  drawHexGrid();
+  updateFogLift();
+}
+
+// --- distritos -------------------------------------------------------------
+//
+// Nao ha nenhum distrito escrito no codigo: pergunta-se ao Nominatim (OSM) em
+// que unidade administrativa cai cada zona ja descoberta e guarda-se a
+// fronteira que vier. O servico permite 1 pedido por segundo, por isso o
+// resultado fica em cache e so se perguntam zonas NOVAS - abrir o mapa outra
+// vez nao gasta pedidos nenhuns.
+const NOMINATIM_GAP_MS = 1100;
+const DISTRICT_SAMPLES_PER_OPEN = 4;
+
+function loadDistrictCache() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY_DISTRICTS) || "{}");
+    return {
+      asked: Array.isArray(parsed.asked) ? parsed.asked : [],
+      districts: Array.isArray(parsed.districts) ? parsed.districts : [],
+    };
+  } catch (e) {
+    return { asked: [], districts: [] };
+  }
+}
+
+function saveDistrictCache(cache) {
+  localStorage.setItem(STORAGE_KEY_DISTRICTS, JSON.stringify(cache));
+}
+
+const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function identifyDistricts() {
+  const cache = loadDistrictCache();
+  const asked = new Set(cache.asked);
+
+  // Uma amostra por zona grande (resolucao 5, ~21km): chega para apanhar
+  // todos os distritos tocados sem fazer um pedido por hexagono.
+  const pending = new Map();
+  getDiscoveredHexIds().forEach((cell) => {
+    const coarse = h3.cellToParent(cell, 5);
+    if (!asked.has(coarse) && !pending.has(coarse)) pending.set(coarse, h3.cellToLatLng(cell));
+  });
+
+  const batch = [...pending.entries()].slice(0, DISTRICT_SAMPLES_PER_OPEN);
+  if (batch.length === 0) return;
+
+  for (const [coarse, [lat, lng]] of batch) {
+    try {
+      // polygon_threshold simplifica a fronteira no servidor: menos vertices
+      // para desenhar e para recortar, sem perder a forma do distrito.
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&zoom=8&polygon_geojson=1&polygon_threshold=0.0008`;
+      const data = await (await fetch(url)).json();
+      asked.add(coarse);
+      if (data && data.geojson && data.osm_id && !cache.districts.some((d) => d.osmId === data.osm_id)) {
+        cache.districts.push({ osmId: data.osm_id, name: data.name || data.display_name, geojson: data.geojson });
+      }
+    } catch (e) {
+      // Sem rede ou servico em baixo: fica por identificar e tenta-se noutra
+      // abertura do mapa. O resto do mapa nunca e afetado.
+    }
+    await sleepMs(NOMINATIM_GAP_MS);
+  }
+
+  cache.asked = [...asked];
+  saveDistrictCache(cache);
+  applyDistricts(cache);
+}
+
+function applyDistricts(cache) {
+  if (!hexMap) return;
+
+  unlockedDistricts = cache.districts.filter((d) => countHexesInside(d.geojson) >= MIN_HEXES_FOR_DISTRICT);
+
+  hexDistrictLayer.clearLayers();
+  unlockedDistricts.forEach(({ name, geojson }) => {
+    L.geoJSON(geojson, {
+      pane: "hexdistrict",
+      interactive: false,
+      style: { color: "#ffd48a", weight: 2, opacity: 0.9, dashArray: "7 5", fill: false },
+    }).addTo(hexDistrictLayer);
+
+    L.marker(L.geoJSON(geojson).getBounds().getCenter(), {
+      pane: "hexdistrict",
+      interactive: false,
+      keyboard: false,
+      icon: L.divIcon({ className: "hex-district-label", html: name, iconSize: null }),
+    }).addTo(hexDistrictLayer);
+  });
+
+  if (hexDistrictEl) {
+    hexDistrictEl.textContent = unlockedDistricts.length
+      ? unlockedDistricts.map((d) => d.name).join(", ")
+      : "nenhum ainda";
+  }
+  updateClips();
+}
+
+// --- onde estas ------------------------------------------------------------
+//
+// Chamada tambem por js/training.js a cada leitura de GPS, para o ponto
+// acompanhar quem esta a treinar com o mapa aberto.
+function setMapPlayerPosition(latitude, longitude) {
+  playerLatLng = [latitude, longitude];
+  if (playerMarker) {
+    playerMarker.setLatLng(playerLatLng);
+    playerMarker.setOpacity(1);
+  }
+}
+
+// Uma leitura so, a abrir o mapa - nao um watchPosition permanente, que
+// gastaria bateria a olhar para um ecra parado.
+function locatePlayer() {
+  if (!navigator.geolocation) return Promise.resolve(playerLatLng);
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setMapPlayerPosition(pos.coords.latitude, pos.coords.longitude);
+        resolve(playerLatLng);
+      },
+      () => resolve(playerLatLng),
+      { timeout: 6000, maximumAge: 60000 }
+    );
+  });
+}
+
+// Centro do territorio ja descoberto - usado quando o GPS esta negado ou
+// ainda nao respondeu.
+function territoryCenter() {
+  const ids = [...getDiscoveredHexIds()];
+  if (ids.length === 0) return null;
+  let lat = 0;
+  let lng = 0;
+  ids.forEach((id) => {
+    const [a, b] = h3.cellToLatLng(id);
+    lat += a;
+    lng += b;
+  });
+  return [lat / ids.length, lng / ids.length];
+}
+
+// --- criacao e entrada -----------------------------------------------------
+
+function createHexMap() {
+  hexMap = L.map(hexMapEl, { minZoom: 3, maxZoom: MAP_MAX_ZOOM });
+  hexMap.attributionControl.addAttribution("Imagem: Esri &mdash; Fronteiras: OpenStreetMap");
+  hexMap.setView([39.5, -8.0], MAP_OVERVIEW_ZOOM);
+
+  [["hexfog", 200], ["hexdistrictfog", 250], ["hexclear", 300],
+   ["hexgrid", 400], ["hexdistrict", 450], ["hexplayer", 550]].forEach(([name, z]) => {
+    hexMap.createPane(name);
+    hexMap.getPane(name).style.zIndex = z;
+  });
+  ["hexgrid", "hexdistrict", "hexplayer"].forEach((name) => {
+    hexMap.getPane(name).style.pointerEvents = "none";
+  });
+
+  // A MESMA imagem em tres camadas; o que as distingue e o filtro CSS e o
+  // recorte. O browser so descarrega os tiles uma vez - as outras duas
+  // camadas saem da cache HTTP.
+  ["hexfog", "hexdistrictfog", "hexclear"].forEach((pane) => {
+    L.tileLayer(MAP_TILE_URL, { pane, maxZoom: MAP_MAX_ZOOM }).addTo(hexMap);
+  });
+  // Ate haver descobertas, so se ve o nevoeiro.
+  hexMap.getPane("hexdistrictfog").style.clipPath = `path("M0 0Z")`;
+  hexMap.getPane("hexclear").style.clipPath = `path("M0 0Z")`;
+
+  hexCanvas = document.createElement("canvas");
+  hexCanvas.className = "hex-map-canvas";
+  hexMap.getPane("hexgrid").appendChild(hexCanvas);
+
+  hexDistrictLayer = L.layerGroup([], { pane: "hexdistrict" }).addTo(hexMap);
+
+  playerMarker = L.marker([0, 0], {
+    pane: "hexplayer",
+    interactive: false,
+    keyboard: false,
+    opacity: 0, // so aparece quando ha posicao real
+    icon: L.divIcon({ className: "hex-player-dot", html: "<i></i>", iconSize: [14, 14], iconAnchor: [7, 7] }),
+  }).addTo(hexMap);
+
+  // O canvas trabalha em coordenadas de ecra: redesenha a cada movimento. Os
+  // recortes so mudam quando muda o zoom.
+  hexMap.on("move zoom viewreset resize", redrawHexMap);
+  hexMap.on("zoom zoomend viewreset resize", updateClips);
+}
+
+// Sempre que se entra no mapa: vista geral e depois voo ate onde estas, a
+// pedido. Centrada no jogador e nao numa regiao fixa - funciona em qualquer
+// pais.
+async function enterHexMapMode() {
+  const start = playerLatLng || territoryCenter();
+  if (start) hexMap.setView(start, MAP_OVERVIEW_ZOOM, { animate: false });
+  redrawHexMap();
+  updateClips();
+
+  const target = (await locatePlayer()) || territoryCenter();
+  if (!target) return;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    hexMap.setView(target, MAP_HOME_ZOOM, { animate: false });
+    return;
+  }
+  setTimeout(() => hexMap.flyTo(target, MAP_HOME_ZOOM, { duration: MAP_FLY_DURATION_S }), MAP_FLY_DELAY_MS);
 }
 
 function renderHexMap() {
   renderHexCount();
   if (!hexMapEl || typeof L === "undefined" || typeof h3 === "undefined") return;
 
-  if (hexMap === null) {
-    hexMap = L.map(hexMapEl, {
-      attributionControl: false, // sem tiles de terceiros, nao ha nada a atribuir
-      minZoom: 4,
-      maxZoom: 16,
-    });
-    // Vista por omissao ate haver descobertas (Portugal continental).
-    hexMap.setView([39.5, -8.0], 6);
+  if (hexMap === null) createHexMap();
 
-    hexCanvas = document.createElement("canvas");
-    hexCanvas.className = "hex-map-canvas";
-    hexMapEl.appendChild(hexCanvas);
-
-    // Redesenha durante o movimento, nao so no fim: o canvas vive no
-    // contentor do mapa e nao num pane do Leaflet, por isso nao e arrastado
-    // automaticamente - tem de ser redesenhado em coordenadas de ecra.
-    hexMap.on("move zoom resize", drawHexMap);
-  }
-
-  const hexIds = [...getDiscoveredHexIds()];
-  if (hexIds.length > 0) {
-    // O enquadramento segue as descobertas do proprio jogador - e isto que
-    // faz o mapa global mostrar "a minha zona" sem nenhuma regiao no codigo.
-    const bounds = [];
-    hexIds.forEach((id) => h3.cellToBoundary(id).forEach((p) => bounds.push(p)));
-    hexMap.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 });
-  }
-
-  drawHexMap();
+  rebuildTerritoryOutline();
+  applyDistricts(loadDistrictCache());
+  redrawHexMap();
+  identifyDistricts();
+  enterHexMapMode();
 }
 
 // O Leaflet calcula mal o tamanho quando o contentor estava escondido
-// (display:none) no momento em que o mapa foi criado - a sub-aba Missoes
-// esta escondida ate ser aberta. invalidateSize() forca o recalculo.
+// (display:none) no momento em que o mapa foi criado - a sub-aba Missoes esta
+// escondida ate ser aberta. invalidateSize() forca o recalculo.
 function refreshHexMapSize() {
   if (hexMap) {
     hexMap.invalidateSize();
-    drawHexMap();
+    redrawHexMap();
+    updateClips();
   }
 }

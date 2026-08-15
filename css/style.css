@@ -639,28 +639,100 @@ main {
   font-family: inherit;
 }
 
-/* Mapa de territorios descobertos (2026-08-14, secção 18). Altura fixa: o
+/* Mapa de territorios descobertos (2026-08-15, secção 18.1). Altura fixa: o
    Leaflet precisa de um contentor com altura definida, senao colapsa a 0. */
 #hex-map {
   height: 320px;
   width: 100%;
   border-radius: var(--r-md);
   margin-top: 12px;
-  /* Fundo escuro: o terreno e desenhado no canvas, isto e so o que se ve
-     nas margens enquanto o desenho nao cobre tudo. */
   background: #10151c;
   overflow: hidden;
+
+  /* Afinacao do aspeto do mapa, escolhida no mockup com o jogador. O
+     --hexmap-fog-lift e o unico que muda em runtime (js/hexes.js): alivia o
+     escurecimento nos zooms afastados, senao a vista geral do pais fica uma
+     mancha preta ilegivel. */
+  --hexmap-blur-fog: 4px;
+  --hexmap-blur-clear: 1.5px;
+  --hexmap-dark: 0.45;
+  --hexmap-fog-lift: 1;
+  --hexmap-district-lift: 1.7;
+  --hexmap-sat: 1.35;
 }
 
-/* Canvas do terreno procedural (js/hexes.js). Fica por cima dos panes do
-   Leaflet - que aqui nao tem tiles, so serve de motor de pan/zoom - e nao
-   intercepta o rato/dedo, para o arrastar continuar a chegar ao mapa. */
+/* Tres niveis de conhecimento do mundo, todos a partir da MESMA imagem de
+   satelite - o que muda e o filtro e o recorte (ver js/hexes.js). */
+
+/* 1. Por explorar: cinzento, desfocado, escuro. */
+.leaflet-hexfog-pane {
+  filter: blur(var(--hexmap-blur-fog)) grayscale(1)
+          brightness(calc(var(--hexmap-dark) * var(--hexmap-fog-lift))) contrast(1.05);
+}
+
+/* 2. Distrito desbloqueado: o mesmo, um pouco mais claro. Continua a
+      cinzento - o que se ganhou foi saber que aquilo e teu para explorar,
+      nao o terreno em si. */
+.leaflet-hexdistrictfog-pane {
+  filter: blur(var(--hexmap-blur-fog)) grayscale(1)
+          brightness(calc(var(--hexmap-dark) * var(--hexmap-fog-lift) * var(--hexmap-district-lift)))
+          contrast(1.05);
+}
+
+/* 3. Hexagono descoberto: a cores e quase nitido. */
+.leaflet-hexclear-pane {
+  filter: blur(var(--hexmap-blur-clear)) saturate(var(--hexmap-sat)) contrast(1.05);
+}
+
+/* Canvas da grelha hexagonal (js/hexes.js), por cima das tres camadas. */
 .hex-map-canvas {
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 450;
-  pointer-events: none;
+}
+
+/* Nome do distrito desbloqueado, escrito sobre o mapa. */
+.hex-district-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ffdca5;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+}
+
+/* Onde estas. Azul-branco de proposito: o dourado ja e do territorio e do
+   distrito, o jogador tem de se distinguir dos dois num relance. */
+.hex-player-dot i {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(78, 190, 255, 0.95), 0 0 16px 5px rgba(120, 215, 255, 0.7);
+}
+
+.hex-player-dot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2px solid rgba(140, 220, 255, 0.9);
+  animation: hex-player-pulse 2.2s ease-out infinite;
+}
+
+@keyframes hex-player-pulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(4.5); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hex-player-dot::after { animation: none; }
 }
 
 .hex-count-row {
@@ -671,6 +743,17 @@ main {
 .hex-count-row span {
   font-weight: 700;
   font-size: 20px;
+  color: var(--text);
+}
+
+.hex-district-row {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.hex-district-row span {
+  font-weight: 700;
   color: var(--text);
 }
 
