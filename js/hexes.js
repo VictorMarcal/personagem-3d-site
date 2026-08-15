@@ -161,6 +161,7 @@ let hexMap = null;
 let hexCanvas = null;
 let hexConcelhoLayer = null;
 let hexDistritoLayer = null;
+let hexDistritoLabelLayer = null;
 let playerMarker = null;
 let playerLatLng = null;
 let unlockedConcelhos = [];
@@ -182,14 +183,43 @@ function hexPathIn(cellId, project) {
   return d + "Z";
 }
 
-// GeoJSON vem em [lng, lat]; o Leaflet projeta em [lat, lng].
-function ringPathIn(ring, project) {
+// Aneis ja em [lat, lng] (o que o H3 devolve, e o que o Leaflet quer).
+function latLngRingPath(ring, project) {
   let d = "";
-  ring.forEach(([lng, lat], i) => {
+  ring.forEach(([lat, lng], i) => {
     const p = project([lat, lng]);
     d += (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1) + " ";
   });
   return d + "Z";
+}
+
+// Fronteira "encaixada" na grelha de hexagonos, a pedido: o contorno segue as
+// linhas dos hexagonos mais proximos em vez da fronteira administrativa real.
+// Nao fica exato ao mapa - com este desfoque ninguem consegue ler o mapa ao
+// pormenor, por isso o que se ganha em coerencia visual vale mais do que a
+// precisao que se perde.
+//
+// Resolucao 8 (~1,15 km): grande o suficiente para o encaixe se NOTAR ao
+// aproximar, pequeno o suficiente para o concelho continuar reconhecivel.
+const REGION_OUTLINE_RES = 8;
+
+function hexifyRegion(geojson) {
+  const polys = geojson.type === "Polygon" ? [geojson.coordinates] : geojson.coordinates;
+  const cells = new Set();
+  polys.forEach((poly) => {
+    // O H3 quer [lat, lng] e o GeoJSON traz [lng, lat]. O primeiro anel e o
+    // contorno, os seguintes sao buracos.
+    const loops = poly.map((ring) => ring.map(([lng, lat]) => [lat, lng]));
+    try {
+      h3.polygonToCells(loops, REGION_OUTLINE_RES).forEach((c) => cells.add(c));
+    } catch (e) {
+      // Poligono degenerado: fica sem contorno hexagonal, nao rebenta nada.
+    }
+  });
+  if (cells.size === 0) return null;
+  // Devolve [[anel, ...buracos], ...] em [lat, lng] - exatamente o formato de
+  // latlngs que o L.polygon aceita.
+  return h3.cellsToMultiPolygon([...cells]);
 }
 
 function pointInRing(lat, lng, ring) {
@@ -229,12 +259,13 @@ function updateClips() {
   getDiscoveredHexIds().forEach((c) => hexParts.push(hexPathIn(c, project)));
   hexMap.getPane("hexclear").style.clipPath = hexParts.length ? `path("${hexParts.join(" ")}")` : `path("M0 0Z")`;
 
-  const districtParts = [];
-  unlockedConcelhos.forEach(({ geojson }) => {
-    const polys = geojson.type === "Polygon" ? [geojson.coordinates] : geojson.coordinates;
-    polys.forEach((poly) => poly.forEach((ring) => districtParts.push(ringPathIn(ring, project))));
+  // O recorte usa a MESMA fronteira hexagonal que se desenha, senao a mancha
+  // clara e o contorno nao coincidiam.
+  const regionParts = [];
+  unlockedConcelhos.forEach(({ hexOutline }) => {
+    (hexOutline || []).forEach((poly) => poly.forEach((ring) => regionParts.push(latLngRingPath(ring, project))));
   });
-  hexMap.getPane("hexdistrictfog").style.clipPath = districtParts.length ? `path("${districtParts.join(" ")}")` : `path("M0 0Z")`;
+  hexMap.getPane("hexdistrictfog").style.clipPath = regionParts.length ? `path("${regionParts.join(" ")}")` : `path("M0 0Z")`;
 }
 
 // --- grelha ----------------------------------------------------------------
@@ -533,15 +564,27 @@ function applyRegions(cache) {
   const distritosAtivos = new Set(unlockedConcelhos.map((c) => c.distritoOsmId));
   unlockedDistritos = cache.distritos.filter((d) => distritosAtivos.has(d.osmId));
 
+  // Fronteira encaixada na grelha, calculada uma vez por regiao.
+  [...unlockedConcelhos, ...unlockedDistritos].forEach((r) => {
+    if (!r.hexOutline) r.hexOutline = hexifyRegion(r.geojson);
+  });
+
   hexConcelhoLayer.clearLayers();
-  unlockedConcelhos.forEach(({ name, geojson }) => {
-    L.geoJSON(geojson, {
+  unlockedConcelhos.forEach(({ name, hexOutline }) => {
+    if (!hexOutline) return;
+    const shape = L.polygon(hexOutline, {
       pane: "hexdistrict",
       interactive: false,
-      style: { color: "#ffd48a", weight: 2, opacity: 0.9, dashArray: "7 5", fill: true, fillColor: "#ffcf80", fillOpacity: 0.05 },
+      color: "#ffd48a",
+      weight: 2,
+      opacity: 0.9,
+      dashArray: "7 5",
+      fill: true,
+      fillColor: "#ffcf80",
+      fillOpacity: 0.05,
     }).addTo(hexConcelhoLayer);
 
-    L.marker(L.geoJSON(geojson).getBounds().getCenter(), {
+    L.marker(shape.getBounds().getCenter(), {
       pane: "hexdistrict",
       interactive: false,
       keyboard: false,
@@ -549,23 +592,31 @@ function applyRegions(cache) {
     }).addTo(hexConcelhoLayer);
   });
 
+  // O contorno do distrito fica sempre visivel; so a etiqueta e que troca
+  // com o zoom, por isso vivem em camadas separadas.
   hexDistritoLayer.clearLayers();
-  unlockedDistritos.forEach(({ name, geojson }) => {
-    L.geoJSON(geojson, {
+  hexDistritoLabelLayer.clearLayers();
+  unlockedDistritos.forEach(({ name, hexOutline }) => {
+    if (!hexOutline) return;
+    const shape = L.polygon(hexOutline, {
       pane: "hexdistrict",
       interactive: false,
-      style: { color: "#ffd48a", weight: 1.5, opacity: 0.6, dashArray: "10 7", fill: false },
+      color: "#ffd48a",
+      weight: 1.5,
+      opacity: 0.55,
+      dashArray: "10 7",
+      fill: false,
     }).addTo(hexDistritoLayer);
 
-    // "distrito de X" por extenso: o concelho e o distrito tem muitas vezes
-    // o mesmo nome (Braga e Braga) e sem isto parecia um bug.
-    L.marker(L.geoJSON(geojson).getBounds().getCenter(), {
+    L.marker(shape.getBounds().getCenter(), {
       pane: "hexdistrict",
       interactive: false,
       keyboard: false,
-      icon: L.divIcon({ className: "hex-region-label distrito", html: `distrito de ${name}`, iconSize: null }),
-    }).addTo(hexDistritoLayer);
+      icon: L.divIcon({ className: "hex-region-label distrito", html: name, iconSize: null }),
+    }).addTo(hexDistritoLabelLayer);
   });
+
+  if (!hexMap.hasLayer(hexDistritoLayer)) hexMap.addLayer(hexDistritoLayer);
 
   if (hexDistrictEl) {
     hexDistrictEl.textContent = unlockedConcelhos.length
@@ -577,17 +628,21 @@ function applyRegions(cache) {
   updateClips();
 }
 
-// A pedido: o distrito so aparece na vista geral; a partir do momento em que
-// se aproxima, quem se ve sao os concelhos desbloqueados. Nunca os dois ao
-// mesmo tempo - com nomes iguais, ficava ilegivel.
+// A pedido: o contorno do distrito esta SEMPRE la. Na vista geral ve-se so
+// ele, com o nome; ao aproximar juntam-se-lhe os contornos e os nomes dos
+// concelhos desbloqueados, e o nome do distrito sai - o concelho e o distrito
+// tem muitas vezes o mesmo nome (Braga e Braga) e os dois ao mesmo tempo
+// ficavam ilegiveis.
 function updateRegionZoomLevel() {
-  if (!hexMap || !hexConcelhoLayer || !hexDistritoLayer) return;
+  if (!hexMap || !hexConcelhoLayer || !hexDistritoLabelLayer) return;
   const perto = hexMap.getZoom() >= CONCELHO_LABEL_MIN_ZOOM;
 
-  if (perto && !hexMap.hasLayer(hexConcelhoLayer)) hexMap.addLayer(hexConcelhoLayer);
-  if (!perto && hexMap.hasLayer(hexConcelhoLayer)) hexMap.removeLayer(hexConcelhoLayer);
-  if (!perto && !hexMap.hasLayer(hexDistritoLayer)) hexMap.addLayer(hexDistritoLayer);
-  if (perto && hexMap.hasLayer(hexDistritoLayer)) hexMap.removeLayer(hexDistritoLayer);
+  const toggle = (layer, visible) => {
+    if (visible && !hexMap.hasLayer(layer)) hexMap.addLayer(layer);
+    if (!visible && hexMap.hasLayer(layer)) hexMap.removeLayer(layer);
+  };
+  toggle(hexConcelhoLayer, perto);
+  toggle(hexDistritoLabelLayer, !perto);
 }
 // --- onde estas ------------------------------------------------------------
 //
@@ -706,6 +761,7 @@ function createHexMap() {
 
   hexConcelhoLayer = L.layerGroup([], { pane: "hexdistrict" });
   hexDistritoLayer = L.layerGroup([], { pane: "hexdistrict" });
+  hexDistritoLabelLayer = L.layerGroup([], { pane: "hexdistrict" });
 
   playerMarker = L.marker([0, 0], {
     pane: "hexplayer",
