@@ -2,6 +2,11 @@ const startScreen = document.getElementById("start-screen");
 const trainingScreen = document.getElementById("training-screen");
 const btnStart = document.getElementById("btn-start-treino");
 const btnStop = document.getElementById("btn-stop-treino");
+const btnPause = document.getElementById("btn-pause-treino");
+const btnResume = document.getElementById("btn-resume-treino");
+const btnFinish = document.getElementById("btn-finish-treino");
+const pauseModal = document.getElementById("training-pause-modal");
+const pauseElapsedEl = document.getElementById("pause-elapsed");
 const distanceEl = document.getElementById("training-distance");
 const speedWarningEl = document.getElementById("speed-warning");
 
@@ -33,6 +38,10 @@ const STORAGE_KEYS = {
   // relogio de parede. Sem isto o MET da bicicleta sai de uma velocidade
   // media diluida pelo tempo parado.
   tempoMovimentoS: "treino.tempoMovimentoS",
+  // Pausa (secção 4.7) - persistidas para um refresh a meio de uma pausa
+  // nao transformar o tempo parado em tempo de treino.
+  pausaTotalMs: "treino.pausaTotalMs",
+  pausaInicioMs: "treino.pausaInicioMs",
 };
 
 // Para apresentacao (historico do Perfil, treinos de hoje). Declarado aqui
@@ -695,7 +704,7 @@ const gpsDiagEl = document.getElementById("training-gps-diag");
 // aparecer lado a lado, antes so havia a media). Duracao em "MM:SS" (ou
 // "H:MM:SS" acima de 1h, formatDurationClock em js/experience.js).
 function updateLiveStatsDisplay() {
-  const elapsedSeconds = sessionStartTime ? (Date.now() - sessionStartTime) / 1000 : 0;
+  const elapsedSeconds = activeElapsedSeconds();
   const avgSpeedMps = elapsedSeconds > 0 ? totalDistanceM / elapsedSeconds : 0;
   liveStatsEl.textContent =
     `${formatDurationClock(elapsedSeconds)} · nominal ${formatSpeedKmh(currentNominalSpeedMps)} · média ${formatSpeedKmh(avgSpeedMps)}`;
@@ -919,6 +928,14 @@ function onPositionUpdate(position) {
   // Ponto "onde estas" no mapa de territorio (secção 18.1). Antes de
   // qualquer filtro: e so a posicao no ecra, nao conta distancia nenhuma.
   if (typeof setMapPlayerPosition === "function") setMapPlayerPosition(latitude, longitude);
+
+  // Em pausa (secção 4.7) a leitura so serve para reancorar: nao credita
+  // distancia, nao classifica atividade, nao conta calorias.
+  if (isTrainingPaused()) {
+    lastPosition = { latitude, longitude, timestamp };
+    lastCountedPosition = { latitude, longitude, timestamp };
+    return;
+  }
 
   if (accuracy != null && accuracy > getMaxAccuracyM()) {
     gpsDiag.rejeitadasPrecisao += 1;
@@ -1175,6 +1192,10 @@ function beginTrainingSession() {
   coinsCheckedKm = 0;
   sessionCaloriesKcal = 0;
   sessionMovingSeconds = 0;
+  pausedTotalMs = 0;
+  pauseStartedMs = null;
+  localStorage.removeItem(STORAGE_KEYS.pausaTotalMs);
+  localStorage.removeItem(STORAGE_KEYS.pausaInicioMs);
   currentNominalSpeedMps = 0;
   speedSampleBuffer = [];
   currentActiveMode = null;
@@ -1199,6 +1220,86 @@ function beginTrainingSession() {
 // deslocamento nenhum.
 const MIN_TRAINING_DURATION_SECONDS = 10;
 
+// --- Pausa do treino (2026-08-15, secção 4.7) -------------------------------
+//
+// O tempo em pausa NAO conta para a duracao da sessao. Isto nao e cosmetica:
+// a duracao entra diretamente nas calorias (secção 4.4) e, na bicicleta,
+// escolhe a faixa de MET (secção 4.6) - meia hora de cafe a contar como
+// treino diluia a velocidade media e baixava a faixa, exatamente o erro que
+// se acabou de corrigir.
+//
+// O GPS continua ligado durante a pausa, mas as leituras so servem para
+// reancorar a posicao. Assim, quem pausa, anda 500 m e retoma nao ganha
+// esses 500 m - e ao retomar nao ha um salto em linha reta a ser creditado.
+let pauseStartedMs = null;
+let pausedTotalMs = 0;
+let pauseTickerId = null;
+
+function isTrainingPaused() {
+  return pauseStartedMs !== null;
+}
+
+// Duracao real do treino: relogio de parede menos o tempo em pausa (incluindo
+// a pausa a decorrer, se estiver uma aberta).
+function currentPausedMs() {
+  return pausedTotalMs + (pauseStartedMs !== null ? Date.now() - pauseStartedMs : 0);
+}
+
+function activeElapsedSeconds() {
+  if (!sessionStartTime) return 0;
+  return Math.max(0, (Date.now() - sessionStartTime - currentPausedMs()) / 1000);
+}
+
+function updatePauseDisplay() {
+  if (!pauseElapsedEl || pauseStartedMs === null) return;
+  pauseElapsedEl.textContent = formatDurationClock((Date.now() - pauseStartedMs) / 1000);
+}
+
+function pauseTraining() {
+  if (watchId === null || isTrainingPaused()) return;
+  pauseStartedMs = Date.now();
+  localStorage.setItem(STORAGE_KEYS.pausaInicioMs, String(pauseStartedMs));
+
+  pauseModal.classList.remove("hidden");
+  updatePauseDisplay();
+  pauseTickerId = setInterval(updatePauseDisplay, 1000);
+}
+
+function resumeTraining() {
+  if (!isTrainingPaused()) return;
+  pausedTotalMs += Date.now() - pauseStartedMs;
+  pauseStartedMs = null;
+  localStorage.setItem(STORAGE_KEYS.pausaTotalMs, String(pausedTotalMs));
+  localStorage.removeItem(STORAGE_KEYS.pausaInicioMs);
+
+  if (pauseTickerId !== null) {
+    clearInterval(pauseTickerId);
+    pauseTickerId = null;
+  }
+  pauseModal.classList.add("hidden");
+
+  // Reancorar: a posicao onde se retoma passa a ser o novo ponto de partida,
+  // para o que se andou em pausa nunca ser creditado.
+  lastPosition = null;
+  lastCountedPosition = null;
+  updateLiveStatsDisplay();
+}
+
+// "Terminar" dentro da pausa: fecha a pausa (para o tempo dela nao entrar na
+// sessao) e acaba o treino pelo caminho normal.
+function finishFromPause() {
+  if (isTrainingPaused()) {
+    pausedTotalMs += Date.now() - pauseStartedMs;
+    pauseStartedMs = null;
+    if (pauseTickerId !== null) {
+      clearInterval(pauseTickerId);
+      pauseTickerId = null;
+    }
+  }
+  pauseModal.classList.add("hidden");
+  stopTraining();
+}
+
 function stopTraining() {
   if (watchId !== null) {
     navigator.geolocation.clearWatch(watchId);
@@ -1215,7 +1316,12 @@ function stopTraining() {
   const sessionDistanceM = totalDistanceM;
   const sessionDominantMode = getDominantMode();
   const sessionEndTime = Date.now();
-  const sessionDurationSeconds = sessionStartTime ? (sessionEndTime - sessionStartTime) / 1000 : null;
+  // Duracao SEM o tempo em pausa (secção 4.7) - a pausa nao e treino, e
+  // deixa-la entrar aqui diluiria a velocidade media e, na bicicleta, a
+  // faixa de MET (secção 4.6).
+  const sessionDurationSeconds = sessionStartTime
+    ? Math.max(0, (sessionEndTime - sessionStartTime - pausedTotalMs) / 1000)
+    : null;
   // Valor GRAVADO vem dos totais da sessao, nao da soma por segmento - ver
   // computeSessionCaloriesFromTotals. sessionCaloriesKcal (soma ao vivo)
   // continua a servir so para o mostrador durante o treino.
@@ -1303,6 +1409,10 @@ function resumeTrainingIfNeeded() {
   // desapareciam e voltavam a zero" a cada refresh a meio de um treino).
   sessionCaloriesKcal = Number(localStorage.getItem(STORAGE_KEYS.caloriasAcumuladasKcal)) || 0;
   sessionMovingSeconds = Number(localStorage.getItem(STORAGE_KEYS.tempoMovimentoS)) || 0;
+  // Pausa (secção 4.7): se a pagina foi recarregada a meio de uma pausa, ela
+  // continua aberta - senao o tempo parado passava a contar como treino.
+  pausedTotalMs = Number(localStorage.getItem(STORAGE_KEYS.pausaTotalMs)) || 0;
+  const pausaGuardada = Number(localStorage.getItem(STORAGE_KEYS.pausaInicioMs)) || 0;
   try {
     const savedModeTime = localStorage.getItem(STORAGE_KEYS.modoTempoAcumuladoMs);
     if (savedModeTime) modeTimeAccumMs = JSON.parse(savedModeTime);
@@ -1319,6 +1429,15 @@ function resumeTrainingIfNeeded() {
   updateDistanceDisplay();
   showTrainingScreen();
   beginWatch();
+
+  // Reabre a pausa que estava a decorrer, com o contador a continuar de onde
+  // ia - nao a reiniciar do zero.
+  if (pausaGuardada > 0) {
+    pauseStartedMs = pausaGuardada;
+    pauseModal.classList.remove("hidden");
+    updatePauseDisplay();
+    pauseTickerId = setInterval(updatePauseDisplay, 1000);
+  }
   // Best-effort apos um refresh: no Android volta a ligar sozinho; no iOS
   // a permissao exige um gesto do utilizador, por isso pode nao voltar ate
   // ao proximo treino iniciado a mao (secção 4.3).
@@ -1484,6 +1603,9 @@ async function recomputeRecordsFromSessions() {
 
 btnStart.addEventListener("click", startTraining);
 btnStop.addEventListener("click", stopTraining);
+btnPause.addEventListener("click", pauseTraining);
+btnResume.addEventListener("click", resumeTraining);
+btnFinish.addEventListener("click", finishFromPause);
 
 // Salva o valor mais recente imediatamente ao sair/recarregar a pagina,
 // sem esperar pelo proximo checkpoint de 10s

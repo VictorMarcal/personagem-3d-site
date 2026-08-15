@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/style.css?v=20260815d">
+  <link rel="stylesheet" href="css/style.css?v=20260815e">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -37,7 +37,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v3.4.0</span>
+      <span id="site-version" class="site-version-hero">v3.5.0</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -192,9 +192,25 @@
           </div>
 
           <div id="training-screen" class="panel-screen hidden">
+            <button id="btn-pause-treino" class="btn-secondary">Pausar Treino</button>
             <button id="btn-stop-treino" class="btn-stop">Parar Treino</button>
           </div>
         </section>
+
+        <!-- Pausa (secção 4.7). O tempo em pausa nao conta para a duracao do
+             treino, por isso a unica saida daqui e Retomar ou Terminar - nao
+             ha como fechar por engano e ficar a contar tempo parado. -->
+        <div id="training-pause-modal" class="hidden">
+          <div class="pause-box">
+            <p class="pause-title">Treino em pausa</p>
+            <p id="pause-elapsed" class="pause-elapsed">0:00</p>
+            <p class="pause-hint">Este tempo não conta para o teu treino.</p>
+            <div class="pause-actions">
+              <button id="btn-resume-treino" class="btn-primary">Retomar</button>
+              <button id="btn-finish-treino" class="btn-stop">Terminar</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Masmorra (era o separador "Arena"/"Batalhas", so PvE) -->
@@ -445,9 +461,9 @@
   <script src="js/monthly-medals.js?v=20260810d"></script>
   <script src="js/battle.js?v=20260811e"></script>
   <script src="js/hexes.js?v=20260815f"></script>
-  <script src="js/training.js?v=20260815c"></script>
+  <script src="js/training.js?v=20260815d"></script>
   <script src="js/profile.js?v=20260810f"></script>
-  <script src="js/changelog.js?v=20260815c"></script>
+  <script src="js/changelog.js?v=20260815d"></script>
   <script src="js/achievements.js?v=20260811b"></script>
   <script src="js/orientation.js?v=20260806p"></script>
   <script src="js/nav.js?v=20260814a"></script>

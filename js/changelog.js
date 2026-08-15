@@ -7,6 +7,16 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v3.5.0",
+    title: "Pausar o Treino",
+    changes: [
+      "Já podes pausar um treino a meio — para um café, um semáforo longo, uma paragem para descansar.",
+      "Enquanto estás em pausa vês o tempo parado a contar, e escolhes entre Retomar e Terminar.",
+      "O tempo em pausa não conta para o teu treino, e o que andares durante a pausa também não conta para a distância.",
+      "Se recarregares a página a meio de uma pausa, ela continua onde estava.",
+    ],
+  },
+  {
     version: "v3.4.0",
     title: "Calorias de Bicicleta Corrigidas",
     changes: [
