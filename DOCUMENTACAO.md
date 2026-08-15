@@ -216,6 +216,26 @@ Dois detalhes que não são óbvios:
 - **O sync é `await` direto, não o `queueProgressSync` com debounce.** Quando o delta de calorias é negativo (ex: corrida → bicicleta), escrever só no `localStorage` não chega: a reconciliação no arranque (secção 14.1) faz `max(local, servidor)` nos campos que só crescem e **restauraria o valor antigo, mais alto**. Os dois lados têm de ficar iguais antes de qualquer outra coisa correr.
 - **Os recordes por modo são recalculados a partir das sessões**, não ajustados por delta (`recomputeRecordsFromSessions`): ao mudar o modo de uma sessão, o recorde do modo de origem pode ter de **descer** para o segundo melhor, e isso não se exprime como um delta.
 
+### 4.6b MET da bicicleta interpolado, não em degraus (2026-08-15)
+
+Os degraus da tabela do Compendium são um **artefacto da forma como ela está escrita** — uma lista de atividades discretas — não da fisiologia. O custo energético varia de forma contínua com a velocidade. Com degraus, 22,5 km/h valia 8,0 MET e 22,6 km/h valia 10,0: **um salto de 25% por 0,1 km/h**.
+
+Passou a interpolação linear entre os pontos do Compendium, agora com as velocidades **convertidas de milhas por hora** (10/12/14/16/20 mph → 16,09/19,31/22,53/25,75/32,19 km/h) em vez de arredondadas a olho como estavam (16/19/22,4/25,6/30,6).
+
+**Validado contra o relógio do Bernardo** (sessão 108, 24,99 km/h de média em movimento):
+
+| | MET | Erro nas calorias da sessão |
+|---|---:|---:|
+| Tabela em degraus | 10,00 | **+10,4%** |
+| Interpolado | 9,53 | **+5,5%** |
+| O que o corpo dele fez | 9,14 | — |
+
+O que sobra (5,5%) é a tabela ser uma **média de população** e ele ser mais eficiente do que a média. Fechar isso exigiria frequência cardíaca, que não temos. Não se força o número a bater certo com o relógio: seria deixar de ser reprodutível.
+
+**A interpolação nunca sobe o MET**, só o baixa dentro de cada faixa — todas as sessões de bicicleta futuras dão ligeiramente menos calorias. As **sessões antigas não foram recalculadas**: tirar XP já dado é pior que a inconsistência. Só a 108 mudou, porque estava a ser corrigida de qualquer forma.
+
+**O último ponto (15,8 aos 40 km/h) é uma âncora escolhida**, não do Compendium: ele diz ">20 mph" sem teto, e sem âncora não havia como interpolar o último troço.
+
 ### 4.6 Tempo em movimento: a bicicleta não pode usar o relógio de parede (2026-08-15)
 
 **Descoberto com o relógio do Bernardo**, comparado com a sessão 108 registada pela app:

@@ -334,13 +334,41 @@ function metIsBracketed(activity) {
   return activity === ACTIVITY_CYCLE;
 }
 
+// Pontos do Compendium para bicicleta, com as velocidades convertidas de
+// milhas por hora (10/12/14/16/20 mph) em vez de arredondadas a olho como
+// estavam antes.
+//
+// INTERPOLADO, nao em degraus (2026-08-15). Os degraus sao um artefacto da
+// forma como o Compendium esta escrito - uma lista de atividades discretas -
+// nao da fisiologia: o custo energetico varia de forma continua com a
+// velocidade. Com degraus, 22,5 km/h valia 8,0 e 22,6 km/h valia 10,0, um
+// salto de 25% por 0,1 km/h.
+//
+// Validado contra o relogio do Bernardo (sessao 108, 24,99 km/h): a tabela em
+// degraus mandava MET 10,0 e o corpo dele fez 9,14; interpolado da 9,53. O
+// erro nas calorias da sessao caiu de +10,4% para +5,5%.
+//
+// O ultimo ponto (15,8 aos 40 km/h) e uma ancora escolhida: o Compendium so
+// diz ">20 mph" sem teto, e sem ancora nao havia como interpolar o ultimo
+// troco. Acima disso fica plano.
+const CYCLING_MET_POINTS = [
+  [16.09, 4.0],   // 10 mph - lazer
+  [19.31, 6.8],   // 12 mph - lento, esforco leve
+  [22.53, 8.0],   // 14 mph - moderado
+  [25.75, 10.0],  // 16 mph - rapido, vigoroso
+  [32.19, 12.0],  // 20 mph - muito rapido
+  [40.0, 15.8],   // ancora escolhida (ver acima)
+];
+
 function computeCyclingMet(speedKmh) {
-  if (speedKmh < 16) return 4.0;
-  if (speedKmh < 19) return 6.8;
-  if (speedKmh < 22.4) return 8.0;
-  if (speedKmh < 25.6) return 10.0;
-  if (speedKmh < 30.6) return 12.0;
-  return 15.8;
+  const points = CYCLING_MET_POINTS;
+  if (speedKmh <= points[0][0]) return points[0][1];
+  for (let i = 1; i < points.length; i += 1) {
+    const [x0, y0] = points[i - 1];
+    const [x1, y1] = points[i];
+    if (speedKmh <= x1) return y0 + ((y1 - y0) * (speedKmh - x0)) / (x1 - x0);
+  }
+  return points[points.length - 1][1];
 }
 
 function computeMetForActivity(activity, speedKmh) {

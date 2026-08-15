@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v3.10.0",
+    title: "Calorias de Bicicleta Mais Certas",
+    changes: [
+      "As calorias de bicicleta deixam de dar saltos: antes, 0,1 km/h a mais podia fazer o esforço saltar 25% de repente. Agora sobem de forma suave com a velocidade.",
+      "Comparado com um relógio desportivo real, o erro das calorias de uma volta caiu de 10% para 5%.",
+      "Os treinos antigos ficam como estão — não te tiramos XP que já ganhaste.",
+    ],
+  },
+  {
     version: "v3.9.0",
     title: "Tempo Parado e Calorias Totais",
     changes: [
