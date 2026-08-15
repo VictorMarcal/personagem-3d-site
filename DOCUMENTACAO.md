@@ -740,16 +740,30 @@ Falha de rede ou serviço em baixo = fica por identificar e tenta-se noutra aber
 
 #### Distrito na vista geral, concelhos ao aproximar
 
-A pedido: *"quero que Braga Distrito só apareça numa vista geral; depois de dar zoom in aparecem os nomes dos concelhos desbloqueados"*.
+**O contorno do distrito está sempre lá.** O que troca com o zoom são as etiquetas e o contorno do concelho:
 
-- **abaixo do zoom 11**: contorno e nome do distrito (`distrito de Braga`), mais discreto — é o nível de cima
-- **do zoom 11 para cima**: contornos e nomes dos concelhos desbloqueados
+| | Contorno distrito | Nome distrito | Contorno + nome concelho |
+|---|---|---|---|
+| abaixo do zoom 11 | sim | sim | não |
+| zoom 11 para cima | sim | não | sim |
 
-**Nunca os dois ao mesmo tempo**, e o distrito escrito por extenso: o concelho e o distrito têm muitas vezes o mesmo nome (Braga e Braga) e, lado a lado, parecia um bug. O zoom 11 é o ponto em que um concelho ocupa praticamente o ecrã de um telemóvel, que é quando faz sentido ler os nomes.
+Os nomes **nunca aparecem os dois ao mesmo tempo**: o concelho e o distrito têm muitas vezes o mesmo nome (Braga e Braga) e, lado a lado, parecia um bug. O nome vai só como *"Braga"*, sem prefixo. O distrito distingue-se pelo traço mais fino e apagado, e por ser o contorno de fora. O zoom 11 é o ponto em que um concelho ocupa praticamente o ecrã de um telemóvel.
+
+Contorno e etiqueta do distrito vivem em camadas separadas precisamente para o contorno poder ficar enquanto o nome sai.
 
 A camada mais clara (nível 2) é recortada aos **concelhos**, não ao distrito — é o que de facto se desbloqueou. Na vista geral vê-se por isso o contorno do distrito com manchas acesas lá dentro: os concelhos já conquistados.
 
 Só aparece o distrito que tenha pelo menos um concelho desbloqueado.
+
+#### Fronteiras encaixadas na grelha
+
+A pedido: *"quero os contornos a seguirem as linhas dos hexágonos mais próximos; não vai ficar exato ao mapa real mas não faz mal porque ninguém consegue ler o mapa a 100% com o desfoque"*.
+
+A fronteira administrativa é convertida em células H3 (`polygonToCells`) e o contorno passa a ser a união dessas células (`cellsToMultiPolygon`) — em vez da linha real. **Resolução 8** (~1,15 km): grande o suficiente para o encaixe se notar ao aproximar, pequeno o suficiente para o concelho continuar reconhecível.
+
+O recorte da camada mais clara usa **a mesma** fronteira hexagonal que se desenha, senão a mancha clara e o contorno não coincidiam.
+
+Custo medido no browser, uma vez por região: **5 ms** o concelho, **48 ms** o distrito (que é 15× maior em área).
 
 #### Onde estás
 
