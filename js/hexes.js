@@ -369,38 +369,46 @@ function drawHexGrid() {
     });
   }
 
-  // Icones de recurso por cima do satelite desfocado (2026-09-07, a pedido:
-  // "prefiro manter como tinhamos antes, mapa real desfocado, e com icons de
-  // recursos por cima"). So quando a grelha desenhada coincide com a da
-  // descoberta - noutros zooms os hexagonos sao grandes demais e o icone nao
-  // corresponderia a um hexagono real.
-  if (res === discoveryRes && typeof resourceForHex === "function") {
+  // Minas encontradas, por cima do satelite desfocado. So as ENCONTRADAS:
+  // as outras nao estao visiveis ate se la chegar, e o unico sinal delas e o
+  // aviso sonoro a 500 m (secção 21).
+  //
+  // Ao contrario dos icones anteriores, que eram um por hexagono descoberto,
+  // estes nao dependem da resolucao desenhada - uma mina e um ponto, nao um
+  // hexagono, por isso faz sentido em qualquer zoom.
+  if (typeof todasAsMinas === "function") {
+    const encontradas = getMinasEncontradas();
+    const visitas = typeof getHexVisits === "function" ? getHexVisits() : {};
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = "19px system-ui, -apple-system, sans-serif";
-    cells.forEach((cell) => {
-      // So os hexagonos JA DESCOBERTOS mostram o recurso (2026-09-07, a
-      // pedido). Cheguei a mostrar tambem os por descobrir dentro dos
-      // concelhos desbloqueados, esbatidos, para dar uma razao para escolher
-      // um caminho - mas isso furava o nevoeiro. O que nao foi conquistado
-      // nao se ve.
-      if (!discovered.has(cell)) return;
 
-      const p = project(h3.cellToLatLng(cell));
-      const recurso = RESOURCE_BY_ID[resourceForHex(cell)];
+    todasAsMinas().forEach((mina) => {
+      if (!encontradas.has(mina.id)) return;
+      if (!bounds.contains([mina.lat, mina.lng])) return;
+      const p = project([mina.lat, mina.lng]);
 
-      // Halo escuro em vez de um disco por tras ("nao gosto dos circulos em
-      // volta dos icons"). O problema que o disco resolvia e real: o fundo
-      // desfocado varia de escuro a claro de hexagono para hexagono e um
-      // emoji sem contraste proprio desaparece nos claros. Duas passagens
-      // com sombra e uma limpa por cima - uma so nao chegava, a sombra do
-      // canvas e ligeira demais.
+      // Anel a marcar o quanto a mina esta desenvolvida: e o multiplicador do
+      // hexagono dela. Sem isto nao havia forma de ver no mapa quais das
+      // minas ja renderem mais.
+      const mult = typeof multiplicadorDoHex === "function" ? multiplicadorDoHex(mina.hexId, visitas) : 1;
+      if (mult > 1.01) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ((mult - 1) / 1));
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = RESOURCE_BY_ID[mina.recurso].cor;
+        ctx.stroke();
+      }
+
+      // Halo escuro em duas passagens e uma limpa por cima: o fundo
+      // desfocado varia de escuro a claro e um emoji sem contraste proprio
+      // desaparece nos claros.
       ctx.shadowColor = "rgba(0,0,0,0.9)";
       ctx.shadowBlur = 6;
-      ctx.fillText(recurso.icone, p.x, p.y);
-      ctx.fillText(recurso.icone, p.x, p.y);
+      ctx.fillText(RESOURCE_BY_ID[mina.recurso].icone, p.x, p.y);
+      ctx.fillText(RESOURCE_BY_ID[mina.recurso].icone, p.x, p.y);
       ctx.shadowBlur = 0;
-      ctx.fillText(recurso.icone, p.x, p.y);
+      ctx.fillText(RESOURCE_BY_ID[mina.recurso].icone, p.x, p.y);
     });
   }
 

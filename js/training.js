@@ -1009,6 +1009,8 @@ function onPositionUpdate(position) {
   if (typeof setMapPlayerPosition === "function") {
     setMapPlayerPosition(latitude, longitude, position.coords.heading);
   }
+  // Minas (secção 21): aviso a 500 m e recolha ao entrar no hexagono delas.
+  if (typeof verificarMinas === "function") verificarMinas(latitude, longitude);
 
   // Em pausa (secção 4.7) a leitura so serve para reancorar: nao credita
   // distancia, nao classifica atividade, nao conta calorias.
@@ -1258,6 +1260,11 @@ function showTrainingCountdown() {
 }
 
 function startTraining() {
+  // O aviso sonoro das minas (secção 21) tem de ser desbloqueado a partir de
+  // um gesto: no iOS um AudioContext criado fora de um toque fica suspenso e
+  // nunca toca. Este botao e esse gesto.
+  if (typeof unlockMineAudio === "function") unlockMineAudio();
+
 
   if (!("geolocation" in navigator)) {
     alert("Geolocalização não suportada neste navegador.");

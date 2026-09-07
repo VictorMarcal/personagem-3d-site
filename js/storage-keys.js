@@ -155,3 +155,8 @@ const STORAGE_KEY_HEX_VISITS = "personagem.hexVisitas";
 const STORAGE_KEY_RESOURCES = "personagem.recursos";
 const STORAGE_KEY_RESOURCES_SINCE = "personagem.recursosDesde";
 const STORAGE_KEY_WAREHOUSE_LEVEL = "personagem.nivelArmazem";
+
+// Minas ja encontradas (secção 21). As POSICOES nao sao guardadas - sao
+// deterministas a partir do osm_id do concelho; so faz falta saber quais e
+// que ja foram encontradas.
+const STORAGE_KEY_MINES = "personagem.minasEncontradas";

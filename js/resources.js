@@ -1,8 +1,10 @@
 // Economia de recursos do mapa (2026-09-07, secção 21).
 //
-// Substitui as moedas por quilometro. Cada hexagono descoberto tem um recurso
-// e produz +1/hora desse recurso, multiplicado por um fator que sobe quando
-// se volta a passar por la e desce quando se deixa de ir.
+// Substitui as moedas por quilometro. Existem 10 MINAS de cada recurso em
+// cada concelho e so elas produzem; os restantes hexagonos contam para o
+// territorio mas nao rendem nada. Cada mina produz por hora, multiplicado por
+// um fator que sobe quando se volta a passar por la e desce quando se deixa
+// de ir.
 //
 // NUMEROS ASSUMIDOS COMO PROVISORIOS. Foram derivados do ritmo real dos dois
 // jogadores no primeiro mes (30-40 hexagonos/semana), que e a fase em que
@@ -30,18 +32,8 @@ const RESOURCE_BY_ID = {};
 RESOURCES.forEach((r) => { RESOURCE_BY_ID[r.id] = r; });
 const COR_POR_DESCOBRIR = "#D8D3CA";
 
-// --- que recurso tem cada hexagono ------------------------------------------
-//
-// EQUILIBRADO POR VIZINHANCA, nao sorteado hexagono a hexagono. Um sorteio
-// puro deixava buracos reais: simulado com 30 hexagonos descobertos, o pior
-// caso em 2000 tentativas dava ZERO de alguns recursos.
-//
-// A vizinhanca e a celula H3 de resolucao 7 (~3 km, 49 filhos na resolucao 9)
-// - a escala de um treino normal. Dentro dela distribuem-se os cinco tipos
-// nas proporcoes exatas e baralham-se de forma determinista a partir do id da
-// propria celula. Resultado: o percurso do costume atravessa os cinco.
-const RESOURCE_NEIGHBOURHOOD_RES = 7;
-
+// --- ajudantes deterministas ------------------------------------------------
+// Usados para colocar as minas sempre nos mesmos sitios sem gravar nada.
 function hashString(texto) {
   let h = 2166136261;
   for (let i = 0; i < texto.length; i += 1) {
@@ -60,47 +52,6 @@ function mulberry32(seed) {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-const neighbourhoodBags = new Map();
-
-function bagForNeighbourhood(parentId, tamanho) {
-  if (neighbourhoodBags.has(parentId)) return neighbourhoodBags.get(parentId);
-
-  const bag = [];
-  RESOURCES.forEach((r) => {
-    const quantos = Math.round((tamanho * r.peso) / 100);
-    for (let i = 0; i < quantos; i += 1) bag.push(r.id);
-  });
-  // Arredondamentos podem deixar a saca curta ou comprida - acerta-se pelo
-  // primeiro recurso, que e dos mais comuns e menos sofre com uma unidade.
-  while (bag.length < tamanho) bag.push(RESOURCES[0].id);
-  bag.length = tamanho;
-
-  const rand = mulberry32(hashString(parentId));
-  for (let i = bag.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rand() * (i + 1));
-    const troca = bag[i];
-    bag[i] = bag[j];
-    bag[j] = troca;
-  }
-  neighbourhoodBags.set(parentId, bag);
-  return bag;
-}
-
-// Determinista: o mesmo hexagono da sempre o mesmo recurso, em qualquer
-// telemovel, sem nada gravado.
-function resourceForHex(hexId) {
-  if (typeof h3 === "undefined") return RESOURCES[0].id;
-  try {
-    const parent = h3.cellToParent(hexId, RESOURCE_NEIGHBOURHOOD_RES);
-    const filhos = h3.cellToChildren(parent, getHexResolution());
-    const bag = bagForNeighbourhood(parent, filhos.length);
-    const indice = filhos.indexOf(hexId);
-    return indice >= 0 ? bag[indice] : bag[hashString(hexId) % bag.length];
-  } catch (e) {
-    return RESOURCES[hashString(hexId) % RESOURCES.length].id;
-  }
 }
 
 // --- multiplicador por hexagono ---------------------------------------------
@@ -173,15 +124,18 @@ function registarVisitasDaSessao(hexIdsDaSessao) {
 
 // --- producao ---------------------------------------------------------------
 
+// So as MINAS ENCONTRADAS produzem. O multiplicador continua a ser o do
+// hexagono onde a mina esta - voltar a passar por la faz a mina render mais.
 function producaoPorHora() {
   const total = {};
   RESOURCE_IDS.forEach((id) => { total[id] = 0; });
-  if (typeof getDiscoveredHexIds !== "function") return total;
+  if (typeof todasAsMinas !== "function") return total;
 
+  const encontradas = getMinasEncontradas();
   const visitas = getHexVisits();
-  getDiscoveredHexIds().forEach((hexId) => {
-    const recurso = resourceForHex(hexId);
-    total[recurso] += multiplicadorDoHex(hexId, visitas);
+  todasAsMinas().forEach((mina) => {
+    if (!encontradas.has(mina.id)) return;
+    total[mina.recurso] += MINE_BASE_PER_HOUR * multiplicadorDoHex(mina.hexId, visitas);
   });
   RESOURCE_IDS.forEach((id) => { total[id] = Math.round(total[id] * 10) / 10; });
   return total;
@@ -300,4 +254,232 @@ function upgradeWarehouse() {
 
 function formatRecurso(valor) {
   return Math.floor(valor).toLocaleString("pt-PT");
+}
+
+// --- minas ------------------------------------------------------------------
+//
+// Nem todos os hexagonos dao recurso (2026-09-07, a pedido). Existem 10 MINAS
+// de cada recurso em cada concelho - 50 ao todo - e so elas produzem. Os
+// restantes hexagonos continuam a contar para o territorio, para desbloquear
+// o concelho e para o multiplicador, mas nao rendem nada.
+//
+// NAO ESTAO VISIVEIS ate serem encontradas. Ha um aviso sonoro a 500 m.
+//
+// Escala: com 10 minas por recurso, cada uma a render 5/hora, um concelho
+// inteiramente explorado da 50/hora por recurso - o que repoe exatamente o
+// ritmo do modelo anterior (~56 dias para maximizar o equipamento). Nao e um
+// numero escolhido a olho: foi calculado para a mudanca de fonte nao alterar
+// o equilibrio ja discutido.
+const MINES_PER_RESOURCE = 10;
+const MINE_BASE_PER_HOUR = 5;
+const MINE_ALERT_RADIUS_M = 500;
+
+const minesByConcelho = new Map();
+
+// Deterministas a partir do osm_id do concelho: as mesmas minas em qualquer
+// telemovel, sem nada gravado. So se guarda QUAIS ja foram encontradas.
+function buildMinesFor(concelho) {
+  const gj = concelho.geojson;
+  const polys = gj.type === "Polygon" ? [gj.coordinates] : gj.coordinates;
+  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+  polys.forEach((poly) =>
+    poly[0].forEach(([lng, lat]) => {
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    })
+  );
+
+  const rand = mulberry32(hashString("minas:" + concelho.osmId));
+  const alvo = RESOURCES.length * MINES_PER_RESOURCE;
+
+  // Uma saca com 10 de cada, baralhada: garante o numero exato por recurso
+  // (nao um sorteio que podia dar 3 de ferro e 17 de pedra) e, como os
+  // pontos saem em ordem aleatoria, cada recurso fica espalhado pelo
+  // concelho em vez de agrupado num canto.
+  const saca = [];
+  RESOURCES.forEach((r) => {
+    for (let i = 0; i < MINES_PER_RESOURCE; i += 1) saca.push(r.id);
+  });
+  for (let i = saca.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rand() * (i + 1));
+    const troca = saca[i];
+    saca[i] = saca[j];
+    saca[j] = troca;
+  }
+
+  const minas = [];
+  const hexesUsados = new Set();
+  const maxTentativas = alvo * 400;
+
+  for (let t = 0; minas.length < alvo && t < maxTentativas; t += 1) {
+    const lat = minLat + rand() * (maxLat - minLat);
+    const lng = minLng + rand() * (maxLng - minLng);
+    if (!pointInGeoJson(lat, lng, gj)) continue;
+
+    let hexId = null;
+    try {
+      hexId = h3.latLngToCell(lat, lng, getHexResolution());
+    } catch (e) {
+      continue;
+    }
+    // Duas minas no mesmo hexagono seriam apanhadas de uma vez e uma delas
+    // ficaria invisivel por baixo da outra.
+    if (hexesUsados.has(hexId)) continue;
+    hexesUsados.add(hexId);
+
+    const [hLat, hLng] = h3.cellToLatLng(hexId);
+    minas.push({
+      id: concelho.osmId + ":" + minas.length,
+      hexId,
+      lat: hLat,
+      lng: hLng,
+      recurso: saca[minas.length],
+      concelho: concelho.name,
+    });
+  }
+  return minas;
+}
+
+function todasAsMinas() {
+  const todas = [];
+  (typeof unlockedConcelhos !== "undefined" ? unlockedConcelhos : []).forEach((c) => {
+    if (!minesByConcelho.has(c.osmId)) minesByConcelho.set(c.osmId, buildMinesFor(c));
+    minesByConcelho.get(c.osmId).forEach((m) => todas.push(m));
+  });
+  return todas;
+}
+
+function getMinasEncontradas() {
+  try {
+    const bruto = JSON.parse(localStorage.getItem(STORAGE_KEY_MINES) || "[]");
+    return new Set(Array.isArray(bruto) ? bruto : []);
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function saveMinasEncontradas(set) {
+  localStorage.setItem(STORAGE_KEY_MINES, JSON.stringify([...set]));
+  if (typeof queueProgressSync === "function") queueProgressSync();
+}
+
+function minasEncontradasCount() {
+  return getMinasEncontradas().size;
+}
+
+// Uma mina e reclamada ao entrar NO HEXAGONO dela - a mesma regra que
+// descobre territorio, por isso nao ha duas nocoes diferentes de "cheguei
+// la". O aviso sonoro a 500 m e so aviso: nao apanha nada.
+function verificarMinas(latitude, longitude) {
+  const minas = todasAsMinas();
+  if (minas.length === 0) return;
+  if (typeof haversineDistance !== "function") return;
+
+  const encontradas = getMinasEncontradas();
+  let hexAtual = null;
+  try {
+    hexAtual = h3.latLngToCell(latitude, longitude, getHexResolution());
+  } catch (e) {
+    return;
+  }
+
+  let achouAlguma = false;
+  let avisou = false;
+
+  minas.forEach((mina) => {
+    if (encontradas.has(mina.id)) return;
+
+    if (mina.hexId === hexAtual) {
+      encontradas.add(mina.id);
+      minasAvisadas.delete(mina.id);
+      achouAlguma = true;
+      if (typeof showGameToast === "function") {
+        showGameToast("Mina de " + RESOURCE_BY_ID[mina.recurso].nome.toLowerCase() + " encontrada!", "medalha");
+      }
+      return;
+    }
+
+    const metros = haversineDistance(latitude, longitude, mina.lat, mina.lng);
+    if (metros <= MINE_ALERT_RADIUS_M) {
+      // O conjunto das ja avisadas evita apitar de leitura em leitura
+      // enquanto se anda perto sem la chegar. So volta a avisar depois de
+      // sair do raio.
+      if (!minasAvisadas.has(mina.id)) {
+        minasAvisadas.add(mina.id);
+        avisou = true;
+      }
+    } else {
+      minasAvisadas.delete(mina.id);
+    }
+  });
+
+  if (achouAlguma) {
+    saveMinasEncontradas(encontradas);
+    playMineFound();
+    if (typeof renderResourcesPanel === "function") renderResourcesPanel();
+    if (typeof redrawHexMap === "function") redrawHexMap();
+  } else if (avisou) {
+    playMineNearby();
+  }
+}
+
+const minasAvisadas = new Set();
+
+// --- som --------------------------------------------------------------------
+// Web Audio em vez de um ficheiro: sao dois bips, nao vale um asset no
+// repositorio. O contexto tem de ser criado a partir de um gesto do
+// utilizador - no iOS um AudioContext criado fora de um toque fica suspenso e
+// nunca toca - por isso unlockMineAudio() e chamada no botao de iniciar
+// treino.
+let mineAudioCtx = null;
+
+function unlockMineAudio() {
+  try {
+    if (!mineAudioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      mineAudioCtx = new Ctx();
+    }
+    if (mineAudioCtx.state === "suspended") mineAudioCtx.resume();
+  } catch (e) {
+    // sem audio a mecanica continua a funcionar, so nao avisa
+  }
+}
+
+function tocarNotas(notas) {
+  if (!mineAudioCtx || mineAudioCtx.state !== "running") return;
+  const agora = mineAudioCtx.currentTime;
+  notas.forEach((n) => {
+    const osc = mineAudioCtx.createOscillator();
+    const ganho = mineAudioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = n.hz;
+    // Envelope: sem isto ouve-se um estalido no inicio e no fim de cada nota.
+    ganho.gain.setValueAtTime(0, agora + n.inicio);
+    ganho.gain.linearRampToValueAtTime(0.25, agora + n.inicio + 0.01);
+    ganho.gain.linearRampToValueAtTime(0, agora + n.inicio + n.duracao);
+    osc.connect(ganho);
+    ganho.connect(mineAudioCtx.destination);
+    osc.start(agora + n.inicio);
+    osc.stop(agora + n.inicio + n.duracao + 0.02);
+  });
+}
+
+// Aviso a 500 m: dois bips iguais, discretos.
+function playMineNearby() {
+  tocarNotas([
+    { hz: 660, inicio: 0, duracao: 0.09 },
+    { hz: 660, inicio: 0.16, duracao: 0.09 },
+  ]);
+}
+
+// Encontrada: arpejo a subir, para nao se confundir com o aviso.
+function playMineFound() {
+  tocarNotas([
+    { hz: 784, inicio: 0, duracao: 0.1 },
+    { hz: 988, inicio: 0.1, duracao: 0.1 },
+    { hz: 1319, inicio: 0.2, duracao: 0.2 },
+  ]);
 }
