@@ -15,7 +15,7 @@ const CHANGELOG = [
       "O equipamento deixa de se comprar com moedas e passa a pedir materiais: o arco quer madeira e ferro, o escudo madeira e pele, a armadura pele e ferro.",
       "Novo armazém, construído com pedra e barro. É ele que limita quanto podes guardar — e sem espaço não consegues pagar as evoluções grandes.",
       "As peças passam de 99 para 20 níveis. Os 99 eram decorativos: à conta antiga davam umas duas voltas ao mundo por peça.",
-      "No mapa, cada hexágono mostra o ícone do recurso que tem. Dentro dos concelhos que já desbloqueaste vês também os que ainda não descobriste, esbatidos — para saberes para onde vale a pena ir.",
+      "No mapa, cada hexágono que já descobriste mostra o ícone do recurso que tem. Os que ainda não conquistaste continuam escondidos.",
       "Os recursos sobem à vista: o contador incrementa sozinho à medida que vais produzindo.",
       "As estrelas colecionáveis foram substituídas por isto — mesmo mapa, mas com consequências.",
       "Os números desta economia são um primeiro palpite e vão ser afinados com dados reais de utilização.",

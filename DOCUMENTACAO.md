@@ -1127,7 +1127,9 @@ A solução são **duas passagens com sombra e uma limpa por cima**. Uma só pas
 
 **Ícones só quando a grelha desenhada coincide com a da descoberta** — noutros zooms os hexágonos são maiores e o ícone não corresponderia a um hexágono real.
 
-**Dentro de um concelho desbloqueado mostra-se o recurso mesmo por descobrir, esbatido.** É o que dá uma razão para escolher aquele caminho em vez de andar às cegas; fora deles o nevoeiro guarda o segredo.
+**Só os hexágonos já descobertos mostram o recurso.** Cheguei a mostrar também os por descobrir dentro dos concelhos desbloqueados, esbatidos, com o argumento de que davam uma razão para escolher um caminho — mas foi rejeitado (*"hexágonos que ainda não foram desbloqueados não mostram nada"*), e a razão é boa: furava o nevoeiro. O que não foi conquistado não se vê.
+
+Consequência assumida: o mapa não indica para onde ir. A exploração é às cegas, e o que a orienta é o território que já se tem, não uma prévia do que falta.
 
 ### O contador sobe à vista
 

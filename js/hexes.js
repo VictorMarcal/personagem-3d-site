@@ -306,15 +306,6 @@ function rebuildTerritoryOutline() {
   territoryOutline = ids.length ? h3.cellsToMultiPolygon(ids).flat() : [];
 }
 
-// Um hexagono esta num concelho ja desbloqueado? Serve para mostrar o recurso
-// esbatido antes de la se ir - da uma razao para escolher aquele caminho em
-// vez de andar as cegas, sem revelar o mundo todo.
-function estaEmConcelhoDesbloqueado(cellId) {
-  if (!unlockedConcelhos.length || typeof pointInGeoJson !== "function") return false;
-  const [lat, lng] = h3.cellToLatLng(cellId);
-  return unlockedConcelhos.some((c) => pointInGeoJson(lat, lng, c.geojson));
-}
-
 function drawHexGrid() {
   if (!hexMap || !hexCanvas) return;
   const size = hexMap.getSize();
@@ -385,35 +376,28 @@ function drawHexGrid() {
     ctx.textBaseline = "middle";
     ctx.font = "19px system-ui, -apple-system, sans-serif";
     cells.forEach((cell) => {
-      const meu = discovered.has(cell);
-      // Nos concelhos ja desbloqueados mostra-se o recurso mesmo por
-      // descobrir, esbatido: e o que da uma razao para ir ali em vez de
-      // andar as cegas. Fora deles, o nevoeiro guarda o segredo.
-      const noMeuConcelho = !meu && typeof estaEmConcelhoDesbloqueado === "function" && estaEmConcelhoDesbloqueado(cell);
-      if (!meu && !noMeuConcelho) return;
+      // So os hexagonos JA DESCOBERTOS mostram o recurso (2026-09-07, a
+      // pedido). Cheguei a mostrar tambem os por descobrir dentro dos
+      // concelhos desbloqueados, esbatidos, para dar uma razao para escolher
+      // um caminho - mas isso furava o nevoeiro. O que nao foi conquistado
+      // nao se ve.
+      if (!discovered.has(cell)) return;
 
       const p = project(h3.cellToLatLng(cell));
       const recurso = RESOURCE_BY_ID[resourceForHex(cell)];
 
-      // Halo escuro em vez de um disco por tras (2026-09-07: "nao gosto dos
-      // circulos em volta dos icons"). O problema que o disco resolvia e
-      // real - o fundo desfocado varia de escuro a claro de hexagono para
-      // hexagono, e um emoji sem contraste proprio desaparece nos claros -
-      // mas uma sombra colada ao desenho resolve o mesmo sem lhe por uma
-      // forma a volta.
-      // Duas passagens com sombra e uma limpa por cima. Uma so passagem nao
-      // chegava: a sombra do canvas e ligeira e o icone perdia-se no fundo
-      // desfocado, que varia de escuro a claro de hexagono para hexagono.
-      // Empilhar a sombra cria um halo escuro colado ao desenho - o mesmo
-      // contraste que o disco dava, sem lhe por uma forma a volta.
-      ctx.globalAlpha = meu ? 1 : 0.5;
+      // Halo escuro em vez de um disco por tras ("nao gosto dos circulos em
+      // volta dos icons"). O problema que o disco resolvia e real: o fundo
+      // desfocado varia de escuro a claro de hexagono para hexagono e um
+      // emoji sem contraste proprio desaparece nos claros. Duas passagens
+      // com sombra e uma limpa por cima - uma so nao chegava, a sombra do
+      // canvas e ligeira demais.
       ctx.shadowColor = "rgba(0,0,0,0.9)";
       ctx.shadowBlur = 6;
       ctx.fillText(recurso.icone, p.x, p.y);
       ctx.fillText(recurso.icone, p.x, p.y);
       ctx.shadowBlur = 0;
       ctx.fillText(recurso.icone, p.x, p.y);
-      ctx.globalAlpha = 1;
     });
   }
 
