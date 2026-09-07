@@ -1188,6 +1188,9 @@ function beginWatch() {
     refreshTabLock(STORAGE_KEY_TRAINING_TAB_LOCK);
   }, SAVE_INTERVAL_MS);
   startLiveStatsTicker();
+  // Baixa o ritmo de desenho da cena 3D enquanto o treino dura (js/main.js):
+  // e uma hora de ecra ligado em que ninguem esta a olhar para o heroi.
+  if (typeof setTrainingLowPowerRendering === "function") setTrainingLowPowerRendering(true);
   requestWakeLock();
 }
 
@@ -1418,6 +1421,7 @@ function stopTraining() {
   stopLiveStatsTicker();
   releaseWakeLock();
   stopMotionSensing();
+  if (typeof setTrainingLowPowerRendering === "function") setTrainingLowPowerRendering(false);
 
   const sessionDistanceM = totalDistanceM;
   const sessionDominantMode = getDominantMode();

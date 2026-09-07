@@ -7,6 +7,16 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v3.12.0",
+    title: "Muito Menos Bateria",
+    changes: [
+      "A app gastava bateria a desenhar o herói em 3D a toda a velocidade durante o treino inteiro — muitas vezes com o telemóvel no bolso, sem ninguém a olhar.",
+      "Durante um treino, a cena passa a ser desenhada muito mais devagar. Fora do treino também baixou, sem se notar.",
+      "Em telemóveis com ecrãs de alta densidade, a app desenhava até nove vezes os pixéis necessários. Deixou de o fazer.",
+      "Nas lutas nada muda — aí continua fluido, porque estás a jogar.",
+    ],
+  },
+  {
     version: "v3.11.0",
     title: "Treinos de Hoje em Cards",
     changes: [

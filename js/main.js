@@ -14,8 +14,24 @@ const camera = new THREE.PerspectiveCamera(
 camera.position.set(0, 1.5, 4);
 camera.lookAt(0, 1, 0);
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+// --- Custo de desenho (2026-09-07, "a app drena demasiada bateria") --------
+//
+// devicePixelRatio sem teto era o maior desperdicio: num telemovel com DPR 3
+// desenhavam-se NOVE vezes os pixeis do ecra logico. Acima de 2 ninguem
+// distingue num ecra de telemovel, por isso e trabalho de GPU deitado fora.
+//
+// Com DPR >= 2 o antialiasing tambem deixa de compensar: os pixeis ja sao
+// pequenos demais para as bordas serradas se notarem, e o MSAA custa outra
+// vez por cima.
+const MAX_PIXEL_RATIO = 2;
+const pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
+
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: pixelRatio < 2,
+  powerPreference: "low-power",
+});
+renderer.setPixelRatio(pixelRatio);
 renderer.setSize(viewer.clientWidth, viewer.clientHeight);
 renderer.shadowMap.enabled = true;
 
@@ -802,12 +818,44 @@ function updateHeroAutoAttack(dtSeconds, monsterVisible) {
 let jogoViewVisible = true;
 let lastAnimateFrameMs = Date.now();
 
+// --- Ritmo de desenho ------------------------------------------------------
+//
+// A cena era desenhada a 60fps sempre que a aba Jogo estava a frente. Durante
+// um treino isso e uma hora ou mais de WebGL a todo o gas, com o wake lock a
+// impedir o ecra de adormecer e o telemovel muitas vezes no bolso - ninguem
+// esta a olhar para o heroi, mas ele estava a ser desenhado na mesma.
+//
+// 30fps chega e sobra para um idle; num treino, 8fps mantem o boneco a mexer
+// o suficiente para nao parecer bloqueado e corta o trabalho para um setimo.
+const FRAME_INTERVAL_NORMAL_MS = 1000 / 30;
+const FRAME_INTERVAL_TRAINING_MS = 1000 / 8;
+let trainingLowPower = false;
+let lastDrawMs = 0;
+
+// Chamada por js/training.js ao comecar e acabar um treino.
+function setTrainingLowPowerRendering(on) {
+  trainingLowPower = !!on;
+}
+
 function animate() {
   requestAnimationFrame(animate);
   const now = Date.now();
-  // Capado a 50ms (equivalente a 20fps): se a aba ficou em segundo plano
-  // e voltou, evita um "salto" grande de movimento no frame seguinte.
-  const dtSeconds = Math.min(0.05, (now - lastAnimateFrameMs) / 1000);
+
+  // Limitar o RITMO, nao o loop: o requestAnimationFrame continua a correr
+  // (e a ser suspenso pelo browser quando a pagina fica escondida, que e o
+  // comportamento que queremos), mas so se desenha de vez em quando.
+  // Numa luta nunca se baixa o ritmo: ali o jogador esta a olhar e a mexer
+  // o joystick, e 8fps davam um comando intragavel.
+  const emLuta = typeof battleInProgress !== "undefined" && battleInProgress;
+  const frameInterval = trainingLowPower && !emLuta ? FRAME_INTERVAL_TRAINING_MS : FRAME_INTERVAL_NORMAL_MS;
+  if (now - lastDrawMs < frameInterval) return;
+  lastDrawMs = now;
+
+  // Teto do delta: evita um "salto" grande de movimento quando a aba esteve
+  // em segundo plano e volta. Tem de ser MAIOR que o intervalo entre frames,
+  // senao a animacao passava a correr em camara lenta a 8fps (125ms reais
+  // capados a 50ms davam 40% da velocidade).
+  const dtSeconds = Math.min(0.25, (now - lastAnimateFrameMs) / 1000);
   lastAnimateFrameMs = now;
 
   if (jogoViewVisible) {
