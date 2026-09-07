@@ -429,7 +429,10 @@ function computeSegmentCalories(activity, speedKmh, durationSeconds) {
 //   relogio: 742 kcal totais
 //
 // O tempo parado passa a contar a 1 MET, como ja acontecia a pe.
-function computeSessionCaloriesFromTotals(distanceM, durationSeconds, mode, movingSeconds) {
+// Calorias de UM modo, a partir dos totais desse modo. E a formula da secção
+// 4.4/4.6 isolada, para poder ser aplicada uma vez por sessao ou uma vez por
+// modo sem duplicar a logica.
+function caloriasDeUmModo(distanceM, durationSeconds, mode, movingSeconds) {
   if (!durationSeconds || durationSeconds <= 0) return 0;
   const hours = durationSeconds / 3600;
 
@@ -446,6 +449,64 @@ function computeSessionCaloriesFromTotals(distanceM, durationSeconds, mode, movi
 
   const avgSpeedKmh = distanceM / 1000 / hours;
   return computeMetForActivity(mode, avgSpeedKmh) * getPesoKg() * hours;
+}
+
+// CALORIAS POR MODO (2026-09-07, secção 4.9). Antes usava-se o MET do modo
+// DOMINANTE na sessao inteira: numa sessao mista, os quilometros de bicicleta
+// eram pagos ao MET de corrida.
+//
+// O cuidado aqui e nao reintroduzir o bug da secção 4.4. O tempo acumulado
+// por modo (modeTimeAccumMs) vem de creditedDurationSeconds, que e CAPADO por
+// segmento - nao serve como numero absoluto de horas, foi exatamente isso que
+// deixou uma sessao do Bernardo com 32% das calorias. O que se aproveita dele
+// e so a PROPORCAO entre modos, que sobrevive as falhas de sinal porque elas
+// afetam todos os modos por igual.
+//
+// Ou seja: o tempo ATIVO real da sessao (relogio, fiavel) e repartido pelos
+// modos nessa proporcao, e cada fatia leva o seu proprio MET. A soma das
+// horas continua a ser a duracao real - a propriedade que a secção 4.4 exige.
+//
+// Com um so modo, a proporcao e 1 e o resultado e identico ao anterior: nao
+// ha regressao no caso comum.
+function computeSessionCaloriesFromTotals(distanceM, durationSeconds, mode, movingSeconds, distanciaPorModo, tempoPorModo) {
+  if (!durationSeconds || durationSeconds <= 0) return 0;
+
+  const modos = distanciaPorModo ? Object.keys(distanciaPorModo).filter((m) => distanciaPorModo[m] > 0) : [];
+  const somaTempos = modos.reduce((s, m) => s + (Number(tempoPorModo && tempoPorModo[m]) || 0), 0);
+
+  if (modos.length <= 1 || somaTempos <= 0) {
+    return caloriasDeUmModo(distanceM, durationSeconds, mode, movingSeconds);
+  }
+
+  return modos.reduce((total, m) => {
+    const fatia = (Number(tempoPorModo[m]) || 0) / somaTempos;
+    return total + caloriasDeUmModo(
+      distanciaPorModo[m],
+      durationSeconds * fatia,
+      m,
+      (movingSeconds || 0) * fatia
+    );
+  }, 0);
+}
+
+// Reparticao da sessao pelos modos: metros e milissegundos por atividade.
+// Existe uma so vez porque o mostrador AO VIVO e o valor GRAVADO tem de sair
+// da mesma conta - se divergissem, o numero saltava ao terminar o treino.
+//
+// Arredondado ao metro: guardar 14 casas decimais de um GPS com 5 m de
+// precisao seria falsa exatidao.
+function reparticaoDaSessao() {
+  const distancia = {};
+  Object.keys(modeDistanceAccumM).forEach((m) => {
+    const metros = Math.round(Number(modeDistanceAccumM[m]) || 0);
+    if (metros > 0) distancia[m] = metros;
+  });
+  const tempo = {};
+  Object.keys(modeTimeAccumMs).forEach((m) => {
+    const ms = Math.round(Number(modeTimeAccumMs[m]) || 0);
+    if (ms > 0) tempo[m] = ms;
+  });
+  return { distancia, tempo };
 }
 
 // Tempo (ms) acumulado em cada atividade nesta sessao - decide o "modo
@@ -759,11 +820,14 @@ function updateLiveStatsDisplay() {
   // A MESMA formula do fim (computeSessionCaloriesFromTotals), nao a soma ao
   // vivo por segmento: as duas dao valores diferentes (a soma por segmento e
   // capada, secção 4.4) e o numero saltava ao terminar o treino.
+  const reparticaoAoVivo = reparticaoDaSessao();
   const activeKcal = computeSessionCaloriesFromTotals(
     totalDistanceM,
     elapsedSeconds,
     getDominantMode(),
-    sessionMovingSeconds
+    sessionMovingSeconds,
+    reparticaoAoVivo.distancia,
+    reparticaoAoVivo.tempo
   );
   const restingKcal = currentRestingKcal();
   set("live-active-kcal", `${Math.round(activeKcal)} kcal`);
@@ -827,7 +891,14 @@ function updateDistanceDisplay(activeKcal) {
   // XP = gasto total (secção 4.7). Quem chama ja o traz somado.
   const kcal = activeKcal !== undefined
     ? activeKcal
-    : computeSessionCaloriesFromTotals(totalDistanceM, activeElapsedSeconds(), getDominantMode(), sessionMovingSeconds) + currentRestingKcal();
+    : computeSessionCaloriesFromTotals(
+        totalDistanceM,
+        activeElapsedSeconds(),
+        getDominantMode(),
+        sessionMovingSeconds,
+        reparticaoDaSessao().distancia,
+        reparticaoDaSessao().tempo
+      ) + currentRestingKcal();
   caloriesEl.textContent = `${Math.round(kcal)} kcal`;
 }
 
@@ -1477,18 +1548,17 @@ function stopTraining() {
   // computeSessionCaloriesFromTotals. sessionCaloriesKcal (soma ao vivo)
   // continua a servir so para o mostrador durante o treino.
   const sessionMoving = sessionMovingSeconds;
-  // Arredondado ao metro: guardar 14 casas decimais de um GPS com 5 m de
-  // precisao seria falsa exatidao.
-  const sessionDistanceByMode = {};
-  Object.keys(modeDistanceAccumM).forEach((m) => {
-    const metros = Math.round(modeDistanceAccumM[m]);
-    if (metros > 0) sessionDistanceByMode[m] = metros;
-  });
+  const reparticao = reparticaoDaSessao();
+  const sessionDistanceByMode = reparticao.distancia;
+  const sessionTimeByMode = reparticao.tempo;
+
   const sessionCalories = computeSessionCaloriesFromTotals(
     sessionDistanceM,
     sessionDurationSeconds,
     sessionDominantMode,
-    sessionMoving
+    sessionMoving,
+    sessionDistanceByMode,
+    sessionTimeByMode
   );
 
   // Calorias durante as pausas: 1 MET, o metabolismo em repouso.
@@ -1532,6 +1602,9 @@ function stopTraining() {
       // ...e a reparticao real, para o card poder mostrar o que de facto
       // aconteceu em vez de so o dominante (secção 4.9).
       distance_by_mode: sessionDistanceByMode,
+      // Guardado para as calorias serem REPRODUZIVEIS a partir da base de
+      // dados: sem a proporcao de tempo nao se conseguia refazer a conta.
+      time_by_mode: sessionTimeByMode,
       duration_seconds: sessionDurationSeconds,
       // Tempo em movimento (secção 4.6) - o MET da bicicleta sai daqui.
       moving_seconds: sessionMoving,
@@ -1797,6 +1870,7 @@ async function changeSessionMode(sessionId, newMode) {
       calories_kcal: newCalories,
       calories_active_kcal: newActiveCalories,
       distance_by_mode: { [newMode]: Math.round(Number(session.distance_m) || 0) },
+      time_by_mode: { [newMode]: Math.round((Number(session.duration_seconds) || 0) * 1000) },
     })
     .eq("id", sessionId);
 
