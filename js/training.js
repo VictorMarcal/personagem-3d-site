@@ -1238,6 +1238,11 @@ function showTrainingCountdown() {
 }
 
 function startTraining() {
+  // O audio das estrelas (secção 19) tem de ser desbloqueado a partir de um
+  // gesto do utilizador - no iOS um AudioContext criado fora de um toque
+  // fica suspenso e nunca toca. Este botao e esse gesto.
+  if (typeof unlockStarAudio === "function") unlockStarAudio();
+
   if (!("geolocation" in navigator)) {
     alert("Geolocalização não suportada neste navegador.");
     return;

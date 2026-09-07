@@ -385,12 +385,20 @@ function drawHexGrid() {
     });
     ctx.shadowBlur = 0;
   }
+
+  // Estrelas colecionaveis (secção 19) por cima de tudo o resto.
+  if (typeof drawStarsOnMap === "function") drawStarsOnMap(ctx, bounds, project);
 }
 
 // Afastado, o escurecimento deixa o pais irreconhecivel - o nevoeiro passa a
 // ser so uma mancha preta. Alivia-se com o zoom: vista geral legivel,
 // nevoeiro cerrado ao perto, que e onde a exploracao se nota.
 function updateFogLift() {
+  // O mapa so e criado quando a sub-aba Missoes e aberta pela primeira vez.
+  // Durante um treino, apanhar uma estrela pede um redesenho, e sem esta
+  // guarda isso rebentava dentro do onPositionUpdate - ou seja, partia o GPS
+  // a meio do treino de quem nunca tinha aberto o mapa.
+  if (!hexMap || !hexMapEl) return;
   const t = Math.min(1, Math.max(0, (12 - hexMap.getZoom()) / 5));
   hexMapEl.style.setProperty("--hexmap-fog-lift", String(1 + t));
 }
@@ -624,6 +632,8 @@ function applyRegions(cache) {
       : "nenhum ainda";
   }
 
+  if (typeof renderStarCount === "function") renderStarCount();
+
   updateRegionZoomLevel();
   updateClips();
 }
@@ -654,6 +664,9 @@ function setMapPlayerPosition(latitude, longitude) {
     playerMarker.setLatLng(playerLatLng);
     playerMarker.setOpacity(1);
   }
+  // Estrelas colecionaveis (secção 19): corre a cada leitura de GPS, que e a
+  // unica altura em que a proximidade pode ter mudado.
+  if (typeof checkStarProximity === "function") checkStarProximity(latitude, longitude);
 }
 
 // Uma leitura so, a abrir o mapa - nao um watchPosition permanente, que

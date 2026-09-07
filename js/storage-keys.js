@@ -140,3 +140,8 @@ const STORAGE_KEY_DISCOVERED_HEXES_QUEUE = "personagem.hexagonosPorEnviar";
 // perguntadas. E uma CACHE de um servico externo com limite de 1 pedido por
 // segundo: sem isto, abrir o mapa dispararia pedidos de cada vez.
 const STORAGE_KEY_DISTRICTS = "personagem.distritosDescobertos";
+
+// Estrelas colecionaveis ja apanhadas (secção 19). As POSICOES nao sao
+// guardadas - saem de um gerador determinista semeado no osm_id do concelho
+// (js/stars.js); so faz falta saber quais e que ja foram apanhadas.
+const STORAGE_KEY_COLLECTED_STARS = "personagem.estrelasApanhadas";

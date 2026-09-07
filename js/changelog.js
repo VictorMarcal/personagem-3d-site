@@ -7,6 +7,16 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v4.1.0",
+    title: "Estrelas para Colecionar",
+    changes: [
+      "Cada concelho que desbloqueias passa a ter 70 estrelas espalhadas: 10 de cada uma das 7 cores.",
+      "Apanhas uma chegando a menos de 100 metros dela durante um treino. A app toca um aviso quando estás a aproximar-te, e um som diferente quando a apanhas.",
+      "Por agora estão todas visíveis no mapa, para se poder testar. As que já apanhaste ficam ocas.",
+      "As estrelas são sempre as mesmas para toda a gente e em qualquer telemóvel — não são sorteadas de novo a cada visita.",
+    ],
+  },
+  {
     version: "v4.0.0",
     title: "Subir de Nível Deixa de Ser uma Parede",
     changes: [
