@@ -164,6 +164,9 @@ let hexDistritoLayer = null;
 let hexDistritoLabelLayer = null;
 let playerMarker = null;
 let playerLatLng = null;
+// Ultima direcao conhecida, em graus a partir do norte. null enquanto nunca
+// se soube - ai nao se mostra cone nenhum.
+let playerHeading = null;
 let unlockedConcelhos = [];
 let unlockedDistritos = [];
 let territoryOutline = [];
@@ -690,12 +693,32 @@ function updateRegionZoomLevel() {
 //
 // Chamada tambem por js/training.js a cada leitura de GPS, para o ponto
 // acompanhar quem esta a treinar com o mapa aberto.
-function setMapPlayerPosition(latitude, longitude) {
+// heading: graus no sentido dos ponteiros a partir do norte, como vem do GPS
+// (coords.heading). Vem null parado ou em aparelhos que nao o dao - nesse caso
+// mantem-se a ultima direcao conhecida em vez de fazer o cone saltar para
+// norte, que seria uma informacao FALSA e nao "sem informacao".
+function setMapPlayerPosition(latitude, longitude, heading) {
   playerLatLng = [latitude, longitude];
+  if (Number.isFinite(heading)) playerHeading = heading;
+
   if (playerMarker) {
     playerMarker.setLatLng(playerLatLng);
     playerMarker.setOpacity(1);
+    aplicarDirecaoDoJogador();
   }
+}
+
+// A rotacao vai num elemento INTERIOR e nao no proprio marcador: o Leaflet
+// escreve um transform de posicao no contentor do marcador a cada movimento
+// do mapa, e rodar la seria sobrescrito no frame seguinte.
+function aplicarDirecaoDoJogador() {
+  const el = playerMarker && playerMarker.getElement();
+  if (!el) return;
+  const cone = el.querySelector(".hex-player-rot");
+  if (!cone) return;
+  const temDirecao = Number.isFinite(playerHeading);
+  cone.style.display = temDirecao ? "block" : "none";
+  if (temDirecao) cone.style.transform = "rotate(" + playerHeading + "deg)";
 }
 
 // Uma leitura so, a abrir o mapa - nao um watchPosition permanente, que
@@ -705,7 +728,7 @@ function locatePlayer() {
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setMapPlayerPosition(pos.coords.latitude, pos.coords.longitude);
+        setMapPlayerPosition(pos.coords.latitude, pos.coords.longitude, pos.coords.heading);
         resolve(playerLatLng);
       },
       () => resolve(playerLatLng),
@@ -810,7 +833,12 @@ function createHexMap() {
     interactive: false,
     keyboard: false,
     opacity: 0, // so aparece quando ha posicao real
-    icon: L.divIcon({ className: "hex-player-dot", html: "<i></i>", iconSize: [14, 14], iconAnchor: [7, 7] }),
+    icon: L.divIcon({
+      className: "hex-player-dot",
+      html: '<span class="hex-player-rot"><span class="hex-player-cone"></span></span><i></i>',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    }),
   }).addTo(hexMap);
 
   addRecenterControl();

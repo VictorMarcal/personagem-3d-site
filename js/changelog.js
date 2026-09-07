@@ -17,6 +17,7 @@ const CHANGELOG = [
       "As peças passam de 99 para 20 níveis. Os 99 eram decorativos: à conta antiga davam umas duas voltas ao mundo por peça.",
       "No mapa, cada hexágono que já descobriste mostra o ícone do recurso que tem. Os que ainda não conquistaste continuam escondidos.",
       "Os recursos sobem à vista: o contador incrementa sozinho à medida que vais produzindo.",
+      "O ponto que te marca no mapa passa a ter um cone a apontar para onde segues, em vez de ser só um círculo a piscar.",
       "As estrelas colecionáveis foram substituídas por isto — mesmo mapa, mas com consequências.",
       "Os números desta economia são um primeiro palpite e vão ser afinados com dados reais de utilização.",
     ],

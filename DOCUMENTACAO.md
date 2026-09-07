@@ -988,7 +988,18 @@ Custo medido no browser, uma vez por região: **5 ms** o concelho, **48 ms** o d
 
 #### Onde estás
 
-Ponto branco com halo azul e anel a pulsar. **Azul de propósito**: o dourado já é do território e dos contornos das regiões, o jogador tem de se distinguir dos dois num relance.
+Ponto branco com halo azul e um **cone que aponta para onde segues** (2026-09-07, a pedido: *"o icon deve apontar para que lado estás virado e não apenas um círculo que pisca"*). **Azul de propósito**: o dourado já é do território e dos contornos das regiões, o jogador tem de se distinguir dos dois num relance.
+
+A direção vem de `coords.heading` do próprio GPS — graus no sentido dos ponteiros a partir do norte. Como o mapa é sempre norte-acima, rodar o cone por esse valor dá a direção certa sem mais contas.
+
+O anel a pulsar que existia antes foi removido: servia para chamar a atenção para o ponto, e o cone faz isso melhor sem uma animação a correr sem parar — que, com o wake lock a manter o ecrã ligado o treino todo, era mais uma coisa a desenhar para ninguém (secção 4.8).
+
+**Duas decisões que não são óbvias:**
+
+- **A rotação vai num elemento interior, não no marcador.** O Leaflet reescreve um `transform` de posição no contentor do marcador a cada movimento do mapa; rodar lá seria sobrescrito no frame seguinte.
+- **Sem direção conhecida, mantém-se a última.** O `coords.heading` vem `null` parado e em aparelhos que não o dão. Voltar a apontar a norte nesse caso seria afirmar uma direção falsa, o que é pior do que não afirmar nenhuma; enquanto nunca se soube, não se mostra cone nenhum.
+
+**Limitação**: só existe direção **em movimento**. Um compasso (`deviceorientation`) daria a direção parado, mas no iOS exige uma permissão própria pedida a partir de um gesto — não foi feito.
 
 Uma leitura de GPS ao abrir o mapa (`getCurrentPosition`), **não** um `watchPosition` permanente — gastaria bateria a olhar para um ecrã parado. Durante um treino, o ponto acompanha: `js/training.js` chama `setMapPlayerPosition()` a cada leitura, **antes** de qualquer filtro (é só a posição no ecrã, não conta distância nenhuma).
 

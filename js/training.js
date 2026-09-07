@@ -1006,7 +1006,9 @@ function onPositionUpdate(position) {
 
   // Ponto "onde estas" no mapa de territorio (secção 18.1). Antes de
   // qualquer filtro: e so a posicao no ecra, nao conta distancia nenhuma.
-  if (typeof setMapPlayerPosition === "function") setMapPlayerPosition(latitude, longitude);
+  if (typeof setMapPlayerPosition === "function") {
+    setMapPlayerPosition(latitude, longitude, position.coords.heading);
+  }
 
   // Em pausa (secção 4.7) a leitura so serve para reancorar: nao credita
   // distancia, nao classifica atividade, nao conta calorias.

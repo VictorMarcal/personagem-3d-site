@@ -768,27 +768,10 @@ main {
   box-shadow: 0 0 0 3px rgba(78, 190, 255, 0.95), 0 0 16px 5px rgba(120, 215, 255, 0.7);
 }
 
-.hex-player-dot::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 14px;
-  height: 14px;
-  margin: -7px 0 0 -7px;
-  border-radius: 50%;
-  border: 2px solid rgba(140, 220, 255, 0.9);
-  animation: hex-player-pulse 2.2s ease-out infinite;
-}
-
-@keyframes hex-player-pulse {
-  0% { transform: scale(1); opacity: 0.9; }
-  100% { transform: scale(4.5); opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hex-player-dot::after { animation: none; }
-}
+/* O anel a pulsar foi removido a pedido (2026-09-07). Existia para chamar a
+   atencao para o ponto; o cone de direcao faz isso melhor e sem animacao a
+   correr sem parar - que, com o wake lock a manter o ecra ligado durante o
+   treino todo, era mais uma coisa a desenhar para ninguem (secção 4.8). */
 
 .hex-count-row {
   font-size: 15px;
@@ -2236,3 +2219,32 @@ dd.summary-xp-row { color: var(--accent); font-size: 17px; }
 .warehouse-line { font-size: 13px; color: var(--muted); line-height: 1.5; }
 .warehouse-cost { font-size: 13px; font-weight: 700; margin: 6px 0 10px; }
 .warehouse-panel button { width: 100%; }
+
+/* Cone de direcao do jogador (2026-09-07, a pedido: "o icon deve apontar
+   para que lado estas virado e nao apenas um circulo que pisca").
+   A direcao vem do GPS (coords.heading), so existe em movimento. */
+.hex-player-rot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  /* Origem no centro exato do ponto: e a volta dele que o cone tem de rodar,
+     nao a volta de um canto da caixa. */
+  transform-origin: 0 0;
+  display: none;
+}
+
+/* Triangulo a apontar para norte quando a rotacao e 0 - o mapa e sempre
+   norte acima, por isso rodar pelos graus do GPS da a direcao certa. */
+.hex-player-cone {
+  position: absolute;
+  left: -13px;
+  top: -30px;
+  width: 0;
+  height: 0;
+  border-left: 13px solid transparent;
+  border-right: 13px solid transparent;
+  border-bottom: 24px solid rgba(78, 190, 255, 0.5);
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.5));
+}
