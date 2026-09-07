@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/style.css?v=20260815h">
+  <link rel="stylesheet" href="css/style.css?v=20260907a">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -152,8 +152,12 @@
     <div class="pane active" data-pane-name="mundo">
       <div class="nav-tabs mundo-tabs">
         <button id="btn-mundo-campo" class="nav-tab active" type="button">Campo</button>
-        <button id="btn-mundo-masmorra" class="nav-tab" type="button">Masmorra</button>
-        <button id="btn-mundo-arena" class="nav-tab" type="button">Arena 🔜</button>
+        <!-- Escondidos a pedido (2026-09-07) ate o combate estar pronto.
+             CONTINUAM no DOM de proposito: js/nav.js exige os quatro botoes e
+             os quatro paineis para ligar a sub-navegacao, e desiste se algum
+             faltar. Para os repor, tirar a classe. -->
+        <button id="btn-mundo-masmorra" class="nav-tab nav-tab-oculta" type="button">Masmorra</button>
+        <button id="btn-mundo-arena" class="nav-tab nav-tab-oculta" type="button">Arena 🔜</button>
         <button id="btn-mundo-missoes" class="nav-tab" type="button">Missões 🔜</button>
       </div>
 
@@ -502,7 +506,7 @@
   <script src="js/hexes.js?v=20260815f"></script>
   <script src="js/training.js?v=20260907a"></script>
   <script src="js/profile.js?v=20260810f"></script>
-  <script src="js/changelog.js?v=20260907b"></script>
+  <script src="js/changelog.js?v=20260907c"></script>
   <script src="js/achievements.js?v=20260811b"></script>
   <script src="js/orientation.js?v=20260806p"></script>
   <script src="js/nav.js?v=20260814a"></script>

@@ -10,6 +10,7 @@ const CHANGELOG = [
     version: "v4.0.0",
     title: "Subir de Nível Deixa de Ser uma Parede",
     changes: [
+      "A Masmorra e a Arena ficam escondidas por agora, até o combate estar pronto. O teu progresso nelas fica tudo guardado.",
       "Os níveis passam a custar cinco vezes menos. A escala anterior era demasiado dura: ao nível 20, um único nível levava cinco meses de treino.",
       "Agora, ao teu ritmo, um nível pela casa dos 10 leva menos de duas semanas.",
       "O teu nível sobe já, sem fazeres nada — é sempre recalculado a partir das calorias que acumulaste, e recebes de uma vez os pontos de todos os níveis que ganhaste.",

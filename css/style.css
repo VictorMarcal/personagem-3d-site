@@ -2111,3 +2111,9 @@ main {
 }
 
 dd.summary-xp-row { color: var(--accent); font-size: 17px; }
+
+/* Sub-abas do Mundo escondidas (2026-09-07, a pedido): Masmorra e Arena
+   ficam fora de vista ate o combate estar pronto. Nao sao removidas do
+   DOM - js/nav.js exige os quatro botoes e os quatro paineis, e desiste
+   de ligar a sub-navegacao se algum faltar. */
+.nav-tab-oculta { display: none; }
