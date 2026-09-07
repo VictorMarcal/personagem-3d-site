@@ -372,6 +372,34 @@ Na base de dados: **`calories_kcal` é o valor de XP, ou seja o TOTAL** — assi
 
 Verificado no browser (5 min a andar + 10 min parado): tempo ativo **5:30**, em pausa **9:30**, total **15:00**, 20 kcal ativas, 31 totais, **31 XP** — os mesmos números no painel ao vivo e no resumo, e o XP vitalício subiu exatamente 31. Os 30 s de diferença entre os 10 min parados e os 9:30 contados são a histerese antes de a app confirmar "parado", e estão certos.
 
+### 4.8 Consumo de bateria (2026-09-07)
+
+Reportado: *"a app drena demasiada bateria"*. Fui procurar antes de mexer, e **a maior fonte não era o GPS** — era a cena 3D.
+
+**O problema**: o `requestAnimationFrame` desenhava a 60fps sempre que a aba Jogo estava à frente, e `jogoViewVisible` só ficava `false` na aba Perfil. Durante um treino isso é **uma hora ou mais de WebGL a todo o gás**, com o wake lock (secção 4.2) a impedir o ecrã de adormecer e o telemóvel muitas vezes no bolso. O herói estava a ser desenhado para ninguém.
+
+Somava-se `renderer.setPixelRatio(window.devicePixelRatio)` **sem teto**: num telemóvel com DPR 3, nove vezes os pixéis do ecrã lógico, todos os frames.
+
+**As correções:**
+
+| | Antes | Depois |
+|---|---|---|
+| Ritmo normal | 60 fps | **30 fps** |
+| Ritmo durante um treino | 60 fps | **8 fps** |
+| Pixel ratio | sem teto (até 3) | **2** |
+| Antialiasing | sempre ligado | só com DPR < 2 |
+| `powerPreference` | não pedido | `low-power` |
+
+Num telemóvel com DPR 3, durante um treino, isso é cerca de **17× menos trabalho de GPU** (7,5× do ritmo × 2,25× dos pixéis). Medido no browser: 7,3 fps em modo treino contra o ritmo normal, sem erros na consola.
+
+**Três decisões que não são óbvias:**
+
+- **Limita-se o ritmo, não o loop.** O `requestAnimationFrame` continua a correr — é ele que o browser suspende sozinho quando a página fica escondida, e esse comportamento é o que queremos manter. Só se salta o desenho.
+- **O teto do delta subiu de 50 ms para 250 ms.** Existia para evitar um salto de animação ao voltar de segundo plano, mas tem de ser **maior que o intervalo entre frames**: a 8 fps, 125 ms reais capados a 50 ms punham o herói a animar a 40% da velocidade.
+- **Numa luta nunca se baixa o ritmo.** Ali o jogador está a olhar e a mexer o joystick; 8 fps davam um comando intragável.
+
+**O que fica por resolver**: o próprio ecrã. Com o wake lock ligado, ele está aceso durante todo o treino, e isso costuma ser a maior fatia do consumo — nenhuma linha de código nossa a baixa. As opções seriam escurecer a página durante o treino (num ecrã OLED, pixéis pretos custam quase zero) ou uma app nativa com GPS em segundo plano, que dispensaria o wake lock por completo. Nenhuma foi feita.
+
 ## 5. Curva de nível do personagem
 
 ```
