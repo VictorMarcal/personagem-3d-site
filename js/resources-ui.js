@@ -7,9 +7,9 @@ function renderResourcesPanel() {
   const armazem = document.getElementById("warehouse-panel");
   if (!painel || typeof acumularProducao !== "function") return;
 
-  // Acumula ANTES de desenhar: o que se ve tem de ser o que se tem, e nao o
-  // que se tinha da ultima vez que a app esteve aberta.
-  const stock = acumularProducao();
+  // stockAgora() e nao acumularProducao(): so se le. Fixar o valor a cada
+  // desenho gravava no localStorage uma vez por segundo sem necessidade.
+  const stock = stockAgora();
   const porHora = producaoPorHora();
   const nivel = getWarehouseLevel();
   const tecto = warehouseCap(nivel);
@@ -66,3 +66,43 @@ function renderResourcesPanel() {
     });
   }
 }
+
+
+// --- contador ao vivo -------------------------------------------------------
+//
+// A produçao e continua: 24/h sao 0,4/min, ou seja um ponto de dois em dois
+// minutos e meio. Redesenhar de segundo a segundo faz o numero subir a vista
+// em vez de so mudar quando se reabre a aba.
+//
+// So corre com a sub-aba Missoes VISIVEL - correr sempre seria gastar bateria
+// a atualizar um painel que ninguem esta a ver, o mesmo erro que a cena 3D
+// tinha (secção 4.8).
+const RESOURCES_TICK_MS = 1000;
+let resourcesTickerId = null;
+
+function startResourcesTicker() {
+  if (resourcesTickerId !== null) return;
+  renderResourcesPanel();
+  resourcesTickerId = setInterval(() => {
+    const painel = document.getElementById("resources-panel");
+    // offsetParent a null significa que o painel esta escondido (outra aba).
+    if (!painel || !painel.offsetParent) {
+      stopResourcesTicker();
+      return;
+    }
+    renderResourcesPanel();
+  }, RESOURCES_TICK_MS);
+}
+
+function stopResourcesTicker() {
+  if (resourcesTickerId === null) return;
+  clearInterval(resourcesTickerId);
+  resourcesTickerId = null;
+}
+
+// Com a pagina escondida o browser ja estrangula os temporizadores, mas
+// parar explicitamente evita voltar a desenhar dezenas de vezes de rajada
+// quando ela volta.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") stopResourcesTicker();
+});

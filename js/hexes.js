@@ -141,6 +141,7 @@ async function hydrateHexesFromSupabase() {
 // partir dos proprios hexagonos (identifyRegions) e o enquadramento segue o
 // jogador. Para o Skllrx da Braga porque foi so onde treinou; para outro
 // jogador dara o distrito dele.
+const MAP_TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const MAP_MAX_ZOOM = 17;
 
 // Entrada no mapa: vista geral e depois voo ate onde estas.
@@ -305,6 +306,15 @@ function rebuildTerritoryOutline() {
   territoryOutline = ids.length ? h3.cellsToMultiPolygon(ids).flat() : [];
 }
 
+// Um hexagono esta num concelho ja desbloqueado? Serve para mostrar o recurso
+// esbatido antes de la se ir - da uma razao para escolher aquele caminho em
+// vez de andar as cegas, sem revelar o mundo todo.
+function estaEmConcelhoDesbloqueado(cellId) {
+  if (!unlockedConcelhos.length || typeof pointInGeoJson !== "function") return false;
+  const [lat, lng] = h3.cellToLatLng(cellId);
+  return unlockedConcelhos.some((c) => pointInGeoJson(lat, lng, c.geojson));
+}
+
 function drawHexGrid() {
   if (!hexMap || !hexCanvas) return;
   const size = hexMap.getSize();
@@ -346,38 +356,64 @@ function drawHexGrid() {
   const discovered = getDiscoveredHexIds();
   const discoveryRes = getHexResolution();
 
-  // Mapa de recursos (secção 21): cada hexagono e pintado com a cor do
-  // recurso que la existe, em pastel. Os descobertos ficam com a cor cheia;
-  // os que faltam ficam esbatidos POR CIMA da mesma cor, para se ver o que ha
-  // por conquistar - o mapa floresce a medida que se explora, em vez de
-  // revelar o desconhecido do nada.
-  const visitas = typeof getHexVisits === "function" ? getHexVisits() : {};
-  cells.forEach((cell) => {
-    const path = new Path2D(hexPathIn(cell, project));
-    const isMine = res === discoveryRes && discovered.has(cell);
-    const recurso = typeof resourceForHex === "function" ? resourceForHex(cell) : null;
-    const cor = recurso ? RESOURCE_BY_ID[recurso].cor : COR_POR_DESCOBRIR;
-
-    ctx.globalAlpha = isMine ? 1 : 0.28;
-    ctx.fillStyle = cor;
-    ctx.fill(path);
-    ctx.globalAlpha = 1;
-
-    // Hexagonos com multiplicador acima de 1 ganham um contorno claro: e o
-    // sinal visual do trajeto do costume, o "meu territorio gasto".
-    if (isMine && typeof multiplicadorDoHex === "function") {
-      const mult = multiplicadorDoHex(cell, visitas);
-      if (mult > 1.01) {
-        ctx.lineWidth = 1 + (mult - 1) * 2;
-        ctx.strokeStyle = "rgba(255,255,255," + (0.25 + (mult - 1) * 0.5).toFixed(2) + ")";
+  if (SHOW_GRID_LINES || SHOW_HEX_SHADING) {
+    cells.forEach((cell) => {
+      const isMine = res === discoveryRes && discovered.has(cell);
+      const path = new Path2D(hexPathIn(cell, project));
+      if (SHOW_HEX_SHADING && !isMine) {
+        // Leve variacao de escuridao por hexagono: da a leitura de "peca" em
+        // vez de fotografia continua.
+        const jitter = Math.abs(Math.sin(parseInt(cell.slice(-6), 16) || 1)) * 0.16;
+        ctx.fillStyle = `rgba(6,10,16,${0.1 + jitter})`;
+        ctx.fill(path);
+      }
+      if (SHOW_GRID_LINES) {
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = isMine ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.35)";
         ctx.stroke(path);
       }
-    }
+    });
+  }
 
-    ctx.lineWidth = 0.5;
-    ctx.strokeStyle = "rgba(60,55,50,0.18)";
-    ctx.stroke(path);
-  });
+  // Icones de recurso por cima do satelite desfocado (2026-09-07, a pedido:
+  // "prefiro manter como tinhamos antes, mapa real desfocado, e com icons de
+  // recursos por cima"). So quando a grelha desenhada coincide com a da
+  // descoberta - noutros zooms os hexagonos sao grandes demais e o icone nao
+  // corresponderia a um hexagono real.
+  if (res === discoveryRes && typeof resourceForHex === "function") {
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "14px system-ui, -apple-system, sans-serif";
+    cells.forEach((cell) => {
+      const meu = discovered.has(cell);
+      // Nos concelhos ja desbloqueados mostra-se o recurso mesmo por
+      // descobrir, esbatido: e o que da uma razao para ir ali em vez de
+      // andar as cegas. Fora deles, o nevoeiro guarda o segredo.
+      const noMeuConcelho = !meu && typeof estaEmConcelhoDesbloqueado === "function" && estaEmConcelhoDesbloqueado(cell);
+      if (!meu && !noMeuConcelho) return;
+
+      const p = project(h3.cellToLatLng(cell));
+      const recurso = RESOURCE_BY_ID[resourceForHex(cell)];
+
+      // Disco por tras do icone. Sem ele, um emoji pousado em cima de uma
+      // imagem de satelite desfocada desaparece: o fundo varia de escuro a
+      // claro de hexagono para hexagono e nao ha cor de icone que sirva as
+      // duas. O disco leva a COR DO RECURSO, por isso tambem se reconhece o
+      // recurso pela cor antes de se distinguir o desenho.
+      ctx.globalAlpha = meu ? 0.92 : 0.42;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
+      ctx.fillStyle = recurso.cor;
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = meu ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)";
+      ctx.stroke();
+
+      ctx.globalAlpha = meu ? 1 : 0.55;
+      ctx.fillText(recurso.icone, p.x, p.y);
+      ctx.globalAlpha = 1;
+    });
+  }
 
   // Contorno da UNIAO do territorio, nao de cada hexagono - senao a fronteira
   // sai um emaranhado de linhas.
@@ -765,11 +801,15 @@ function createHexMap() {
     hexMap.getPane(name).style.pointerEvents = "none";
   });
 
-  // SEM TILES (secção 21). O satelite desfocado foi substituido pelo mapa de
-  // recursos pintado no canvas: deixa de haver pedidos de rede a navegar, o
-  // mapa funciona offline, e as cores passam a significar alguma coisa em vez
-  // de serem uma fotografia. O Leaflet fica so como motor de pan/zoom e de
-  // projecao, como ja tinha sido na versao do terreno gerado por codigo.
+  // A MESMA imagem em tres camadas; o que as distingue e o filtro CSS e o
+  // recorte. O browser so descarrega os tiles uma vez - as outras duas
+  // camadas saem da cache HTTP.
+  ["hexfog", "hexdistrictfog", "hexclear"].forEach((pane) => {
+    L.tileLayer(MAP_TILE_URL, { pane, maxZoom: MAP_MAX_ZOOM }).addTo(hexMap);
+  });
+  // Ate haver descobertas, so se ve o nevoeiro.
+  hexMap.getPane("hexdistrictfog").style.clipPath = `path("M0 0Z")`;
+  hexMap.getPane("hexclear").style.clipPath = `path("M0 0Z")`;
 
   hexCanvas = document.createElement("canvas");
   hexCanvas.className = "hex-map-canvas";
@@ -821,7 +861,7 @@ function renderHexMap() {
   if (!hexMapEl || typeof L === "undefined" || typeof h3 === "undefined") return;
 
   if (hexMap === null) createHexMap();
-  if (typeof renderResourcesPanel === "function") renderResourcesPanel();
+  if (typeof startResourcesTicker === "function") startResourcesTicker();
 
   rebuildTerritoryOutline();
   applyRegions(loadRegionCache());

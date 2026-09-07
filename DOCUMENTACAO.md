@@ -1115,13 +1115,28 @@ Foram derivados do ritmo real dos dois jogadores no primeiro mês (30–40 hexá
 
 A resposta não é melhor matemática, é **tornar o erro barato**: tudo em `js/resources.js` é calculado ao vivo e nada é gravado já resolvido. Mudar qualquer constante reavalia a economia inteira sem migração — exatamente como aconteceu com o `LEVEL_BASE`, que esteve 7× errado e se corrigiu com um número.
 
-### O mapa mudou de linguagem
+### O mapa: satélite desfocado com ícones por cima
 
-Sem tiles de satélite. Cada hexágono é pintado com a cor pastel do seu recurso, com os descobertos a cores cheias e os restantes esbatidos — o mapa **floresce** à medida que se explora, e vê-se onde há o que se precisa antes de lá ir. Deixa de haver pedidos de rede a navegar e o mapa funciona offline.
+Chegou a ser pintado a cores pastel por recurso, sem satélite. **Foi revertido no mesmo dia** a pedido: *"prefiro manter como tínhamos antes, mapa real desfocado, e com ícones de recursos por cima"*. Ficam os três níveis de nevoeiro da secção 18.1, e os recursos passam a ícones desenhados no canvas.
 
-O fundo do contentor passou a claro: com o satélite fora, um fundo escuro fazia os hexágonos esbatidos lerem-se como uma mancha preta.
+**Cada ícone leva um disco da cor do recurso por trás.** Não é decoração: um emoji pousado sobre satélite desfocado desaparece, porque o fundo varia de escuro a claro de hexágono para hexágono e não há cor de ícone que sirva as duas. O disco resolve isso e, de caminho, faz o recurso reconhecer-se pela cor antes de se distinguir o desenho.
 
-Hexágonos com multiplicador acima de 1 ganham um contorno claro proporcional — é o sinal visual do trajeto do costume.
+**Ícones só quando a grelha desenhada coincide com a da descoberta** — noutros zooms os hexágonos são maiores e o ícone não corresponderia a um hexágono real.
+
+**Dentro de um concelho desbloqueado mostra-se o recurso mesmo por descobrir, esbatido.** É o que dá uma razão para escolher aquele caminho em vez de andar às cegas; fora deles o nevoeiro guarda o segredo.
+
+### O contador sobe à vista
+
+A produção é contínua: 28/h são 0,47/min, ou seja um ponto de dois em dois minutos. O painel redesenha-se **a cada segundo** enquanto a sub-aba está visível, para o número subir em vez de só mudar quando se reabre a aba.
+
+Isso obrigou a separar duas perguntas que estavam misturadas:
+
+- `stockAgora()` — *quanto tenho neste instante?* Não grava nada.
+- `acumularProducao()` — *fixa o que produzi até agora.* Grava.
+
+Sem essa separação, desenhar o painel gravava no `localStorage` **uma vez por segundo** sem nada de novo para guardar. O `podePagar()` tinha o mesmo defeito e passou a só ler.
+
+O ticker **só corre com a sub-aba visível** e pára quando a página fica escondida — o erro que a cena 3D tinha (secção 4.8) não se repete aqui.
 
 ### O que fica por fazer
 

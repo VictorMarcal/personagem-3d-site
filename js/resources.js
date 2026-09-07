@@ -18,11 +18,11 @@
 // jogador com poucos hexagonos podia ficar sem NENHUM de um tipo e travado
 // sem perceber porque.
 const RESOURCES = [
-  { id: "ferro", nome: "Ferro", cor: "#C3C2CE", peso: 22, familia: "equipamento" },
-  { id: "madeira", nome: "Madeira", cor: "#C0A386", peso: 22, familia: "equipamento" },
-  { id: "pele", nome: "Pele", cor: "#E2B5AC", peso: 22, familia: "equipamento" },
-  { id: "pedra", nome: "Pedra", cor: "#BFC9B9", peso: 17, familia: "construcao" },
-  { id: "barro", nome: "Barro", cor: "#E3C89A", peso: 17, familia: "construcao" },
+  { id: "ferro", nome: "Ferro", cor: "#C3C2CE", peso: 22, familia: "equipamento" , icone: "⚒️" },
+  { id: "madeira", nome: "Madeira", cor: "#C0A386", peso: 22, familia: "equipamento" , icone: "🪵" },
+  { id: "pele", nome: "Pele", cor: "#E2B5AC", peso: 22, familia: "equipamento" , icone: "🐾" },
+  { id: "pedra", nome: "Pedra", cor: "#BFC9B9", peso: 17, familia: "construcao" , icone: "🪨" },
+  { id: "barro", nome: "Barro", cor: "#E3C89A", peso: 17, familia: "construcao" , icone: "🏺" },
 ];
 
 const RESOURCE_IDS = RESOURCES.map((r) => r.id);
@@ -238,35 +238,46 @@ function saveResources(stock) {
   if (typeof queueProgressSync === "function") queueProgressSync();
 }
 
-// Acumula o produzido desde a ultima passagem, capado pelo armazem. Corre a
-// cada abertura da app e a cada leitura do painel - sem temporizador, porque
-// a app passa a maior parte do tempo fechada e o tempo conta na mesma.
-function acumularProducao() {
-  const agora = Date.now();
-  const desde = Number(localStorage.getItem(STORAGE_KEY_RESOURCES_SINCE));
-  if (!Number.isFinite(desde) || desde <= 0) {
-    localStorage.setItem(STORAGE_KEY_RESOURCES_SINCE, String(agora));
-    return getResources();
-  }
-
-  const horas = (agora - desde) / 3600000;
-  if (horas <= 0) return getResources();
-
+// Ha duas perguntas diferentes, e misturá-las era o erro:
+//
+//   stockAgora()       - "quanto tenho NESTE instante?" Nao grava nada.
+//   acumularProducao() - "fixa o que produzi ate agora." Grava.
+//
+// O painel atualiza-se a cada segundo para o numero subir a vista - a 24/h
+// sao 0,4/min, ou seja um ponto de dois em dois minutos e meio. Se cada
+// atualizacao gravasse, seriam 3600 escritas em localStorage por hora com o
+// ecra aberto, sem nada de novo para guardar.
+//
+// A producao e sempre DERIVADA do tempo decorrido, nunca somada por um
+// temporizador: a app passa a maior parte do tempo fechada e o tempo conta na
+// mesma.
+function stockAgora() {
   const stock = getResources();
+  const desde = Number(localStorage.getItem(STORAGE_KEY_RESOURCES_SINCE));
+  if (!Number.isFinite(desde) || desde <= 0) return stock;
+
+  const horas = (Date.now() - desde) / 3600000;
+  if (horas <= 0) return stock;
+
   const porHora = producaoPorHora();
   const tecto = warehouseCap(getWarehouseLevel());
-
   RESOURCE_IDS.forEach((id) => {
     stock[id] = Math.min(tecto, stock[id] + porHora[id] * horas);
   });
+  return stock;
+}
 
-  localStorage.setItem(STORAGE_KEY_RESOURCES_SINCE, String(agora));
+function acumularProducao() {
+  const stock = stockAgora();
+  localStorage.setItem(STORAGE_KEY_RESOURCES_SINCE, String(Date.now()));
   saveResources(stock);
   return stock;
 }
 
+// So le - e chamada a cada desenho do painel, uma vez por segundo. Se
+// acumulasse, estaria a gravar no localStorage so para desenhar um botao.
 function podePagar(custo) {
-  const stock = acumularProducao();
+  const stock = stockAgora();
   return Object.keys(custo).every((id) => stock[id] >= custo[id]);
 }
 
