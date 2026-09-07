@@ -404,10 +404,42 @@ Num telemóvel com DPR 3, durante um treino, isso é cerca de **17× menos traba
 
 ```
 incremento(n) = round(LEVEL_BASE × n^LEVEL_EXP)
-LEVEL_BASE = 70, LEVEL_EXP = 1.3
+LEVEL_BASE = 100, LEVEL_EXP = 1.3
 ```
 
 Escolhida para não ser nem linear nem exponencial — os incrementos crescem, mas a taxa de crescimento desacelera.
+
+### 5.1 Como a base chegou aos 100 (2026-09-07)
+
+Três valores até aqui, e vale a pena o percurso porque o do meio foi um erro:
+
+| Quando | Base | Porquê |
+|---|---:|---|
+| até 2026-08-10 | 1000 | unidade era o **metro** |
+| 2026-08-10 | 70 | cutover para calorias (ver abaixo) — vivia no card de Debug, editável por dispositivo |
+| 2026-08-14 | **500** | Debug removido, valor fixado; progressão deliberadamente mais lenta |
+| 2026-09-07 | **100** | os 500 exageraram 7x |
+
+Reportado: *"com a base a 500 a progressão ficou muito difícil e desanimadora"*. Estava. Medido com o ritmo **real** dos dois jogadores, tirado de `training_sessions` (~1200 kcal/semana):
+
+| Custo de um nível | base 500 | base 100 |
+|---|---:|---:|
+| nível 5 | 3,4 semanas | **0,7 semanas** |
+| nível 10 | 8,3 semanas | **1,7 semanas** |
+| nível 20 | 20,5 semanas | **4,1 semanas** |
+
+Cinco meses para um nível não é progressão lenta, é uma parede. **O expoente fica em 1,3** — a forma da curva estava certa; o que estava errado era a escala.
+
+**Isto também explica o mistério do `last_awarded_level`**: o Skllrx tinha 7 e o Bernardo 8, quando a escala de 500 os punha nos níveis 5 e 4. Não era resíduo estranho — era exatamente o nível a que cada um tinha chegado **na escala de 70**. Os pontos foram dados numa escala e o chão mudou por baixo.
+
+**Sem migração e sem tocar em `last_awarded_level`**: o nível é sempre recalculado ao vivo a partir das calorias vitalícias, e `awardPointsIfNeeded` (`js/equipment.js`) já atribui pontos por **todos** os níveis entre o último premiado e o atual. Verificado com o `getLevelInfo` real:
+
+| | Nível @500 | Nível @100 | Pontos que recebe |
+|---|---:|---:|---:|
+| Skllrx (8845 XP) | 5 | **10** | **3** |
+| Bernardo (4439 XP) | 4 | **7** | 0 (o `last_awarded` dele já era 8) |
+
+O Bernardo não recebe pontos de imediato porque já os tinha recebido pelo nível 8 na escala antiga — mas passa a estar a **22 kcal** do nível 8 e a ~1,5 semanas do próximo ponto, contra as **21 semanas** que tinha pela frente antes.
 
 **Mostrado ao jogador como XP, não como calorias** (`xp-progress-text`, `js/experience.js`): `1 XP = 1 kcal` (2026-08-10, era `1 XP = 1 metro` até aqui) — só nesta barra de progresso de nível; todas as outras distâncias do jogo continuam mostradas em km. A barra usa sempre as **calorias da sessão em curso** (secção 4.1), nunca a distância, incluindo ao vivo durante um treino.
 
@@ -426,10 +458,11 @@ Escolhida para não ser nem linear nem exponencial — os incrementos crescem, m
 
 | Nível | Calorias p/ subir | Total acumulado |
 |---:|---:|---:|
-| 1→2 | 70 XP | 70 XP |
-| 5→6 | 567 XP | 1.525 XP |
-| 10→11 | 1.397 XP | 6.782 XP |
-| 16→17 | 2.573 XP | 19.199 XP |
+| 1→2 | 100 XP | 100 XP |
+| 5→6 | 810 XP | 2.179 XP |
+| 10→11 | 1.995 XP | 9.689 XP |
+| 16→17 | 3.676 XP | 27.428 XP |
+| 20→21 | 4.913 XP | 45.198 XP |
 | — | — | **~1.197.725 kcal até ao nível 100** |
 
 **Distância informativa em paralelo**: `getLifetimeDistanceM()`/`addToLifetimeDistance()` (`js/experience.js`) continuam a existir e a ser atualizados a cada treino, exatamente como antes — só deixaram de alimentar o nível. Servem as conquistas de distância/ritmo por modo (secção 10), os gráficos/histórico da aba Perfil (secção 15) e o card Resumo, todos ainda medidos em km reais, não em calorias.
