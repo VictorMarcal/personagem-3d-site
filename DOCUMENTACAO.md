@@ -1119,7 +1119,11 @@ A resposta não é melhor matemática, é **tornar o erro barato**: tudo em `js/
 
 Chegou a ser pintado a cores pastel por recurso, sem satélite. **Foi revertido no mesmo dia** a pedido: *"prefiro manter como tínhamos antes, mapa real desfocado, e com ícones de recursos por cima"*. Ficam os três níveis de nevoeiro da secção 18.1, e os recursos passam a ícones desenhados no canvas.
 
-**Cada ícone leva um disco da cor do recurso por trás.** Não é decoração: um emoji pousado sobre satélite desfocado desaparece, porque o fundo varia de escuro a claro de hexágono para hexágono e não há cor de ícone que sirva as duas. O disco resolve isso e, de caminho, faz o recurso reconhecer-se pela cor antes de se distinguir o desenho.
+**Os ícones levam um halo escuro, não um disco.** O disco foi a primeira tentativa e foi rejeitado (*"não gosto dos círculos em volta dos icons"*), mas o problema que ele resolvia é real: o fundo desfocado varia de escuro a claro de hexágono para hexágono, e um ícone sem contraste próprio desaparece nos claros.
+
+A solução são **duas passagens com sombra e uma limpa por cima**. Uma só passagem não chegava — a sombra do canvas é ligeira demais; empilhá-la cria um halo colado ao desenho, com o mesmo contraste que o disco dava e sem lhe pôr uma forma à volta. Tamanho 19 px: aos 14 px iniciais os ícones liam-se mal no telemóvel.
+
+*(Verificado que os emoji renderizam mesmo a cores no canvas antes de culpar o contraste — 328 píxeis pintados em 232 tons distintos para o 🪵. O problema era mesmo tamanho e halo, não o glifo.)*
 
 **Ícones só quando a grelha desenhada coincide com a da descoberta** — noutros zooms os hexágonos são maiores e o ícone não corresponderia a um hexágono real.
 

@@ -383,7 +383,7 @@ function drawHexGrid() {
   if (res === discoveryRes && typeof resourceForHex === "function") {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "14px system-ui, -apple-system, sans-serif";
+    ctx.font = "19px system-ui, -apple-system, sans-serif";
     cells.forEach((cell) => {
       const meu = discovered.has(cell);
       // Nos concelhos ja desbloqueados mostra-se o recurso mesmo por
@@ -395,21 +395,23 @@ function drawHexGrid() {
       const p = project(h3.cellToLatLng(cell));
       const recurso = RESOURCE_BY_ID[resourceForHex(cell)];
 
-      // Disco por tras do icone. Sem ele, um emoji pousado em cima de uma
-      // imagem de satelite desfocada desaparece: o fundo varia de escuro a
-      // claro de hexagono para hexagono e nao ha cor de icone que sirva as
-      // duas. O disco leva a COR DO RECURSO, por isso tambem se reconhece o
-      // recurso pela cor antes de se distinguir o desenho.
-      ctx.globalAlpha = meu ? 0.92 : 0.42;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
-      ctx.fillStyle = recurso.cor;
-      ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = meu ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)";
-      ctx.stroke();
-
-      ctx.globalAlpha = meu ? 1 : 0.55;
+      // Halo escuro em vez de um disco por tras (2026-09-07: "nao gosto dos
+      // circulos em volta dos icons"). O problema que o disco resolvia e
+      // real - o fundo desfocado varia de escuro a claro de hexagono para
+      // hexagono, e um emoji sem contraste proprio desaparece nos claros -
+      // mas uma sombra colada ao desenho resolve o mesmo sem lhe por uma
+      // forma a volta.
+      // Duas passagens com sombra e uma limpa por cima. Uma so passagem nao
+      // chegava: a sombra do canvas e ligeira e o icone perdia-se no fundo
+      // desfocado, que varia de escuro a claro de hexagono para hexagono.
+      // Empilhar a sombra cria um halo escuro colado ao desenho - o mesmo
+      // contraste que o disco dava, sem lhe por uma forma a volta.
+      ctx.globalAlpha = meu ? 1 : 0.5;
+      ctx.shadowColor = "rgba(0,0,0,0.9)";
+      ctx.shadowBlur = 6;
+      ctx.fillText(recurso.icone, p.x, p.y);
+      ctx.fillText(recurso.icone, p.x, p.y);
+      ctx.shadowBlur = 0;
       ctx.fillText(recurso.icone, p.x, p.y);
       ctx.globalAlpha = 1;
     });
