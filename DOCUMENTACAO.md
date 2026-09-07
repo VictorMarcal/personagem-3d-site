@@ -1022,18 +1022,22 @@ Continua a ser criado só quando a sub-aba é aberta pela primeira vez (`js/nav.
 
 A pedido: *"por cada concelho que temos vamos ter 10 x 7 estrelas (7 cores diferentes) espalhadas aleatoriamente... como se fossem pokemons. Estares a 100 metros já é o suficiente para a colecionar"*.
 
-**70 estrelas por concelho desbloqueado**, 10 de cada uma das 7 cores. Raio de apanha **100 m**, aviso sonoro a partir dos **250 m** — o aviso tem de chegar antes de se poder apanhar, senão ouvia-se já depois e não servia de nada.
+**70 estrelas por concelho desbloqueado**, 10 de cada uma das 7 cores. Raio de apanha **100 m**, aviso sonoro a partir dos **250 m** — o aviso tem de chegar *antes* de se poder apanhar, senão ouvia-se já depois e não servia de nada.
 
-**As posições não são guardadas em lado nenhum.** Saem de um gerador pseudo-aleatório (mulberry32) semeado com o  do concelho, por isso são as mesmas em qualquer telemóvel, em qualquer visita, sem rede e sem migração. O único estado que persiste é **quais já foram apanhadas** — por agora só em ; sincronizar com o Supabase (mesmo padrão de ) fica para depois de a mecânica estar validada no terreno.
+**As posições não são guardadas em lado nenhum.** Saem de um gerador pseudo-aleatório (mulberry32) semeado com o `osm_id` do concelho, por isso são as mesmas em qualquer telemóvel, em qualquer visita, sem rede e sem migração. O único estado que persiste é **quais já foram apanhadas** — por agora só em `localStorage`; sincronizar com o Supabase (mesmo padrão de `discovered_hexes`, secção 18) fica para depois de a mecânica estar validada no terreno.
 
-**Colocação**: amostragem por rejeição dentro da fronteira do concelho — sorteia na caixa envolvente e fica com o que cai dentro do polígono, com teto de tentativas para nunca ficar preso num ciclo. 70 estrelas em **2 ms**, todas confirmadas dentro da fronteira.
+**Colocação**: amostragem por rejeição dentro da fronteira do concelho — sorteia na caixa envolvente e fica com o que cai dentro do polígono, com teto de tentativas para nunca ficar preso num ciclo infinito. 70 estrelas em **2 ms**, todas confirmadas dentro da fronteira.
 
 **LIMITAÇÃO ASSUMIDA**: *"em pontos em que seja possível treinar por lá"* **ainda não está garantido**. As posições são pontos aleatórios dentro do concelho, por isso algumas vão cair em campos, água ou terreno privado. Colá-las a estradas e caminhos exige a rede de vias do OpenStreetMap (Overpass) — outro serviço e outra dose de dados. Fica para depois do primeiro teste no terreno.
 
-**Som por Web Audio**, não por ficheiro: são dois bips, não vale um download nem um asset no repositório. Aviso = dois bips iguais a 660 Hz; apanhada = arpejo a subir (784/988/1319 Hz), para não se confundirem. O  **tem de ser desbloqueado a partir de um gesto** — no iOS, criado fora de um toque fica suspenso e nunca toca — por isso  é chamada no botão de iniciar treino.
+**Todas visíveis por agora**, a pedido, para dar para testar. As já apanhadas ficam ocas e apagadas, para se perceber o progresso.
+
+**Som por Web Audio, não por ficheiro**: são dois bips, não vale um download nem um asset no repositório. Aviso = dois bips iguais a 660 Hz; apanhada = arpejo a subir (784 / 988 / 1319 Hz), para não se confundirem. Cada nota leva um envelope de ganho — sem ele ouve-se um *click* no início e no fim.
+
+O `AudioContext` **tem de ser desbloqueado a partir de um gesto do utilizador**: no iOS, um contexto criado fora de um toque fica suspenso e nunca toca. Por isso `unlockStarAudio()` é chamada no botão de iniciar treino, que é esse gesto.
 
 **Anti-repetição**: um conjunto de "já avisadas" evita o telemóvel a apitar de segundo em segundo enquanto se anda perto de uma estrela sem chegar aos 100 m. Só volta a avisar depois de se ter afastado dos 250 m.
 
-**Bug apanhado nos testes**:  pede um redesenho do mapa ao apanhar uma estrela, e o mapa só é criado quando a sub-aba Missões é aberta pela primeira vez. Sem guarda, apanhar uma estrela **durante um treino de quem nunca tinha aberto o mapa** rebentava dentro do  — ou seja, partia o GPS a meio do treino.  passou a verificar se o mapa existe.
+**Bug apanhado nos testes**: `checkStarProximity` pede um redesenho do mapa ao apanhar uma estrela, e o mapa só é criado quando a sub-aba Missões é aberta pela primeira vez. Sem guarda, apanhar uma estrela **durante um treino de quem nunca tinha aberto o mapa** rebentava dentro do `onPositionUpdate` — ou seja, partia o GPS a meio do treino. `updateFogLift` passou a verificar se o mapa existe antes de lhe pedir o zoom.
 
-Verificado no browser: determinista entre gerações, 400 m nada, 250 m avisa uma vez só, 101 m ainda não apanha, 99 m apanha, e voltar ao mesmo sítio não apanha duas vezes.
+Verificado no browser: determinista entre gerações, 400 m nada, 250 m avisa **uma vez só**, 101 m ainda não apanha, 99 m apanha, e voltar ao mesmo sítio não apanha duas vezes.
