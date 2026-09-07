@@ -21,12 +21,33 @@
 // Afinar passa a ser editar este ficheiro e fazer deploy - o que e o
 // correto para numeros que definem a economia do jogo.
 
-// Nivel 1: 500 XP (= 500 kcal) para subir. LEVEL_BASE multiplica o custo de
+// Nivel 1: 100 XP (= 100 kcal) para subir. LEVEL_BASE multiplica o custo de
 // TODOS os niveis (o incremento e proporcional), nao so do primeiro - o
 // nivel e sempre recalculado ao vivo a partir das calorias vitalicias,
 // nunca guardado por si so, por isso mudar isto reavalia todo o historico
 // de imediato e sem migracao.
-const LEVEL_BASE = 500;
+//
+// 500 -> 100 em 2026-09-07: "com a base a 500 a progressao ficou muito
+// dificil e desanimadora". Estava. Medido com o ritmo real dos dois
+// jogadores (~1200 kcal/semana, tirado de training_sessions):
+//
+//   custo de um nivel        base 500      base 100
+//   nivel 5                  3,4 semanas   0,7 semanas
+//   nivel 10                 8,3 semanas   1,7 semanas
+//   nivel 20                20,5 semanas   4,1 semanas
+//
+// Cinco meses para um nivel nao e progressao lenta, e uma parede. O
+// expoente fica em 1,3 - a forma da curva estava certa, o que estava
+// errado era a escala.
+//
+// Historico: era 70 (equivalente calorico de 1 km a correr para 70 kg) e
+// vivia no card de Debug, editavel por dispositivo; passou a 500 fixo em
+// bddd1e4, quando o Debug foi removido. Os 500 exageraram 7x.
+//
+// NAO e preciso migracao nem mexer em last_awarded_level: awardPointsIfNeeded
+// (js/equipment.js) ja atribui pontos por TODOS os niveis entre o ultimo
+// premiado e o atual, por isso quem estava preso recebe-os de uma vez.
+const LEVEL_BASE = 100;
 const LEVEL_EXP = 1.3;
 
 // Curvas de status dos MONSTROS (computeCreatureStatValue, js/monsters.js).
