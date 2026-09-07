@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/style.css?v=20260907b">
+  <link rel="stylesheet" href="css/style.css?v=20260907d">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -37,7 +37,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v4.2.0</span>
+      <span id="site-version" class="site-version-hero">v5.0.0</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -281,9 +281,13 @@
           <p class="construction-warning">⚠️ Em construção — as missões e recompensas ainda não existem, por agora só a exploração é registada.</p>
           <p class="hex-count-row">Zonas descobertas: <span id="hex-count">0</span></p>
           <p class="hex-district-row">Concelhos desbloqueados: <span id="hex-district">nenhum ainda</span></p>
-          <p class="hex-district-row">Estrelas apanhadas: <span id="star-count">0</span></p>
+
+          <!-- Economia de recursos (secção 21). Preenchido por
+               renderResourcesPanel() em js/resources-ui.js. -->
+          <div id="resources-panel" class="resources-panel"></div>
+          <div id="warehouse-panel" class="warehouse-panel"></div>
           <div id="hex-map"></div>
-          <p class="hex-map-hint">O mundo está lá todo, às escuras. Cada hexágono tem ~427 m de ponta a ponta e ganha cor quando treinas lá dentro; ao fim de 3 zonas no mesmo concelho, o concelho inteiro clareia — só conta com o treino a decorrer.</p>
+          <p class="hex-map-hint">Cada hexágono tem ~427 m de ponta a ponta e um recurso próprio. Descobre-o a treinar lá dentro e ele passa a produzir por hora; volta a passar e produz mais. Deixa de lá ir e o bónus desvanece.</p>
         </section>
       </div>
     </div>
@@ -496,24 +500,25 @@
        razao do three.min.js acima. -->
   <script src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/storage-keys.js?v=20260907b"></script>
+  <script src="js/storage-keys.js?v=20260907c"></script>
   <script src="js/tab-lock.js?v=20260806p"></script>
   <script src="js/auth.js?v=20260814c"></script>
   <script src="js/progress-sync.js?v=20260814a"></script>
   <script src="js/leaderboard.js?v=20260810d"></script>
   <script src="js/main.js?v=20260907a"></script>
   <script src="js/game-config.js?v=20260907a"></script>
-  <script src="js/equipment.js?v=20260814a"></script>
+  <script src="js/equipment.js?v=20260907a"></script>
   <script src="js/experience.js?v=20260814a"></script>
   <script src="js/monsters.js?v=20260806p"></script>
   <script src="js/monthly-medals.js?v=20260810d"></script>
   <script src="js/battle.js?v=20260811e"></script>
-  <script src="js/stars.js?v=20260907a"></script>
-  <script src="js/hexes.js?v=20260907b"></script>
-  <script src="js/training.js?v=20260907b"></script>
+  <script src="js/resources.js?v=20260907a"></script>
+  <script src="js/hexes.js?v=20260907c"></script>
+  <script src="js/resources-ui.js?v=20260907a"></script>
+  <script src="js/training.js?v=20260907c"></script>
   <script src="js/weight.js?v=20260907a"></script>
   <script src="js/profile.js?v=20260907a"></script>
-  <script src="js/changelog.js?v=20260907e"></script>
+  <script src="js/changelog.js?v=20260907f"></script>
   <script src="js/achievements.js?v=20260811b"></script>
   <script src="js/orientation.js?v=20260806p"></script>
   <script src="js/nav.js?v=20260814a"></script>

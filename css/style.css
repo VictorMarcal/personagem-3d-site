@@ -646,7 +646,10 @@ main {
   width: 100%;
   border-radius: var(--r-md);
   margin-top: 12px;
-  background: #10151c;
+  /* Fundo CLARO (2026-09-07): com o satelite fora e o mapa pintado a pastel,
+     um fundo escuro fazia os hexagonos por descobrir - desenhados esbatidos -
+     lerem-se como uma mancha preta em vez de cores palidas. */
+  background: #ece7dd;
   overflow: hidden;
 
   /* Afinacao do aspeto do mapa, escolhida no mockup com o jogador. O
@@ -661,28 +664,9 @@ main {
   --hexmap-sat: 2.2;
 }
 
-/* Tres niveis de conhecimento do mundo, todos a partir da MESMA imagem de
-   satelite - o que muda e o filtro e o recorte (ver js/hexes.js). */
-
-/* 1. Por explorar: cinzento, desfocado, escuro. */
-.leaflet-hexfog-pane {
-  filter: blur(var(--hexmap-blur-fog)) grayscale(1)
-          brightness(calc(var(--hexmap-dark) * var(--hexmap-fog-lift))) contrast(1.05);
-}
-
-/* 2. Distrito desbloqueado: o mesmo, um pouco mais claro. Continua a
-      cinzento - o que se ganhou foi saber que aquilo e teu para explorar,
-      nao o terreno em si. */
-.leaflet-hexdistrictfog-pane {
-  filter: blur(var(--hexmap-blur-fog)) grayscale(1)
-          brightness(calc(var(--hexmap-dark) * var(--hexmap-fog-lift) * var(--hexmap-district-lift)))
-          contrast(1.05);
-}
-
-/* 3. Hexagono descoberto: a cores e quase nitido. */
-.leaflet-hexclear-pane {
-  filter: blur(var(--hexmap-blur-clear)) saturate(var(--hexmap-sat)) contrast(1.05);
-}
+/* As tres camadas de satelite (nevoeiro / distrito / descoberto) foram
+   removidas em 2026-09-07: o mapa passou a ser pintado por recurso no
+   canvas, sem tiles. Ver secção 21. */
 
 /* Canvas da grelha hexagonal (js/hexes.js), por cima das tres camadas. */
 .hex-map-canvas {
@@ -2166,3 +2150,74 @@ dd.summary-xp-row { color: var(--accent); font-size: 17px; }
 /* O #weight-chart reutiliza .profile-chart, cuja regra pinta rect com a cor
    das barras - aqui nao ha rect, mas o texto herda a cor certa. */
 #weight-chart text { fill: var(--muted); }
+
+/* Economia de recursos (2026-09-07, secção 21). */
+.resources-panel, .warehouse-panel {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+
+.resources-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.resources-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 16px;
+  margin: 0;
+}
+
+.resources-grid dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.resources-grid dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* O ritmo e informacao de fundo: nao compete com o numero que interessa. */
+.resource-rate {
+  margin-left: 8px;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--muted-2);
+}
+
+/* A mesma cor do hexagono no mapa - e o que liga o painel ao territorio. */
+.resource-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.resource-full { color: var(--accent-700); }
+
+.resources-warning {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--accent-700);
+}
+
+.warehouse-line { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.warehouse-cost { font-size: 13px; font-weight: 700; margin: 6px 0 10px; }
+.warehouse-panel button { width: 100%; }

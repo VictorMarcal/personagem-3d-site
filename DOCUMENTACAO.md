@@ -47,7 +47,8 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `assets/Shield.glb` | Modelo 3D do escudo (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Bow.glb` | Modelo 3D do arco (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `js/weight.js` | Historico de peso, regra dos 15 dias e grafico de evolucao — ver secção 20 |
-| `js/stars.js` | Estrelas colecionáveis no mapa — ver secção 19 |
+| `js/resources.js` | Economia de recursos do mapa: producao, multiplicadores, armazem — ver secção 21 |
+| `js/resources-ui.js` | Painel de recursos e armazem — ver secção 21 |
 | `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de satélite desfocado da aba Missões — ver secção 18 |
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — histórico/registo, não é lido pelo site nem pelo Supabase |
 | `.mcp.json` | Liga o Claude Code ao projeto Supabase via MCP (`--project-ref=vnqjaepjfqlhgmlrhzlr`), token vem de uma variável de ambiente (`SUPABASE_ACCESS_TOKEN`), nunca gravado no ficheiro. Desde 2026-08-03, migrações novas são aplicadas diretamente via este MCP (`apply_migration`) em vez de copiar/colar SQL manualmente no dashboard — `supabase/schema.sql` continua a ser atualizado a cada migração, só como registo/referência |
@@ -1020,29 +1021,9 @@ Continua a ser criado só quando a sub-aba é aberta pela primeira vez (`js/nav.
 
 **Mockup**: `mockup-mapa.html` (não versionado) é a página onde isto foi desenhado e afinado com sliders ao vivo, antes de entrar na app. Serve para voltar a afinar sem mexer no código da app.
 
-## 19. Estrelas colecionáveis (2026-09-07)
+## 19. Estrelas colecionáveis — **removido**
 
-A pedido: *"por cada concelho que temos vamos ter 10 x 7 estrelas (7 cores diferentes) espalhadas aleatoriamente... como se fossem pokemons. Estares a 100 metros já é o suficiente para a colecionar"*.
-
-**70 estrelas por concelho desbloqueado**, 10 de cada uma das 7 cores. Raio de apanha **100 m**, aviso sonoro a partir dos **250 m** — o aviso tem de chegar *antes* de se poder apanhar, senão ouvia-se já depois e não servia de nada.
-
-**As posições não são guardadas em lado nenhum.** Saem de um gerador pseudo-aleatório (mulberry32) semeado com o `osm_id` do concelho, por isso são as mesmas em qualquer telemóvel, em qualquer visita, sem rede e sem migração. O único estado que persiste é **quais já foram apanhadas** — por agora só em `localStorage`; sincronizar com o Supabase (mesmo padrão de `discovered_hexes`, secção 18) fica para depois de a mecânica estar validada no terreno.
-
-**Colocação**: amostragem por rejeição dentro da fronteira do concelho — sorteia na caixa envolvente e fica com o que cai dentro do polígono, com teto de tentativas para nunca ficar preso num ciclo infinito. 70 estrelas em **2 ms**, todas confirmadas dentro da fronteira.
-
-**LIMITAÇÃO ASSUMIDA**: *"em pontos em que seja possível treinar por lá"* **ainda não está garantido**. As posições são pontos aleatórios dentro do concelho, por isso algumas vão cair em campos, água ou terreno privado. Colá-las a estradas e caminhos exige a rede de vias do OpenStreetMap (Overpass) — outro serviço e outra dose de dados. Fica para depois do primeiro teste no terreno.
-
-**Todas visíveis por agora**, a pedido, para dar para testar. As já apanhadas ficam ocas e apagadas, para se perceber o progresso.
-
-**Som por Web Audio, não por ficheiro**: são dois bips, não vale um download nem um asset no repositório. Aviso = dois bips iguais a 660 Hz; apanhada = arpejo a subir (784 / 988 / 1319 Hz), para não se confundirem. Cada nota leva um envelope de ganho — sem ele ouve-se um *click* no início e no fim.
-
-O `AudioContext` **tem de ser desbloqueado a partir de um gesto do utilizador**: no iOS, um contexto criado fora de um toque fica suspenso e nunca toca. Por isso `unlockStarAudio()` é chamada no botão de iniciar treino, que é esse gesto.
-
-**Anti-repetição**: um conjunto de "já avisadas" evita o telemóvel a apitar de segundo em segundo enquanto se anda perto de uma estrela sem chegar aos 100 m. Só volta a avisar depois de se ter afastado dos 250 m.
-
-**Bug apanhado nos testes**: `checkStarProximity` pede um redesenho do mapa ao apanhar uma estrela, e o mapa só é criado quando a sub-aba Missões é aberta pela primeira vez. Sem guarda, apanhar uma estrela **durante um treino de quem nunca tinha aberto o mapa** rebentava dentro do `onPositionUpdate` — ou seja, partia o GPS a meio do treino. `updateFogLift` passou a verificar se o mapa existe antes de lhe pedir o zoom.
-
-Verificado no browser: determinista entre gerações, 400 m nada, 250 m avisa **uma vez só**, 101 m ainda não apanha, 99 m apanha, e voltar ao mesmo sítio não apanha duas vezes.
+Existiu durante um dia (2026-09-07). Substituído pela economia de recursos da secção 21, que usa o mesmo mapa para uma mecânica com consequências em vez de uma coleção sem destino.
 
 ## 20. Histórico de peso (2026-09-07)
 
@@ -1078,3 +1059,73 @@ O peso atual de cada jogador entrou no histórico **datado do primeiro treino de
 ### O que fica por decidir
 
 As calorias de um treino usam o peso **atual**, não o peso à data do treino. Agora que o histórico existe, era possível recalcular cada sessão com o peso em vigor nessa altura — mas isso mexeria em XP já atribuído, e a diferença entre 85 e 83 kg é de ~2%. Não foi feito.
+
+## 21. Economia de recursos do mapa (2026-09-07)
+
+Substitui por completo as estrelas colecionáveis (secção 19, removida) e as moedas por quilómetro. O mapa deixa de ser memória do que já se fez e passa a ser **um motor que produz**.
+
+### As regras
+
+| | |
+|---|---|
+| **Recursos** | Ferro, Madeira, Pele (22% cada) · Pedra, Barro (17% cada) |
+| **Arco** | Madeira + Ferro |
+| **Escudo** | Madeira + Pele |
+| **Armadura** | Pele + Ferro |
+| **Armazém** | Pedra + Barro |
+| **Produção** | +1/hora por hexágono descoberto, × multiplicador |
+| **Multiplicador** | 1,0 a 2,0 · +0,1 por sessão · −0,05/dia após 2 dias |
+
+Os três pares possíveis de três materiais esgotam-se exatamente nas três peças: **nenhum material é privilegiado e cada um é pedido por duas peças**. E todas as combinações explicam-se sozinhas — arco de madeira com pontas de ferro, escudo de madeira coberto a pele, armadura de pele com rebites de ferro.
+
+### Distribuição equilibrada, não sorteada
+
+O recurso de cada hexágono é **determinista** (mesmo hexágono = mesmo recurso, em qualquer telemóvel, sem nada gravado), mas **não é sorteado hexágono a hexágono**. Simulado com 30 hexágonos descobertos e sorteio puro, o pior caso em 2000 tentativas dava **zero** de alguns recursos — um jogador impedido de evoluir sem perceber porquê.
+
+Em vez disso, dentro de cada célula H3 de **resolução 7** (~3 km, 49 filhos — a escala de um treino) distribuem-se os cinco tipos nas proporções exatas e baralham-se de forma determinista a partir do id da própria célula. O percurso do costume atravessa os cinco.
+
+**Nada abaixo de ~15%.** A raridade é o inimigo aqui, não a diluição: mais vale um material render um pouco menos do que alguém ficar bloqueado.
+
+### O multiplicador e a tolerância de 2 dias
+
+`+0,1` por **sessão** de treino em que se passa no hexágono — não por leitura de GPS. Sem isso, andava-se para trás e para a frente numa fronteira e enchia-se o multiplicador numa tarde.
+
+O decaimento tem **2 dias de tolerância**, e isso não é generosidade — é correção. Simulado sem tolerância, quem treina **3× por semana ficava preso em 1,00 para sempre**: os dias de descanso comiam tudo o que os treinos construíam. Dias de descanso fazem parte de treinar; um sistema que os castiga está a pedir ao jogador o contrário do que lhe faz bem.
+
+| Rotina | Sem tolerância | Com 2 dias |
+|---|---:|---:|
+| 3× por semana | 1,00 | **2,00** |
+| 2× por semana | 1,10 | 1,75 |
+
+Uma semana parado custa 0,25 (12% da produção), recuperável em três treinos. Um mês volta ao início.
+
+**O valor gravado é o do dia da última visita; o decaimento é sempre derivado.** Não é preciso relógio nenhum a correr e nada tem de acontecer com a app fechada.
+
+### O armazém destranca o equipamento
+
+O tecto do armazém é o que limita a evolução: não se compra um upgrade de 8 000 se só se conseguem guardar 2 000. É a **primeira escolha a sério** do sistema — gastar já em equipamento ou investir em capacidade.
+
+O custo de cada nível é uma **fração do tecto anterior** (55%), e não uma curva própria. Não é estética: a primeira versão tinha uma curva independente e criava um **bloqueio circular** — o nível 1 guardava 200 e o nível 2 custava 386, ou seja, nunca se conseguia pagar. Definido como fração, é impossível por construção.
+
+O botão de evoluir equipamento distingue **"materiais insuficientes"** de **"precisas de um armazém maior"**: dizer o primeiro quando o problema é o segundo mandava o jogador treinar mais para continuar bloqueado.
+
+### Números provisórios, e porquê
+
+Foram derivados do ritmo real dos dois jogadores no primeiro mês (30–40 hexágonos/semana) — a fase em que tudo à volta de casa é novo. **Vão estar errados.** Como o próprio jogador observou: *"nunca sabemos quais hexágonos alguém vai desbloquear nem que distâncias vai percorrer"*.
+
+A resposta não é melhor matemática, é **tornar o erro barato**: tudo em `js/resources.js` é calculado ao vivo e nada é gravado já resolvido. Mudar qualquer constante reavalia a economia inteira sem migração — exatamente como aconteceu com o `LEVEL_BASE`, que esteve 7× errado e se corrigiu com um número.
+
+### O mapa mudou de linguagem
+
+Sem tiles de satélite. Cada hexágono é pintado com a cor pastel do seu recurso, com os descobertos a cores cheias e os restantes esbatidos — o mapa **floresce** à medida que se explora, e vê-se onde há o que se precisa antes de lá ir. Deixa de haver pedidos de rede a navegar e o mapa funciona offline.
+
+O fundo do contentor passou a claro: com o satélite fora, um fundo escuro fazia os hexágonos esbatidos lerem-se como uma mancha preta.
+
+Hexágonos com multiplicador acima de 1 ganham um contorno claro proporcional — é o sinal visual do trajeto do costume.
+
+### O que fica por fazer
+
+- **O mar não é azul.** Precisa de dados de terra/água que não temos; ambos os jogadores são de zona interior, por isso não muda nada hoje.
+- **O saldo de moedas** de cada jogador não foi convertido nem apagado — as moedas deixaram de ter uso, mas continuam gravadas.
+- **Pedra e barro morrem** quando o armazém chegar ao nível 10.
+- **As visitas por hexágono só existem em `localStorage`.** Não sincronizam entre dispositivos.

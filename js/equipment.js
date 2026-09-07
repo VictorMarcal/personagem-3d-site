@@ -177,11 +177,25 @@ function computeStatValue(type, equipLevel) {
 //   primario   = base + round(nivel ^ expoentePrimarioDaPeca)
 //   secundario = round((nivel-1)/(EQUIP_MAX_LEVEL-1) ^ EQUIP_SECONDARY_EXPONENT * EQUIP_SECONDARY_MAX)
 //   custo(nivel) = round(EQUIP_COST_BASE * nivel ^ EQUIP_COST_EXPONENT)   (custo do PASSO nivel-1 -> nivel; nivel 1 e sempre gratis)
-const EQUIP_MAX_LEVEL = 99;
+// 99 niveis eram decorativos: a curva antiga em moedas pedia 395 mil moedas
+// por peca, uns 75 mil km de treino. Passam a 20, todos alcancaveis.
+const EQUIP_MAX_LEVEL = 20;
 const EQUIP_SECONDARY_EXPONENT = 0.5;
 const EQUIP_SECONDARY_MAX = 20;
-const EQUIP_COST_BASE = 10;
-const EQUIP_COST_EXPONENT = 1.5;
+
+// Custo em MATERIAIS do mapa (secção 21), nao em moedas. Cada peca pede dois
+// dos tres materiais de equipamento, e os tres pares possiveis esgotam-se
+// exatamente nas tres pecas: nenhum material e privilegiado e cada um e
+// pedido por duas pecas. Todas as combinacoes explicam-se sozinhas - arco de
+// madeira com pontas de ferro, escudo de madeira coberto a pele, armadura de
+// pele com rebites de ferro.
+const EQUIP_COST_BASE = 6;
+const EQUIP_COST_EXPONENT = 2.4;
+const EQUIP_MATERIAIS = {
+  arma: ["madeira", "ferro"],
+  escudo: ["madeira", "pele"],
+  armadura: ["pele", "ferro"],
+};
 
 const WEAPON_BASE_ATAQUE = 5;
 const SHIELD_BASE_DEFESA = 2;
@@ -208,11 +222,23 @@ function computeEquipSecondaryStat(level) {
   return Math.round(Math.pow(progress, EQUIP_SECONDARY_EXPONENT) * EQUIP_SECONDARY_MAX);
 }
 
-// Custo em moedas do PASSO para chegar a "level" (vindo de level-1) -
-// undefined se o nivel pedido nao fizer sentido (0/1, ou acima do maximo).
-function computeEquipUpgradeCost(level) {
+// Custo do PASSO para chegar a "level" (vindo de level-1), em cada um dos
+// dois materiais da peca - undefined se o nivel pedido nao fizer sentido.
+// Devolve { madeira: n, ferro: n } e nao um numero solto, para quem chama
+// nunca poder esquecer-se de qual material se trata.
+function computeEquipUpgradeCost(level, pieceKey) {
   if (level <= 1 || level > EQUIP_MAX_LEVEL) return undefined;
-  return Math.round(EQUIP_COST_BASE * Math.pow(level, EQUIP_COST_EXPONENT));
+  const porMaterial = Math.round(EQUIP_COST_BASE * Math.pow(level, EQUIP_COST_EXPONENT));
+  const custo = {};
+  (EQUIP_MATERIAIS[pieceKey] || []).forEach((m) => { custo[m] = porMaterial; });
+  return custo;
+}
+
+// "120 madeira + 120 ferro"
+function formatCustoMateriais(custo) {
+  return Object.keys(custo)
+    .map((id) => formatRecurso(custo[id]) + " " + RESOURCE_BY_ID[id].nome.toLowerCase())
+    .join(" + ");
 }
 
 function getEquipLevel(storageKey) {
@@ -440,12 +466,16 @@ function createEquipmentUpgradeController(config) {
     const level = config.getLevel();
     const primary = computeEquipPrimaryStat(config.base, level, config.primaryExponent);
     const secondary = computeEquipSecondaryStat(level);
-    const coins = getMoedas();
+    const stock = acumularProducao();
 
     titleEl.textContent = `${config.pieceName} — Nível ${level}/${EQUIP_MAX_LEVEL}`;
     currentPrimaryEl.textContent = primary;
     currentSecondaryEl.textContent = `+${secondary}`;
-    coinsEl.textContent = coins;
+    // Onde estava o saldo de moedas, mostra-se agora o stock dos DOIS
+    // materiais desta peca - e o que o jogador precisa de comparar.
+    coinsEl.textContent = (EQUIP_MATERIAIS[config.pieceKey] || [])
+      .map((id) => formatRecurso(stock[id]) + " " + RESOURCE_BY_ID[id].nome.toLowerCase())
+      .join(" · ");
 
     const atMax = level >= EQUIP_MAX_LEVEL;
     const nextLevel = level + 1;
@@ -459,12 +489,26 @@ function createEquipmentUpgradeController(config) {
     if (canShowNext) {
       const nextPrimary = computeEquipPrimaryStat(config.base, nextLevel, config.primaryExponent);
       const nextSecondary = computeEquipSecondaryStat(nextLevel);
-      const cost = computeEquipUpgradeCost(nextLevel);
-      nextPrimaryEl.textContent = `${nextPrimary} (+${nextPrimary - primary})`;
-      nextSecondaryEl.textContent = `+${nextSecondary} (+${nextSecondary - secondary})`;
-      costEl.textContent = cost;
-      confirmBtn.disabled = coins < cost;
-      confirmBtn.textContent = coins < cost ? "Moedas insuficientes" : `Evoluir ${config.pieceNameLower} (${cost} moedas)`;
+      const cost = computeEquipUpgradeCost(nextLevel, config.pieceKey);
+      nextPrimaryEl.textContent = nextPrimary + " (+" + (nextPrimary - primary) + ")";
+      nextSecondaryEl.textContent = "+" + nextSecondary + " (+" + (nextSecondary - secondary) + ")";
+      costEl.textContent = formatCustoMateriais(cost);
+
+      // O armazem e o que destranca a evolucao: um upgrade que custe mais do
+      // que o tecto NUNCA sera pagavel, e dizer "materiais insuficientes"
+      // seria enganador - o jogador ia treinar mais e continuar bloqueado.
+      const tecto = warehouseCap(getWarehouseLevel());
+      const acimaDoTecto = Object.keys(cost).some((id) => cost[id] > tecto);
+      const temMateriais = podePagar(cost);
+
+      confirmBtn.disabled = !temMateriais;
+      if (acimaDoTecto) {
+        confirmBtn.textContent = "Precisas de um armazém maior";
+      } else if (!temMateriais) {
+        confirmBtn.textContent = "Materiais insuficientes";
+      } else {
+        confirmBtn.textContent = "Evoluir " + config.pieceNameLower;
+      }
     }
   }
 
@@ -482,15 +526,14 @@ function createEquipmentUpgradeController(config) {
     const nextLevel = level + 1;
     if (nextLevel > EQUIP_MAX_LEVEL) return;
 
-    const cost = computeEquipUpgradeCost(nextLevel);
-    if (getMoedas() < cost) return; // moedas insuficientes
+    const cost = computeEquipUpgradeCost(nextLevel, config.pieceKey);
+    // pagar() valida e debita numa so operacao - sem isto havia uma janela
+    // entre verificar e gastar.
+    if (!pagar(cost)) return;
 
-    // Sobe o nivel ANTES de gastar as moedas: spendMoedas ja chama
-    // renderStatsHud() internamente, e o HUD tem de refletir o status
-    // novo, nao o antigo (ordem trocada = HUD sempre um passo atrasado,
-    // bug real apanhado ao testar a Arma no sistema anterior de tiers).
     config.setLevel(nextLevel);
-    spendMoedas(cost);
+    if (typeof renderStatsHud === "function") renderStatsHud();
+    if (typeof renderResourcesPanel === "function") renderResourcesPanel();
 
     render();
   }
@@ -512,6 +555,7 @@ const weaponUpgradeController = createEquipmentUpgradeController({
   setLevel: (level) => setEquipLevel(STORAGE_KEY_WEAPON_LEVEL, level),
   primaryIdSuffix: "ataque",
   secondaryIdSuffix: "forca",
+  pieceKey: "arma",
   pieceName: "Arco",
   pieceNameLower: "arco",
 });
@@ -524,6 +568,7 @@ const shieldUpgradeController = createEquipmentUpgradeController({
   setLevel: (level) => setEquipLevel(STORAGE_KEY_SHIELD_LEVEL, level),
   primaryIdSuffix: "defesa",
   secondaryIdSuffix: "resistencia",
+  pieceKey: "escudo",
   pieceName: "Escudo",
   pieceNameLower: "escudo",
 });
@@ -536,6 +581,7 @@ const armorUpgradeController = createEquipmentUpgradeController({
   setLevel: (level) => setEquipLevel(STORAGE_KEY_ARMOR_LEVEL, level),
   primaryIdSuffix: "vida",
   secondaryIdSuffix: "energia",
+  pieceKey: "armadura",
   pieceName: "Armadura",
   pieceNameLower: "armadura",
 });

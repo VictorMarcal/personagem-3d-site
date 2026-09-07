@@ -7,22 +7,26 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v5.0.0",
+    title: "O Mapa Passa a Produzir",
+    changes: [
+      "Cada hexágono do mapa tem agora um recurso: Ferro, Madeira, Pele, Pedra ou Barro. Descobre-o a treinar lá dentro e ele passa a produzir por hora, mesmo com a app fechada.",
+      "Voltar a passar pelo mesmo sítio faz esse hexágono render mais, até ao dobro. Se deixares de lá ir, o bónus vai desvanecendo — mas tens dois dias de folga, porque descansar faz parte de treinar.",
+      "O equipamento deixa de se comprar com moedas e passa a pedir materiais: o arco quer madeira e ferro, o escudo madeira e pele, a armadura pele e ferro.",
+      "Novo armazém, construído com pedra e barro. É ele que limita quanto podes guardar — e sem espaço não consegues pagar as evoluções grandes.",
+      "As peças passam de 99 para 20 níveis. Os 99 eram decorativos: à conta antiga davam umas duas voltas ao mundo por peça.",
+      "O mapa deixa de ser satélite desfocado e passa a ser pintado com as cores dos recursos. Funciona offline e vês onde há o que precisas antes de lá ir.",
+      "As estrelas colecionáveis foram substituídas por isto — mesmo mapa, mas com consequências.",
+      "Os números desta economia são um primeiro palpite e vão ser afinados com dados reais de utilização.",
+    ],
+  },
+  {
     version: "v4.2.0",
     title: "Histórico de Peso",
     changes: [
       "Cada vez que atualizas o peso, fica registado com a data — e há um gráfico no Perfil a mostrar a tua evolução.",
       "Só podes alterar o peso a cada 15 dias. A app diz-te quantos dias faltam.",
       "O teu peso atual já entrou no histórico, datado do teu primeiro treino, para não ficares bloqueado à espera.",
-    ],
-  },
-  {
-    version: "v4.1.0",
-    title: "Estrelas para Colecionar",
-    changes: [
-      "Cada concelho que desbloqueias passa a ter 70 estrelas espalhadas: 10 de cada uma das 7 cores.",
-      "Apanhas uma chegando a menos de 100 metros dela durante um treino. A app toca um aviso quando estás a aproximar-te, e um som diferente quando a apanhas.",
-      "Por agora estão todas visíveis no mapa, para se poder testar. As que já apanhaste ficam ocas.",
-      "As estrelas são sempre as mesmas para toda a gente e em qualquer telemóvel — não são sorteadas de novo a cada visita.",
     ],
   },
   {

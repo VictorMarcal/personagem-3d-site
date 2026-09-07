@@ -141,7 +141,6 @@ async function hydrateHexesFromSupabase() {
 // partir dos proprios hexagonos (identifyRegions) e o enquadramento segue o
 // jogador. Para o Skllrx da Braga porque foi so onde treinou; para outro
 // jogador dara o distrito dele.
-const MAP_TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const MAP_MAX_ZOOM = 17;
 
 // Entrada no mapa: vista geral e depois voo ate onde estas.
@@ -347,24 +346,38 @@ function drawHexGrid() {
   const discovered = getDiscoveredHexIds();
   const discoveryRes = getHexResolution();
 
-  if (SHOW_GRID_LINES || SHOW_HEX_SHADING) {
-    cells.forEach((cell) => {
-      const isMine = res === discoveryRes && discovered.has(cell);
-      const path = new Path2D(hexPathIn(cell, project));
-      if (SHOW_HEX_SHADING && !isMine) {
-        // Leve variacao de escuridao por hexagono: da a leitura de "peca" em
-        // vez de fotografia continua.
-        const jitter = Math.abs(Math.sin(parseInt(cell.slice(-6), 16) || 1)) * 0.16;
-        ctx.fillStyle = `rgba(6,10,16,${0.1 + jitter})`;
-        ctx.fill(path);
-      }
-      if (SHOW_GRID_LINES) {
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = isMine ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.35)";
+  // Mapa de recursos (secção 21): cada hexagono e pintado com a cor do
+  // recurso que la existe, em pastel. Os descobertos ficam com a cor cheia;
+  // os que faltam ficam esbatidos POR CIMA da mesma cor, para se ver o que ha
+  // por conquistar - o mapa floresce a medida que se explora, em vez de
+  // revelar o desconhecido do nada.
+  const visitas = typeof getHexVisits === "function" ? getHexVisits() : {};
+  cells.forEach((cell) => {
+    const path = new Path2D(hexPathIn(cell, project));
+    const isMine = res === discoveryRes && discovered.has(cell);
+    const recurso = typeof resourceForHex === "function" ? resourceForHex(cell) : null;
+    const cor = recurso ? RESOURCE_BY_ID[recurso].cor : COR_POR_DESCOBRIR;
+
+    ctx.globalAlpha = isMine ? 1 : 0.28;
+    ctx.fillStyle = cor;
+    ctx.fill(path);
+    ctx.globalAlpha = 1;
+
+    // Hexagonos com multiplicador acima de 1 ganham um contorno claro: e o
+    // sinal visual do trajeto do costume, o "meu territorio gasto".
+    if (isMine && typeof multiplicadorDoHex === "function") {
+      const mult = multiplicadorDoHex(cell, visitas);
+      if (mult > 1.01) {
+        ctx.lineWidth = 1 + (mult - 1) * 2;
+        ctx.strokeStyle = "rgba(255,255,255," + (0.25 + (mult - 1) * 0.5).toFixed(2) + ")";
         ctx.stroke(path);
       }
-    });
-  }
+    }
+
+    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = "rgba(60,55,50,0.18)";
+    ctx.stroke(path);
+  });
 
   // Contorno da UNIAO do territorio, nao de cada hexagono - senao a fronteira
   // sai um emaranhado de linhas.
@@ -386,8 +399,6 @@ function drawHexGrid() {
     ctx.shadowBlur = 0;
   }
 
-  // Estrelas colecionaveis (secção 19) por cima de tudo o resto.
-  if (typeof drawStarsOnMap === "function") drawStarsOnMap(ctx, bounds, project);
 }
 
 // Afastado, o escurecimento deixa o pais irreconhecivel - o nevoeiro passa a
@@ -632,7 +643,6 @@ function applyRegions(cache) {
       : "nenhum ainda";
   }
 
-  if (typeof renderStarCount === "function") renderStarCount();
 
   updateRegionZoomLevel();
   updateClips();
@@ -664,9 +674,6 @@ function setMapPlayerPosition(latitude, longitude) {
     playerMarker.setLatLng(playerLatLng);
     playerMarker.setOpacity(1);
   }
-  // Estrelas colecionaveis (secção 19): corre a cada leitura de GPS, que e a
-  // unica altura em que a proximidade pode ter mudado.
-  if (typeof checkStarProximity === "function") checkStarProximity(latitude, longitude);
 }
 
 // Uma leitura so, a abrir o mapa - nao um watchPosition permanente, que
@@ -746,7 +753,7 @@ function territoryCenter() {
 
 function createHexMap() {
   hexMap = L.map(hexMapEl, { minZoom: 3, maxZoom: MAP_MAX_ZOOM });
-  hexMap.attributionControl.addAttribution("Imagem: Esri &mdash; Fronteiras: OpenStreetMap");
+  hexMap.attributionControl.addAttribution("Fronteiras: OpenStreetMap");
   hexMap.setView([39.5, -8.0], MAP_OVERVIEW_ZOOM);
 
   [["hexfog", 200], ["hexdistrictfog", 250], ["hexclear", 300],
@@ -758,15 +765,11 @@ function createHexMap() {
     hexMap.getPane(name).style.pointerEvents = "none";
   });
 
-  // A MESMA imagem em tres camadas; o que as distingue e o filtro CSS e o
-  // recorte. O browser so descarrega os tiles uma vez - as outras duas
-  // camadas saem da cache HTTP.
-  ["hexfog", "hexdistrictfog", "hexclear"].forEach((pane) => {
-    L.tileLayer(MAP_TILE_URL, { pane, maxZoom: MAP_MAX_ZOOM }).addTo(hexMap);
-  });
-  // Ate haver descobertas, so se ve o nevoeiro.
-  hexMap.getPane("hexdistrictfog").style.clipPath = `path("M0 0Z")`;
-  hexMap.getPane("hexclear").style.clipPath = `path("M0 0Z")`;
+  // SEM TILES (secção 21). O satelite desfocado foi substituido pelo mapa de
+  // recursos pintado no canvas: deixa de haver pedidos de rede a navegar, o
+  // mapa funciona offline, e as cores passam a significar alguma coisa em vez
+  // de serem uma fotografia. O Leaflet fica so como motor de pan/zoom e de
+  // projecao, como ja tinha sido na versao do terreno gerado por codigo.
 
   hexCanvas = document.createElement("canvas");
   hexCanvas.className = "hex-map-canvas";
@@ -818,6 +821,7 @@ function renderHexMap() {
   if (!hexMapEl || typeof L === "undefined" || typeof h3 === "undefined") return;
 
   if (hexMap === null) createHexMap();
+  if (typeof renderResourcesPanel === "function") renderResourcesPanel();
 
   rebuildTerritoryOutline();
   applyRegions(loadRegionCache());

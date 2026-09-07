@@ -145,3 +145,13 @@ const STORAGE_KEY_DISTRICTS = "personagem.distritosDescobertos";
 // guardadas - saem de um gerador determinista semeado no osm_id do concelho
 // (js/stars.js); so faz falta saber quais e que ja foram apanhadas.
 const STORAGE_KEY_COLLECTED_STARS = "personagem.estrelasApanhadas";
+
+// Economia de recursos (secção 21, 2026-09-07). Substitui as moedas por km.
+// hexVisitas: por hexagono, { m: multiplicador, d: dia da ultima visita }.
+// recursos: stock atual de cada um. producaoDesde: instante da ultima
+// recolha, para o acumulado ser calculado ao vivo em vez de gravado a cada
+// hora (a app nao esta aberta a maior parte do tempo).
+const STORAGE_KEY_HEX_VISITS = "personagem.hexVisitas";
+const STORAGE_KEY_RESOURCES = "personagem.recursos";
+const STORAGE_KEY_RESOURCES_SINCE = "personagem.recursosDesde";
+const STORAGE_KEY_WAREHOUSE_LEVEL = "personagem.nivelArmazem";
