@@ -46,6 +46,8 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `assets/Hero.glb` | Modelo 3D do herói (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Shield.glb` | Modelo 3D do escudo (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Bow.glb` | Modelo 3D do arco (secção 9), carregado por `js/main.js` via `GLTFLoader` |
+| `js/weight.js` | Historico de peso, regra dos 15 dias e grafico de evolucao — ver secção 20 |
+| `js/stars.js` | Estrelas colecionáveis no mapa — ver secção 19 |
 | `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de satélite desfocado da aba Missões — ver secção 18 |
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — histórico/registo, não é lido pelo site nem pelo Supabase |
 | `.mcp.json` | Liga o Claude Code ao projeto Supabase via MCP (`--project-ref=vnqjaepjfqlhgmlrhzlr`), token vem de uma variável de ambiente (`SUPABASE_ACCESS_TOKEN`), nunca gravado no ficheiro. Desde 2026-08-03, migrações novas são aplicadas diretamente via este MCP (`apply_migration`) em vez de copiar/colar SQL manualmente no dashboard — `supabase/schema.sql` continua a ser atualizado a cada migração, só como registo/referência |
@@ -1041,3 +1043,38 @@ O `AudioContext` **tem de ser desbloqueado a partir de um gesto do utilizador**:
 **Bug apanhado nos testes**: `checkStarProximity` pede um redesenho do mapa ao apanhar uma estrela, e o mapa só é criado quando a sub-aba Missões é aberta pela primeira vez. Sem guarda, apanhar uma estrela **durante um treino de quem nunca tinha aberto o mapa** rebentava dentro do `onPositionUpdate` — ou seja, partia o GPS a meio do treino. `updateFogLift` passou a verificar se o mapa existe antes de lhe pedir o zoom.
 
 Verificado no browser: determinista entre gerações, 400 m nada, 250 m avisa **uma vez só**, 101 m ainda não apanha, 99 m apanha, e voltar ao mesmo sítio não apanha duas vezes.
+
+## 20. Histórico de peso (2026-09-07)
+
+A pedido: *"histórico de peso com data de introdução — só é possível alterar a cada 15 dias"* + *"gráfico que mostra a evolução do peso"*.
+
+**Tabela `weight_history`** (`user_id`, `peso_kg`, `recorded_at`), com RLS por utilizador (`select` e `insert` próprios, mesmo padrão de `discovered_hexes`). O `check` de 20–300 kg vive na coluna, não só no cliente.
+
+**Aditivo, não substitui nada**: o peso atual continua em `STORAGE_KEY_WEIGHT_KG` e `player_progress.peso_kg`, lido por `getPesoKg()` na fórmula das calorias. **A fórmula não foi tocada.**
+
+### A regra dos 15 dias é validada contra o servidor
+
+`registarPeso()` **relê o histórico do Supabase antes de decidir**, em vez de confiar na cache local. Validar contra `localStorage` seria contornável de duas formas triviais: limpar os dados do browser, ou abrir a app noutro telemóvel. O `localStorage` aqui é só cache de leitura.
+
+O input e o botão ficam **desativados** enquanto não der, com o número de dias em falta à vista — em vez de deixar tentar e falhar.
+
+Verificado no browser: 20 dias desbloqueia, **15 exatos desbloqueia**, 14 ainda não, e sem histórico nenhum deixa registar à primeira.
+
+O peso atual só é escrito **depois** de o registo ficar gravado no servidor. Se a rede falhar, os dois lados ficam coerentes em vez de o peso mudar sem ter entrado no histórico.
+
+### O gráfico é de linha, e não começa no zero
+
+Duas decisões deliberadas, ambas ao contrário dos gráficos de distância/calorias (secção 13):
+
+- **Linha, não barras.** O peso é uma série contínua: o que interessa é a *forma* da evolução. Barras a partir do zero sugeririam uma grandeza acumulada que não existe.
+- **O eixo dos YY não começa no zero.** Numa escala de 0 a 90 kg, perder 2 kg era um pixel e não se via nada. A escala segue o intervalo real com 1 kg de folga de cada lado.
+
+Com **um único registo** (ou vários iguais) o mínimo e o máximo seriam iguais e a projeção dividia por zero — abre-se uma janela mínima de ±1 kg à volta do valor. Testado.
+
+### Migração
+
+O peso atual de cada jogador entrou no histórico **datado do primeiro treino dele** (Bernardo 88 kg em 2026-08-02, Skllrx 85 kg em 2026-08-05), e não da data da migração. Datar em "agora" bloquearia os dois durante 15 dias logo a seguir à funcionalidade sair — efeito colateral absurdo de uma migração. A data do primeiro treino é a mais honesta que existe: o peso já estava definido pelo menos desde aí.
+
+### O que fica por decidir
+
+As calorias de um treino usam o peso **atual**, não o peso à data do treino. Agora que o histórico existe, era possível recalcular cada sessão com o peso em vigor nessa altura — mas isso mexeria em XP já atribuído, e a diferença entre 85 e 83 kg é de ~2%. Não foi feito.
