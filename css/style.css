@@ -2258,3 +2258,29 @@ dd.summary-xp-row { color: var(--accent); font-size: 17px; }
 }
 
 .mines-found strong { color: var(--text); }
+
+/* Reparticao por modo dentro de um treino (secção 4.9). Fica entre a
+   distancia grande e a grelha de tempos: e o detalhe do numero de cima,
+   nao mais uma linha da tabela. */
+.training-modes {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 14px;
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+
+.training-modes dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.training-modes dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

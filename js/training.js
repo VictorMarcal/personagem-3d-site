@@ -504,6 +504,7 @@ let sessionMovingSeconds = 0;
 // Hexagonos por onde se passou NESTA sessao (secção 21). E um conjunto, por
 // isso passar dez vezes no mesmo conta uma.
 let sessionHexIds = new Set();
+let modeDistanceAccumM = {};
 let currentNominalSpeedMps = 0;
 
 // --- Diagnostico do sinal de GPS (2026-08-11, secção 4.2) -----------------
@@ -839,6 +840,7 @@ function persistAccumulatedTraining() {
   }
   localStorage.setItem(STORAGE_KEYS.caloriasAcumuladasKcal, String(sessionCaloriesKcal));
   localStorage.setItem(STORAGE_KEYS.modoTempoAcumuladoMs, JSON.stringify(modeTimeAccumMs));
+  localStorage.setItem(STORAGE_KEYS.modoDistanciaAcumuladaM, JSON.stringify(modeDistanceAccumM));
   localStorage.setItem(STORAGE_KEYS.tempoMovimentoS, String(sessionMovingSeconds));
   localStorage.setItem(STORAGE_KEYS.pausaAutoMs, String(autoPausedMs));
   if (currentActiveMode) {
@@ -1127,6 +1129,10 @@ function onPositionUpdate(position) {
         totalDistanceM += distanceSegmentM;
         sessionCaloriesKcal += computeSegmentCalories(currentActiveMode, creditedSpeedKmh, creditedDurationSeconds);
         modeTimeAccumMs[currentActiveMode] = (modeTimeAccumMs[currentActiveMode] || 0) + creditedDurationSeconds * 1000;
+        // Distancia POR MODO (secção 4.9): a sessao pode passar por mais que
+        // uma atividade e ate aqui so se guardava o total e o modo dominante,
+        // o que escondia metade do que aconteceu.
+        modeDistanceAccumM[currentActiveMode] = (modeDistanceAccumM[currentActiveMode] || 0) + distanceSegmentM;
         // Tempo em movimento (secção 4.6): usa o intervalo REAL, sem o teto
         // de getActivityWindowSeconds(). O teto existe para nao inflacionar
         // calorias por segmento; aqui e o contrario - se o GPS falhou 5
@@ -1300,6 +1306,7 @@ function beginTrainingSession() {
   sessionCaloriesKcal = 0;
   sessionMovingSeconds = 0;
   sessionHexIds = new Set();
+  modeDistanceAccumM = {};
   pausedTotalMs = 0;
   autoPausedMs = 0;
   pauseStartedMs = null;
@@ -1470,6 +1477,13 @@ function stopTraining() {
   // computeSessionCaloriesFromTotals. sessionCaloriesKcal (soma ao vivo)
   // continua a servir so para o mostrador durante o treino.
   const sessionMoving = sessionMovingSeconds;
+  // Arredondado ao metro: guardar 14 casas decimais de um GPS com 5 m de
+  // precisao seria falsa exatidao.
+  const sessionDistanceByMode = {};
+  Object.keys(modeDistanceAccumM).forEach((m) => {
+    const metros = Math.round(modeDistanceAccumM[m]);
+    if (metros > 0) sessionDistanceByMode[m] = metros;
+  });
   const sessionCalories = computeSessionCaloriesFromTotals(
     sessionDistanceM,
     sessionDurationSeconds,
@@ -1515,6 +1529,9 @@ function stopTraining() {
       // Modo DOMINANTE (mais tempo, secção 17.1) - ja nao e escolhido a
       // mao, a sessao pode ter passado por mais que uma atividade.
       mode: sessionDominantMode,
+      // ...e a reparticao real, para o card poder mostrar o que de facto
+      // aconteceu em vez de so o dominante (secção 4.9).
+      distance_by_mode: sessionDistanceByMode,
       duration_seconds: sessionDurationSeconds,
       // Tempo em movimento (secção 4.6) - o MET da bicicleta sai daqui.
       moving_seconds: sessionMoving,
@@ -1599,6 +1616,8 @@ function resumeTrainingIfNeeded() {
   try {
     const savedModeTime = localStorage.getItem(STORAGE_KEYS.modoTempoAcumuladoMs);
     if (savedModeTime) modeTimeAccumMs = JSON.parse(savedModeTime);
+    const savedModeDist = localStorage.getItem(STORAGE_KEYS.modoDistanciaAcumuladaM);
+    if (savedModeDist) modeDistanceAccumM = JSON.parse(savedModeDist);
   } catch (e) {
     // fica no valor por omissao (todos a 0) se o JSON guardado for invalido
   }
@@ -1655,9 +1674,22 @@ function renderTrainingCard(s) {
 
   const linha = (rotulo, valor) => `<dt>${rotulo}</dt><dd>${valor}</dd>`;
 
+  // Reparticao por modo (secção 4.9). So se mostra quando ha mais do que um
+  // modo: numa sessao inteirinha a correr, repetir "Corrida: 5,19 km" por
+  // baixo dos "5,19 km" seria ruido.
+  const porModo = s.distance_by_mode && typeof s.distance_by_mode === "object" ? s.distance_by_mode : null;
+  const modosComDistancia = porModo ? Object.keys(porModo).filter((m) => porModo[m] > 0) : [];
+  const reparticao = modosComDistancia.length > 1
+    ? '<dl class="training-modes">' + modosComDistancia
+        .sort((a, b) => porModo[b] - porModo[a])
+        .map((m) => `<dt>${MODE_LABEL_PT[m] || m}</dt><dd>${formatDistanceKm(porModo[m])}</dd>`)
+        .join("") + "</dl>"
+    : "";
+
   return `<li class="training-card">
       <p class="training-label">${MODE_LABEL_PT[s.mode] || "Treino"}</p>
       <p class="training-distance">${formatDistanceKm(Number(s.distance_m) || 0)}</p>
+      ${reparticao}
       <dl class="summary-grid">
         ${linha("Tempo ativo", formatDurationClock(activeSeconds))}
         ${linha("Tempo em pausa", temPausa ? formatDurationClock(pausedSeconds) : desconhecido)}
@@ -1679,7 +1711,7 @@ async function renderTodaysTrainings() {
 
   const { data, error } = await supabaseClient
     .from("training_sessions")
-    .select("id, distance_m, duration_seconds, paused_seconds, mode, calories_kcal, calories_active_kcal")
+    .select("id, distance_m, duration_seconds, paused_seconds, mode, calories_kcal, calories_active_kcal, distance_by_mode")
     .eq("user_id", currentUserId)
     .gte("started_at", startOfToday.toISOString())
     .order("started_at", { ascending: false });
@@ -1756,7 +1788,16 @@ async function changeSessionMode(sessionId, newMode) {
 
   const { error: updateError } = await supabaseClient
     .from("training_sessions")
-    .update({ mode: newMode, calories_kcal: newCalories, calories_active_kcal: newActiveCalories })
+    // Corrigir o modo significa "afinal foi tudo X" - a reparticao detetada
+    // deixa de fazer sentido e passa a ser toda do modo corrigido. Deixa-la
+    // como estava punha o card a dizer "Bicicleta" em cima e "Corrida 5 km"
+    // por baixo.
+    .update({
+      mode: newMode,
+      calories_kcal: newCalories,
+      calories_active_kcal: newActiveCalories,
+      distance_by_mode: { [newMode]: Math.round(Number(session.distance_m) || 0) },
+    })
     .eq("id", sessionId);
 
   if (updateError) {

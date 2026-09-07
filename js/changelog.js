@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v5.1.0",
+    title: "Treinos Mostram o que Aconteceu Mesmo",
+    changes: [
+      "Se num treino correste, andaste e pedalaste, o card passa a mostrar quantos quilómetros fizeste em cada um — e não só o tipo que mais pesou.",
+      "Treinos de um só tipo continuam simples, sem repetição.",
+      "Vale para os treinos a partir de hoje; os anteriores mostram só o total.",
+    ],
+  },
+  {
     version: "v5.0.0",
     title: "O Mapa Passa a Produzir",
     changes: [

@@ -327,6 +327,22 @@ Antes era uma linha de texto (`Bicicleta — 25.40 km · 62 min · 877 kcal`) qu
 
 O contentor "Treinos de hoje" deixou de ter fundo próprio — dois fundos encaixados um no outro ficavam pesados agora que os cards são os treinos.
 
+#### Repartição por modo dentro de um treino (2026-09-07)
+
+A pedido: *"quero que apareça o que realmente foi registado"*. Até aqui guardava-se só a distância **total** e o modo **dominante** — uma sessão de 5,19 km em que se correu, andou e pedalou aparecia como *"Correr — 5,19 km"*, e metade do que aconteceu ficava escondido.
+
+Passa a guardar-se `distance_by_mode` (jsonb), com os metros por modo detetado. O `distance_m` continua a ser o total e o `mode` o dominante — nada do que já existia muda de significado.
+
+**A repartição só aparece quando há mais do que um modo.** Numa sessão inteirinha a correr, repetir *"Correr: 5,19 km"* por baixo dos *"5,19 km"* seria ruído.
+
+**Corrigir o modo à mão reescreve a repartição.** Corrigir significa *"afinal foi tudo X"*; deixar a repartição detetada punha o card a dizer **Bicicleta** em cima e **Corrida 5 km** por baixo.
+
+Arredondado ao metro ao gravar: guardar 14 casas decimais de um GPS com 5 m de precisão seria falsa exatidão.
+
+**Sessões anteriores a 2026-09-07** não têm a coluna e mostram só o total, sem repartição.
+
+**Uma inconsistência que isto torna visível, e que não foi resolvida**: as calorias de uma sessão são calculadas com o MET do modo **dominante** aplicado à sessão inteira. Numa sessão mista, os 0,79 km de bicicleta são pagos ao MET de corrida. O erro sempre existiu; a diferença é que agora vê-se. Resolver seria calcular calorias por troço — mudança maior, e as sessões mistas são raras.
+
 #### Resumo no fim do treino
 
 Ao terminar, um popup com sete valores. Separa sempre **ativo** de **total** — sem isso, *"porque é que o treino diz 40 minutos se eu estive uma hora na rua?"* volta a ser pergunta:
