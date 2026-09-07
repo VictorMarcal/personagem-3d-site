@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/style.css?v=20260907a">
+  <link rel="stylesheet" href="css/style.css?v=20260907b">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -37,7 +37,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v4.1.0</span>
+      <span id="site-version" class="site-version-hero">v4.2.0</span>
     </div>
     <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
@@ -320,6 +320,10 @@
           <button id="btn-save-weight" class="btn-secondary">Guardar</button>
         </div>
         <p id="profile-weight-status" class="debug-status"></p>
+        <p id="weight-lock-status" class="weight-lock-status"></p>
+
+        <h3 class="weight-chart-title">Evolução do peso</h3>
+        <div id="weight-chart" class="profile-chart"></div>
       </section>
 
       <section class="card" id="profile-summary-card">
@@ -492,7 +496,7 @@
        razao do three.min.js acima. -->
   <script src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/storage-keys.js?v=20260907a"></script>
+  <script src="js/storage-keys.js?v=20260907b"></script>
   <script src="js/tab-lock.js?v=20260806p"></script>
   <script src="js/auth.js?v=20260814c"></script>
   <script src="js/progress-sync.js?v=20260814a"></script>
@@ -507,8 +511,9 @@
   <script src="js/stars.js?v=20260907a"></script>
   <script src="js/hexes.js?v=20260907b"></script>
   <script src="js/training.js?v=20260907b"></script>
-  <script src="js/profile.js?v=20260810f"></script>
-  <script src="js/changelog.js?v=20260907d"></script>
+  <script src="js/weight.js?v=20260907a"></script>
+  <script src="js/profile.js?v=20260907a"></script>
+  <script src="js/changelog.js?v=20260907e"></script>
   <script src="js/achievements.js?v=20260811b"></script>
   <script src="js/orientation.js?v=20260806p"></script>
   <script src="js/nav.js?v=20260814a"></script>

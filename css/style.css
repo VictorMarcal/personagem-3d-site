@@ -2117,3 +2117,52 @@ dd.summary-xp-row { color: var(--accent); font-size: 17px; }
    DOM - js/nav.js exige os quatro botoes e os quatro paineis, e desiste
    de ligar a sub-navegacao se algum faltar. */
 .nav-tab-oculta { display: none; }
+
+/* Historico de peso (2026-09-07, secção 20). */
+.weight-lock-status {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.weight-chart-title {
+  margin-top: 16px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.weight-empty {
+  font-size: 13px;
+  color: var(--muted-2);
+  padding: 10px 0;
+}
+
+/* O grafico do peso e de LINHA, nao de barras: o peso e uma serie continua,
+   interessa a forma da evolucao, e barras a partir do zero sugeririam uma
+   grandeza acumulada que nao existe. */
+.wchart-line {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.wchart-dot {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+
+.wchart-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+/* O #weight-chart reutiliza .profile-chart, cuja regra pinta rect com a cor
+   das barras - aqui nao ha rect, mas o texto herda a cor certa. */
+#weight-chart text { fill: var(--muted); }

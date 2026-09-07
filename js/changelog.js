@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v4.2.0",
+    title: "Histórico de Peso",
+    changes: [
+      "Cada vez que atualizas o peso, fica registado com a data — e há um gráfico no Perfil a mostrar a tua evolução.",
+      "Só podes alterar o peso a cada 15 dias. A app diz-te quantos dias faltam.",
+      "O teu peso atual já entrou no histórico, datado do teu primeiro treino, para não ficares bloqueado à espera.",
+    ],
+  },
+  {
     version: "v4.1.0",
     title: "Estrelas para Colecionar",
     changes: [

@@ -24,16 +24,20 @@ const profileWeightStatusEl = document.getElementById("profile-weight-status");
 
 function renderProfileSettings() {
   profileWeightInputEl.value = getPesoKg();
+  // Historico, grafico e estado do bloqueio de 15 dias (js/weight.js).
+  if (typeof refreshWeightSection === "function") refreshWeightSection();
 }
 
-document.getElementById("btn-save-weight").addEventListener("click", () => {
+// O peso deixou de ser um valor solto: cada alteracao entra no historico e so
+// e permitida a cada 15 dias (secção 20). A validacao vive em js/weight.js
+// porque tem de ser feita contra o SERVIDOR - validar contra o localStorage
+// seria contornavel limpando os dados do browser.
+document.getElementById("btn-save-weight").addEventListener("click", async () => {
   const kg = Number(profileWeightInputEl.value);
-  if (!Number.isFinite(kg) || kg < 20 || kg > 300) {
-    profileWeightStatusEl.textContent = "Peso inválido (entre 20 e 300 kg).";
-    return;
-  }
-  setPesoKg(kg);
-  profileWeightStatusEl.textContent = "Guardado!";
+  profileWeightStatusEl.textContent = "A guardar...";
+  const resultado = await registarPeso(kg);
+  profileWeightStatusEl.textContent = resultado.ok ? "Guardado!" : resultado.motivo;
+  if (resultado.ok) renderWeightHistory();
 });
 
 function toNum(value) {
