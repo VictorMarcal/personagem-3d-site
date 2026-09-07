@@ -341,7 +341,35 @@ Arredondado ao metro ao gravar: guardar 14 casas decimais de um GPS com 5 m de p
 
 **Sessões anteriores a 2026-09-07** não têm a coluna e mostram só o total, sem repartição.
 
-**Uma inconsistência que isto torna visível, e que não foi resolvida**: as calorias de uma sessão são calculadas com o MET do modo **dominante** aplicado à sessão inteira. Numa sessão mista, os 0,79 km de bicicleta são pagos ao MET de corrida. O erro sempre existiu; a diferença é que agora vê-se. Resolver seria calcular calorias por troço — mudança maior, e as sessões mistas são raras.
+#### Calorias por modo, não pelo dominante (2026-09-07)
+
+Guardar a repartição destapou uma inconsistência que já lá estava: as calorias saíam do MET do modo **dominante** aplicado à sessão inteira. Naquela sessão de exemplo, os 0,79 km de bicicleta e os 1,30 km a andar eram pagos ao MET de corrida. O erro sempre existiu — a diferença é que a repartição o tornou visível.
+
+Agora cada troço leva o seu próprio MET.
+
+**O que não se podia fazer.** A tentação óbvia era usar o `modeTimeAccumMs` como horas de cada modo. Não serve: esse tempo vem do `creditedDurationSeconds`, que é **capado por segmento** — foi exatamente esse cap que deixou uma sessão do Bernardo com 32% das calorias reais (secção 4.4). Repetir aqui o mesmo erro reintroduzia o bug pela porta do lado.
+
+**O que se faz.** Do tempo por modo aproveita-se só a **proporção**, que sobrevive às falhas de sinal porque elas afetam todos os modos por igual. O tempo **ativo real** da sessão — relógio, fiável — é repartido nessa proporção, e cada fatia leva o seu MET:
+
+```
+horas_m  = tempo_ativo × (tempo_modo_m / Σ tempo_modo)
+vel_m    = distância_m / horas_m
+kcal     = Σ  MET(m, vel_m) × peso × horas_m
+```
+
+A soma das horas continua a ser a duração real da sessão — a propriedade que a secção 4.4 exige e a razão de isto não ser um cálculo por segmento.
+
+**Com um só modo o resultado é idêntico ao anterior** (proporção = 1). Não há regressão no caso comum, que é a esmagadora maioria dos treinos.
+
+Na sessão de exemplo (3,10 km a correr + 1,30 a andar + 0,79 de bicicleta, 40 min): **466 → 380 kcal, menos 18%**. A corrida a 10,3 km/h dá 10,8 MET; a caminhada a 5,2 km/h dá 3,5; a bicicleta a 6,8 km/h dá 4,0. Pagar tudo a 10,8 era inflacionar dois terços do tempo.
+
+Guarda-se também `time_by_mode` (jsonb, ms por modo) — sem a proporção não se conseguia **refazer** a conta a partir da linha, e neste projeto já houve várias vezes a necessidade de recalcular sessões antigas.
+
+**O mostrador ao vivo usa exatamente a mesma função**, com a mesma repartição. Se não usasse, o número saltava ao terminar o treino.
+
+**Corrigir o modo à mão** força um só modo e reescreve as duas colunas — volta ao caminho de modo único, como deve ser.
+
+*Verificado: três sessões de modo único (correr, caminhar, bicicleta) dão exatamente o mesmo valor com e sem repartição; a soma das horas repartidas é igual à duração; sessões antigas sem `time_by_mode` caem no caminho anterior.*
 
 #### Resumo no fim do treino
 

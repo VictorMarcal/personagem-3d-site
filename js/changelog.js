@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v5.2.0",
+    title: "Calorias Justas em Treinos Mistos",
+    changes: [
+      "Se num treino correste, andaste e pedalaste, cada bocado passa a contar com o esforço que lhe pertence — antes o treino todo era pago ao ritmo do tipo que mais pesou.",
+      "Treinos de um só tipo dão exatamente o mesmo valor de sempre.",
+    ],
+  },
+  {
     version: "v5.1.0",
     title: "Treinos Mostram o que Aconteceu Mesmo",
     changes: [
