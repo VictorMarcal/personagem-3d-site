@@ -226,6 +226,12 @@ alter table public.training_sessions add column if not exists calories_kcal nume
 
 -- Migracao: contadores vitalicios novos para as conquistas adicionadas em
 -- 2026-08-07 (secção 10 da documentação) - so sobem, nunca descem.
+-- total_moedas_ganhas/gastas ficaram por usar em 2026-09-08 (moedas
+-- removidas do jogo, secção 7) - mantidas na tabela, mesma convencao de
+-- nivel_melhoria_*/nivelEquipVida (nunca apagar colunas so por deixarem de
+-- ser lidas: um cliente com JS antigo em cache ainda as escreve).
+alter table public.player_progress add column if not exists total_moedas_ganhas integer not null default 0;
+alter table public.player_progress add column if not exists total_moedas_gastas integer not null default 0;
 alter table public.player_progress add column if not exists total_battles_fought integer not null default 0;
 alter table public.player_progress add column if not exists distinct_months_trained integer not null default 0;
 
@@ -259,9 +265,11 @@ alter table public.player_progress drop column if exists equip_level_defesa;
 -- js/equipment.js, secção 7 da documentação), sem um 4º status separado.
 alter table public.player_progress drop column if exists nivel_foco;
 
--- Migracao: nivel_melhoria_armas guardava o progresso de TODAS as armas ja
--- desbloqueadas (mapa tierIndex->nivel) no sistema de tiers antigo - fica
--- por usar (ver nota mais abaixo sobre o equipamento continuo).
+-- Migracao: sistema de moedas (secção 7). A coluna `moedas` (saldo) e as
+-- de melhoria por tier ficaram por usar - `moedas` em 2026-09-08 (moedas
+-- removidas do jogo), o resto quando o equipamento passou a continuo (ver
+-- abaixo). Mantidas na tabela pela convencao do schema.
+alter table public.player_progress add column if not exists moedas integer not null default 0;
 alter table public.player_progress add column if not exists nivel_melhoria_armas jsonb not null default '{}';
 
 -- Migracao: copia publica das conquistas desbloqueadas na tabela
@@ -435,11 +443,10 @@ alter table public.monthly_medals
   add column if not exists distance_km numeric
     generated always as (round(distance_m / 1000.0, 3)) stored;
 
--- Migracao (2026-09-08): remocao das moedas. Deixaram de ter uso desde que
--- o equipamento passou a custar materiais do mapa (secção 21) - eram
--- ganhas mas gastas em nada. Saem tambem as 6 conquistas de moedas
--- (coins_earned_*, spender_*) e o HUD/cartao de treino associados.
-alter table public.player_progress
-  drop column if exists moedas,
-  drop column if exists total_moedas_ganhas,
-  drop column if exists total_moedas_gastas;
+-- Migracao (2026-09-08): remocao das moedas do jogo (secção 7). O codigo
+-- deixou de ler/escrever `moedas`/`total_moedas_ganhas`/`total_moedas_gastas`
+-- e saem 6 conquistas (coins_earned_*, spender_*) + o HUD/cartao de treino.
+-- As colunas NAO sao apagadas: um `drop column` partiu a sincronizacao de
+-- clientes com o JS antigo em cache (upsert com essas chaves -> 400), e a
+-- convencao deste schema e nunca apagar colunas so por deixarem de ser
+-- lidas. Ficam com default 0, ignoradas pelo codigo novo.
