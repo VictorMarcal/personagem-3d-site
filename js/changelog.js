@@ -7,6 +7,23 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v5.4.0",
+    title: "Adeus às Moedas",
+    changes: [
+      "As moedas foram removidas do jogo. Já não tinham uso desde que o equipamento passou a evoluir com materiais do mapa — eram ganhas mas não se gastavam em nada.",
+      "Saíram também as conquistas ligadas a moedas (moedas ganhas e moedas investidas) e o contador de moedas no topo do ecrã.",
+      "Nada do que importa mudou: nível, XP, pontos de status, materiais e medalhas mensais ficam exatamente como estavam.",
+    ],
+  },
+  {
+    version: "v5.3.0",
+    title: "Peso Atualizável Todos os Dias",
+    changes: [
+      "O peso passa a poder ser atualizado a cada 24 horas, em vez de só a cada 15 dias.",
+      "O histórico e o gráfico de evolução continuam iguais — só a espera entre alterações é que encurtou.",
+    ],
+  },
+  {
     version: "v5.2.0",
     title: "Calorias Justas em Treinos Mistos",
     changes: [
