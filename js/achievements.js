@@ -32,8 +32,6 @@ const CATEGORY_BY_TYPE = {
   pace: "Ritmo",
   personalRecord: "Ritmo",
   characterLevel: "Progresso",
-  coinsEarned: "Progresso",
-  coinsSpent: "Progresso",
   equipmentMaxed: "Progresso",
   achievementCount: "Progresso",
   sessionCalories: "Calorias",
@@ -70,15 +68,6 @@ const STATIC_ACHIEVEMENTS = [
   { id: "level_25", name: "Nível 25", icon: "🏅", type: "characterLevel", threshold: 25 },
   { id: "level_50", name: "Nível 50", icon: "🏅", type: "characterLevel", threshold: 50 },
   { id: "level_100", name: "Nível 100", icon: "🏅", type: "characterLevel", threshold: 100 },
-  // Moedas ganhas/gastas ao longo da vida (2026-08-07, a pedido) - contador
-  // proprio (getTotalMoedasGanhas/Gastas em js/equipment.js), distinto do
-  // saldo atual (que sobe e desce).
-  { id: "coins_earned_500", name: "500 moedas ganhas", icon: "💰", type: "coinsEarned", threshold: 500 },
-  { id: "coins_earned_2000", name: "2000 moedas ganhas", icon: "💰", type: "coinsEarned", threshold: 2000 },
-  { id: "coins_earned_10000", name: "10000 moedas ganhas", icon: "💰", type: "coinsEarned", threshold: 10000 },
-  { id: "spender_500", name: "500 moedas investidas", icon: "🛒", type: "coinsSpent", threshold: 500 },
-  { id: "spender_2000", name: "2000 moedas investidas", icon: "🛒", type: "coinsSpent", threshold: 2000 },
-  { id: "spender_10000", name: "10000 moedas investidas", icon: "🛒", type: "coinsSpent", threshold: 10000 },
   // Equipamento no nivel maximo (2026-08-07, a pedido) - EQUIP_MAX_LEVEL=99
   // (js/equipment.js), o mesmo teto usado pela barra de melhoria de cada
   // peca.
@@ -219,115 +208,6 @@ function generateBossAchievements() {
   return achievements;
 }
 
-// Moedas por conquista (secção 7 da documentação, 2026-08-04) - valores
-// aceites pelo jogador, escalados por uma estimativa de dificuldade
-// relativa dentro de cada categoria (2 = mais facil, 100 = mais dificil).
-// Medalhas mensais NAO estao aqui (ids reais sao medal_<cor>_<ano>_<mes>,
-// um por mes/ano - ver MONTHLY_MEDAL_COIN_REWARD e getAchievementCoinReward
-// abaixo, que usam MONTHLY_MEDAL_ID_PATTERN para apanhar qualquer um deles).
-const ACHIEVEMENT_COIN_REWARD = {
-  // Distância
-  dist_lifetime_50km: 7,
-  dist_lifetime_100km: 12,
-  dist_lifetime_500km: 51,
-  dist_lifetime_1000km: 100,
-  dist_1km: 4,
-  dist_1km_caminhar: 4,
-  dist_1km_bicicleta: 4,
-  dist_5km: 14,
-  dist_5km_caminhar: 14,
-  dist_5km_bicicleta: 14,
-  dist_10km: 25,
-  dist_10km_caminhar: 25,
-  dist_10km_bicicleta: 25,
-  dist_half_marathon: 51,
-  dist_half_marathon_caminhar: 51,
-  dist_half_marathon_bicicleta: 51,
-  dist_marathon: 100,
-  dist_marathon_caminhar: 100,
-  dist_marathon_bicicleta: 100,
-  // Frequência
-  trainings_1: 4,
-  trainings_5: 12,
-  trainings_10: 22,
-  trainings_25: 51,
-  trainings_50: 100,
-  streak_3: 12,
-  streak_7: 25,
-  streak_30: 100,
-  month_full: 41,
-  weekend_warrior: 17,
-  // Combate
-  combat_first_3star: 17,
-  boss_10: 12,
-  boss_20: 22,
-  boss_30: 32,
-  boss_40: 41,
-  boss_50: 51,
-  boss_60: 61,
-  boss_70: 71,
-  boss_80: 81,
-  boss_90: 90,
-  boss_100: 100,
-  combat_all_minibosses_3star: 85,
-  combat_all_bosses_3star: 90,
-  combat_all_defeated: 100,
-  // Ritmo
-  pace_5km_25min: 31,
-  pace_10km_50min: 36,
-  pace_5km_20min: 61,
-  pace_10km_45min: 65,
-  pace_5km_50min_caminhar: 26,
-  pace_5km_40min_caminhar: 46,
-  pace_10km_30min_bicicleta: 41,
-  pace_20km_45min_bicicleta: 51,
-  pace_personal_record: 31,
-  pace_personal_record_caminhar: 31,
-  pace_personal_record_bicicleta: 31,
-  // Combate (novas, 2026-08-07)
-  battles_10: 8,
-  battles_25: 20,
-  battles_50: 45,
-  // Progresso (novas, 2026-08-07)
-  level_10: 15,
-  level_25: 65,
-  level_50: 90,
-  level_100: 100,
-  coins_earned_500: 5,
-  coins_earned_2000: 20,
-  coins_earned_10000: 60,
-  spender_500: 5,
-  spender_2000: 20,
-  spender_10000: 60,
-  weapon_maxed: 90,
-  shield_maxed: 90,
-  armor_maxed: 90,
-  all_equipment_maxed: 100,
-  collector_10: 10,
-  collector_25: 30,
-  collector_50: 70,
-  // Frequência (novas, 2026-08-07)
-  early_bird: 10,
-  night_owl: 10,
-  mode_explorer: 10,
-  months_3: 8,
-  months_6: 25,
-  months_12: 60,
-  // Calorias (novas, 2026-08-10 - secção 10/17.2)
-  cal_sessao_200: 5,
-  cal_sessao_500: 15,
-  cal_sessao_1000: 30,
-  cal_sessao_2000: 60,
-  cal_vida_10000: 7,
-  cal_vida_50000: 12,
-  cal_vida_250000: 51,
-  cal_vida_1000000: 100,
-};
-
-// Liderança - medalha mensal, recorrente (paga de novo a cada mes de
-// calendario em que se ganha, nao so uma vez de sempre).
-const MONTHLY_MEDAL_COIN_REWARD = { bronze: 20, silver: 50, gold: 100 };
-
 const MEDAL_LABEL_BY_TYPE = { gold: "Ouro", silver: "Prata", bronze: "Bronze" };
 const MEDAL_ICON_BY_TYPE = { gold: "🥇", silver: "🥈", bronze: "🥉" };
 const MEDAL_ICON_BUNDLE = "🥇🥈🥉";
@@ -392,7 +272,7 @@ function generateMonthlyMedalAchievements(unlockedMap = getUnlockedAchievements(
   });
 }
 
-// So usado pelo toast de moedas por conquista (unlockAchievement abaixo) -
+// Usado pelo toast de conquista desbloqueada (unlockAchievement abaixo) -
 // procura o nome legivel a partir do id, ja que unlockAchievement so
 // recebe o id em bruto.
 function getAchievementName(id) {
@@ -561,14 +441,6 @@ function isAchievementUnlocked(id, unlockedMap = getUnlockedAchievements()) {
   return Object.prototype.hasOwnProperty.call(unlockedMap, id);
 }
 
-// Moedas por desbloquear esta conquista - medalhas mensais (ids reais
-// medal_<cor>_<ano>_<mes>) apanhadas por padrao, o resto por tabela direta.
-function getAchievementCoinReward(id) {
-  const monthlyMatch = id.match(MONTHLY_MEDAL_ID_PATTERN);
-  if (monthlyMatch) return MONTHLY_MEDAL_COIN_REWARD[monthlyMatch[1]] || 0;
-  return ACHIEVEMENT_COIN_REWARD[id] || 0;
-}
-
 function unlockAchievement(id, unlockedAt) {
   const unlocked = getUnlockedAchievements();
   if (unlocked[id] === undefined) {
@@ -576,21 +448,15 @@ function unlockAchievement(id, unlockedAt) {
     localStorage.setItem(STORAGE_KEY_UNLOCKED_ACHIEVEMENTS, JSON.stringify(unlocked));
     queueProgressSync();
 
-    const coinReward = getAchievementCoinReward(id);
-    if (coinReward > 0) addMoedas(coinReward);
-
     // Medalha mensal (id real medal_<cor>_<ano>_<mes>, atribuido por
-    // js/monthly-medals.js claimOwnMedals): toast proprio em vez do
-    // generico de moedas abaixo, com as moedas do premio incluidas na
-    // mesma mensagem - mesmo espirito do toast de drop de equipamento
-    // repetido (uma so mensagem por evento, nao duas empilhadas).
+    // js/monthly-medals.js claimOwnMedals): toast proprio, senao um toast
+    // generico de conquista desbloqueada.
     const medalMatch = id.match(MONTHLY_MEDAL_ID_PATTERN);
     if (medalMatch) {
       const [, medal] = medalMatch;
-      const coinSuffix = coinReward > 0 ? ` (+${coinReward} moedas)` : "";
-      showGameToast(`${MEDAL_ICON_BY_TYPE[medal]} Medalha de ${MEDAL_LABEL_BY_TYPE[medal]} conquistada!${coinSuffix}`, "medalha");
-    } else if (coinReward > 0) {
-      showGameToast(`+${coinReward} moedas (${getAchievementName(id)})`, "moedas");
+      showGameToast(`${MEDAL_ICON_BY_TYPE[medal]} Medalha de ${MEDAL_LABEL_BY_TYPE[medal]} conquistada!`, "medalha");
+    } else {
+      showGameToast(`🏅 Conquista: ${getAchievementName(id)}`, "conquista");
     }
   }
 }
@@ -652,14 +518,6 @@ function getAchievementProgress(achievement) {
     case "characterLevel": {
       const level = getLevelInfo(getLifetimeCaloriesKcal()).level;
       return { current: Math.min(level, achievement.threshold), target: achievement.threshold, met: level >= achievement.threshold };
-    }
-    case "coinsEarned": {
-      const total = getTotalMoedasGanhas();
-      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
-    }
-    case "coinsSpent": {
-      const total = getTotalMoedasGastas();
-      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
     }
     case "equipmentMaxed": {
       const level = EQUIP_LEVEL_GETTER_BY_EQUIP_ACHIEVEMENT[achievement.equip]();
@@ -901,10 +759,6 @@ function getAchievementDescription(achievement) {
       return `Trava ${achievement.threshold} lutas (ganhas ou perdidas, contam todas).`;
     case "characterLevel":
       return `Chega ao Nível ${achievement.threshold}.`;
-    case "coinsEarned":
-      return `Ganha ${achievement.threshold.toLocaleString("pt-BR")} moedas ao longo da vida (treino, lutas e conquistas - não conta o saldo inicial).`;
-    case "coinsSpent":
-      return `Investe ${achievement.threshold.toLocaleString("pt-BR")} moedas ao longo da vida a evoluir equipamento.`;
     case "equipmentMaxed":
       return achievement.equip === "todos"
         ? "Leva a Arma, o Escudo e a Armadura todos ao nível máximo (99)."

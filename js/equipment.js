@@ -4,8 +4,8 @@
 // seu status principal MAIS um status secundário. As 3 pecas de
 // equipamento (Arma/Escudo/Armadura) sao agora uma peca so por tipo, com
 // um nivel de melhoria continuo de 1 a 99 (sem tiers, sem posse/drop),
-// gasto em moedas - ver computeEquipPrimaryStat/computeEquipSecondaryStat/
-// computeEquipUpgradeCost abaixo:
+// pago com materiais do mapa (secção 21) - ver computeEquipPrimaryStat/
+// computeEquipSecondaryStat/computeEquipUpgradeCost abaixo:
 //   Vida       = PLAYER_BASE_VIDA   + armadura.vida(Lv)   + round(Energia^ENERGIA_EXP)
 //   Ataque     = PLAYER_BASE_ATAQUE + arma.ataque(Lv)     + round(Força^FORCA_EXP)
 //   Defesa     = PLAYER_BASE_DEFESA + escudo.defesa(Lv)   + round(Resistência^RESISTENCIA_EXP)
@@ -29,7 +29,6 @@ const statDestrezaValueEl = document.getElementById("stat-destreza-value");
 const statLetalidadeValueEl = document.getElementById("stat-letalidade-value");
 const statRegeneracaoValueEl = document.getElementById("stat-regeneracao-value");
 const hudUnspentPointsValueEl = document.getElementById("hud-unspent-points-value");
-const hudMoedasValueEl = document.getElementById("hud-moedas-value");
 const hudLevelEnergiaEl = document.getElementById("hud-level-energia");
 const hudLevelForcaEl = document.getElementById("hud-level-forca");
 const hudLevelResistenciaEl = document.getElementById("hud-level-resistencia");
@@ -65,18 +64,9 @@ function getUnspentPoints() {
   return getStoredNumber(STORAGE_KEYS_EQUIPMENT.pontosDisponiveis, STARTING_UNSPENT_POINTS);
 }
 
-// Oferta inicial de 100 moedas (secção 7/16 da documentação) - mesmo
-// padrao de STARTING_UNSPENT_POINTS acima, so conta para quem nunca teve
-// esta chave guardada.
-const STARTING_MOEDAS = 100;
-
-function getMoedas() {
-  return getStoredNumber(STORAGE_KEY_MOEDAS, STARTING_MOEDAS);
-}
-
 // Peso corporal do jogador (kg), editavel no Perfil - pre-requisito da
-// formula de calorias/MET planeada (secção 17 da documentação). Omissão
-// de 70kg para quem ainda não preencheu, mesmo padrão de STARTING_MOEDAS
+// formula de calorias/MET (secção 17 da documentação). Omissão de 70kg
+// para quem ainda não preencheu, mesmo padrão de STARTING_UNSPENT_POINTS
 // acima (só conta para quem nunca teve esta chave guardada).
 const DEFAULT_WEIGHT_KG = 70;
 
@@ -87,36 +77,6 @@ function getPesoKg() {
 function setPesoKg(kg) {
   localStorage.setItem(STORAGE_KEY_WEIGHT_KG, String(kg));
   queueProgressSync();
-}
-
-// Contadores vitalícios (2026-08-07, conquistas "Moedas ganhas"/"Investidor")
-// - ao contrário de getMoedas() (saldo atual, sobe e desce), estes só sobem,
-// nunca são reduzidos por gastar ou perder. STARTING_MOEDAS não conta para
-// getTotalMoedasGanhas (só moedas realmente ganhas em jogo, não a oferta
-// inicial), por isso o valor por omissão é 0, não STARTING_MOEDAS.
-function getTotalMoedasGanhas() {
-  return getStoredNumber(STORAGE_KEY_TOTAL_MOEDAS_GANHAS, 0);
-}
-
-function getTotalMoedasGastas() {
-  return getStoredNumber(STORAGE_KEY_TOTAL_MOEDAS_GASTAS, 0);
-}
-
-function addMoedas(amount) {
-  if (amount <= 0) return;
-  localStorage.setItem(STORAGE_KEY_MOEDAS, String(getMoedas() + amount));
-  localStorage.setItem(STORAGE_KEY_TOTAL_MOEDAS_GANHAS, String(getTotalMoedasGanhas() + amount));
-  queueProgressSync();
-  renderStatsHud();
-}
-
-function spendMoedas(amount) {
-  if (amount <= 0 || amount > getMoedas()) return false;
-  localStorage.setItem(STORAGE_KEY_MOEDAS, String(getMoedas() - amount));
-  localStorage.setItem(STORAGE_KEY_TOTAL_MOEDAS_GASTAS, String(getTotalMoedasGastas() + amount));
-  queueProgressSync();
-  renderStatsHud();
-  return true;
 }
 
 // Nivel investido em Energia/Forca/Resistencia - comeca em 0 (nunca
@@ -166,9 +126,9 @@ function computeStatValue(type, equipLevel) {
 // Substitui por completo o antigo sistema de 10 tiers + posse/drop por
 // peca: Arma/Escudo/Armadura sao agora uma peca so por tipo, com um unico
 // "nivel de melhoria" continuo de 1 a 99 (sem tiers, sem inventario, sem
-// RNG) - sobe-se gastando moedas ate ao maximo de 99, sem depender do
-// nivel de personagem (a regra que capava a melhoria ao proprio nivel
-// existiu por um dia so e foi removida a pedido).
+// RNG) - sobe-se com materiais do mapa (secção 21) ate ao maximo de 99,
+// sem depender do nivel de personagem (a regra que capava a melhoria ao
+// proprio nivel existiu por um dia so e foi removida a pedido).
 //
 // Formulas (nivel^expoente em vez de base^nivel, mesmo raciocinio de
 // "Porquê expoente sobre o nível" ja usado nos status do jogador acima -
@@ -177,8 +137,8 @@ function computeStatValue(type, equipLevel) {
 //   primario   = base + round(nivel ^ expoentePrimarioDaPeca)
 //   secundario = round((nivel-1)/(EQUIP_MAX_LEVEL-1) ^ EQUIP_SECONDARY_EXPONENT * EQUIP_SECONDARY_MAX)
 //   custo(nivel) = round(EQUIP_COST_BASE * nivel ^ EQUIP_COST_EXPONENT)   (custo do PASSO nivel-1 -> nivel; nivel 1 e sempre gratis)
-// 99 niveis eram decorativos: a curva antiga em moedas pedia 395 mil moedas
-// por peca, uns 75 mil km de treino. Passam a 20, todos alcancaveis.
+// 99 niveis eram decorativos: a curva antiga pedia um esforco equivalente a
+// uns 75 mil km de treino por peca. Passam a 20, todos alcancaveis.
 const EQUIP_MAX_LEVEL = 20;
 const EQUIP_SECONDARY_EXPONENT = 0.5;
 const EQUIP_SECONDARY_MAX = 20;
@@ -259,7 +219,7 @@ function getShieldLevel() { return getEquipLevel(STORAGE_KEY_SHIELD_LEVEL); }
 // --- Armadura -----------------------------------------------------------------
 function getArmorLevel() { return getEquipLevel(STORAGE_KEY_ARMOR_LEVEL); }
 
-// Aviso nao-bloqueante generico (moedas, subida de nivel, medalha mensal -
+// Aviso nao-bloqueante generico (subida de nivel, conquista, medalha mensal -
 // variant escolhe a cor via CSS .game-toast-<variant>) - mesmo espirito do
 // numero flutuante de combate (js/main.js showFloatingCombatText), mas
 // fixo no ecra (o treino/luta nao tem uma posicao 3D fixa relevante para
@@ -401,7 +361,6 @@ function renderStatsHud() {
   statLetalidadeValueEl.textContent = `${(computeLetalidadeChance(forcaLevel) * 100).toFixed(1)}%`;
   statRegeneracaoValueEl.textContent = computeRegeneracaoPerSecond(energiaLevel).toFixed(1);
   hudUnspentPointsValueEl.textContent = getUnspentPoints();
-  hudMoedasValueEl.textContent = getMoedas();
 
   hudLevelEnergiaEl.textContent = energiaLevel;
   hudLevelForcaEl.textContent = forcaLevel;
@@ -442,8 +401,8 @@ function updateHpTicker(maxHp) {
   }
 }
 
-// --- Popups de evolucao de Arma/Escudo/Armadura (gastam moedas, secção 7
-// da documentação) --------------------------------------------------------
+// --- Popups de evolucao de Arma/Escudo/Armadura (custo em materiais do
+// mapa, secção 21) --------------------------------------------------------
 // Fabrica generica partilhada pelas 3 pecas - cada uma so difere no
 // prefixo dos ids DOM, na base do status primario e no nome mostrado.
 function createEquipmentUpgradeController(config) {
@@ -458,7 +417,7 @@ function createEquipmentUpgradeController(config) {
   const maxedEl = document.getElementById(`${idPrefix}-upgrade-maxed`);
   const costRowEl = document.getElementById(`${idPrefix}-upgrade-cost-row`);
   const costEl = document.getElementById(`${idPrefix}-upgrade-cost`);
-  const coinsEl = document.getElementById(`${idPrefix}-upgrade-coins`);
+  const stockEl = document.getElementById(`${idPrefix}-upgrade-stock`);
   const confirmBtn = document.getElementById(`btn-${idPrefix}-upgrade-confirm`);
   const closeBtn = document.getElementById(`btn-${idPrefix}-upgrade-close`);
 
@@ -471,9 +430,9 @@ function createEquipmentUpgradeController(config) {
     titleEl.textContent = `${config.pieceName} — Nível ${level}/${EQUIP_MAX_LEVEL}`;
     currentPrimaryEl.textContent = primary;
     currentSecondaryEl.textContent = `+${secondary}`;
-    // Onde estava o saldo de moedas, mostra-se agora o stock dos DOIS
-    // materiais desta peca - e o que o jogador precisa de comparar.
-    coinsEl.textContent = (EQUIP_MATERIAIS[config.pieceKey] || [])
+    // Stock atual dos DOIS materiais desta peca - e o que o jogador
+    // precisa de comparar com o custo.
+    stockEl.textContent = (EQUIP_MATERIAIS[config.pieceKey] || [])
       .map((id) => formatRecurso(stock[id]) + " " + RESOURCE_BY_ID[id].nome.toLowerCase())
       .join(" · ");
 
@@ -599,7 +558,8 @@ document.getElementById("equipment-mini-armor").addEventListener("click", openAr
 
 // Gasta 1 ponto a subir o nivel de um status investido - so pelos botoes
 // "+" do HUD agora (as 3 pecas de equipamento no modelo 3D abrem os
-// popups de moedas acima, ja nao investem pontos por clique direto).
+// popups de evolucao por materiais acima, ja nao investem pontos por
+// clique direto).
 function upgradeEquipmentType(type) {
   if (getUnspentPoints() <= 0) return;
 

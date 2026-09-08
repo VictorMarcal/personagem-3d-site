@@ -993,63 +993,6 @@ window.addEventListener("online", () => {
 const SPEED_VIOLATION_GRACE_READINGS = 2;
 let consecutiveSpeedViolations = 0;
 
-// Moedas encontradas a treinar (secção 7 da documentação): 50% de chance a
-// cada quilometro REAL (nao efetivo - "encontrar" moedas e sobre esforco
-// fisico bruto, nao sobre o modo de treino) de encontrar entre 1 e 20.
-// coinsCheckedKm guarda quantos km inteiros ja foram testados nesta sessao,
-// para o teste correr exatamente uma vez por km cruzado.
-const COIN_FIND_CHANCE = 0.5;
-const COIN_FIND_MIN = 1;
-const COIN_FIND_MAX = 20;
-
-// Cartao persistente com a ultima moeda encontrada (2026-08-06, a pedido -
-// complementa o toast efemero acima, que desaparece sozinho ao fim de
-// 3.5s). Fica visivel ate ao fim do treino ou ate uma moeda nova aparecer
-// (substitui o conteudo, nao acumula um historico).
-const trainingCoinFoundEl = document.getElementById("training-coin-found");
-const trainingCoinFoundAmountEl = document.getElementById("training-coin-found-amount");
-const trainingCoinFoundKmEl = document.getElementById("training-coin-found-km");
-
-function showCoinFoundCard(amount, kmNumber) {
-  trainingCoinFoundAmountEl.textContent = amount;
-  trainingCoinFoundKmEl.textContent = kmNumber;
-  trainingCoinFoundEl.classList.remove("hidden");
-}
-
-function hideCoinFoundCard() {
-  trainingCoinFoundEl.classList.add("hidden");
-}
-
-// startKm: quantos km INTEIROS ja tinham sido testados antes desta chamada
-// - preciso para saber a que km exato (1-based) cada moeda desta leva
-// pertence, para o cartao acima poder dizer "ao N.º quilómetro" (2026-08-06,
-// a pedido; antes so se sabia "quantas" moedas, nunca "em que km").
-function rollCoinDropsForKm(startKm, kmCount) {
-  for (let i = 0; i < kmCount; i++) {
-    if (Math.random() < COIN_FIND_CHANCE) {
-      const found = Math.floor(Math.random() * (COIN_FIND_MAX - COIN_FIND_MIN + 1)) + COIN_FIND_MIN;
-      const kmNumber = startKm + i + 1;
-      addMoedas(found);
-      showGameToast(`+${found} moedas`, "moedas");
-      showCoinFoundCard(found, kmNumber);
-    }
-  }
-}
-
-// coinsCheckedKm guarda quantos km INTEIROS ja foram testados nesta sessao
-// de treino real, para o teste correr exatamente uma vez por km cruzado
-// (mesmo que um so segmento de GPS avance mais que 1km de uma vez).
-let coinsCheckedKm = 0;
-
-function checkCoinDropsForDistance(currentTotalDistanceM) {
-  const currentKm = Math.floor(currentTotalDistanceM / 1000);
-  const newKm = currentKm - coinsCheckedKm;
-  if (newKm > 0) {
-    rollCoinDropsForKm(coinsCheckedKm, newKm);
-    coinsCheckedKm = currentKm;
-  }
-}
-
 function onPositionUpdate(position) {
   const { latitude, longitude, accuracy } = position.coords;
   const timestamp = position.timestamp;
@@ -1213,7 +1156,6 @@ function onPositionUpdate(position) {
         sessionMovingSeconds += rawDurationSeconds;
         gpsDiag.creditadas += 1;
         updateDistanceDisplay();
-        // As moedas por km acabaram (secção 21): quem produz agora e o mapa.
         // Guarda-se o hexagono para, no FIM da sessao, contar uma visita -
         // uma por sessao e nao uma por leitura, senao andava-se para tras e
         // para a frente numa fronteira e enchia-se o multiplicador numa tarde.
@@ -1303,7 +1245,6 @@ function showStartScreen() {
   trainingScreen.classList.add("hidden");
   startScreen.classList.remove("hidden");
   hideSpeedWarning();
-  hideCoinFoundCard();
   renderTodaysTrainings();
 }
 
@@ -1373,7 +1314,6 @@ function beginTrainingSession() {
   lastPosition = null;
   lastCountedPosition = null;
   sessionStartTime = Date.now();
-  coinsCheckedKm = 0;
   sessionCaloriesKcal = 0;
   sessionMovingSeconds = 0;
   sessionHexIds = new Set();
@@ -1673,9 +1613,6 @@ function resumeTrainingIfNeeded() {
   // um treino ja e um caso raro, ver nota abaixo sobre calorias/deteccao).
   lastCountedPosition = lastPosition;
   sessionStartTime = Number(localStorage.getItem(STORAGE_KEYS.inicioSessao)) || Date.now();
-  // Nao re-testa km ja percorridos antes do refresh - so os km novos a
-  // partir daqui contam para moedas.
-  coinsCheckedKm = Math.floor(totalDistanceM / 1000);
 
   // Calorias/modo dominante (2026-08-11, bug corrigido - "as calorias
   // desapareciam e voltavam a zero" a cada refresh a meio de um treino).

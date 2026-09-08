@@ -36,15 +36,10 @@ const STORAGE_KEYS_EQUIPMENT = {
   nivelEquipDefesa: "personagem.nivelEquipDefesa",
 };
 
-// Moedas (2026-08-04 - secção 7/16 da documentação): oferta inicial de 100,
-// ganhas a treinar, a derrotar mini-bosses/bosses e a desbloquear
-// conquistas; gastas a evoluir o nivel de melhoria da arma atual.
-const STORAGE_KEY_MOEDAS = "personagem.moedas";
-
 // Nivel de melhoria (1-99) de cada peca de equipamento (2026-08-05 -
 // substitui por completo o sistema anterior de 10 tiers + posse/drop por
 // peca): Arma/Escudo/Armadura sao agora uma peca so por tipo, que sobe de
-// nivel gastando moedas (nunca por drop/RNG), ate ao nivel de personagem
+// nivel com materiais do mapa (secção 21), ate ao nivel de personagem
 // atual (nao pode ultrapassar-se a si proprio) ou ao maximo de 99. Um
 // numero simples por peca, nao um mapa - ver secção 7 da documentação.
 const STORAGE_KEY_WEAPON_LEVEL = "personagem.nivelArma";
@@ -69,12 +64,8 @@ const STORAGE_KEY_BEST_SESSION_DISTANCE_M_BICICLETA = "personagem.melhorDistanci
 
 const STORAGE_KEY_TOTAL_TRAININGS = "personagem.totalTreinosConcluidos";
 
-// Contadores vitalícios para novas conquistas (2026-08-07, a pedido) -
-// distintos dos valores "atuais" já existentes (moedas/luta), que sobem E
-// descem: estes só sobem, nunca são reduzidos por gastar moedas ou perder
-// uma luta.
-const STORAGE_KEY_TOTAL_MOEDAS_GANHAS = "personagem.totalMoedasGanhas";
-const STORAGE_KEY_TOTAL_MOEDAS_GASTAS = "personagem.totalMoedasGastas";
+// Contador vitalício de lutas travadas (2026-08-07) - só sobe, nunca é
+// reduzido por perder uma luta.
 const STORAGE_KEY_TOTAL_BATTLES = "personagem.totalLutas";
 
 // Fila de sessoes de treino ainda nao confirmadas no Supabase (ver

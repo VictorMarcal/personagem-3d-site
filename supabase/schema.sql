@@ -225,10 +225,7 @@ alter table public.training_sessions alter column effective_distance_m set defau
 alter table public.training_sessions add column if not exists calories_kcal numeric not null default 0;
 
 -- Migracao: contadores vitalicios novos para as conquistas adicionadas em
--- 2026-08-07 (secção 10 da documentação) - distintos dos valores "atuais"
--- ja existentes (moedas/lutas), que sobem E descem: estes so sobem.
-alter table public.player_progress add column if not exists total_moedas_ganhas integer not null default 0;
-alter table public.player_progress add column if not exists total_moedas_gastas integer not null default 0;
+-- 2026-08-07 (secção 10 da documentação) - so sobem, nunca descem.
 alter table public.player_progress add column if not exists total_battles_fought integer not null default 0;
 alter table public.player_progress add column if not exists distinct_months_trained integer not null default 0;
 
@@ -262,14 +259,9 @@ alter table public.player_progress drop column if exists equip_level_defesa;
 -- js/equipment.js, secção 7 da documentação), sem um 4º status separado.
 alter table public.player_progress drop column if exists nivel_foco;
 
--- Migracao: sistema de moedas (secção 7/16 da documentação) - oferta
--- inicial de 100, ganhas a treinar (probabilidade por km real), a derrotar
--- mini-bosses/bosses e a desbloquear conquistas; gastas a evoluir o nivel
--- de melhoria (1-9) da arma atual. nivel_melhoria_armas guarda o progresso
--- de TODAS as armas ja desbloqueadas (mapa tierIndex->nivel), nao so a
--- atual - subir de nivel de personagem e trocar de arma nunca apaga o
--- investimento feito na anterior.
-alter table public.player_progress add column if not exists moedas integer not null default 100;
+-- Migracao: nivel_melhoria_armas guardava o progresso de TODAS as armas ja
+-- desbloqueadas (mapa tierIndex->nivel) no sistema de tiers antigo - fica
+-- por usar (ver nota mais abaixo sobre o equipamento continuo).
 alter table public.player_progress add column if not exists nivel_melhoria_armas jsonb not null default '{}';
 
 -- Migracao: copia publica das conquistas desbloqueadas na tabela
@@ -280,10 +272,10 @@ alter table public.player_progress add column if not exists nivel_melhoria_armas
 -- documentação), por isso a copia vai para aqui, nao para player_progress.
 alter table public.leaderboard add column if not exists unlocked_achievements jsonb not null default '{}';
 
--- Migracao: mesmo sistema de tiers/melhoria por moedas da Arma (secção 7),
--- agora tambem para Escudo e Armadura - cada um com o seu proprio mapa de
--- nivel de melhoria por tier, guardado para sempre (nunca se perde ao
--- desbloquear a peca seguinte).
+-- Migracao: mesmo sistema de tiers/melhoria da Arma (secção 7), agora
+-- tambem para Escudo e Armadura - cada um com o seu proprio mapa de nivel
+-- de melhoria por tier. Tambem por usar depois da mudanca para equipamento
+-- continuo (ver abaixo).
 alter table public.player_progress add column if not exists nivel_melhoria_escudos jsonb not null default '{}';
 alter table public.player_progress add column if not exists nivel_melhoria_armaduras jsonb not null default '{}';
 
@@ -307,9 +299,9 @@ alter table public.player_progress add column if not exists tier_equipado_armadu
 -- Migracao (2026-08-05, mesmo dia - o sistema de tiers/posse/drop acima foi
 -- substituido por um equipamento continuo antes sequer de chegar a
 -- produção real): Arma/Escudo/Armadura deixam de ter tiers, passam a ser
--- uma peca so por tipo com um nivel de melhoria continuo (1-99), gasto em
--- moedas (nunca por drop) - ver secção 7 da documentação. As colunas de
--- tiers/posse acima (nivel_melhoria_*, tiers_possuidos_*, tier_equipado_*)
+-- uma peca so por tipo com um nivel de melhoria continuo (1-99), pago com
+-- materiais do mapa (secção 21) - ver secção 7 da documentação. As colunas
+-- de tiers/posse acima (nivel_melhoria_*, tiers_possuidos_*, tier_equipado_*)
 -- ficam por usar, mantidas so para não perder dados de quem chegou a
 -- testar o sistema anterior (mesmo padrão de nivelEquipVida/Ataque/Defesa
 -- em js/storage-keys.js).
@@ -442,3 +434,12 @@ alter table public.leaderboard
 alter table public.monthly_medals
   add column if not exists distance_km numeric
     generated always as (round(distance_m / 1000.0, 3)) stored;
+
+-- Migracao (2026-09-08): remocao das moedas. Deixaram de ter uso desde que
+-- o equipamento passou a custar materiais do mapa (secção 21) - eram
+-- ganhas mas gastas em nada. Saem tambem as 6 conquistas de moedas
+-- (coins_earned_*, spender_*) e o HUD/cartao de treino associados.
+alter table public.player_progress
+  drop column if exists moedas,
+  drop column if exists total_moedas_ganhas,
+  drop column if exists total_moedas_gastas;

@@ -214,7 +214,7 @@ function refreshAllUi() {
 
 // --- Repor personagem -----------------------------------------------------
 // Botao na aba Perfil (js/profile.js) - visivel a qualquer jogador, nao so a
-// admin. Apaga nivel, status, pontos, equipamento, moedas, conquistas,
+// admin. Apaga nivel, status, pontos, equipamento, conquistas,
 // historico de treinos e territorios descobertos.
 function resetCharacterAndDistance() {
   const confirmed = confirm(
@@ -241,7 +241,6 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelEnergia);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelForca);
   localStorage.removeItem(STORAGE_KEYS_EQUIPMENT.nivelResistencia);
-  localStorage.removeItem(STORAGE_KEY_MOEDAS);
   localStorage.removeItem(STORAGE_KEY_WEAPON_LEVEL);
   localStorage.removeItem(STORAGE_KEY_SHIELD_LEVEL);
   localStorage.removeItem(STORAGE_KEY_ARMOR_LEVEL);
@@ -263,8 +262,6 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEY_MONTH_REFERENCE);
   localStorage.removeItem(STORAGE_KEY_ENCOUNTERED_CREATURES);
   localStorage.removeItem(STORAGE_KEY_DISCARDED_SPEED_M);
-  localStorage.removeItem(STORAGE_KEY_TOTAL_MOEDAS_GANHAS);
-  localStorage.removeItem(STORAGE_KEY_TOTAL_MOEDAS_GASTAS);
   localStorage.removeItem(STORAGE_KEY_TOTAL_BATTLES);
   localStorage.removeItem(STORAGE_KEY_DISTINCT_MONTHS_TRAINED);
   localStorage.removeItem(STORAGE_KEY_DISCOVERED_HEXES);

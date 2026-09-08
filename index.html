@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/style.css?v=20260907i">
+  <link rel="stylesheet" href="css/style.css?v=20260908b">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -37,9 +37,8 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v5.2.0</span>
+      <span id="site-version" class="site-version-hero">v5.4.0</span>
     </div>
-    <span class="header-coin-pill">🪙 <span id="hud-moedas-value">0</span> moedas</span>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
          dependem destes dois botoes. Fica invisivel (.legacy-nav no CSS) - a
          navegacao visivel passou para a barra inferior (#tab-bar, js/nav.js),
@@ -189,14 +188,6 @@
         </section>
 
         <p id="speed-warning" class="speed-warning hidden">⚠️ Velocidade demasiado alta para ser real — esta distância não está a contar</p>
-
-        <div id="training-coin-found" class="training-coin-found hidden">
-          <span class="training-coin-found-icon">🪙</span>
-          <div>
-            <p class="training-coin-found-title">Encontraste <span id="training-coin-found-amount">0</span> moedas</p>
-            <p class="training-coin-found-sub">ao <span id="training-coin-found-km">0</span>.º quilómetro</p>
-          </div>
-        </div>
 
         <section id="training-panel">
           <div id="start-screen" class="panel-screen">
@@ -425,7 +416,7 @@
       </div>
       <p id="weapon-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
       <p id="weapon-upgrade-cost-row" class="auth-text">
-        Custo: <strong id="weapon-upgrade-cost">0</strong> moedas (tens <strong id="weapon-upgrade-coins">0</strong>)
+        Custo: <strong id="weapon-upgrade-cost">—</strong> · Tens: <strong id="weapon-upgrade-stock">—</strong>
       </p>
       <button id="btn-weapon-upgrade-confirm" class="btn-primary"></button>
     </div>
@@ -449,7 +440,7 @@
       </div>
       <p id="shield-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
       <p id="shield-upgrade-cost-row" class="auth-text">
-        Custo: <strong id="shield-upgrade-cost">0</strong> moedas (tens <strong id="shield-upgrade-coins">0</strong>)
+        Custo: <strong id="shield-upgrade-cost">—</strong> · Tens: <strong id="shield-upgrade-stock">—</strong>
       </p>
       <button id="btn-shield-upgrade-confirm" class="btn-primary"></button>
     </div>
@@ -473,7 +464,7 @@
       </div>
       <p id="armor-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
       <p id="armor-upgrade-cost-row" class="auth-text">
-        Custo: <strong id="armor-upgrade-cost">0</strong> moedas (tens <strong id="armor-upgrade-coins">0</strong>)
+        Custo: <strong id="armor-upgrade-cost">—</strong> · Tens: <strong id="armor-upgrade-stock">—</strong>
       </p>
       <button id="btn-armor-upgrade-confirm" class="btn-primary"></button>
     </div>
@@ -500,26 +491,26 @@
        razao do three.min.js acima. -->
   <script src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/storage-keys.js?v=20260907e"></script>
+  <script src="js/storage-keys.js?v=20260908b"></script>
   <script src="js/tab-lock.js?v=20260806p"></script>
   <script src="js/auth.js?v=20260814c"></script>
-  <script src="js/progress-sync.js?v=20260814a"></script>
+  <script src="js/progress-sync.js?v=20260908b"></script>
   <script src="js/leaderboard.js?v=20260810d"></script>
   <script src="js/main.js?v=20260907a"></script>
-  <script src="js/game-config.js?v=20260907a"></script>
-  <script src="js/equipment.js?v=20260907a"></script>
+  <script src="js/game-config.js?v=20260908b"></script>
+  <script src="js/equipment.js?v=20260908b"></script>
   <script src="js/experience.js?v=20260814a"></script>
   <script src="js/monsters.js?v=20260806p"></script>
   <script src="js/monthly-medals.js?v=20260810d"></script>
-  <script src="js/battle.js?v=20260811e"></script>
+  <script src="js/battle.js?v=20260908b"></script>
   <script src="js/resources.js?v=20260907d"></script>
   <script src="js/hexes.js?v=20260907j"></script>
   <script src="js/resources-ui.js?v=20260907c"></script>
-  <script src="js/training.js?v=20260907g"></script>
-  <script src="js/weight.js?v=20260907a"></script>
-  <script src="js/profile.js?v=20260907a"></script>
-  <script src="js/changelog.js?v=20260907h"></script>
-  <script src="js/achievements.js?v=20260811b"></script>
+  <script src="js/training.js?v=20260908b"></script>
+  <script src="js/weight.js?v=20260908a"></script>
+  <script src="js/profile.js?v=20260908a"></script>
+  <script src="js/changelog.js?v=20260908b"></script>
+  <script src="js/achievements.js?v=20260908b"></script>
   <script src="js/orientation.js?v=20260806p"></script>
   <script src="js/nav.js?v=20260814a"></script>
 </body>

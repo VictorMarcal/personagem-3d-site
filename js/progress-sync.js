@@ -17,7 +17,6 @@ function readLocalProgressSnapshot() {
     nivel_energia: getInvestableStatLevel("energia"),
     nivel_forca: getInvestableStatLevel("forca"),
     nivel_resistencia: getInvestableStatLevel("resistencia"),
-    moedas: getMoedas(),
     nivel_arma: getWeaponLevel(),
     nivel_escudo: getShieldLevel(),
     nivel_armadura: getArmorLevel(),
@@ -38,9 +37,7 @@ function readLocalProgressSnapshot() {
     best_pace_mps_bicicleta: getBestPaceMps("bicicleta"),
     best_streak_days: getBestStreakDays(),
     discarded_speed_distance_m: getDiscardedSpeedDistanceM(),
-    // Contadores vitalicios novos (2026-08-07, secção 10 - mais conquistas)
-    total_moedas_ganhas: getTotalMoedasGanhas(),
-    total_moedas_gastas: getTotalMoedasGastas(),
+    // Contador vitalicio de lutas (2026-08-07, secção 10 - mais conquistas)
     total_battles_fought: getTotalBattlesFought(),
     distinct_months_trained: getDistinctMonthsTrained(),
     peso_kg: getPesoKg(),
@@ -173,12 +170,10 @@ const MONOTONIC_PROGRESS_FIELDS = [
   "best_pace_mps_bicicleta",
   "best_streak_days",
   "discarded_speed_distance_m",
-  "total_moedas_ganhas",
-  "total_moedas_gastas",
   "total_battles_fought",
   "distinct_months_trained",
   // Niveis investidos/de equipamento tambem so sobem no jogo normal (gastam
-  // pontos/moedas, nunca sao devolvidos). Um reset feito SO por SQL, sem
+  // pontos/materiais, nunca sao devolvidos). Um reset feito SO por SQL, sem
   // limpar o dispositivo, seria desfeito por isto - e uma operacao de
   // administracao rara, e o custo de nao proteger o caso normal e maior.
   "nivel_energia",
@@ -189,12 +184,12 @@ const MONOTONIC_PROGRESS_FIELDS = [
   "nivel_armadura",
 ];
 
-// Estes sobem E descem (gastar moedas, investir pontos), por isso o maximo
-// nao serve - o valor mais alto pode ser simplesmente o mais antigo. Aqui
-// mantem-se a regra anterior: se ha mutacao local por confirmar, o local e
-// mais recente; senao, manda o servidor. `peso_kg` e uma preferencia, mesma
+// Estes sobem E descem (investir pontos), por isso o maximo nao serve - o
+// valor mais alto pode ser simplesmente o mais antigo. Aqui mantem-se a
+// regra anterior: se ha mutacao local por confirmar, o local e mais
+// recente; senao, manda o servidor. `peso_kg` e uma preferencia, mesma
 // logica.
-const LAST_WRITER_PROGRESS_FIELDS = ["unspent_points", "moedas", "peso_kg"];
+const LAST_WRITER_PROGRESS_FIELDS = ["unspent_points", "peso_kg"];
 
 function mergeDefeatedCreatures(local, server) {
   const merged = { ...(server || {}) };
@@ -254,7 +249,6 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelEnergia, String(progress.nivel_energia || 0));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelForca, String(progress.nivel_forca || 0));
   localStorage.setItem(STORAGE_KEYS_EQUIPMENT.nivelResistencia, String(progress.nivel_resistencia || 0));
-  localStorage.setItem(STORAGE_KEY_MOEDAS, String(progress.moedas != null ? progress.moedas : 100));
   localStorage.setItem(STORAGE_KEY_WEAPON_LEVEL, String(progress.nivel_arma || 1));
   localStorage.setItem(STORAGE_KEY_SHIELD_LEVEL, String(progress.nivel_escudo || 1));
   localStorage.setItem(STORAGE_KEY_ARMOR_LEVEL, String(progress.nivel_armadura || 1));
@@ -271,8 +265,6 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS_BICICLETA, String(progress.best_pace_mps_bicicleta || 0));
   localStorage.setItem(STORAGE_KEY_BEST_STREAK_DAYS, String(progress.best_streak_days || 0));
   localStorage.setItem(STORAGE_KEY_DISCARDED_SPEED_M, String(progress.discarded_speed_distance_m || 0));
-  localStorage.setItem(STORAGE_KEY_TOTAL_MOEDAS_GANHAS, String(progress.total_moedas_ganhas || 0));
-  localStorage.setItem(STORAGE_KEY_TOTAL_MOEDAS_GASTAS, String(progress.total_moedas_gastas || 0));
   localStorage.setItem(STORAGE_KEY_TOTAL_BATTLES, String(progress.total_battles_fought || 0));
   localStorage.setItem(STORAGE_KEY_DISTINCT_MONTHS_TRAINED, String(progress.distinct_months_trained || 0));
   localStorage.setItem(STORAGE_KEY_WEIGHT_KG, String(progress.peso_kg || DEFAULT_WEIGHT_KG));
