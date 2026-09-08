@@ -24,12 +24,12 @@ const profileWeightStatusEl = document.getElementById("profile-weight-status");
 
 function renderProfileSettings() {
   profileWeightInputEl.value = getPesoKg();
-  // Historico, grafico e estado do bloqueio de 15 dias (js/weight.js).
+  // Historico, grafico e estado do bloqueio de 24 h (js/weight.js).
   if (typeof refreshWeightSection === "function") refreshWeightSection();
 }
 
 // O peso deixou de ser um valor solto: cada alteracao entra no historico e so
-// e permitida a cada 15 dias (secção 20). A validacao vive em js/weight.js
+// e permitida a cada 24 h (secção 20). A validacao vive em js/weight.js
 // porque tem de ser feita contra o SERVIDOR - validar contra o localStorage
 // seria contornavel limpando os dados do browser.
 document.getElementById("btn-save-weight").addEventListener("click", async () => {
