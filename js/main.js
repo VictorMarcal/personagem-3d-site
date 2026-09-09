@@ -419,16 +419,26 @@ function setupHeroAnimation(gltf, model) {
 // vier sem os Empties, nada acontece e as pecas ficam nas coordenadas
 // fixas de recurso definidas mais abaixo (nao parte nada).
 function attachEquipmentToSlots() {
-  if (slotBow && bow.parent !== slotBow) {
-    // `bow` e a ancora usada como origem da flecha (shootArrow) - passa a
-    // viver dentro do slot, com transformacao local zerada, para herdar
-    // exatamente o que foi definido no modelo.
-    slotBow.add(bow);
-    bow.position.set(0, 0, 0);
-    bow.rotation.set(0, 0, 0);
+  if (slotBow) {
+    if (bow.parent !== slotBow) {
+      // `bow` e a ancora usada como origem da flecha (shootArrow) - passa a
+      // viver dentro do slot, com transformacao local zerada.
+      slotBow.add(bow);
+      bow.position.set(0, 0, 0);
+      bow.rotation.set(0, 0, 0);
+    }
+    // Com slot, a orientacao vem TODA do Empty do Blender - o modelo do
+    // arco fica em identidade. A rotacao de 90° em loadBowModel e so o
+    // fallback para quando o heroi vem sem `BowSlot`. Corre a cada chamada
+    // (o arco pode carregar depois de o slot ja estar emparelhado).
+    if (bowModel) {
+      bowModel.position.set(0, 0, 0);
+      bowModel.rotation.set(0, 0, 0);
+    }
   }
-  if (slotShield && shieldModel && shieldModel.parent !== slotShield) {
-    slotShield.add(shieldModel);
+  if (slotShield && shieldModel) {
+    if (shieldModel.parent !== slotShield) slotShield.add(shieldModel);
+    // Idem: o Empty ShieldSlot define posicao E rotacao.
     shieldModel.position.set(0, 0, 0);
     shieldModel.rotation.set(0, 0, 0);
   }
@@ -466,13 +476,12 @@ function loadShieldModel() {
 }
 loadShieldModel();
 
-// Arco 3D real (2026-08-11, a pedido - "assets/Bow.glb"). Comprido ao
-// longo do eixo Z de fabrica (~1.1 unidades), nao do Y - rodado 90° em X
-// para ficar de pe (tips para cima/baixo, como um arco segurado), a
-// verificar visualmente. Adicionado como filho do proprio `bow` (o
-// Object3D-ancora ja usado como origem da flecha em shootArrow, definido
-// acima) em vez de `character` diretamente - fica automaticamente na
-// mesma posicao (0.55, 1.1, 0) sem repetir as coordenadas.
+// Arco 3D real (2026-08-11, a pedido - "assets/Bow.glb"). Adicionado como
+// filho do proprio `bow` (o Object3D-ancora ja usado como origem da flecha
+// em shootArrow, definido acima). A rotacao de 90° em X abaixo e SO o
+// fallback para quando o heroi vem sem `BowSlot` - com slot, a orientacao
+// vem do Empty do Blender e attachEquipmentToSlots poe o modelo em
+// identidade (mesmo tratamento do escudo).
 let bowModel = null;
 let bowModelReady = false;
 
