@@ -52,11 +52,14 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/resources.js` | Economia de recursos do mapa: producao, multiplicadores, Fortaleza — ver secção 21 |
 | `js/resources-ui.js` | Painel de recursos e Fortaleza — ver secção 21 |
 | `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de satélite desfocado da aba Missões — ver secção 18 |
+| `js/missions.js` | Missões mensais (3 por mês, recompensa em recursos), painel no separador Treinar — ver secção 22 |
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — histórico/registo, não é lido pelo site nem pelo Supabase |
 | `.mcp.json` | Liga o Claude Code ao projeto Supabase via MCP (`--project-ref=vnqjaepjfqlhgmlrhzlr`), token vem de uma variável de ambiente (`SUPABASE_ACCESS_TOKEN`), nunca gravado no ficheiro. Desde 2026-08-03, migrações novas são aplicadas diretamente via este MCP (`apply_migration`) em vez de copiar/colar SQL manualmente no dashboard — `supabase/schema.sql` continua a ser atualizado a cada migração, só como registo/referência |
 
 Ordem de carregamento dos scripts (importa por causa de dependências entre módulos):
-`storage-keys → tab-lock → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → monthly-medals → battle → training → profile → changelog → achievements → orientation → nav`
+`storage-keys → tab-lock → auth → progress-sync → leaderboard → main → debug → equipment → experience → monsters → monthly-medals → battle → resources → hexes → resources-ui → training → weight → profile → changelog → achievements → missions → orientation → nav`
+
+`missions.js` carrega **depois** de `achievements.js`/`profile.js`/`resources.js`/`hexes.js`: precisa de `formatMonthKey`/`MONTH_NAMES_PT` (profile), `hashString`/`mulberry32`/`RESOURCE_IDS` (resources) e dos getters de hexes/minas. As funções que outros ficheiros chamam de volta (`verificarMissaoAtiva`, `renderMissionsPanel`, `getMissionStateRaw`) são invocadas só em runtime (fim de treino, arranque, sync), nunca no load — o padrão `typeof fn === "function"` já usado no resto do projeto.
 
 `achievements.js` carrega **depois** de `monthly-medals.js` e `profile.js` porque os 12 cartões de medalha mensal (secção 10) dependem de `MONTH_NAMES_PT` (definido em `profile.js`) já estar disponível quando `achievements.js` corre a sua própria renderização inicial no fim do ficheiro.
 
@@ -716,7 +719,7 @@ A variação aleatória aplica-se **depois** do piso mínimo, não antes. Foi te
 
 ## 10. Conquistas
 
-Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem de desbloqueio; depois as mais próximas de completar), sempre num grid plano. Botão "Ver todas" abre popup fullscreen, organizado por **categorias** (`CATEGORY_BY_TYPE`/`CATEGORY_ORDER` em `js/achievements.js`, mesmo padrão de títulos de grupo já usado no histórico da aba Perfil): **Distância**, **Calorias**, **Frequência**, **Combate**, **Progresso**, **Liderança**, **Ritmo**. 100 conquistas no total (2026-08-10).
+Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem de desbloqueio; depois as mais próximas de completar), sempre num grid plano. Botão "Ver todas" abre popup fullscreen, organizado por **categorias** (`CATEGORY_BY_TYPE`/`CATEGORY_ORDER` em `js/achievements.js`, mesmo padrão de títulos de grupo já usado no histórico da aba Perfil): **Distância**, **Calorias**, **Frequência**, **Combate**, **Exploração**, **Progresso**, **Liderança**, **Ritmo**. 100 conquistas no total (2026-08-10; +13 de Exploração em 2026-09-10).
 
 **Arquitetura**: `checkAndUnlockAchievements()` continua 100% síncrona, só lê `localStorage`. Para os tipos que dependem do Supabase, um valor derivado fica cacheado localmente (ex: `melhorSequenciaDias`), atualizado por uma função assíncrona chamada nos sítios onde esses dados já são pedidos por outro motivo (login, ou quando o leaderboard/Perfil já buscam o mesmo dado) — sem chamadas de rede dedicadas extra, exceto uma única busca de `training_sessions` no login.
 
@@ -746,9 +749,16 @@ Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem 
 - `equipmentMaxed` — Arma/Escudo/Armadura no nível máximo (`EQUIP_MAX_LEVEL = 99`): `weapon_maxed`/`shield_maxed`/`armor_maxed` (uma peça cada) + `all_equipment_maxed` (as 3 ao mesmo tempo, usa o `Math.min` das 3). Maxar UMA peça pede um esforço de muito longo prazo em materiais (secção 7/21) — conquistas de fundo de tabela
 - `battleCount` — número total de **lutas travadas** (ganhas OU perdidas, `total_battles_fought`, coluna nova) - distinto de `defeated_creatures` (só guarda o melhor resultado por criatura). Incrementado uma vez por luta em `startBattle` (`js/battle.js`), antes de saber o resultado - por isso `checkAndUnlockAchievements()` passou a ser chamado também no ramo de derrota, não só no de vitória. `battles_10/25/50`
 - `achievementCount` — conquista **meta**, conta o número de outras conquistas já desbloqueadas (`collector_10/25/50`). Exclui de propósito as medalhas mensais da contagem (`getUnlockedAchievementCountExcludingMedals`) - dependem de competir com outros jogadores no leaderboard mensal, não só de esforço próprio, não seria justo exigi-las aqui
-- `sessionTime` — `early_bird` (termina um treino antes das 7h) / `night_owl` (a partir das 22h), hora **local** do dispositivo a partir de `started_at` de qualquer sessão. Evento binário, verificado em `checkFrequencyAchievementsFromSessions` como `month_full`/`weekend_warrior`
+- `sessionTime` — `early_bird` (**começa** um treino antes das 7h) / `night_owl` (às 22h ou mais tarde), hora **local** do dispositivo a partir de `started_at` de qualquer sessão. Evento binário, verificado em `checkFrequencyAchievementsFromSessions` como `month_full`/`weekend_warrior`. (2026-09-10: a descrição dizia "termina um treino" mas o código sempre olhou para `started_at` — a descrição foi corrigida para "começa".)
 - `allModesTrained` — `mode_explorer` ("Poliglota do Treino"), treinar pelo menos uma vez em cada um dos 3 modos (não precisa de ser no mesmo dia)
 - `distinctMonths` — meses de calendário **distintos** com pelo menos um treino, não precisam de ser seguidos (diferente de `streak`, dias seguidos, e de `fullMonthTrained`, todos os dias de UM mês). Cache local (`distinct_months_trained`, mesmo padrão de `best_streak_days`) atualizada em `checkFrequencyAchievementsFromSessions`, por isso tem barra de progresso real (ao contrário de `sessionTime`/`allModesTrained`, binárias). `months_3/6/12`
+
+**Conquistas de Exploração (2026-09-10, a pedido — "adicionar trofeus relativos a conquistas no mapa"), categoria "Exploração" (nova), `EXPLORATION_ACHIEVEMENTS` em `js/achievements.js` (13 no total):** leem o mesmo estado que as secções 18/21/22 já mantêm e sincronizam, avaliadas por `getAchievementProgress` como qualquer outra e desbloqueadas no fim de um treino (`checkAndUnlockAchievements` — sempre que alguma destas coisas muda) e quando as regiões são recalculadas (`applyRegions`).
+- `hexCount` — hexágonos descobertos (`getDiscoveredHexCount`): `hexes_10/50/150/500` ("Primeiros Passos"/"Explorador"/"Cartógrafo"/"Mundo Aberto")
+- `concelhoCount` — concelhos desbloqueados (`unlockedConcelhos.length`, só populado depois de `computeUnlockedRegions`): `concelhos_1/3/10` ("Fora de Casa"/"Três Concelhos"/"Senhor da Região")
+- `mineCount` — minas encontradas (`minasEncontradasCount`): `minas_1/10/25/50`
+- `allResourceMines` — pelo menos uma mina de cada recurso (`minas_todos_recursos`, "Prospetor Completo") — binária, resolve o recurso de cada mina encontrada via `todasAsMinas()`
+- `hexMaxMultiplier` — levar um hexágono ao multiplicador máximo (`MULT_MAX = 2,0`, secção 21) por revisitas (`hex_mult_max`, "Terreno Conhecido") — binária
 
 Cada conquista tem ícone (emoji como placeholder), nome e um destaque visual verde quando desbloqueada (sem barra de progresso — foi removida a pedido).
 
@@ -839,6 +849,7 @@ A lição, generalizável: valores que definem a economia do jogo não podem ser
 | Sobem e descem | Local se houver mutação pendente, senão servidor | `unspent_points`, `peso_kg` |
 | Coleções | União (nunca substituição) | `unlocked_achievements`, `encountered_creatures`, `minas_encontradas`; `defeated_creatures` faz `max` das estrelas por criatura; `hex_visitas` fica com a visita mais recente por hexágono |
 | Stock de recursos (`recursos`/`recursos_desde`, 2026-09-09) | Projeta os **dois** lados para agora (`checkpoint + taxa × horas desde o próprio `recursos_desde``) e fica com o `max` por recurso; `recursos_desde` do resultado = agora | `mergeRecursos()` |
+| Missões mensais (`missoes_mensais`, 2026-09-10) | Meses diferentes → o mais recente; mesmo mês → união das `concluidas`, `ativa` de qualquer lado (largada se já concluída), `rejeitadaEm` mais recente | `mergeMissoes()` (secção 22) |
 
 Depois do merge, se o resultado diferir do que está no servidor, marca-se sincronização pendente para o servidor **também** convergir — a reconciliação é bidirecional, não só uma leitura.
 
@@ -913,7 +924,7 @@ Hoje os dados são guardados em unidades "de cálculo" (metros, m/s) e só a apr
 
 ### 17.2 Painel de Missões (base de exploração implementada em 2026-08-14 — ver secção 18)
 
-Mencionado de passagem a propósito das conquistas de calorias: vai existir um ecrã de Missões, distinto do card de Conquistas (secção 10) — é onde metas diárias (ex: calorias do dia) vivem, em vez de serem conquistas permanentes. **Já tem casa** (2026-08-10): sub-aba "Missões" dentro do separador Mundo (secção 12). **A base de missões por localização (descoberta de território por hexágonos) foi implementada em 2026-08-14 — ver secção 18.** Falta ainda a camada de missões propriamente dita (metas, recompensas, diário vs semanal), deliberadamente adiada até haver dados reais de quantos hexágonos rende um treino típico.
+Mencionado de passagem a propósito das conquistas de calorias: vai existir um ecrã de Missões, distinto do card de Conquistas (secção 10) — é onde metas periódicas vivem, em vez de serem conquistas permanentes. **A base de missões por localização (descoberta de território por hexágonos) foi implementada em 2026-08-14 — ver secção 18.** **A camada de missões propriamente dita foi implementada em 2026-09-10 como missões MENSAIS (3 por mês, fácil/média/difícil, recompensa em recursos) — ver secção 22.** Vivem no separador Treinar, não numa sub-aba própria. Metas diárias de calorias continuam por decidir; o mês foi o período escolhido a pedido, alinhado com as medalhas mensais (secção 10/14).
 
 **Reestruturação de navegação — implementada em duas iterações no mesmo dia (2026-08-10)**: primeiro Treino integrou-se no separador Personagem e Batalhas passou a chamar-se Arena (4 separadores em vez de 5) — mas ao discutir a ideia percebeu-se que fazia mais sentido agrupar Treino com PvE/PvP/Missões (o que se *faz*), separado de Personagem (quem *és* - stats/equipamento). Estrutura final: separador **Mundo** (era "Arena"/"Batalhas", passa a ser o separador de arranque) com sub-navegação própria (padrão das abas do Leaderboard) — **Campo** (era "Treino", sub-aba default), **Masmorra** (PvE, era "Arena"/"Batalhas"), **Arena** (PvP, "Em breve") e **Missões** ("Em breve", ver acima). Vocabulário deliberadamente "de MMORPG" (Mundo/Campo/Masmorra/Arena/Missões), a pedido explícito. Ver detalhe técnico na secção 12. Este item sai do backlog.
 
@@ -1230,3 +1241,54 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 - As moedas foram removidas do jogo em 2026-09-08 (secção 7). As colunas `moedas`/`total_moedas_ganhas`/`total_moedas_gastas` ficam na tabela (já não lidas) — um `drop column` partiu a sincronização de clientes com JS antigo em cache e foi revertido.
 - **Pedra e barro morrem** quando a Fortaleza chegar ao nível 10.
 - ~~As visitas por hexágono só existem em `localStorage`.~~ **Toda a economia sincroniza desde 2026-09-09** (stock, `recursos_desde`, nível da Fortaleza, minas encontradas, multiplicadores dos hexágonos) — colunas novas em `player_progress`, reconciliação na secção 14.1. O stock **acumula offline** na mesma: a produção nunca é um temporizador, é `checkpoint + taxa × (agora − recursos_desde)`, com `recursos_desde` parado no `localStorage`/servidor enquanto a app está fechada. Um checkpoint é fixado no login (`acumularProducao()` em `bootstrapAfterLogin`, já com hexágonos/minas hidratados) para o servidor ter sempre um valor recente mesmo de um jogador que só olha para a Economia.
+
+## 22. Missões mensais (2026-09-10)
+
+`js/missions.js` + painel `#missions-panel` no separador **Treinar** (dentro do `#start-screen`, por baixo de "Treinos de hoje"). A pedido: *"adicionar missões mensais (secção treinar) que dão como recompensa recursos"*.
+
+### As regras (todas a pedido)
+
+- Cada mês de calendário tem **3 missões**: uma **fácil**, uma **média**, uma **difícil**.
+- Concluir uma dá **recursos** (um recurso, quantidade fixa por dificuldade).
+- **Só 1 missão aceite de cada vez.**
+- **Recusar** (`Desistir`) trava novas aceitações durante **24 h** (`MISSION_REJECT_COOLDOWN_MS`).
+- **Concluir não trava nada** — aceita-se logo a seguinte.
+- Concluídas as 3 dentro do mês, espera-se pelo mês seguinte.
+- O progresso conta a partir do **instante em que se aceita** (baseline), nunca desde o início do mês — recusar/falhar nunca credita trabalho antigo.
+
+### Deterministas, como as minas
+
+As 3 missões de um mês saem de `mulberry32(hashString("missoes:" + "2026-09"))` — **não são guardadas**, tal como as minas saem do `osm_id` do concelho (secção 21). Só o **estado** é guardado/sincronizado (`STORAGE_KEY_MISSIONS` → coluna `missoes_mensais` em `player_progress`):
+
+```
+{ mes: "2026-09",
+  ativa: { slot, tipo, alvo, recurso?, recompensa, baseline, aceiteEm } | null,
+  concluidas: ["facil", ...],
+  rejeitadaEm: <ts> | null }
+```
+
+`getMissionState()` faz o **rollover** de mês (se `mes` mudou, começa do zero e grava); `getMissionStateRaw()` é a leitura pura, sem efeitos, usada pelo snapshot de sincronização (não pode escrever a meio).
+
+### Tipos de missão e alvos
+
+| tipo | o que | baseline | fácil / média / difícil |
+|---|---|---|---|
+| `correr_km` | distância corrida (vitalícia − baseline) | `getLifetimeDistanceM()` | 15 / 35 / 70 km |
+| `descobre_hex` | hexágonos novos | `getDiscoveredHexCount()` | 8 / 20 / 45 |
+| `descobre_mina` | uma mina de um recurso específico | ids das minas encontradas | 1 (só média) |
+| `descobre_concelho` | um concelho novo | `osmId`s de `unlockedConcelhos` | 1 (só difícil) |
+
+Cada slot escolhe um tipo do seu pool (`MISSION_POOL`), semeado no mês; a geração tenta dar **3 tipos diferentes** no mesmo mês quando o pool permite. Recompensa: `MISSION_RECOMPENSA` = 50 / 120 / 300 unidades de um recurso semeado no mês. **Números provisórios**, mesma nota da secção 21 (derivados do ritmo real dos dois jogadores no primeiro mês). A recompensa é limitada ao teto da Fortaleza ao ser creditada, como a produção — a difícil só rende tudo com a Fortaleza já subida, de propósito.
+
+### Onde é verificada
+
+`verificarMissaoAtiva()` corre no **fim de um treino** (`js/training.js` `stopTraining`, depois de `checkAndUnlockAchievements`), no **arranque pós-login** (`js/auth.js`, depois da hidratação) e quando as **regiões são recalculadas** (`js/hexes.js` `applyRegions`). Se a missão ativa está concluída: credita a recompensa (`acumularProducao()` → soma → `saveResources`), move o slot para `concluidas`, toast `medalha`, redesenha.
+
+### Sincronização (secção 14.1)
+
+`mergeMissoes(local, server)`: meses diferentes → fica o mais recente; mesmo mês → união das `concluidas`, `ativa` de qualquer lado que a tenha (largada se já constar das concluídas), `rejeitadaEm` mais recente. Objeto vazio (`{}`, contas antigas / default da coluna) → `hydrateLocalStorageFromProgress` remove a chave e o próximo `getMissionState()` gera o estado limpo do mês.
+
+### O que fica por decidir
+
+- **`descobre_concelho` como missão difícil** pode ser impossível num mês para quem vive fundo num só concelho. Sem penalização por falhar (só por desistir), e é opcional aceitar — aceite como está.
+- Sem contador ao vivo do tempo de espera das 24 h: o texto mostra as horas e recalcula-se ao reabrir o separador.
