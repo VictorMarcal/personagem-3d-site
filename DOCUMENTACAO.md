@@ -801,7 +801,7 @@ A lição, generalizável: valores que definem a economia do jogo não podem ser
 
 - **Login obrigatório com Google** — sem modo convidado; `#auth-modal` cobre o ecrã todo até haver sessão confirmada
 - Depois do primeiro login, popup pede o **nome da personagem** (nunca o nome real da conta Google) — nomes são **únicos** (índice único case-insensitive em `profiles.display_name`, erro `23505` tratado no popup)
-- **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância/calorias vitalícias, pontos, níveis dos 3 status investíveis — `nivel_energia/forca/resistencia`, secção 7 —, nível de melhoria de cada peça — `nivel_arma/escudo/armadura`, secção 7 —, monstros derrotados, conquistas, distância anulada por velocidade). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
+- **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância/calorias vitalícias, pontos, níveis dos 3 status investíveis — `nivel_energia/forca/resistencia`, secção 7 —, nível de melhoria de cada peça — `nivel_arma/escudo/armadura`, secção 7 —, monstros derrotados, conquistas, distância anulada por velocidade, e desde 2026-09-09 toda a economia de recursos — `recursos/recursos_desde/nivel_fortaleza/minas_encontradas/hex_visitas`, secção 21). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
 - `treino.*` (checkpoint de sessão GPS em curso) e `debug.*` (afinação de jogo) **nunca** são sincronizados — ficam sempre só locais
 - Sincronização contínua via `queueProgressSync()` (debounce ~400ms, snapshot completo, seguro para reenviar) chamada a seguir a cada mutação de progresso existente
 - **`SYNC_PENDING_KEY` (`sync.pendingPush`) é marcado de imediato em `queueProgressSync()`, antes do debounce sequer disparar** — não só dentro de `syncProgressToSupabase()` quando a rede falha. Corrige um bug crítico real de perda silenciosa de progresso: sem isto, uma mutação (ex: subir um equipamento) seguida de um refresh/fecho da aba dentro dos ~400ms (ou antes da rede confirmar) nunca chegava a marcar nada como pendente; no arranque seguinte, `hydrateLocalStorageFromProgress()` sobrescrevia esse progresso local (mais recente, nunca confirmado) com o estado mais antigo do Supabase — sem erro nenhum visível, o jogador só via os pontos/nível voltarem atrás. Agora `bootstrapAfterLogin()` (`js/auth.js`) verifica este flag **antes** de hidratar: se houver uma mutação por confirmar, hidratar é ignorado (confia-se no local, mais recente) e tenta-se reenviar em vez disso, assim que `readyForSync` ficar `true`
@@ -832,9 +832,10 @@ A lição, generalizável: valores que definem a economia do jogo não podem ser
 
 | Tipo de campo | Regra | Exemplos |
 |---|---|---|
-| Monotónicos (só sobem) | `max(local, servidor)` | `lifetime_calories_kcal`, `lifetime_distance_m`, `best_session_*`, `best_pace_*`, `total_*`, `last_awarded_level`, níveis investidos e de equipamento |
+| Monotónicos (só sobem) | `max(local, servidor)` | `lifetime_calories_kcal`, `lifetime_distance_m`, `best_session_*`, `best_pace_*`, `total_*`, `last_awarded_level`, níveis investidos e de equipamento, `nivel_fortaleza` |
 | Sobem e descem | Local se houver mutação pendente, senão servidor | `unspent_points`, `peso_kg` |
-| Coleções | União (nunca substituição) | `unlocked_achievements`, `encountered_creatures`; `defeated_creatures` faz `max` das estrelas por criatura |
+| Coleções | União (nunca substituição) | `unlocked_achievements`, `encountered_creatures`, `minas_encontradas`; `defeated_creatures` faz `max` das estrelas por criatura; `hex_visitas` fica com a visita mais recente por hexágono |
+| Stock de recursos (`recursos`/`recursos_desde`, 2026-09-09) | Projeta os **dois** lados para agora (`checkpoint + taxa × horas desde o próprio `recursos_desde``) e fica com o `max` por recurso; `recursos_desde` do resultado = agora | `mergeRecursos()` |
 
 Depois do merge, se o resultado diferir do que está no servidor, marca-se sincronização pendente para o servidor **também** convergir — a reconciliação é bidirecional, não só uma leitura.
 
@@ -1225,4 +1226,4 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 - **O mar não é azul.** Precisa de dados de terra/água que não temos; ambos os jogadores são de zona interior, por isso não muda nada hoje.
 - As moedas foram removidas do jogo em 2026-09-08 (secção 7). As colunas `moedas`/`total_moedas_ganhas`/`total_moedas_gastas` ficam na tabela (já não lidas) — um `drop column` partiu a sincronização de clientes com JS antigo em cache e foi revertido.
 - **Pedra e barro morrem** quando a Fortaleza chegar ao nível 10.
-- **As visitas por hexágono só existem em `localStorage`.** Não sincronizam entre dispositivos.
+- ~~As visitas por hexágono só existem em `localStorage`.~~ **Toda a economia sincroniza desde 2026-09-09** (stock, `recursos_desde`, nível da Fortaleza, minas encontradas, multiplicadores dos hexágonos) — colunas novas em `player_progress`, reconciliação na secção 14.1. O stock **acumula offline** na mesma: a produção nunca é um temporizador, é `checkpoint + taxa × (agora − recursos_desde)`, com `recursos_desde` parado no `localStorage`/servidor enquanto a app está fechada. Um checkpoint é fixado no login (`acumularProducao()` em `bootstrapAfterLogin`, já com hexágonos/minas hidratados) para o servidor ter sempre um valor recente mesmo de um jogador que só olha para a Economia.

@@ -450,3 +450,21 @@ alter table public.monthly_medals
 -- clientes com o JS antigo em cache (upsert com essas chaves -> 400), e a
 -- convencao deste schema e nunca apagar colunas so por deixarem de ser
 -- lidas. Ficam com default 0, ignoradas pelo codigo novo.
+
+-- Migracao (2026-09-09): economia de recursos do mapa (secção 21) passa a
+-- sincronizar como o resto do progresso - ate aqui vivia so em localStorage,
+-- por dispositivo (stock, nivel da Fortaleza, minas encontradas e
+-- multiplicadores dos hexagonos zeravam num telemovel novo).
+--   recursos          - stock por recurso {ferro, madeira, pele, pedra, barro}
+--   recursos_desde    - timestamp ms do checkpoint; a producao e derivada de
+--                       (agora - recursos_desde), o par anda sempre junto
+--   nivel_fortaleza   - nivel do armazem (localStorage `nivelArmazem`; o
+--                       codigo mantem o nome `warehouse`/getWarehouseLevel)
+--   minas_encontradas - lista de ids de mina ja reclamados
+--   hex_visitas       - mapa hexId -> { m: multiplicador, d: dia ISO da ultima visita }
+alter table public.player_progress
+  add column if not exists recursos jsonb not null default '{}',
+  add column if not exists recursos_desde bigint,
+  add column if not exists nivel_fortaleza integer not null default 1,
+  add column if not exists minas_encontradas jsonb not null default '[]',
+  add column if not exists hex_visitas jsonb not null default '{}';
