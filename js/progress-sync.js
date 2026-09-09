@@ -42,6 +42,14 @@ function readLocalProgressSnapshot() {
     distinct_months_trained: getDistinctMonthsTrained(),
     peso_kg: getPesoKg(),
     best_session_calories_kcal: getBestSessionCaloriesKcal(),
+    // Economia de recursos do mapa (secção 21). O par recursos/recursos_desde
+    // e um checkpoint + relogio: a producao e sempre derivada de
+    // (agora - recursos_desde), por isso os dois sincronizam juntos.
+    recursos: typeof getResources === "function" ? getResources() : {},
+    recursos_desde: Number(localStorage.getItem(STORAGE_KEY_RESOURCES_SINCE)) || null,
+    nivel_fortaleza: typeof getWarehouseLevel === "function" ? getWarehouseLevel() : 1,
+    minas_encontradas: typeof getMinasEncontradas === "function" ? [...getMinasEncontradas()] : [],
+    hex_visitas: typeof getHexVisits === "function" ? getHexVisits() : {},
   };
 }
 
@@ -182,6 +190,9 @@ const MONOTONIC_PROGRESS_FIELDS = [
   "nivel_arma",
   "nivel_escudo",
   "nivel_armadura",
+  // Nivel da Fortaleza (armazem): so sobe. (O stock de recursos em si e
+  // reconciliado a parte, ver mergeRecursos.)
+  "nivel_fortaleza",
 ];
 
 // Estes sobem E descem (investir pontos), por isso o maximo nao serve - o
@@ -195,6 +206,52 @@ function mergeDefeatedCreatures(local, server) {
   const merged = { ...(server || {}) };
   Object.entries(local || {}).forEach(([level, stars]) => {
     merged[level] = Math.max(Number(merged[level]) || 0, Number(stars) || 0);
+  });
+  return merged;
+}
+
+// Stock de recursos (secção 21): projeta OS DOIS lados para agora
+// (checkpoint + taxa x tempo desde o proprio recursos_desde) e fica com o
+// maior por recurso. Nunca perde producao offline; pode restaurar recursos
+// gastos noutro dispositivo (mesmo compromisso ja aceite nos campos
+// monotonicos). O recursos_desde do resultado e "agora" - o valor devolvido
+// ja esta projetado ate ca.
+function mergeRecursos(localRec, localDesde, serverRec, serverDesde, nivelFortaleza) {
+  const now = Date.now();
+  const taxa = typeof producaoPorHora === "function" ? producaoPorHora() : {};
+  const tecto = typeof warehouseCap === "function" ? warehouseCap(nivelFortaleza || 1) : Infinity;
+  const ids = typeof RESOURCE_IDS !== "undefined"
+    ? RESOURCE_IDS
+    : [...new Set([...Object.keys(localRec || {}), ...Object.keys(serverRec || {})])];
+
+  const projetar = (rec, desde) => {
+    const horas = Number.isFinite(desde) && desde > 0 ? Math.max(0, (now - desde) / 3600000) : 0;
+    const out = {};
+    ids.forEach((id) => {
+      const base = Math.max(0, Number(rec && rec[id]) || 0);
+      out[id] = Math.min(tecto, base + (Number(taxa[id]) || 0) * horas);
+    });
+    return out;
+  };
+
+  const a = projetar(localRec, Number(localDesde));
+  const b = projetar(serverRec, Number(serverDesde));
+  const merged = {};
+  ids.forEach((id) => { merged[id] = Math.max(a[id], b[id]); });
+  return merged;
+}
+
+// Multiplicadores por hexagono (hexId -> {m, d}): por hexagono, fica o
+// registo com a visita mais recente (d, dia ISO); empate -> multiplicador
+// mais alto. Uniao das chaves - uma visita num dispositivo nao desaparece.
+function mergeHexVisitas(local, server) {
+  const merged = { ...(server || {}) };
+  Object.entries(local || {}).forEach(([hexId, reg]) => {
+    const atual = merged[hexId];
+    if (!atual) { merged[hexId] = reg; return; }
+    const maisRecente = String(reg.d) > String(atual.d);
+    const mesmoDiaMaiorMult = reg.d === atual.d && (Number(reg.m) || 0) > (Number(atual.m) || 0);
+    if (maisRecente || mesmoDiaMaiorMult) merged[hexId] = reg;
   });
   return merged;
 }
@@ -225,6 +282,19 @@ function reconcileProgressWithServer(serverProgress) {
     ...(serverProgress.unlocked_achievements || {}),
     ...(local.unlocked_achievements || {}),
   };
+
+  // Economia de recursos (secção 21). nivel_fortaleza ja foi feito acima
+  // (monotonico); e ele que decide o tecto no merge do stock.
+  merged.recursos = mergeRecursos(
+    local.recursos, local.recursos_desde,
+    serverProgress.recursos, serverProgress.recursos_desde,
+    merged.nivel_fortaleza
+  );
+  merged.recursos_desde = Date.now(); // o stock acima ja esta projetado ate agora
+  merged.minas_encontradas = [
+    ...new Set([...(local.minas_encontradas || []), ...(serverProgress.minas_encontradas || [])]),
+  ];
+  merged.hex_visitas = mergeHexVisitas(local.hex_visitas, serverProgress.hex_visitas);
 
   hydrateLocalStorageFromProgress(merged);
   return merged;
@@ -269,4 +339,15 @@ function hydrateLocalStorageFromProgress(progress) {
   localStorage.setItem(STORAGE_KEY_DISTINCT_MONTHS_TRAINED, String(progress.distinct_months_trained || 0));
   localStorage.setItem(STORAGE_KEY_WEIGHT_KG, String(progress.peso_kg || DEFAULT_WEIGHT_KG));
   localStorage.setItem(STORAGE_KEY_BEST_SESSION_CALORIES_KCAL, String(progress.best_session_calories_kcal || 0));
+
+  // Economia de recursos do mapa (secção 21).
+  localStorage.setItem(STORAGE_KEY_RESOURCES, JSON.stringify(progress.recursos || {}));
+  if (Number.isFinite(Number(progress.recursos_desde)) && Number(progress.recursos_desde) > 0) {
+    localStorage.setItem(STORAGE_KEY_RESOURCES_SINCE, String(Number(progress.recursos_desde)));
+  } else {
+    localStorage.removeItem(STORAGE_KEY_RESOURCES_SINCE);
+  }
+  localStorage.setItem(STORAGE_KEY_WAREHOUSE_LEVEL, String(progress.nivel_fortaleza || 1));
+  localStorage.setItem(STORAGE_KEY_MINES, JSON.stringify(progress.minas_encontradas || []));
+  localStorage.setItem(STORAGE_KEY_HEX_VISITS, JSON.stringify(progress.hex_visitas || {}));
 }

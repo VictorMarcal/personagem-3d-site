@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.3.0",
+    title: "Os Recursos Seguem a Conta",
+    changes: [
+      "O stock de recursos, o nível da Fortaleza, as minas que encontraste e os multiplicadores dos hexágonos passam a estar ligados à tua conta — abres noutro telemóvel e está tudo lá.",
+      "A produção continua a contar mesmo com a app fechada: quando voltas, o tempo todo que passou é creditado de uma vez.",
+      "Ao juntar dois dispositivos, fica sempre o maior de cada recurso — nunca perdes produção.",
+    ],
+  },
+  {
     version: "v6.2.0",
     title: "Todos os Hexágonos Rendem",
     changes: [

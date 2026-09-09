@@ -245,6 +245,16 @@ async function bootstrapAfterLogin(user) {
   } catch (err) {
     console.error("Falha ao carregar territórios descobertos:", err);
   }
+
+  // Fixa um checkpoint de recursos AGORA (secção 21): a esta altura os
+  // hexagonos/minas/concelhos ja estao hidratados, por isso producaoPorHora
+  // ja da a taxa certa. Sem isto, um jogador que so OLHA para a Economia
+  // (nunca paga nada) nunca empurrava o stock para o servidor.
+  try {
+    if (typeof acumularProducao === "function") acumularProducao();
+  } catch (err) {
+    console.error("Falha ao fixar checkpoint de recursos:", err);
+  }
 }
 
 supabaseClient.auth.onAuthStateChange((_event, session) => {
