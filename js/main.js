@@ -14,6 +14,24 @@ const camera = new THREE.PerspectiveCamera(
 camera.position.set(0, 1.5, 4);
 camera.lookAt(0, 1, 0);
 
+// Vista normal da aba Eu > Personagem (o detalhe do angulo/FOV, e a camara
+// da luta, estao documentados mais abaixo junto a BATTLE_CAMERA_POSITION).
+// z fixo; a altura e o alvo sobem com o heroi quando ele passa para o topo
+// da torre (TOWER_TOP_Y) - com TOWER_TOP_Y = 0 isto da exatamente
+// (0, 1.5, 4) a olhar para (0, 1, 0), como era antes da torre. So e
+// chamada depois de tudo estar definido (callback do loadTower e
+// exitBattleView), nunca no arranque sincrono.
+const NORMAL_CAMERA_POSITION = { x: 0, y: 1.5, z: 4 };
+const NORMAL_CAMERA_FOV = 45;
+
+function applyNormalCamera() {
+  const focusY = character.position.y + 0.9; // meio do heroi (altura 1.8)
+  camera.fov = NORMAL_CAMERA_FOV;
+  camera.updateProjectionMatrix();
+  camera.position.set(0, focusY + 0.6, NORMAL_CAMERA_POSITION.z + TOWER_TOP_Y * 0.45);
+  camera.lookAt(0, focusY, 0);
+}
+
 // --- Custo de desenho (2026-09-07, "a app drena demasiada bateria") --------
 //
 // devicePixelRatio sem teto era o maior desperdicio: num telemovel com DPR 3
@@ -97,6 +115,56 @@ function loadSceneryFloor() {
   );
 }
 loadSceneryFloor();
+
+// Torre / Fortaleza 3D (2026-09-09, a pedido - "assets/Tower.glb", o heroi
+// fica no topo). Base assente em Y=0 no terreno, centrada em X/Z (o heroi
+// roda sobre a origem, tem de ser o eixo da torre). TOWER_TOP_Y guarda a
+// altura do topo - o heroi passa a assentar nessa cota em vez de Y=0, e a
+// camara da vista normal sobe com ele. Fica escondida durante uma luta
+// (a arena e ao nivel do chao). Se a carga falhar, o heroi fica em Y=0.
+//
+// Um so modelo por agora - os upgrades visuais por nivel de Fortaleza
+// (getWarehouseLevel) entram aqui mais tarde.
+let towerModel = null;
+let TOWER_TOP_Y = 0;
+
+function loadTower() {
+  new THREE.GLTFLoader().load(
+    "assets/Tower.glb",
+    (gltf) => {
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      if (size.y <= 0) return; // modelo vazio, heroi fica em Y=0
+
+      const centre = box.getCenter(new THREE.Vector3());
+      model.position.x -= centre.x;
+      model.position.z -= centre.z;
+      model.position.y -= box.min.y; // base em Y=0
+
+      model.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        }
+      });
+
+      scene.add(model);
+      towerModel = model;
+      TOWER_TOP_Y = size.y;
+
+      // Poe o heroi no topo e reenquadra a camara - a nao ser que uma luta
+      // esteja a decorrer (ai o heroi vive ao nivel do chao, na arena).
+      if (!(typeof battleInProgress !== "undefined" && battleInProgress)) {
+        character.position.y = TOWER_TOP_Y;
+        applyNormalCamera();
+      }
+    },
+    undefined,
+    (err) => console.warn("Falha ao carregar assets/Tower.glb, o heroi fica no chao.", err)
+  );
+}
+loadTower();
 
 // Heroi: grupo que recebe o modelo 3D real (assets/Hero.glb, carregado
 // abaixo). `body`/`head`/`bow` deixaram de ser meshes com geometria
@@ -476,8 +544,10 @@ function loadArenaModel() {
 }
 loadArenaModel();
 
-const NORMAL_CAMERA_POSITION = { x: 0, y: 1.5, z: 4 };
-const NORMAL_CAMERA_FOV = 45;
+// NORMAL_CAMERA_POSITION / NORMAL_CAMERA_FOV / applyNormalCamera() estao
+// definidos no topo do ficheiro (a torre precisa deles no callback do
+// loadTower). O detalhe do angulo/FOV segue abaixo.
+//
 // Perspetiva angulada de topo (nao e isometrica "verdadeira"/ortografica,
 // mantem a PerspectiveCamera existente so reposicionada/reangulada).
 // Câmara do lado da personagem (Z positivo) para o monstro, mais longe no
@@ -506,6 +576,10 @@ function enterBattleView() {
   monster.rotation.y = 0;
   monster.visible = true;
 
+  // A torre e o cenario da aba Eu > Personagem; a luta e ao nivel do chao
+  // da arena, com o heroi de volta a Y=0.
+  if (towerModel) towerModel.visible = false;
+
   // Modelo real assim que estiver pronto (loadArenaModel acima), chao
   // placeholder ate la (ou para sempre, se a carga tiver falhado).
   arenaFloor.visible = !arenaModelReady;
@@ -522,16 +596,15 @@ function enterBattleView() {
 }
 
 function exitBattleView() {
-  character.position.set(0, 0, 0);
+  // Heroi de volta ao topo da torre (Y=0 se a torre nao carregou).
+  character.position.set(0, TOWER_TOP_Y, 0);
   character.rotation.y = 0;
   monster.visible = false;
   arenaFloor.visible = false;
   if (arenaModel) arenaModel.visible = false;
+  if (towerModel) towerModel.visible = true;
 
-  camera.fov = NORMAL_CAMERA_FOV;
-  camera.updateProjectionMatrix();
-  camera.position.set(NORMAL_CAMERA_POSITION.x, NORMAL_CAMERA_POSITION.y, NORMAL_CAMERA_POSITION.z);
-  camera.lookAt(0, 1, 0);
+  applyNormalCamera();
 }
 
 // "Lunge" de ataque (2026-08-07, a pedido) - quem ataca avanca parte do
