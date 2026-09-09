@@ -36,8 +36,13 @@ const CATEGORY_BY_TYPE = {
   achievementCount: "Progresso",
   sessionCalories: "Calorias",
   lifetimeCalories: "Calorias",
+  hexCount: "Exploração",
+  concelhoCount: "Exploração",
+  mineCount: "Exploração",
+  allResourceMines: "Exploração",
+  hexMaxMultiplier: "Exploração",
 };
-const CATEGORY_ORDER = ["Distância", "Calorias", "Frequência", "Combate", "Progresso", "Liderança", "Ritmo"];
+const CATEGORY_ORDER = ["Distância", "Calorias", "Frequência", "Combate", "Exploração", "Progresso", "Liderança", "Ritmo"];
 
 const STATIC_ACHIEVEMENTS = [
   { id: "dist_lifetime_50km", name: "50 km vitalícios", icon: "🌍", type: "lifetimeDistance", threshold: 50000 },
@@ -97,8 +102,9 @@ const STATIC_ACHIEVEMENTS = [
 ];
 
 // Horario de uma sessao de treino (2026-08-07, a pedido) - hora LOCAL do
-// dispositivo que fecha a sessao (nem sempre quem a treinou, mas e o mais
-// perto que temos sem fuso guardado por sessao).
+// dispositivo em que a sessao COMECOU (started_at, ver hasEarlyBirdSession/
+// hasNightOwlSession; nem sempre o fuso de quem treinou, mas e o mais perto
+// que temos sem fuso guardado por sessao).
 const EARLY_BIRD_ACHIEVEMENT = { id: "early_bird", name: "Madrugador", icon: "🌅", type: "sessionTime" };
 const NIGHT_OWL_ACHIEVEMENT = { id: "night_owl", name: "Notívago", icon: "🌙", type: "sessionTime" };
 const EARLY_BIRD_MAX_HOUR = 7; // antes das 7h
@@ -115,6 +121,30 @@ const DISTINCT_MONTHS_ACHIEVEMENTS = [
   { id: "months_3", name: "3 meses treinados", icon: "🗓️", type: "distinctMonths", threshold: 3 },
   { id: "months_6", name: "6 meses treinados", icon: "🗓️", type: "distinctMonths", threshold: 6 },
   { id: "months_12", name: "12 meses treinados", icon: "🗓️", type: "distinctMonths", threshold: 12 },
+];
+
+// Conquistas de exploracao do mapa (2026-09-10, a pedido - "adicionar trofeus
+// relativos a conquistas no mapa"). Leem o mesmo estado que a secção 18/21 ja
+// mantem e sincroniza: hexagonos descobertos (discovered_hexes), concelhos
+// desbloqueados (derivados dos hexes + cache de regioes), minas encontradas
+// (minas_encontradas) e multiplicadores de revisita (hex_visitas). Sao
+// avaliadas por getAchievementProgress como qualquer outra e desbloqueadas
+// no fim de um treino (checkAndUnlockAchievements) - que e sempre quando
+// alguma destas coisas muda.
+const EXPLORATION_ACHIEVEMENTS = [
+  { id: "hexes_10", name: "Primeiros Passos", icon: "🗺️", type: "hexCount", threshold: 10 },
+  { id: "hexes_50", name: "Explorador", icon: "🧭", type: "hexCount", threshold: 50 },
+  { id: "hexes_150", name: "Cartógrafo", icon: "🏞️", type: "hexCount", threshold: 150 },
+  { id: "hexes_500", name: "Mundo Aberto", icon: "🌍", type: "hexCount", threshold: 500 },
+  { id: "concelhos_1", name: "Fora de Casa", icon: "🚩", type: "concelhoCount", threshold: 1 },
+  { id: "concelhos_3", name: "Três Concelhos", icon: "🏘️", type: "concelhoCount", threshold: 3 },
+  { id: "concelhos_10", name: "Senhor da Região", icon: "🏛️", type: "concelhoCount", threshold: 10 },
+  { id: "minas_1", name: "Primeira Mina", icon: "⛏️", type: "mineCount", threshold: 1 },
+  { id: "minas_10", name: "Dez Minas", icon: "⛏️", type: "mineCount", threshold: 10 },
+  { id: "minas_25", name: "Vinte e Cinco Minas", icon: "⛏️", type: "mineCount", threshold: 25 },
+  { id: "minas_50", name: "Cinquenta Minas", icon: "⛏️", type: "mineCount", threshold: 50 },
+  { id: "minas_todos_recursos", name: "Prospetor Completo", icon: "💎", type: "allResourceMines" },
+  { id: "hex_mult_max", name: "Terreno Conhecido", icon: "🔁", type: "hexMaxMultiplier" },
 ];
 
 // Conquistas de distância de sessão e de ritmo separadas por modo de
@@ -292,6 +322,7 @@ function getAllAchievements(unlockedMap = getUnlockedAchievements()) {
     NIGHT_OWL_ACHIEVEMENT,
     MODE_EXPLORER_ACHIEVEMENT,
     ...DISTINCT_MONTHS_ACHIEVEMENTS,
+    ...EXPLORATION_ACHIEVEMENTS,
   ];
 }
 
@@ -531,6 +562,38 @@ function getAchievementProgress(achievement) {
       const total = getDistinctMonthsTrained();
       return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
     }
+    case "hexCount": {
+      const total = typeof getDiscoveredHexCount === "function" ? getDiscoveredHexCount() : 0;
+      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
+    }
+    case "concelhoCount": {
+      // unlockedConcelhos (js/hexes.js) so esta populado depois de
+      // computeUnlockedRegions correr (arranque pos-login ou abertura do mapa).
+      const total = typeof unlockedConcelhos !== "undefined" ? unlockedConcelhos.length : 0;
+      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
+    }
+    case "mineCount": {
+      const total = typeof minasEncontradasCount === "function" ? minasEncontradasCount() : 0;
+      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
+    }
+    case "allResourceMines": {
+      const tipos = new Set();
+      if (typeof todasAsMinas === "function" && typeof getMinasEncontradas === "function") {
+        const encontradas = getMinasEncontradas();
+        todasAsMinas().forEach((m) => { if (encontradas.has(m.id)) tipos.add(m.recurso); });
+      }
+      const alvo = typeof RESOURCE_IDS !== "undefined" ? RESOURCE_IDS.length : 5;
+      return { current: tipos.size, target: alvo, met: tipos.size >= alvo };
+    }
+    case "hexMaxMultiplier": {
+      let atingiu = false;
+      if (typeof getHexVisits === "function" && typeof multiplicadorDoHex === "function") {
+        const visitas = getHexVisits();
+        const teto = typeof MULT_MAX !== "undefined" ? MULT_MAX : 2;
+        atingiu = Object.keys(visitas).some((h) => multiplicadorDoHex(h, visitas) >= teto - 0.001);
+      }
+      return { current: atingiu ? 1 : 0, target: 1, met: atingiu };
+    }
     case "pace":
     case "fullMonthTrained":
     case "activeWeekend":
@@ -767,12 +830,22 @@ function getAchievementDescription(achievement) {
       return `Desbloqueia ${achievement.threshold} conquistas (medalhas mensais não contam - dependem de competir com outros jogadores, não só de esforço próprio).`;
     case "sessionTime":
       return achievement.id === "early_bird"
-        ? `Termina um treino antes das ${EARLY_BIRD_MAX_HOUR}h.`
-        : `Termina um treino a partir das ${NIGHT_OWL_MIN_HOUR}h.`;
+        ? `Começa um treino antes das ${EARLY_BIRD_MAX_HOUR}h.`
+        : `Começa um treino às ${NIGHT_OWL_MIN_HOUR}h ou mais tarde.`;
     case "allModesTrained":
       return "Treina pelo menos uma vez em cada um dos 3 modos (Caminhar, Correr, Bicicleta).";
     case "distinctMonths":
       return `Treina em ${achievement.threshold} meses de calendário diferentes (não precisam de ser seguidos).`;
+    case "hexCount":
+      return `Descobre ${achievement.threshold} hexágonos de território.`;
+    case "concelhoCount":
+      return `Desbloqueia ${achievement.threshold} concelho${achievement.threshold > 1 ? "s" : ""} (cada um precisa de ${MIN_HEXES_FOR_REGION} hexágonos descobertos lá dentro).`;
+    case "mineCount":
+      return `Encontra ${achievement.threshold} mina${achievement.threshold > 1 ? "s" : ""} no mapa.`;
+    case "allResourceMines":
+      return "Encontra pelo menos uma mina de cada recurso: ferro, madeira, pele, pedra e barro.";
+    case "hexMaxMultiplier":
+      return "Leva um hexágono ao multiplicador máximo (2,0), voltando lá em sessões suficientes.";
     default:
       return "";
   }

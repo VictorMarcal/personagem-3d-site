@@ -151,3 +151,9 @@ const STORAGE_KEY_WAREHOUSE_LEVEL = "personagem.nivelArmazem";
 // deterministas a partir do osm_id do concelho; so faz falta saber quais e
 // que ja foram encontradas.
 const STORAGE_KEY_MINES = "personagem.minasEncontradas";
+
+// Missoes mensais (secção 22, 2026-09-10). As 3 missoes de cada mes sao
+// deterministas a partir do mes (nao guardadas); aqui guarda-se so o ESTADO:
+// { mes, ativa: {slot, tipo, alvo, ..., baseline, aceiteEm} | null,
+//   concluidas: [slot...], rejeitadaEm: ts | null }.
+const STORAGE_KEY_MISSIONS = "personagem.missoesMensais";

@@ -321,3 +321,102 @@ button[disabled] {
 #view-jogo[data-pane="eu"] .subpane[data-subpane-name="personagem"].active #viewer-stage {
   display: block;
 }
+
+/* ---- 11. Missões mensais (separador Treinar, secção 22) --------------- */
+
+.missions-panel {
+  margin-top: 14px;
+  text-align: left;
+}
+.mission-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.mission-title {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mission-count {
+  font: 400 16px var(--font-heading);
+  color: var(--muted);
+}
+.mission-help,
+.mission-empty {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.mission-card {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.mission-card:last-child { margin-bottom: 0; }
+.mission-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 6px;
+}
+.mission-chip {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.mission-chip-facil { background: var(--sage-200); color: var(--sage-700); }
+.mission-chip-media { background: var(--accent-200); color: var(--accent-700); }
+.mission-chip-dificil { background: var(--ink); color: var(--surface-2); }
+.mission-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--sage-700);
+}
+.mission-goal {
+  font-size: 15px;
+  color: var(--text);
+  margin: 0 0 10px;
+}
+.mission-progress-track {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--surface);
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+.mission-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--sage);
+  transition: width 0.3s ease;
+}
+.mission-progress-text {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.mission-btn-accept { width: 100%; }
+.mission-btn-ghost {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--warn-border);
+  background: transparent;
+  color: var(--warn-ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}

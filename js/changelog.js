@@ -7,6 +7,18 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.4.0",
+    title: "Missões Mensais e Troféus de Exploração",
+    changes: [
+      "Cada mês tem três missões — uma fácil, uma média e uma difícil — e cada uma dá recursos ao ser concluída. Aparecem no separador Treinar.",
+      "Só podes ter uma missão aceite de cada vez. O progresso conta a partir do momento em que aceitas.",
+      "Se desistires de uma missão, ficas 24 horas sem poder aceitar outra. Concluir não trava nada — aceitas logo a seguinte.",
+      "Concluídas as três dentro do mês, esperas pelo mês seguinte por missões novas.",
+      "Troféus novos de exploração: hexágonos descobertos, concelhos desbloqueados, minas encontradas, uma mina de cada recurso, e levar um hexágono ao multiplicador máximo.",
+      "Os troféus de \"Madrugador\" e \"Notívago\" passaram a dizer certo: contam pela hora a que COMEÇAS o treino, não a que acabas.",
+    ],
+  },
+  {
     version: "v6.3.0",
     title: "Os Recursos Seguem a Conta",
     changes: [

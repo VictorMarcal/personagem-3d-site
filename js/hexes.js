@@ -691,6 +691,9 @@ function applyRegions(cache) {
 
   updateRegionZoomLevel();
   updateClips();
+
+  // Um concelho novo desbloqueado pode concluir uma missao mensal (secção 22).
+  if (typeof verificarMissaoAtiva === "function") verificarMissaoAtiva();
 }
 
 // A pedido: o contorno do distrito esta SEMPRE la. Na vista geral ve-se so

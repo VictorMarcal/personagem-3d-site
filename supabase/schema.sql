@@ -468,3 +468,11 @@ alter table public.player_progress
   add column if not exists nivel_fortaleza integer not null default 1,
   add column if not exists minas_encontradas jsonb not null default '[]',
   add column if not exists hex_visitas jsonb not null default '{}';
+
+-- Migracao (2026-09-10): missoes mensais (secção 22). Cada mes tem 3 missoes
+-- (facil/media/dificil) deterministas a partir do mes; concluir uma da
+-- recursos. So o ESTADO sincroniza, nao as missoes:
+--   missoes_mensais - { mes, ativa: {slot,tipo,alvo,baseline,...} | null,
+--                       concluidas: [slot...], rejeitadaEm: ts | null }
+alter table public.player_progress
+  add column if not exists missoes_mensais jsonb not null default '{}';

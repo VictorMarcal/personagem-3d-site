@@ -263,6 +263,15 @@ async function bootstrapAfterLogin(user) {
   } catch (err) {
     console.error("Falha ao atualizar o modelo da torre:", err);
   }
+
+  // Missoes mensais (secção 22): o estado pode ter vindo do servidor
+  // (concluidas noutro dispositivo) ou o mes ter mudado - reavalia e
+  // redesenha o painel do separador Treinar.
+  try {
+    if (typeof verificarMissaoAtiva === "function") verificarMissaoAtiva();
+  } catch (err) {
+    console.error("Falha ao verificar missões mensais:", err);
+  }
 }
 
 supabaseClient.auth.onAuthStateChange((_event, session) => {

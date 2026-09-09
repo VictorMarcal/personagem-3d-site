@@ -149,6 +149,10 @@
     if (subAtiva[tab]) showSubtab(tab, subAtiva[tab]);
     else if (typeof stopResourcesTicker === "function") stopResourcesTicker();
 
+    // O painel de missões vive no separador Treinar (sem sub-abas) — redesenha
+    // ao entrar, para o progresso e o tempo de espera aparecerem atualizados.
+    if (tab === "treinar" && typeof renderMissionsPanel === "function") renderMissionsPanel();
+
     try {
       localStorage.setItem(STORAGE_KEY, tab);
     } catch (err) {

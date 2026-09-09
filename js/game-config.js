@@ -266,6 +266,7 @@ function resetCharacterAndDistance() {
   localStorage.removeItem(STORAGE_KEY_DISTINCT_MONTHS_TRAINED);
   localStorage.removeItem(STORAGE_KEY_DISCOVERED_HEXES);
   localStorage.removeItem(STORAGE_KEY_DISCOVERED_HEXES_QUEUE);
+  localStorage.removeItem(STORAGE_KEY_MISSIONS);
 
   // O historico de treinos (aba Perfil) e os territorios descobertos vivem
   // em tabelas a parte - sem isto o reset local nao lhes mexia e ambos
