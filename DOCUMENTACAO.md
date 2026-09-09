@@ -47,8 +47,8 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `assets/Shield.glb` | Modelo 3D do escudo (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Bow.glb` | Modelo 3D do arco (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `js/weight.js` | Historico de peso, regra das 24 h e grafico de evolucao — ver secção 20 |
-| `js/resources.js` | Economia de recursos do mapa: producao, multiplicadores, armazem — ver secção 21 |
-| `js/resources-ui.js` | Painel de recursos e armazem — ver secção 21 |
+| `js/resources.js` | Economia de recursos do mapa: producao, multiplicadores, Fortaleza — ver secção 21 |
+| `js/resources-ui.js` | Painel de recursos e Fortaleza — ver secção 21 |
 | `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de satélite desfocado da aba Missões — ver secção 18 |
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — histórico/registo, não é lido pelo site nem pelo Supabase |
 | `.mcp.json` | Liga o Claude Code ao projeto Supabase via MCP (`--project-ref=vnqjaepjfqlhgmlrhzlr`), token vem de uma variável de ambiente (`SUPABASE_ACCESS_TOKEN`), nunca gravado no ficheiro. Desde 2026-08-03, migrações novas são aplicadas diretamente via este MCP (`apply_migration`) em vez de copiar/colar SQL manualmente no dashboard — `supabase/schema.sql` continua a ser atualizado a cada migração, só como registo/referência |
@@ -1117,7 +1117,7 @@ Substitui por completo as estrelas colecionáveis (secção 19, removida) e as m
 | **Arco** | Madeira + Ferro |
 | **Escudo** | Madeira + Pele |
 | **Armadura** | Pele + Ferro |
-| **Armazém** | Pedra + Barro |
+| **Fortaleza** | Pedra + Barro |
 | **Minas** | 10 de cada recurso por concelho — 50 ao todo |
 | **Produção** | 5/hora por mina encontrada, × multiplicador |
 | **Multiplicador** | 1,0 a 2,0 · +0,1 por sessão · −0,05/dia após 2 dias |
@@ -1165,13 +1165,17 @@ Uma semana parado custa 0,25 (12% da produção), recuperável em três treinos.
 
 **O valor gravado é o do dia da última visita; o decaimento é sempre derivado.** Não é preciso relógio nenhum a correr e nada tem de acontecer com a app fechada.
 
-### O armazém destranca o equipamento
+### A Fortaleza destranca o equipamento
 
-O tecto do armazém é o que limita a evolução: não se compra um upgrade de 8 000 se só se conseguem guardar 2 000. É a **primeira escolha a sério** do sistema — gastar já em equipamento ou investir em capacidade.
+> **Nome (2026-09-09, v6.1.0)**: o "Armazém" passou a chamar-se **Fortaleza** na UI. As funções e ids do código (`warehouseCap`, `getWarehouseLevel`, `upgradeWarehouse`, `#warehouse-panel`, `STORAGE_KEY_WAREHOUSE_LEVEL`) mantêm o nome `warehouse` — só o texto e o ícone (`icon("fortaleza")`) mudaram.
+
+O tecto da Fortaleza é o que limita a evolução: não se compra um upgrade de 8 000 se só se conseguem guardar 2 000. É a **primeira escolha a sério** do sistema — gastar já em equipamento ou investir em capacidade.
 
 O custo de cada nível é uma **fração do tecto anterior** (55%), e não uma curva própria. Não é estética: a primeira versão tinha uma curva independente e criava um **bloqueio circular** — o nível 1 guardava 200 e o nível 2 custava 386, ou seja, nunca se conseguia pagar. Definido como fração, é impossível por construção.
 
-O botão de evoluir equipamento distingue **"materiais insuficientes"** de **"precisas de um armazém maior"**: dizer o primeiro quando o problema é o segundo mandava o jogador treinar mais para continuar bloqueado.
+O botão de evoluir equipamento distingue **"materiais insuficientes"** de **"precisas de uma Fortaleza maior"**: dizer o primeiro quando o problema é o segundo mandava o jogador treinar mais para continuar bloqueado.
+
+A linha da capacidade no painel (v6.1.0) é curta — `Limite: 200 → 650 por recurso` — em vez da frase antiga ("Guarda 200 de cada recurso. O nível 2 guarda 650.").
 
 ### Números provisórios, e porquê
 
@@ -1212,5 +1216,5 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 
 - **O mar não é azul.** Precisa de dados de terra/água que não temos; ambos os jogadores são de zona interior, por isso não muda nada hoje.
 - As moedas foram removidas do jogo em 2026-09-08 (secção 7). As colunas `moedas`/`total_moedas_ganhas`/`total_moedas_gastas` ficam na tabela (já não lidas) — um `drop column` partiu a sincronização de clientes com JS antigo em cache e foi revertido.
-- **Pedra e barro morrem** quando o armazém chegar ao nível 10.
+- **Pedra e barro morrem** quando a Fortaleza chegar ao nível 10.
 - **As visitas por hexágono só existem em `localStorage`.** Não sincronizam entre dispositivos.

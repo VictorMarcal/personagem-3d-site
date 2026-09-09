@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.1.0",
+    title: "A Fortaleza",
+    changes: [
+      "O \"Armazém\" passou a chamar-se Fortaleza — é o teu forte, onde guardas os materiais e que destranca as melhorias maiores à medida que sobe de nível.",
+      "A linha da capacidade ficou mais curta: \"Limite: 200 → 650 por recurso\", em vez da frase comprida.",
+      "No ecrã de treino, o valor de XP aparece só como número, sem o \"kcal\" ao lado.",
+    ],
+  },
+  {
     version: "v6.0.0",
     title: "Três Separadores: Treinar, Reino, Eu",
     changes: [
