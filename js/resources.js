@@ -123,21 +123,44 @@ function registarVisitasDaSessao(hexIdsDaSessao) {
 }
 
 // --- producao ---------------------------------------------------------------
+//
+// TODOS os hexagonos descobertos produzem (2026-09-09, a pedido):
+//   - hex sem mina        -> HEX_BASE_PER_HOUR de CADA recurso
+//   - hex com mina encontrada -> MINE_HEX_PER_HOUR do recurso dessa mina
+// O multiplicador do hexagono (revisitas, 1,0-2,0) aplica-se aos dois.
+const HEX_BASE_PER_HOUR = 0.1;
+const MINE_HEX_PER_HOUR = 0.5;
 
-// So as MINAS ENCONTRADAS produzem. O multiplicador continua a ser o do
-// hexagono onde a mina esta - voltar a passar por la faz a mina render mais.
 function producaoPorHora() {
   const total = {};
   RESOURCE_IDS.forEach((id) => { total[id] = 0; });
-  if (typeof todasAsMinas !== "function") return total;
 
-  const encontradas = getMinasEncontradas();
+  const descobertos = typeof getDiscoveredHexIds === "function" ? getDiscoveredHexIds() : new Set();
+  if (descobertos.size === 0) return total;
+
+  // hexId -> recurso, para os hexes descobertos que tenham uma mina JA
+  // encontrada. Depende de unlockedConcelhos (hexes.js); se ainda nao
+  // estiver carregado, esses hexes rendem so a taxa base ate estar.
+  const recursoDaMinaNoHex = {};
+  if (typeof todasAsMinas === "function") {
+    const encontradas = getMinasEncontradas();
+    todasAsMinas().forEach((mina) => {
+      if (encontradas.has(mina.id)) recursoDaMinaNoHex[mina.hexId] = mina.recurso;
+    });
+  }
+
   const visitas = getHexVisits();
-  todasAsMinas().forEach((mina) => {
-    if (!encontradas.has(mina.id)) return;
-    total[mina.recurso] += MINE_BASE_PER_HOUR * multiplicadorDoHex(mina.hexId, visitas);
+  descobertos.forEach((hexId) => {
+    const mult = multiplicadorDoHex(hexId, visitas);
+    const recurso = recursoDaMinaNoHex[hexId];
+    if (recurso) {
+      total[recurso] += MINE_HEX_PER_HOUR * mult;
+    } else {
+      RESOURCE_IDS.forEach((id) => { total[id] += HEX_BASE_PER_HOUR * mult; });
+    }
   });
-  RESOURCE_IDS.forEach((id) => { total[id] = Math.round(total[id] * 10) / 10; });
+
+  RESOURCE_IDS.forEach((id) => { total[id] = Math.round(total[id] * 100) / 100; });
   return total;
 }
 
@@ -207,8 +230,17 @@ function saveResources(stock) {
 // mesma.
 function stockAgora() {
   const stock = getResources();
-  const desde = Number(localStorage.getItem(STORAGE_KEY_RESOURCES_SINCE));
-  if (!Number.isFinite(desde) || desde <= 0) return stock;
+  let desde = Number(localStorage.getItem(STORAGE_KEY_RESOURCES_SINCE));
+  if (!Number.isFinite(desde) || desde <= 0) {
+    // Primeira leitura de sempre: arranca o relogio AGORA. Sem isto a
+    // producao nunca acumulava - RESOURCES_SINCE so era escrito em
+    // acumularProducao(), que so corre ao pagar/evoluir algo. (Escrever
+    // um timestamp de arranque uma vez nao e o mesmo que gravar o stock a
+    // cada segundo, que e o que a nota abaixo evita.)
+    desde = Date.now();
+    localStorage.setItem(STORAGE_KEY_RESOURCES_SINCE, String(desde));
+    return stock;
+  }
 
   const horas = (Date.now() - desde) / 3600000;
   if (horas <= 0) return stock;
@@ -258,20 +290,13 @@ function formatRecurso(valor) {
 
 // --- minas ------------------------------------------------------------------
 //
-// Nem todos os hexagonos dao recurso (2026-09-07, a pedido). Existem 10 MINAS
-// de cada recurso em cada concelho - 50 ao todo - e so elas produzem. Os
-// restantes hexagonos continuam a contar para o territorio, para desbloquear
-// o concelho e para o multiplicador, mas nao rendem nada.
+// Existem 10 MINAS de cada recurso em cada concelho - 50 ao todo. Desde
+// 2026-09-09 TODOS os hexagonos descobertos rendem (ver producaoPorHora);
+// uma mina encontrada so faz o hexagono dela render mais e de um recurso
+// especifico em vez da taxa base de todos.
 //
 // NAO ESTAO VISIVEIS ate serem encontradas. Ha um aviso sonoro a 500 m.
-//
-// Escala: com 10 minas por recurso, cada uma a render 5/hora, um concelho
-// inteiramente explorado da 50/hora por recurso - o que repoe exatamente o
-// ritmo do modelo anterior (~56 dias para maximizar o equipamento). Nao e um
-// numero escolhido a olho: foi calculado para a mudanca de fonte nao alterar
-// o equilibrio ja discutido.
 const MINES_PER_RESOURCE = 10;
-const MINE_BASE_PER_HOUR = 5;
 const MINE_ALERT_RADIUS_M = 500;
 
 const minesByConcelho = new Map();

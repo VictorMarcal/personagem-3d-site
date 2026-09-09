@@ -120,6 +120,11 @@ async function hydrateHexesFromSupabase() {
   getHexQueue().forEach((h) => set.add(h.hex_id));
   saveDiscoveredHexIds(set);
 
+  // Regioes desbloqueadas calculadas ja aqui (nao so quando a aba Mapa
+  // abre) - a economia precisa de `unlockedConcelhos` para saber onde
+  // estao as minas, mesmo que o jogador nunca chegue a abrir o mapa.
+  computeUnlockedRegions(loadRegionCache());
+
   flushHexQueue();
   renderHexMap();
 }
@@ -608,18 +613,25 @@ async function identifyRegions() {
   }
 }
 
-function applyRegions(cache) {
-  if (!hexMap) return;
-
+// So a parte de DADOS de applyRegions: que concelhos/distritos estao
+// desbloqueados. Nao precisa do mapa (so de h3 + do conjunto de hexes
+// descobertos), por isso pode correr no arranque - a economia (js/resources.js
+// todasAsMinas/producaoPorHora) precisa disto mesmo sem a aba Mapa aberta.
+function computeUnlockedRegions(cache) {
+  if (typeof h3 === "undefined" || !cache || !cache.concelhos) return;
   unlockedConcelhos = cache.concelhos.filter((c) => countHexesInside(c.geojson) >= MIN_HEXES_FOR_REGION);
   // So se mostra o distrito que tem pelo menos um concelho ja desbloqueado.
   const distritosAtivos = new Set(unlockedConcelhos.map((c) => c.distritoOsmId));
   unlockedDistritos = cache.distritos.filter((d) => distritosAtivos.has(d.osmId));
-
   // Fronteira encaixada na grelha, calculada uma vez por regiao.
   [...unlockedConcelhos, ...unlockedDistritos].forEach((r) => {
     if (!r.hexOutline) r.hexOutline = hexifyRegion(r.geojson);
   });
+}
+
+function applyRegions(cache) {
+  computeUnlockedRegions(cache);
+  if (!hexMap) return;
 
   hexConcelhoLayer.clearLayers();
   unlockedConcelhos.forEach(({ name, hexOutline }) => {

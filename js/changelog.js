@@ -7,6 +7,16 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.2.0",
+    title: "Todos os Hexágonos Rendem",
+    changes: [
+      "Cada hexágono que descobres passa a dar 0,1/h de cada recurso — antes só as minas rendiam e o resto do território não fazia nada.",
+      "Um hexágono com uma mina que já encontraste dá 0,5/h do recurso dessa mina.",
+      "Voltar a passar por um hexágono continua a fazê-lo render mais (até ao dobro).",
+      "Corrigido: a produção não estava a acumular de todo até se pagar alguma coisa — agora conta a partir do momento em que abres a Economia. E deixa de ser preciso abrir o Mapa para as minas contarem.",
+    ],
+  },
+  {
     version: "v6.1.0",
     title: "A Fortaleza",
     changes: [
