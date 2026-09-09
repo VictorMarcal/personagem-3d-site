@@ -27,10 +27,11 @@ camera.lookAt(0, 1, 0);
 // Vista normal da aba Eu > Personagem (o detalhe do angulo/FOV, e a camara
 // da luta, estao documentados mais abaixo junto a BATTLE_CAMERA_POSITION).
 // z fixo; a altura e o alvo sobem com o heroi quando ele passa para o topo
-// da torre (TOWER_TOP_Y) - com TOWER_TOP_Y = 0 isto da exatamente
-// (0, 1.5, 4) a olhar para (0, 1, 0), como era antes da torre. So e
-// chamada depois de tudo estar definido (callback do loadTower e
-// exitBattleView), nunca no arranque sincrono.
+// da torre (TOWER_TOP_Y = altura do Empty da personagem) - com
+// TOWER_TOP_Y = 0 isto da exatamente (0, 1.5, 4) a olhar para (0, 1, 0),
+// como era antes da torre. So e chamada depois de tudo estar definido
+// (settleHeroOnTower/applyTowerModel e exitBattleView), nunca no arranque
+// sincrono.
 const NORMAL_CAMERA_POSITION = { x: 0, y: 1.5, z: 4 };
 const NORMAL_CAMERA_FOV = 45;
 
@@ -145,10 +146,16 @@ loadSceneryFloor();
 // (o mais alto que ha). Sem HEAD-checks nem 404s.
 // O custo de cada evolucao vive em warehouseUpgradeCost (js/resources.js)
 // e e afinado a parte, para bater com o que o modelo mostra.
-const TOWER_MODEL_COUNT = 0;
+const TOWER_MODEL_COUNT = 1;
+
+// Nomes aceites para o Empty que marca onde a personagem fica no topo da
+// torre (2026-09-09, a pedido - "adicionei um empty para saberes a posicao
+// da personagem"). O primeiro que existir no modelo e o que conta.
+const TOWER_PLAYER_EMPTY_NAMES = ["PlayerPosition", "PlayerPos", "HeroPosition", "HeroPos", "HeroSlot", "CharacterPos"];
 
 let towerModel = null;
-let TOWER_TOP_Y = 0;
+const TOWER_PLAYER_POS = new THREE.Vector3(0, 0, 0); // onde a personagem assenta
+let TOWER_TOP_Y = 0; // = TOWER_PLAYER_POS.y, mantido para o enquadramento da camara
 let currentTowerIndex = -1; // -1 = nada carregado ainda
 
 function towerIndexForLevel(level) {
@@ -158,19 +165,19 @@ function towerIndexForLevel(level) {
 // O heroi so assenta no topo da torre quando OS DOIS estao prontos, seja
 // qual for a ordem de chegada dos .glb. Critico: normalizeLoadedModel()
 // mede o heroi em coordenadas do MUNDO e assume `character` na origem -
-// se a torre chegasse primeiro e ja tivesse mexido character.position.y,
+// se a torre chegasse primeiro e ja tivesse mexido character.position,
 // o heroi era normalizado contra a cota errada e acabava enterrado na
 // base da torre (aconteceu ao vivo, onde a torre chega antes do heroi).
 function settleHeroOnTower() {
   if (!heroModelReady || !towerModel) return;
   if (typeof battleInProgress !== "undefined" && battleInProgress) return;
-  character.position.y = TOWER_TOP_Y;
+  character.position.copy(TOWER_PLAYER_POS);
   applyNormalCamera();
 }
 
 // Poe o modelo `model` como a torre atual: tira o anterior da cena,
-// assenta a base em Y=0, centra em X/Z, atualiza TOWER_TOP_Y e re-poe o
-// heroi no topo.
+// assenta a base em Y=0, centra em X/Z, le a posicao da personagem do
+// Empty do modelo (ou o topo da caixa se nao houver) e re-poe o heroi la.
 function applyTowerModel(model, index) {
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
@@ -191,7 +198,22 @@ function applyTowerModel(model, index) {
   if (towerModel) scene.remove(towerModel);
   scene.add(model);
   towerModel = model;
-  TOWER_TOP_Y = size.y;
+  model.updateMatrixWorld(true);
+
+  // Posicao da personagem: o Empty do modelo se existir, senao o topo da
+  // caixa centrado (comportamento antigo).
+  let empty = null;
+  for (const nome of TOWER_PLAYER_EMPTY_NAMES) {
+    empty = model.getObjectByName(nome);
+    if (empty) break;
+  }
+  if (empty) {
+    TOWER_PLAYER_POS.setFromMatrixPosition(empty.matrixWorld);
+  } else {
+    TOWER_PLAYER_POS.set(0, size.y, 0);
+  }
+  TOWER_TOP_Y = TOWER_PLAYER_POS.y;
+
   currentTowerIndex = index;
   towerModel.visible = !(typeof battleInProgress !== "undefined" && battleInProgress);
   settleHeroOnTower();
@@ -707,8 +729,8 @@ function enterBattleView() {
 }
 
 function exitBattleView() {
-  // Heroi de volta ao topo da torre (Y=0 se a torre nao carregou).
-  character.position.set(0, TOWER_TOP_Y, 0);
+  // Heroi de volta ao topo da torre ((0,0,0) se a torre nao carregou).
+  character.position.copy(TOWER_PLAYER_POS);
   character.rotation.y = 0;
   monster.visible = false;
   arenaFloor.visible = false;
