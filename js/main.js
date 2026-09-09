@@ -5,6 +5,16 @@ const viewer = document.getElementById("viewer");
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x101014);
 
+// Cache-buster de TODOS os modelos .glb. O index.html tem `?v=` nos .js/.css,
+// mas os .glb sao carregados por caminho fixo e o browser guarda-os em cache
+// (~10 min no GitHub Pages, mais a cache do proprio browser). Sobe este
+// numero sempre que trocares um .glb e a versao nova passa logo, sem
+// refresh forcado. `asset()` monta o url.
+const ASSET_V = "1";
+function asset(path) {
+  return path + (path.indexOf("?") === -1 ? "?v=" : "&v=") + ASSET_V;
+}
+
 const camera = new THREE.PerspectiveCamera(
   45,
   viewer.clientWidth / viewer.clientHeight,
@@ -87,7 +97,7 @@ let floorModel = null;
 
 function loadSceneryFloor() {
   new THREE.GLTFLoader().load(
-    "assets/Floor.glb",
+    asset("assets/Floor.glb"),
     (gltf) => {
       const model = gltf.scene;
       const box = new THREE.Box3().setFromObject(model);
@@ -116,25 +126,41 @@ function loadSceneryFloor() {
 }
 loadSceneryFloor();
 
-// Torre / Fortaleza 3D (2026-09-09, a pedido - "assets/Tower.glb", o heroi
-// fica no topo). Base assente em Y=0 no terreno, centrada em X/Z (o heroi
-// roda sobre a origem, tem de ser o eixo da torre). TOWER_TOP_Y guarda a
-// altura do topo - o heroi passa a assentar nessa cota em vez de Y=0, e a
-// camara da vista normal sobe com ele. Fica escondida durante uma luta
-// (a arena e ao nivel do chao). Se a carga falhar, o heroi fica em Y=0.
+// Torre / Fortaleza 3D (2026-09-09). Base assente em Y=0 no terreno,
+// centrada em X/Z (o heroi roda sobre a origem, tem de ser o eixo da torre).
+// TOWER_TOP_Y guarda a altura do topo - o heroi assenta nessa cota e a
+// camara da vista normal sobe com ele. Escondida durante uma luta (a arena
+// e ao nivel do chao). Se nao carregar nada, o heroi fica em Y=0.
 //
-// Um so modelo por agora - os upgrades visuais por nivel de Fortaleza
-// (getWarehouseLevel) entram aqui mais tarde.
+// UPGRADE VISUAL A CADA 5 NIVEIS DE FORTALEZA (2026-09-09, a pedido):
+//   nivel 1-4   -> assets/Towers/Tower1.glb
+//   nivel 5-9   -> assets/Towers/Tower2.glb
+//   nivel 10-14 -> assets/Towers/Tower3.glb   ... e por ai adiante
+// towerIndexForLevel = floor(nivel / 5) + 1.
+//
+// TOWER_MODEL_COUNT = quantos ficheiros Towers/TowerN.glb JA existem. Sobe
+// este numero cada vez que acrescentares um modelo (e sobe o ASSET_V se
+// mexeres num que ja existia). Enquanto for 0, usa-se o assets/Tower.glb
+// unico antigo. Um jogador acima do ultimo modelo feito fica com esse
+// (o mais alto que ha). Sem HEAD-checks nem 404s.
+// O custo de cada evolucao vive em warehouseUpgradeCost (js/resources.js)
+// e e afinado a parte, para bater com o que o modelo mostra.
+const TOWER_MODEL_COUNT = 0;
+
 let towerModel = null;
 let TOWER_TOP_Y = 0;
+let currentTowerIndex = -1; // -1 = nada carregado ainda
+
+function towerIndexForLevel(level) {
+  return Math.floor(Math.max(1, level || 1) / 5) + 1;
+}
 
 // O heroi so assenta no topo da torre quando OS DOIS estao prontos, seja
 // qual for a ordem de chegada dos .glb. Critico: normalizeLoadedModel()
 // mede o heroi em coordenadas do MUNDO e assume `character` na origem -
 // se a torre chegasse primeiro e ja tivesse mexido character.position.y,
 // o heroi era normalizado contra a cota errada e acabava enterrado na
-// base da torre (aconteceu ao vivo, onde a torre - 2KB - chega antes do
-// heroi - 73KB). Por isso o "levantar" fica isolado aqui.
+// base da torre (aconteceu ao vivo, onde a torre chega antes do heroi).
 function settleHeroOnTower() {
   if (!heroModelReady || !towerModel) return;
   if (typeof battleInProgress !== "undefined" && battleInProgress) return;
@@ -142,37 +168,53 @@ function settleHeroOnTower() {
   applyNormalCamera();
 }
 
-function loadTower() {
+// Poe o modelo `model` como a torre atual: tira o anterior da cena,
+// assenta a base em Y=0, centra em X/Z, atualiza TOWER_TOP_Y e re-poe o
+// heroi no topo.
+function applyTowerModel(model, index) {
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  if (size.y <= 0) return; // modelo vazio - fica o que estava
+
+  const centre = box.getCenter(new THREE.Vector3());
+  model.position.x -= centre.x;
+  model.position.z -= centre.z;
+  model.position.y -= box.min.y;
+
+  model.traverse((obj) => {
+    if (obj.isMesh) {
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+    }
+  });
+
+  if (towerModel) scene.remove(towerModel);
+  scene.add(model);
+  towerModel = model;
+  TOWER_TOP_Y = size.y;
+  currentTowerIndex = index;
+  towerModel.visible = !(typeof battleInProgress !== "undefined" && battleInProgress);
+  settleHeroOnTower();
+}
+
+// Carrega/troca a torre para o nivel atual da Fortaleza. Idempotente: nao
+// faz nada se o modelo a mostrar nao mudou. Chamada no arranque, no login
+// (o nivel pode vir do servidor) e depois de evoluir a Fortaleza.
+function refreshTowerModel() {
+  const level = typeof getWarehouseLevel === "function" ? getWarehouseLevel() : 1;
+  // O que se quer, limitado aos modelos que ja existem (0 = so o antigo).
+  const idx = Math.min(towerIndexForLevel(level), TOWER_MODEL_COUNT);
+  if (idx === currentTowerIndex) return;
+
+  const url = idx >= 1 ? asset("assets/Towers/Tower" + idx + ".glb") : asset("assets/Tower.glb");
   new THREE.GLTFLoader().load(
-    "assets/Tower.glb",
-    (gltf) => {
-      const model = gltf.scene;
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      if (size.y <= 0) return; // modelo vazio, heroi fica em Y=0
-
-      const centre = box.getCenter(new THREE.Vector3());
-      model.position.x -= centre.x;
-      model.position.z -= centre.z;
-      model.position.y -= box.min.y; // base em Y=0
-
-      model.traverse((obj) => {
-        if (obj.isMesh) {
-          obj.castShadow = true;
-          obj.receiveShadow = true;
-        }
-      });
-
-      scene.add(model);
-      towerModel = model;
-      TOWER_TOP_Y = size.y;
-      settleHeroOnTower();
-    },
+    url,
+    (gltf) => applyTowerModel(gltf.scene, idx),
     undefined,
-    (err) => console.warn("Falha ao carregar assets/Tower.glb, o heroi fica no chao.", err)
+    (err) => console.warn("Falha ao carregar " + url + ", o heroi fica no chao.", err)
   );
 }
-loadTower();
+refreshTowerModel();
 
 // Heroi: grupo que recebe o modelo 3D real (assets/Hero.glb, carregado
 // abaixo). `body`/`head`/`bow` deixaram de ser meshes com geometria
@@ -325,7 +367,7 @@ function findFirstByName(model, names) {
 
 function loadHeroModel() {
   new THREE.GLTFLoader().load(
-    "assets/Hero.glb",
+    asset("assets/Hero.glb"),
     (gltf) => {
       const model = gltf.scene;
       const measure = new THREE.Vector3();
@@ -463,7 +505,7 @@ let shieldModelReady = false;
 
 function loadShieldModel() {
   new THREE.GLTFLoader().load(
-    "assets/Shield.glb",
+    asset("assets/Shield.glb"),
     (gltf) => {
       const model = gltf.scene;
       model.traverse((obj) => {
@@ -495,7 +537,7 @@ let bowModelReady = false;
 
 function loadBowModel() {
   new THREE.GLTFLoader().load(
-    "assets/Bow.glb",
+    asset("assets/Bow.glb"),
     (gltf) => {
       const model = gltf.scene;
       model.traverse((obj) => {
@@ -581,7 +623,7 @@ let arenaModelReady = false;
 
 function loadArenaModel() {
   new THREE.GLTFLoader().load(
-    "assets/arenaTeste.glb",
+    asset("assets/arenaTeste.glb"),
     (gltf) => {
       const model = gltf.scene;
       const box = new THREE.Box3().setFromObject(model);

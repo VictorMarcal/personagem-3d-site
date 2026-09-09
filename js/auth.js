@@ -255,6 +255,14 @@ async function bootstrapAfterLogin(user) {
   } catch (err) {
     console.error("Falha ao fixar checkpoint de recursos:", err);
   }
+
+  // O nivel da Fortaleza pode ter vindo do servidor - troca o modelo 3D da
+  // torre se calhar noutra faixa de 5 niveis (js/main.js).
+  try {
+    if (typeof refreshTowerModel === "function") refreshTowerModel();
+  } catch (err) {
+    console.error("Falha ao atualizar o modelo da torre:", err);
+  }
 }
 
 supabaseClient.auth.onAuthStateChange((_event, session) => {
