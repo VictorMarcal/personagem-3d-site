@@ -10,7 +10,7 @@ scene.background = new THREE.Color(0x101014);
 // (~10 min no GitHub Pages, mais a cache do proprio browser). Sobe este
 // numero sempre que trocares um .glb e a versao nova passa logo, sem
 // refresh forcado. `asset()` monta o url.
-const ASSET_V = "1";
+const ASSET_V = "2";
 function asset(path) {
   return path + (path.indexOf("?") === -1 ? "?v=" : "&v=") + ASSET_V;
 }
