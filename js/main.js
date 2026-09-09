@@ -44,7 +44,7 @@ const NORMAL_CAMERA_FOV = 45;
 //           < 1 aponta abaixo do heroi para caber a base da torre + terreno
 const CAM_SIDE_FACTOR = 0.45;
 const CAM_UP_FACTOR = 0.42;
-const CAM_BACK_FACTOR = 1.6;
+const CAM_BACK_FACTOR = 3.2;
 const CAM_TARGET_FACTOR = 0.85;
 
 function applyNormalCamera() {
