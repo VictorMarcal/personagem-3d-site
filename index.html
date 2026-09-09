@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="css/style.css?v=20260908b">
   <!-- Patch v6: contraste, cor semântica, superfícies, ícones, sub-abas.
        DEPOIS do style.css de propósito — só sobrepõe o que muda. -->
-  <link rel="stylesheet" href="css/campo-aberto-v6.css?v=20260909a">
+  <link rel="stylesheet" href="css/campo-aberto-v6.css?v=20260909h">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -53,6 +53,17 @@
   </header>
 
   <main>
+    <!-- Sub-abas do "Eu" — FORA do #view-jogo de propósito: "Números" delega
+         no #view-perfil (js/profile.js), que esconde o #view-jogo inteiro.
+         Se esta barra vivesse lá dentro, desaparecia ao entrar em Números e
+         não havia como voltar a Personagem/Troféus. js/nav.js mostra-a só
+         quando o separador "Eu" está ativo. -->
+    <div id="eu-subtabs" class="nav-tabs subtabs hidden" data-subtabs="eu" role="tablist">
+      <button class="nav-tab active" type="button" data-subtab="personagem">Personagem</button>
+      <button class="nav-tab" type="button" data-subtab="trofeus">Troféus</button>
+      <button class="nav-tab" type="button" data-subtab="numeros">Números</button>
+    </div>
+
     <div id="view-jogo" data-pane="treinar">
 
     <!-- ======================================================================
@@ -218,11 +229,6 @@
          Personagem · Troféus · Números.
          ====================================================================== -->
     <div class="pane" data-pane-name="eu">
-      <div class="nav-tabs subtabs" data-subtabs="eu" role="tablist">
-        <button class="nav-tab active" type="button" data-subtab="personagem">Personagem</button>
-        <button class="nav-tab" type="button" data-subtab="trofeus">Troféus</button>
-        <button class="nav-tab" type="button" data-subtab="numeros">Números</button>
-      </div>
 
       <div class="subpane active" data-subpane-name="personagem">
         <div id="viewer-stage">
@@ -585,6 +591,6 @@
   <script src="js/changelog.js?v=20260909c"></script>
   <script src="js/achievements.js?v=20260908b"></script>
   <script src="js/orientation.js?v=20260806p"></script>
-  <script src="js/nav.js?v=20260909a"></script>
+  <script src="js/nav.js?v=20260909h"></script>
 </body>
 </html>

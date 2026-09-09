@@ -28,6 +28,7 @@
 (function () {
   const tabBar = document.getElementById("tab-bar");
   const viewJogo = document.getElementById("view-jogo");
+  const euSubtabs = document.getElementById("eu-subtabs");
   const btnNavJogo = document.getElementById("btn-nav-jogo");
   const btnNavPerfil = document.getElementById("btn-nav-perfil");
   if (!tabBar || !viewJogo || !btnNavJogo || !btnNavPerfil) return;
@@ -138,6 +139,11 @@
     viewJogo.dataset.pane = tab;
     panes.forEach((pane) => pane.classList.toggle("active", pane.dataset.paneName === tab));
     tabButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tab));
+
+    // A barra de sub-abas do "Eu" vive fora do #view-jogo (ver index.html):
+    // fica à vista sempre que o separador "Eu" está ativo, mesmo em Números
+    // (onde o #view-jogo está escondido) — é o caminho de volta.
+    if (euSubtabs) euSubtabs.classList.toggle("hidden", tab !== "eu");
 
     // Reentrar num separador reabre a última sub-aba que lá se viu.
     if (subAtiva[tab]) showSubtab(tab, subAtiva[tab]);

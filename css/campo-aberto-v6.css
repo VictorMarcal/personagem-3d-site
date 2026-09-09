@@ -103,6 +103,10 @@
   cursor: pointer;
 }
 .subtabs .nav-tab.active { background: var(--accent); color: var(--bg); }
+/* .subtabs define display:flex — precisa de bater .hidden (mesma
+   especificidade, e este ficheiro carrega depois do style.css). Usado
+   pela barra do "Eu" (#eu-subtabs), escondida fora desse separador. */
+.subtabs.hidden { display: none; }
 
 .subpane { display: none; }
 .subpane.active { display: block; }
