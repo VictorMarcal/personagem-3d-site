@@ -451,7 +451,6 @@ function createEquipmentUpgradeController(config) {
       const cost = computeEquipUpgradeCost(nextLevel, config.pieceKey);
       nextPrimaryEl.textContent = nextPrimary + " (+" + (nextPrimary - primary) + ")";
       nextSecondaryEl.textContent = "+" + nextSecondary + " (+" + (nextSecondary - secondary) + ")";
-      costEl.textContent = formatCustoMateriais(cost);
 
       // O armazem e o que destranca a evolucao: um upgrade que custe mais do
       // que o tecto NUNCA sera pagavel, e dizer "materiais insuficientes"
@@ -460,14 +459,14 @@ function createEquipmentUpgradeController(config) {
       const acimaDoTecto = Object.keys(cost).some((id) => cost[id] > tecto);
       const temMateriais = podePagar(cost);
 
+      // O botao diz sempre "Melhorar": o ESTADO dele e que diz se da.
+      // Laranja = ha materiais, cinza desativado = nao ha. A razao vive na
+      // linha do custo, por baixo — nao dentro do botao.
       confirmBtn.disabled = !temMateriais;
-      if (acimaDoTecto) {
-        confirmBtn.textContent = "Precisas de um armazém maior";
-      } else if (!temMateriais) {
-        confirmBtn.textContent = "Materiais insuficientes";
-      } else {
-        confirmBtn.textContent = "Evoluir " + config.pieceNameLower;
-      }
+      confirmBtn.setAttribute("aria-disabled", String(!temMateriais));
+      confirmBtn.textContent = "Melhorar";
+      costEl.textContent = formatCustoMateriais(cost) +
+        (acimaDoTecto ? " — precisas de um armazém maior" : "");
     }
   }
 

@@ -1,6 +1,11 @@
 // Painel de recursos e armazem (2026-09-07, secção 21). Separado de
 // js/resources.js de proposito: ali vive a economia (o que e verdade), aqui
 // vive a apresentacao (como se mostra). Trocar a UI nao mexe nas regras.
+//
+// v6: emoji e pontos de cor deram lugar ao set de icones (js/icons.js), e o
+// botao do armazem diz "Melhorar" com o custo numa linha por baixo. O botao
+// nunca explica se da ou nao da: o ESTADO dele e que diz. Laranja = ha
+// recursos, cinza desativado = nao ha.
 
 function renderResourcesPanel() {
   const painel = document.getElementById("resources-panel");
@@ -15,17 +20,19 @@ function renderResourcesPanel() {
   const tecto = warehouseCap(nivel);
 
   painel.innerHTML =
-    '<p class="resources-title">Recursos</p>' +
+    '<p class="resources-title">Produção por hora</p>' +
     '<p class="mines-found">Minas encontradas: <strong>' + minasEncontradasCount() + '</strong> de ' + todasAsMinas().length + '</p>' +
     '<dl class="resources-grid">' +
     RESOURCES.map((r) => {
       const quantidade = stock[r.id];
       const cheio = quantidade >= tecto - 0.5;
       return (
-        '<dt><span class="resource-dot" style="background:' + r.cor + '"></span>' + r.nome + "</dt>" +
+        // icon(r.id) usa a cor da familia definida em js/icons.js — a mesma
+        // que o r.cor de js/resources.js, mas em traco em vez de bola cheia
+        "<dt>" + icon(r.id, 17) + r.nome + "</dt>" +
         '<dd class="' + (cheio ? "resource-full" : "") + '">' +
         formatRecurso(quantidade) + " / " + formatRecurso(tecto) +
-        '<span class="resource-rate">+' + porHora[r.id].toFixed(1) + "/h</span>" +
+        '<span class="resource-rate">' + (cheio ? "parada" : "+" + porHora[r.id].toFixed(1) + "/h") + "</span>" +
         "</dd>"
       );
     }).join("") +
@@ -33,7 +40,7 @@ function renderResourcesPanel() {
     // Um armazem cheio deixou de produzir - e a unica informacao aqui que
     // exige accao do jogador, por isso e a unica que aparece em destaque.
     (RESOURCE_IDS.some((id) => stock[id] >= tecto - 0.5)
-      ? '<p class="resources-warning">Armazém cheio — a produção parou. Evolui o armazém ou gasta recursos.</p>'
+      ? '<p class="resources-warning">Armazém cheio — a produção parou. Melhora o armazém ou gasta recursos.</p>'
       : "");
 
   if (!armazem) return;
@@ -41,31 +48,51 @@ function renderResourcesPanel() {
   const custo = warehouseUpgradeCost(nivel);
   if (!custo) {
     armazem.innerHTML =
-      '<p class="resources-title">Armazém</p>' +
-      '<p class="warehouse-line">Nível ' + nivel + " (máximo) — guarda " + formatRecurso(tecto) + " de cada recurso.</p>";
+      '<p class="resources-title">' + icon("armazem", 18) + " Armazém · Nível " + nivel + " (máximo)</p>" +
+      '<p class="warehouse-line">Guarda ' + formatRecurso(tecto) + " de cada recurso.</p>";
     return;
   }
 
   const podeSubir = podePagar(custo);
   armazem.innerHTML =
-    '<p class="resources-title">Armazém</p>' +
-    '<p class="warehouse-line">Nível ' + nivel + " — guarda " + formatRecurso(tecto) +
-    " de cada recurso. Nível " + (nivel + 1) + " guarda " + formatRecurso(warehouseCap(nivel + 1)) + ".</p>" +
-    '<p class="warehouse-cost">Custa ' + formatRecurso(custo.pedra) + " pedra + " + formatRecurso(custo.barro) + " barro</p>" +
-    '<button id="btn-warehouse-upgrade" class="btn-secondary" ' + (podeSubir ? "" : "disabled") + ">" +
-    (podeSubir ? "Evoluir armazém" : "Materiais insuficientes") +
-    "</button>";
+    '<p class="resources-title">' + icon("armazem", 18) + " Armazém · Nível " + nivel + "</p>" +
+    '<p class="warehouse-line">Guarda ' + formatRecurso(tecto) +
+    " de cada recurso. O nível " + (nivel + 1) + " guarda " + formatRecurso(warehouseCap(nivel + 1)) + ".</p>" +
+    '<button id="btn-warehouse-upgrade" class="btn-primary"' +
+    (podeSubir ? "" : ' disabled aria-disabled="true"') + ">Melhorar</button>" +
+    // Custo por baixo do botao, sempre igual esteja ou nao ao alcance:
+    // o jogador aprende o preco, o botao diz-lhe se ja da.
+    '<p class="warehouse-cost">' + formatRecurso(custo.pedra) + " pedra · " + formatRecurso(custo.barro) + " barro</p>";
 
   const botao = document.getElementById("btn-warehouse-upgrade");
-  if (botao) {
+  if (botao && podeSubir) {
     botao.addEventListener("click", () => {
       if (!upgradeWarehouse()) return;
       if (typeof showGameToast === "function") {
         showGameToast("Armazém no nível " + getWarehouseLevel() + "!", "medalha");
       }
       renderResourcesPanel();
+      if (typeof renderWallet === "function") renderWallet();
     });
   }
+}
+
+
+// --- carteira em Eu › Personagem -------------------------------------------
+//
+// O stock passa a aparecer TAMBEM onde e gasto, em cima do equipamento. Era
+// o corte no ciclo: andar gera recursos (Reino), os recursos so servem para
+// melhorar equipamento (Eu), e as duas coisas viviam em separadores
+// diferentes sem se mencionarem.
+
+function renderWallet() {
+  const el = document.getElementById("equipment-wallet");
+  if (!el || typeof stockAgora !== "function") return;
+  const stock = stockAgora();
+  el.innerHTML = RESOURCES.map(
+    (r) =>
+      '<span class="wallet-chip">' + icon(r.id, 15) + r.nome + " " + formatRecurso(stock[r.id]) + "</span>"
+  ).join("");
 }
 
 
@@ -75,9 +102,9 @@ function renderResourcesPanel() {
 // minutos e meio. Redesenhar de segundo a segundo faz o numero subir a vista
 // em vez de so mudar quando se reabre a aba.
 //
-// So corre com a sub-aba Missoes VISIVEL - correr sempre seria gastar bateria
-// a atualizar um painel que ninguem esta a ver, o mesmo erro que a cena 3D
-// tinha (secção 4.8).
+// So corre com a sub-aba Economia VISIVEL - correr sempre seria gastar
+// bateria a atualizar um painel que ninguem esta a ver, o mesmo erro que a
+// cena 3D tinha (secção 4.8).
 const RESOURCES_TICK_MS = 1000;
 let resourcesTickerId = null;
 

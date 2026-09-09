@@ -1,10 +1,27 @@
 /* ==========================================================================
-   js/nav.js — barra de separadores inferior (4 separadores)
-   Adicionado com o tema "Campo Aberto". NÃO substitui a navegação antiga:
-   limita-se a clicar nos botões #btn-nav-jogo / #btn-nav-perfil que já
-   existiam (agora invisíveis), para que js/profile.js e js/battle.js
-   continuem a funcionar exatamente como antes — incluindo o bloqueio da
-   navegação para o Perfil durante uma luta.
+   js/nav.js — v6: três separadores (Treinar · Reino · Eu)
+   Substitui a versão de 4 separadores + sub-abas do "Mundo".
+
+   Porque mudou: o ciclo estava cortado ao meio. Andar gera XP (que vivia em
+   Personagem) e recursos (que viviam em Mundo › Missões), mas os recursos só
+   servem para melhorar equipamento, que estava outra vez em Personagem — em
+   pastilhas sobre o modelo 3D. E o cartão "Territórios descobertos" fazia
+   três trabalhos ao mesmo tempo: exploração, produção e construção do
+   armazém.
+
+   Estrutura:
+     Treinar   — um ecrã, uma ação. Sem sub-abas.
+     Reino     — Mapa · Economia · Masmorra   (tudo o que é "lá fora")
+     Eu        — Personagem · Troféus · Números   (tudo o que é "meu")
+
+   Regra dura: as sub-abas são sempre TRÊS e nunca mudam de ordem. Foi a
+   ordem variável (Campo, Masmorra oculta, Arena oculta, Missões) que tornou
+   o "Mundo" ilegível.
+
+   Como antes, NÃO substitui a navegação antiga: continua a clicar nos botões
+   #btn-nav-jogo / #btn-nav-perfil (invisíveis) para que js/profile.js e
+   js/battle.js funcionem exatamente como funcionavam — incluindo o bloqueio
+   da navegação durante uma luta.
    Carregar DEPOIS de todos os outros scripts.
    ========================================================================== */
 
@@ -21,29 +38,110 @@
   // O separador ativo sobrevive a um refresh (mesmo espírito das outras
   // preferências locais: por dispositivo, nunca sincronizado).
   const STORAGE_KEY = "ui.separadorAtivo";
+  const SUBTAB_KEY = "ui.subAbaAtiva";
 
-  function showTab(tab) {
-    // O Perfil continua a ser um "view" à parte: delega no botão antigo,
-    // que é quem sabe pausar o render 3D e re-renderizar a aba.
-    if (tab === "perfil") {
+  /* ---- sub-abas --------------------------------------------------------- */
+
+  // A sub-aba escolhida em cada separador é lembrada enquanto a app estiver
+  // aberta: voltar a "Reino" volta ao Mapa se nunca se mexeu, senão à última
+  // vista. Sem isto, cada ida ao separador recomeça do zero e o jogador
+  // reaprende o caminho todas as vezes.
+  const subAtiva = { reino: "mapa", eu: "personagem" };
+  try {
+    const guardado = JSON.parse(localStorage.getItem(SUBTAB_KEY) || "{}");
+    if (guardado.reino) subAtiva.reino = guardado.reino;
+    if (guardado.eu) subAtiva.eu = guardado.eu;
+  } catch (err) {
+    /* ignorar */
+  }
+
+  function showSubtab(tab, sub) {
+    const grupo = document.querySelector('[data-subtabs="' + tab + '"]');
+    const pane = panes.find((p) => p.dataset.paneName === tab);
+    if (!grupo || !pane) return;
+
+    // "Números" é o antigo Perfil, que continua a ser um view à parte:
+    // delega no botão antigo, que é quem sabe pausar o render 3D e
+    // re-renderizar a aba.
+    if (tab === "eu" && sub === "numeros") {
       if (btnNavPerfil.disabled) return; // luta a decorrer
       btnNavPerfil.click();
     } else {
       btnNavJogo.click();
-      viewJogo.dataset.pane = tab;
-      panes.forEach((pane) => {
-        pane.classList.toggle("active", pane.dataset.paneName === tab);
-      });
-      // O #viewer só tem dimensões quando está visível — sem isto o canvas
-      // ficava com o tamanho que tinha ao ser escondido. Visível em
-      // Personagem E Mundo (2026-08-10 - Mundo passou a mostrar a
-      // personagem 3D tambem, ver css/style.css #viewer-stage).
-      if ((tab === "personagem" || tab === "mundo") && typeof onResize === "function") {
-        requestAnimationFrame(() => onResize());
-      }
     }
 
+    grupo.querySelectorAll(".nav-tab").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.subtab === sub);
+    });
+    pane.querySelectorAll(".subpane").forEach((el) => {
+      el.classList.toggle("active", el.dataset.subpaneName === sub);
+    });
+
+    subAtiva[tab] = sub;
+    try {
+      localStorage.setItem(SUBTAB_KEY, JSON.stringify(subAtiva));
+    } catch (err) {
+      /* modo privado: seguir sem persistir */
+    }
+
+    // O Leaflet calcula o tamanho do mapa a partir do contentor — se este
+    // estava escondido (display:none) quando o mapa foi criado, fica com
+    // dimensão 0 e só aparece um canto cinzento. Recalcular ao abrir a aba
+    // resolve, e desenhar aqui evita descarregar tiles a quem nunca lá vai.
+    if (sub === "mapa") {
+      if (typeof renderHexMap === "function") renderHexMap();
+      if (typeof refreshHexMapSize === "function") refreshHexMapSize();
+    }
+
+    // O contador de recursos só corre com a Economia à vista (ver o comentário
+    // em js/resources-ui.js).
+    if (sub === "economia") {
+      if (typeof startResourcesTicker === "function") startResourcesTicker();
+    } else if (typeof stopResourcesTicker === "function") {
+      stopResourcesTicker();
+    }
+
+    // O #viewer só tem dimensões quando está visível — sem isto o canvas
+    // ficava com o tamanho que tinha ao ser escondido. O palco 3D agora vive
+    // só em Eu › Personagem (deixou de estar duplicado no Campo).
+    if (tab === "eu" && sub === "personagem" && typeof onResize === "function") {
+      requestAnimationFrame(() => onResize());
+    }
+
+    // A carteira de recursos aparece em cima do equipamento: é o que liga
+    // "andar rende" a "melhorar custa".
+    if (tab === "eu" && sub === "personagem" && typeof renderWallet === "function") {
+      renderWallet();
+    }
+  }
+
+  document.querySelectorAll("[data-subtabs]").forEach((grupo) => {
+    const tab = grupo.dataset.subtabs;
+    grupo.querySelectorAll(".nav-tab").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (btn.disabled) return; // Masmorra: à vista, mas travada
+        showSubtab(tab, btn.dataset.subtab);
+      });
+    });
+  });
+
+  /* ---- separadores ------------------------------------------------------ */
+
+  function showTab(tab) {
+    if (tab === "eu" && subAtiva.eu === "numeros") {
+      if (btnNavPerfil.disabled) return;
+      btnNavPerfil.click();
+    } else {
+      btnNavJogo.click();
+    }
+
+    viewJogo.dataset.pane = tab;
+    panes.forEach((pane) => pane.classList.toggle("active", pane.dataset.paneName === tab));
     tabButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tab));
+
+    // Reentrar num separador reabre a última sub-aba que lá se viu.
+    if (subAtiva[tab]) showSubtab(tab, subAtiva[tab]);
+    else if (typeof stopResourcesTicker === "function") stopResourcesTicker();
 
     try {
       localStorage.setItem(STORAGE_KEY, tab);
@@ -60,8 +158,10 @@
   // barra inferior acompanha, para o separador não parecer clicável.
   const battleObserver = new MutationObserver(() => {
     const locked = btnNavPerfil.disabled;
-    const perfilTab = tabButtons.find((btn) => btn.dataset.tab === "perfil");
-    if (perfilTab) perfilTab.disabled = locked;
+    const euTab = tabButtons.find((btn) => btn.dataset.tab === "eu");
+    const numeros = document.querySelector('[data-subtab="numeros"]');
+    if (euTab && subAtiva.eu === "numeros") euTab.disabled = locked;
+    if (numeros) numeros.disabled = locked;
   });
   battleObserver.observe(btnNavPerfil, { attributes: true, attributeFilter: ["disabled"] });
 
@@ -77,7 +177,7 @@
     viewerObserver.observe(viewer, { attributes: true, attributeFilter: ["class"] });
   }
 
-  let initial = "mundo";
+  let initial = "treinar";
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved && tabButtons.some((btn) => btn.dataset.tab === saved)) initial = saved;
@@ -88,43 +188,21 @@
 })();
 
 /* ==========================================================================
-   Sub-navegação dentro do separador "Mundo" (2026-08-10) — mesmo padrão das
-   abas do Leaderboard (js/leaderboard.js): Campo (era o separador "Treino"),
-   Masmorra (PvE, era "Arena"/"Batalhas"), Arena (PvP) e Missões — estas duas
-   últimas já visíveis mas "Em breve" (sem conteúdo ainda). Sempre reinicia
-   em "Campo" ao recarregar, sem persistência — mesmo espírito das abas do
-   leaderboard, que também não guardam a última aba escolhida.
+   Detalhe da sessão de treino
+   O readout tinha 8 blocos de texto cinzento a 11-13px, todos centrados, e
+   só a distância com hierarquia. Agora: uma métrica herói, três apoios
+   grandes, e a grelha de 6 campos + diagnóstico GPS atrás de um toque — que
+   é o que se lê a andar, de relance.
    ========================================================================== */
 (function () {
-  const subButtons = {
-    campo: document.getElementById("btn-mundo-campo"),
-    masmorra: document.getElementById("btn-mundo-masmorra"),
-    arena: document.getElementById("btn-mundo-arena"),
-    missoes: document.getElementById("btn-mundo-missoes"),
-  };
-  const subPanes = {
-    campo: document.getElementById("mundo-subpane-campo"),
-    masmorra: document.getElementById("mundo-subpane-masmorra"),
-    arena: document.getElementById("mundo-subpane-arena"),
-    missoes: document.getElementById("mundo-subpane-missoes"),
-  };
-  if (Object.values(subButtons).some((btn) => !btn) || Object.values(subPanes).some((pane) => !pane)) return;
+  const botao = document.getElementById("btn-training-detail");
+  const detalhe = document.getElementById("training-detail");
+  if (!botao || !detalhe) return;
 
-  function showMundoSubtab(subtab) {
-    Object.entries(subButtons).forEach(([key, btn]) => btn.classList.toggle("active", key === subtab));
-    Object.entries(subPanes).forEach(([key, pane]) => pane.classList.toggle("active", key === subtab));
-
-    // O Leaflet calcula o tamanho do mapa a partir do contentor - se este
-    // estava escondido (display:none) quando o mapa foi criado, fica com
-    // dimensao 0 e so aparece um canto cinzento. Recalcular ao abrir a aba
-    // resolve, e desenhar aqui evita descarregar tiles a quem nunca la vai.
-    if (subtab === "missoes") {
-      if (typeof renderHexMap === "function") renderHexMap();
-      if (typeof refreshHexMapSize === "function") refreshHexMapSize();
-    }
-  }
-
-  Object.entries(subButtons).forEach(([key, btn]) => {
-    btn.addEventListener("click", () => showMundoSubtab(key));
+  botao.addEventListener("click", () => {
+    const aberto = !detalhe.hidden;
+    detalhe.hidden = aberto;
+    botao.textContent = aberto ? "Ver detalhe da sessão" : "Esconder detalhe";
+    botao.setAttribute("aria-expanded", String(!aberto));
   });
 })();

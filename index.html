@@ -8,6 +8,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="css/style.css?v=20260908b">
+  <!-- Patch v6: contraste, cor semântica, superfícies, ícones, sub-abas.
+       DEPOIS do style.css de propósito — só sobrepõe o que muda. -->
+  <link rel="stylesheet" href="css/campo-aberto-v6.css?v=20260909a">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -37,7 +40,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v5.4.0</span>
+      <span id="site-version" class="site-version-hero">v6.0.0</span>
     </div>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
          dependem destes dois botoes. Fica invisivel (.legacy-nav no CSS) - a
@@ -50,277 +53,322 @@
   </header>
 
   <main>
-    <div id="view-jogo" data-pane="personagem">
+    <div id="view-jogo" data-pane="treinar">
 
-    <div id="viewer-stage">
-      <div id="viewer">
-        <canvas id="viewer-canvas"></canvas>
-        <div id="viewer-loading">Carregando personagem...</div>
+    <!-- ======================================================================
+         Separador 1: TREINAR — um ecrã, uma ação.
+         O palco 3D saiu daqui (vive só em Eu › Personagem): custava o
+         primeiro ecrã inteiro no separador que existe para começar um treino.
+         ====================================================================== -->
+    <div class="pane active" data-pane-name="treinar">
 
-        <div id="battle-hud" class="hidden">
-          <div class="battle-side">
-            <p class="battle-name">Personagem</p>
-            <div class="hp-bar-track">
-              <div id="battle-player-hp-fill" class="hp-bar-fill player"></div>
-            </div>
-            <p id="battle-player-hp-text">0 / 0</p>
+      <section id="training-readout">
+        <p class="training-label">Distância percorrida</p>
+        <p id="training-distance" class="training-distance">0 km</p>
+
+        <!-- Uma métrica herói + três apoios grandes. É o que se lê a andar,
+             de relance, com o braço a mexer. -->
+        <div class="training-tiles">
+          <div class="training-tile">
+            <p class="training-tile-label">Tempo ativo</p>
+            <p id="live-active-time" class="training-tile-value">0:00</p>
           </div>
-          <div class="battle-side">
-            <p id="battle-monster-name" class="battle-name">Monstro</p>
-            <div class="hp-bar-track">
-              <div id="battle-monster-hp-fill" class="hp-bar-fill monster"></div>
-            </div>
-            <p id="battle-monster-hp-text">0 / 0</p>
+          <div class="training-tile">
+            <p class="training-tile-label">Velocidade</p>
+            <p id="live-speed" class="training-tile-value">0.0 km/h</p>
           </div>
-        </div>
-
-        <div id="battle-panel" class="hidden">
-          <p class="battle-stage-caption">modelo 3D · palco de combate</p>
-          <p id="battle-log-headline" class="battle-log-headline"></p>
-          <div id="battle-log-history" class="battle-log-history"></div>
-          <p id="battle-result" class="battle-result"></p>
-          <div class="battle-stat-pills">
-            <span class="battle-stat-pill">Destreza <span id="battle-stat-destreza">0%</span></span>
-            <span class="battle-stat-pill">Letalidade <span id="battle-stat-letalidade">0%</span></span>
-          </div>
-          <button id="btn-battle-back" class="btn-secondary hidden">Voltar</button>
-        </div>
-
-        <div id="battle-joystick" class="hidden">
-          <div id="battle-joystick-base">
-            <div id="battle-joystick-knob"></div>
+          <div class="training-tile xp" id="training-calories-row">
+            <p class="training-tile-label">XP</p>
+            <p id="training-calories" class="training-tile-value">0 kcal</p>
           </div>
         </div>
-      </div>
 
-      <div id="character-level-badge">
-        <span class="level-badge-label">Nível</span>
-        <span id="character-level-value">1</span>
-      </div>
+        <button id="btn-training-detail" class="training-detail-toggle" type="button" aria-expanded="false" aria-controls="training-detail">Ver detalhe da sessão</button>
 
-      <div id="equipment-mini-list">
-        <button id="equipment-mini-weapon" class="equipment-mini-item weapon" type="button"><span class="equipment-mini-icon">🏹</span> Arco Lv <span id="hud-weapon-level">1</span></button>
-        <button id="equipment-mini-shield" class="equipment-mini-item shield" type="button"><span class="equipment-mini-icon">🛡️</span> Escudo Lv <span id="hud-shield-level">1</span></button>
-        <button id="equipment-mini-armor" class="equipment-mini-item armor" type="button"><span class="equipment-mini-icon">🧥</span> Armadura Lv <span id="hud-armor-level">1</span></button>
-      </div>
-    </div>
-
-    <p class="viewer-hint">arrasta para rodar · toca numa peça para evoluir</p>
-
-    <!-- ===== Separador: Personagem ===== -->
-    <div class="pane" data-pane-name="personagem">
-      <section id="xp-panel">
-        <div class="xp-bar-track">
-          <div id="xp-bar-fill" class="xp-bar-fill"></div>
-        </div>
-        <p id="xp-progress-text">0 XP</p>
-      </section>
-
-      <div id="character-hud">
-        <div class="hud-grid">
-          <p>Vida <span id="stat-vida-value">0</span></p>
-          <p>Ataque <span id="stat-ataque-value">0</span></p>
-          <p>Defesa <span id="stat-defesa-value">0</span></p>
-          <p>Destreza <span id="stat-destreza-value">0%</span></p>
-          <p>Letalidade <span id="stat-letalidade-value">0%</span></p>
-          <p>Regen. <span id="stat-regeneracao-value">0</span></p>
-        </div>
-
-        <div class="invest-card">
-          <p class="invest-card-title"><span id="hud-unspent-points-value">0</span> pontos para distribuir</p>
-          <div class="invest-row">
-            <span class="invest-label">Energia</span>
-            <span class="invest-value" id="hud-level-energia">0</span>
-            <button id="btn-hud-upgrade-energia" class="btn-hud-plus hidden">+</button>
-          </div>
-          <div class="invest-row">
-            <span class="invest-label">Força</span>
-            <span class="invest-value" id="hud-level-forca">0</span>
-            <button id="btn-hud-upgrade-forca" class="btn-hud-plus hidden">+</button>
-          </div>
-          <div class="invest-row">
-            <span class="invest-label">Resistência</span>
-            <span class="invest-value" id="hud-level-resistencia">0</span>
-            <button id="btn-hud-upgrade-resistencia" class="btn-hud-plus hidden">+</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===== Separador: Mundo (era "Arena"/"Batalhas") ===== -->
-    <div class="pane active" data-pane-name="mundo">
-      <div class="nav-tabs mundo-tabs">
-        <button id="btn-mundo-campo" class="nav-tab active" type="button">Campo</button>
-        <!-- Escondidos a pedido (2026-09-07) ate o combate estar pronto.
-             CONTINUAM no DOM de proposito: js/nav.js exige os quatro botoes e
-             os quatro paineis para ligar a sub-navegacao, e desiste se algum
-             faltar. Para os repor, tirar a classe. -->
-        <button id="btn-mundo-masmorra" class="nav-tab nav-tab-oculta" type="button">Masmorra</button>
-        <button id="btn-mundo-arena" class="nav-tab nav-tab-oculta" type="button">Arena 🔜</button>
-        <button id="btn-mundo-missoes" class="nav-tab" type="button">Missões 🔜</button>
-      </div>
-
-      <!-- Campo (era o separador "Treino") -->
-      <div id="mundo-subpane-campo" class="mundo-subpane active">
-        <p class="mode-xp-explanation">A atividade (Caminhar/Correr/Bicicleta) é detetada automaticamente pelo ritmo — não precisas de escolher nada.</p>
-
-        <section id="training-readout">
-          <p class="training-label">Distância percorrida</p>
-          <p id="training-distance" class="training-distance">0 km</p>
+        <!-- O resto do readout: os mesmos campos do resumo do fim (secção
+             4.7), ao vivo. Assim o que se ve durante o treino e o que se ve
+             no fim — mas sem competir com a distância. -->
+        <div id="training-detail" class="training-detail" hidden>
           <p id="training-live-stats" class="training-live-stats">0:00 · nominal 0.0 km/h · média 0.0 km/h</p>
           <p id="training-detected-activity" class="training-detected-activity">Atividade detetada: —</p>
-
-          <!-- Os mesmos campos do resumo do fim (secção 4.7), ao vivo. Assim
-               o que se ve durante o treino e o que se ve no fim. -->
           <dl class="summary-grid live-grid">
-            <dt>Tempo ativo</dt><dd id="live-active-time">0:00</dd>
             <dt>Tempo em pausa</dt><dd id="live-paused-time">0:00</dd>
             <dt>Tempo total</dt><dd id="live-total-time">0:00</dd>
-            <dt>Velocidade média</dt><dd id="live-speed">0.0 km/h</dd>
             <dt>Calorias ativas</dt><dd id="live-active-kcal">0 kcal</dd>
             <dt>Calorias totais</dt><dd id="live-total-kcal">0 kcal</dd>
           </dl>
-
-          <p id="training-calories-row" class="training-calories-row">
-            XP: <span id="training-calories">0 kcal</span>
-          </p>
           <p id="training-gps-diag" class="training-gps-diag hidden"></p>
-        </section>
+        </div>
+      </section>
 
-        <p id="speed-warning" class="speed-warning hidden">⚠️ Velocidade demasiado alta para ser real — esta distância não está a contar</p>
+      <p id="speed-warning" class="speed-warning hidden">Velocidade demasiado alta para ser real — esta distância não está a contar</p>
 
-        <section id="training-panel">
-          <div id="start-screen" class="panel-screen">
-            <button id="btn-start-treino" class="btn-primary">Iniciar Treino</button>
-            <div id="training-today-card">
-              <p class="training-label">Treinos de hoje</p>
-              <ul id="training-today-list" class="training-today-list"></ul>
-            </div>
-          </div>
-
-          <!-- Durante o treino ha UM so botao, no lugar do "Iniciar Treino":
-               Pausa. Terminar vive dentro do popup da pausa (secção 4.7) -
-               acabar um treino nunca deve ser um toque a distancia de
-               distancia de um engano. -->
-          <div id="training-screen" class="panel-screen hidden">
-            <button id="btn-pause-treino" class="btn-primary">Pausa</button>
-          </div>
-        </section>
-
-        <!-- Pausa (secção 4.7). O tempo em pausa nao conta para a duracao do
-             treino, por isso a unica saida daqui e Retomar ou Terminar - nao
-             ha como fechar por engano e ficar a contar tempo parado. -->
-        <div id="training-pause-modal" class="hidden">
-          <div class="pause-box">
-            <p class="pause-title">Treino em pausa</p>
-            <p id="pause-elapsed" class="pause-elapsed">0:00</p>
-            <p class="pause-hint">Este tempo não conta para o teu treino.</p>
-            <div class="pause-actions">
-              <button id="btn-resume-treino" class="btn-primary">Retomar</button>
-              <button id="btn-finish-treino" class="btn-stop">Terminar</button>
-            </div>
+      <section id="training-panel">
+        <div id="start-screen" class="panel-screen">
+          <button id="btn-start-treino" class="btn-primary">Iniciar Treino</button>
+          <!-- A explicação do modo desceu para debaixo do botão: é uma nota,
+               não um cabeçalho. Em cima, empurrava o CTA ~430px abaixo da
+               dobra num iPhone 13. -->
+          <p class="mode-xp-explanation">O ritmo decide sozinho se é caminhar, correr ou bicicleta.</p>
+          <div id="training-today-card">
+            <p class="training-label">Treinos de hoje</p>
+            <ul id="training-today-list" class="training-today-list"></ul>
           </div>
         </div>
 
-        <!-- Resumo no fim do treino (secção 4.7). Separa o tempo/calorias
-             ATIVOS dos TOTAIS: o que conta para XP e o ativo, mas o corpo
-             gastou os dois. -->
-        <div id="training-summary-modal" class="hidden">
-          <div class="pause-box summary-box">
-            <p class="pause-title">Treino terminado</p>
-            <p id="summary-mode" class="summary-mode">—</p>
-            <dl class="summary-grid">
-              <dt>Tempo ativo</dt><dd id="summary-active-time">—</dd>
-              <dt>Tempo em pausa</dt><dd id="summary-paused-time">—</dd>
-              <dt>Tempo total</dt><dd id="summary-total-time">—</dd>
-              <dt>Distância</dt><dd id="summary-distance">—</dd>
-              <dt>Velocidade média</dt><dd id="summary-speed">—</dd>
-              <dt>Calorias ativas</dt><dd id="summary-active-kcal">—</dd>
-              <dt>Calorias totais</dt><dd id="summary-total-kcal">—</dd>
-              <dt class="summary-xp-row">XP ganho</dt><dd id="summary-xp" class="summary-xp-row">—</dd>
-            </dl>
-            <p class="pause-hint">O XP são as calorias totais.</p>
-            <div class="pause-actions">
-              <button id="btn-summary-close" class="btn-primary">Fechar</button>
-            </div>
+        <!-- Durante o treino ha UM so botao, no lugar do "Iniciar Treino":
+             Pausa. Terminar vive dentro do popup da pausa (secção 4.7) -
+             acabar um treino nunca deve estar a um toque de um engano. -->
+        <div id="training-screen" class="panel-screen hidden">
+          <button id="btn-pause-treino" class="btn-primary">Pausa</button>
+        </div>
+      </section>
+
+      <!-- Pausa (secção 4.7). O tempo em pausa nao conta para a duracao do
+           treino, por isso a unica saida daqui e Retomar ou Terminar - nao
+           ha como fechar por engano e ficar a contar tempo parado. -->
+      <div id="training-pause-modal" class="hidden">
+        <div class="pause-box">
+          <p class="pause-title">Treino em pausa</p>
+          <p id="pause-elapsed" class="pause-elapsed">0:00</p>
+          <p class="pause-hint">Este tempo não conta para o teu treino.</p>
+          <div class="pause-actions">
+            <button id="btn-resume-treino" class="btn-primary">Retomar</button>
+            <button id="btn-finish-treino" class="btn-stop">Terminar</button>
           </div>
         </div>
       </div>
 
-      <!-- Masmorra (era o separador "Arena"/"Batalhas", so PvE) -->
-      <div id="mundo-subpane-masmorra" class="mundo-subpane">
-        <section id="monsters-card" class="card">
-          <h2 class="card-title">Masmorra</h2>
-          <p class="construction-warning">⚠️ Em construção — todo o progresso nesta área pode ser perdido.</p>
-          <div id="monsters-list"></div>
-        </section>
+      <!-- Resumo no fim do treino (secção 4.7). Separa o tempo/calorias
+           ATIVOS dos TOTAIS: o que conta para XP e o ativo, mas o corpo
+           gastou os dois. -->
+      <div id="training-summary-modal" class="hidden">
+        <div class="pause-box summary-box">
+          <p class="pause-title">Treino terminado</p>
+          <p id="summary-mode" class="summary-mode">—</p>
+          <dl class="summary-grid">
+            <dt>Tempo ativo</dt><dd id="summary-active-time">—</dd>
+            <dt>Tempo em pausa</dt><dd id="summary-paused-time">—</dd>
+            <dt>Tempo total</dt><dd id="summary-total-time">—</dd>
+            <dt>Distância</dt><dd id="summary-distance">—</dd>
+            <dt>Velocidade média</dt><dd id="summary-speed">—</dd>
+            <dt>Calorias ativas</dt><dd id="summary-active-kcal">—</dd>
+            <dt>Calorias totais</dt><dd id="summary-total-kcal">—</dd>
+            <dt class="summary-xp-row">XP ganho</dt><dd id="summary-xp" class="summary-xp-row">—</dd>
+          </dl>
+          <div class="pause-actions">
+            <button id="btn-summary-close" class="btn-primary">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         Separador 2: REINO — tudo o que é "lá fora".
+         Mapa · Economia · Masmorra. Sempre três, sempre nesta ordem.
+         O armazém saiu do cartão do mapa e passou para a Economia, ao lado
+         da produção que ele limita: era um cartão a fazer três trabalhos
+         (explorar, produzir, construir).
+         ====================================================================== -->
+    <div class="pane" data-pane-name="reino">
+      <div class="nav-tabs subtabs" data-subtabs="reino" role="tablist">
+        <button class="nav-tab active" type="button" data-subtab="mapa">Mapa</button>
+        <button class="nav-tab" type="button" data-subtab="economia">Economia</button>
+        <!-- A Masmorra fica à vista mas travada até o combate estar pronto.
+             Melhor que escondê-la: a barra de sub-abas não muda de forma
+             pelas costas do jogador quando ela chegar. -->
+        <button class="nav-tab" type="button" data-subtab="masmorra" disabled aria-disabled="true">Masmorra</button>
       </div>
 
-      <!-- Arena (PvP) - ainda nao existe -->
-      <div id="mundo-subpane-arena" class="mundo-subpane">
-        <section class="card mundo-soon-card">
-          <p class="mundo-soon-icon">⚔️</p>
-          <h2 class="card-title">Arena</h2>
-          <p class="mundo-soon-text">Combate contra outros jogadores (PvP) — em breve.</p>
-        </section>
+      <div class="subpane active" data-subpane-name="mapa">
+        <div id="hex-map"></div>
+        <div class="reino-stats">
+          <div class="reino-stat">
+            <p class="reino-stat-label">Zonas</p>
+            <p class="reino-stat-value" id="hex-count">0</p>
+          </div>
+          <div class="reino-stat">
+            <p class="reino-stat-label">Concelhos</p>
+            <p class="reino-stat-value" id="hex-district">—</p>
+          </div>
+        </div>
+        <p class="hex-map-hint">Cada concelho esconde 50 minas — 10 de cada recurso. Não aparecem no mapa até lá chegares, mas a app avisa-te com um som quando estás a menos de 500 m de uma. Depois de encontrada, produz por hora; volta a passar e produz mais, deixa de lá ir e o bónus desvanece.</p>
       </div>
 
-      <!-- Missões - ainda nao existe -->
-      <div id="mundo-subpane-missoes" class="mundo-subpane">
+      <div class="subpane" data-subpane-name="economia">
         <section class="card">
-          <h2 class="card-title">Territórios descobertos</h2>
-          <p class="construction-warning">⚠️ Em construção — as missões e recompensas ainda não existem, por agora só a exploração é registada.</p>
-          <p class="hex-count-row">Zonas descobertas: <span id="hex-count">0</span></p>
-          <p class="hex-district-row">Concelhos desbloqueados: <span id="hex-district">nenhum ainda</span></p>
-
-          <!-- Economia de recursos (secção 21). Preenchido por
-               renderResourcesPanel() em js/resources-ui.js. -->
+          <!-- Preenchidos por renderResourcesPanel() em js/resources-ui.js -->
           <div id="resources-panel" class="resources-panel"></div>
           <div id="warehouse-panel" class="warehouse-panel"></div>
-          <div id="hex-map"></div>
-          <p class="hex-map-hint">Cada concelho esconde 50 minas — 10 de cada recurso. Não aparecem no mapa até lá chegares, mas a app avisa-te com um som quando estás a menos de 500 m de uma. Depois de encontrada, produz por hora; volta a passar e produz mais, deixa de lá ir e o bónus desvanece.</p>
+          <p class="hex-map-hint">Os recursos gastam-se em <strong>Eu › Personagem</strong>, para melhorar equipamento.</p>
+        </section>
+      </div>
+
+      <div class="subpane" data-subpane-name="masmorra">
+        <p class="subpane-locked-note">Ainda a construir — vais poder entrar em breve.</p>
+        <section id="monsters-card" class="card">
+          <h2 class="card-title">Masmorra</h2>
+          <div id="monsters-list"></div>
         </section>
       </div>
     </div>
 
-    <!-- ===== Separador: Troféus ===== -->
-    <div class="pane" data-pane-name="trofeus">
-      <section id="achievements-card" class="card">
-        <h2 class="card-title">Conquistas</h2>
-        <div id="achievements-summary" class="achievements-grid"></div>
-        <button id="btn-open-achievements" class="btn-secondary btn-view-all">Ver todas</button>
-      </section>
+    <!-- ======================================================================
+         Separador 3: EU — tudo o que é "meu".
+         Personagem · Troféus · Números.
+         ====================================================================== -->
+    <div class="pane" data-pane-name="eu">
+      <div class="nav-tabs subtabs" data-subtabs="eu" role="tablist">
+        <button class="nav-tab active" type="button" data-subtab="personagem">Personagem</button>
+        <button class="nav-tab" type="button" data-subtab="trofeus">Troféus</button>
+        <button class="nav-tab" type="button" data-subtab="numeros">Números</button>
+      </div>
 
-      <section id="leaderboard-card" class="card">
-        <h2 class="card-title">Leaderboard</h2>
-        <div class="nav-tabs leaderboard-tabs">
-          <button id="btn-leaderboard-geral" class="nav-tab active" type="button">Geral</button>
-          <button id="btn-leaderboard-mensal" class="nav-tab" type="button">Mensal</button>
-          <button id="btn-leaderboard-historico" class="nav-tab" type="button">Histórico</button>
+      <div class="subpane active" data-subpane-name="personagem">
+        <div id="viewer-stage">
+          <div id="viewer">
+            <canvas id="viewer-canvas"></canvas>
+            <div id="viewer-loading">Carregando personagem...</div>
+
+            <div id="battle-hud" class="hidden">
+              <div class="battle-side">
+                <p class="battle-name">Personagem</p>
+                <div class="hp-bar-track">
+                  <div id="battle-player-hp-fill" class="hp-bar-fill player"></div>
+                </div>
+                <p id="battle-player-hp-text">0 / 0</p>
+              </div>
+              <div class="battle-side">
+                <p id="battle-monster-name" class="battle-name">Monstro</p>
+                <div class="hp-bar-track">
+                  <div id="battle-monster-hp-fill" class="hp-bar-fill monster"></div>
+                </div>
+                <p id="battle-monster-hp-text">0 / 0</p>
+              </div>
+            </div>
+
+            <div id="battle-panel" class="hidden">
+              <p class="battle-stage-caption">modelo 3D · palco de combate</p>
+              <p id="battle-log-headline" class="battle-log-headline"></p>
+              <div id="battle-log-history" class="battle-log-history"></div>
+              <p id="battle-result" class="battle-result"></p>
+              <div class="battle-stat-pills">
+                <span class="battle-stat-pill">Destreza <span id="battle-stat-destreza">0%</span></span>
+                <span class="battle-stat-pill">Letalidade <span id="battle-stat-letalidade">0%</span></span>
+              </div>
+              <button id="btn-battle-back" class="btn-secondary hidden">Voltar</button>
+            </div>
+
+            <div id="battle-joystick" class="hidden">
+              <div id="battle-joystick-base">
+                <div id="battle-joystick-knob"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="character-level-badge">
+            <span class="level-badge-label">Nível</span>
+            <span id="character-level-value">1</span>
+          </div>
         </div>
-        <div id="leaderboard-list" class="leaderboard-list"></div>
-        <div id="leaderboard-list-monthly" class="leaderboard-list hidden"></div>
-        <div id="leaderboard-list-history" class="leaderboard-list hidden"></div>
-      </section>
+
+        <p class="viewer-hint">arrasta para rodar</p>
+
+        <section id="xp-panel">
+          <div class="xp-bar-track">
+            <div id="xp-bar-fill" class="xp-bar-fill"></div>
+          </div>
+          <p id="xp-progress-text">0 XP</p>
+        </section>
+
+        <div id="character-hud">
+          <div class="hud-grid">
+            <p>Vida <span id="stat-vida-value">0</span></p>
+            <p>Ataque <span id="stat-ataque-value">0</span></p>
+            <p>Defesa <span id="stat-defesa-value">0</span></p>
+            <p>Destreza <span id="stat-destreza-value">0%</span></p>
+            <p>Letalidade <span id="stat-letalidade-value">0%</span></p>
+            <p>Regen. <span id="stat-regeneracao-value">0</span></p>
+          </div>
+
+          <div class="invest-card">
+            <p class="invest-card-title"><span id="hud-unspent-points-value">0</span> pontos para distribuir</p>
+            <div class="invest-row">
+              <span class="invest-label">Energia</span>
+              <span class="invest-value" id="hud-level-energia">0</span>
+              <button id="btn-hud-upgrade-energia" class="btn-hud-plus hidden">+</button>
+            </div>
+            <div class="invest-row">
+              <span class="invest-label">Força</span>
+              <span class="invest-value" id="hud-level-forca">0</span>
+              <button id="btn-hud-upgrade-forca" class="btn-hud-plus hidden">+</button>
+            </div>
+            <div class="invest-row">
+              <span class="invest-label">Resistência</span>
+              <span class="invest-value" id="hud-level-resistencia">0</span>
+              <button id="btn-hud-upgrade-resistencia" class="btn-hud-plus hidden">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Equipamento sai das pastilhas a flutuar sobre o modelo 3D e passa
+             a lista, com o stock por cima: era o corte no ciclo — andar rende
+             recursos (Reino), os recursos só servem para melhorar
+             equipamento (Eu), e nenhum dos dois lados mencionava o outro.
+             Os ids #equipment-mini-* mantêm-se: js/equipment.js liga-se a
+             eles para abrir os popups de melhoria. -->
+        <section class="card" id="equipment-card">
+          <h2 class="card-title">Equipamento</h2>
+          <div id="equipment-wallet" class="wallet"></div>
+          <div id="equipment-mini-list">
+            <button id="equipment-mini-weapon" class="equipment-mini-item weapon" type="button">
+              <span class="equipment-mini-icon" data-icon="arco" data-icon-size="20"></span>
+              <span class="equipment-mini-name">Arco</span>
+              <span class="equipment-mini-level">Lv <span id="hud-weapon-level">1</span></span>
+            </button>
+            <button id="equipment-mini-shield" class="equipment-mini-item shield" type="button">
+              <span class="equipment-mini-icon" data-icon="escudo" data-icon-size="20"></span>
+              <span class="equipment-mini-name">Escudo</span>
+              <span class="equipment-mini-level">Lv <span id="hud-shield-level">1</span></span>
+            </button>
+            <button id="equipment-mini-armor" class="equipment-mini-item armor" type="button">
+              <span class="equipment-mini-icon" data-icon="armadura" data-icon-size="20"></span>
+              <span class="equipment-mini-name">Armadura</span>
+              <span class="equipment-mini-level">Lv <span id="hud-armor-level">1</span></span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div class="subpane" data-subpane-name="trofeus">
+        <section id="achievements-card" class="card">
+          <h2 class="card-title">Conquistas</h2>
+          <div id="achievements-summary" class="achievements-grid"></div>
+          <button id="btn-open-achievements" class="btn-secondary btn-view-all">Ver todas</button>
+        </section>
+
+        <section id="leaderboard-card" class="card">
+          <h2 class="card-title">Leaderboard</h2>
+          <div class="nav-tabs leaderboard-tabs">
+            <button id="btn-leaderboard-geral" class="nav-tab active" type="button">Geral</button>
+            <button id="btn-leaderboard-mensal" class="nav-tab" type="button">Mensal</button>
+            <button id="btn-leaderboard-historico" class="nav-tab" type="button">Histórico</button>
+          </div>
+          <div id="leaderboard-list" class="leaderboard-list"></div>
+          <div id="leaderboard-list-monthly" class="leaderboard-list hidden"></div>
+          <div id="leaderboard-list-history" class="leaderboard-list hidden"></div>
+        </section>
+      </div>
+
+      <!-- "Números" é o antigo Perfil: continua a ser um view à parte
+           (#view-perfil), porque é js/profile.js que sabe pausar o render 3D
+           e re-renderizar os gráficos. js/nav.js delega no botão antigo. -->
+      <div class="subpane" data-subpane-name="numeros"></div>
     </div>
 
     </div>
 
     <div id="view-perfil" class="hidden">
-      <section class="card" id="profile-settings-card">
-        <h2 class="card-title">Definições</h2>
-        <div class="debug-row">
-          <label class="debug-label" for="profile-weight-input">Peso (kg) — usado para calcular calorias nos treinos</label>
-          <input type="number" id="profile-weight-input" min="20" max="300" step="1">
-          <button id="btn-save-weight" class="btn-secondary">Guardar</button>
-        </div>
-        <p id="profile-weight-status" class="debug-status"></p>
-        <p id="weight-lock-status" class="weight-lock-status"></p>
-
-        <h3 class="weight-chart-title">Evolução do peso</h3>
-        <div id="weight-chart" class="profile-chart"></div>
-      </section>
-
       <section class="card" id="profile-summary-card">
         <h2 class="card-title">Resumo</h2>
         <div id="profile-summary-list" class="profile-summary-list"></div>
@@ -353,6 +401,24 @@
         <div id="profile-history-list" class="profile-history-list"></div>
       </section>
 
+      <!-- Peso fica aqui: é um número que se lê ao lado dos outros. -->
+      <section class="card" id="profile-settings-card">
+        <h2 class="card-title">Peso</h2>
+        <div class="debug-row">
+          <label class="debug-label" for="profile-weight-input">Peso (kg) — usado para calcular calorias nos treinos</label>
+          <input type="number" id="profile-weight-input" min="20" max="300" step="1">
+          <button id="btn-save-weight" class="btn-secondary">Guardar</button>
+        </div>
+        <p id="profile-weight-status" class="debug-status"></p>
+        <p id="weight-lock-status" class="weight-lock-status"></p>
+
+        <h3 class="weight-chart-title">Evolução do peso</h3>
+        <div id="weight-chart" class="profile-chart"></div>
+      </section>
+
+      <!-- Versão da app e reposição no fim: não competem com os números.
+           (Passo seguinte sugerido: uma folha de Definições aberta pelo
+           cabeçalho, e estes dois cartões saem daqui.) -->
       <section class="card" id="profile-changelog-card">
         <h2 class="card-title">Versão da Aplicação</h2>
         <div id="profile-changelog-list"></div>
@@ -398,10 +464,13 @@
     </div>
   </div>
 
+  <!-- Popups de melhoria: o botão diz "Melhorar" e o custo fica numa linha
+       por baixo. O estado do botão é que diz se dá — laranja quando há
+       recursos, cinza desativado quando não. Sem "Tens: X". -->
   <div id="weapon-upgrade-modal" class="equip-upgrade-modal hidden">
     <div class="equip-upgrade-box">
       <button id="btn-weapon-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
-      <div class="achievement-detail-icon">🏹</div>
+      <div class="achievement-detail-icon" data-icon="arco" data-icon-size="34"></div>
       <h3 id="weapon-upgrade-title"></h3>
       <div class="equip-upgrade-stats-row">
         <p>Ataque: <strong id="weapon-upgrade-current-ataque">0</strong></p>
@@ -415,17 +484,18 @@
         </div>
       </div>
       <p id="weapon-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
-      <p id="weapon-upgrade-cost-row" class="auth-text">
-        Custo: <strong id="weapon-upgrade-cost">—</strong> · Tens: <strong id="weapon-upgrade-stock">—</strong>
-      </p>
       <button id="btn-weapon-upgrade-confirm" class="btn-primary"></button>
+      <p id="weapon-upgrade-cost-row" class="cost-line">
+        <span id="weapon-upgrade-cost">—</span>
+      </p>
+      <span id="weapon-upgrade-stock" class="hidden"></span>
     </div>
   </div>
 
   <div id="shield-upgrade-modal" class="equip-upgrade-modal hidden">
     <div class="equip-upgrade-box">
       <button id="btn-shield-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
-      <div class="achievement-detail-icon">🛡️</div>
+      <div class="achievement-detail-icon" data-icon="escudo" data-icon-size="34"></div>
       <h3 id="shield-upgrade-title"></h3>
       <div class="equip-upgrade-stats-row">
         <p>Defesa: <strong id="shield-upgrade-current-defesa">0</strong></p>
@@ -439,17 +509,18 @@
         </div>
       </div>
       <p id="shield-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
-      <p id="shield-upgrade-cost-row" class="auth-text">
-        Custo: <strong id="shield-upgrade-cost">—</strong> · Tens: <strong id="shield-upgrade-stock">—</strong>
-      </p>
       <button id="btn-shield-upgrade-confirm" class="btn-primary"></button>
+      <p id="shield-upgrade-cost-row" class="cost-line">
+        <span id="shield-upgrade-cost">—</span>
+      </p>
+      <span id="shield-upgrade-stock" class="hidden"></span>
     </div>
   </div>
 
   <div id="armor-upgrade-modal" class="equip-upgrade-modal hidden">
     <div class="equip-upgrade-box">
       <button id="btn-armor-upgrade-close" class="btn-secondary achievement-detail-close">Fechar</button>
-      <div class="achievement-detail-icon">🧥</div>
+      <div class="achievement-detail-icon" data-icon="armadura" data-icon-size="34"></div>
       <h3 id="armor-upgrade-title"></h3>
       <div class="equip-upgrade-stats-row">
         <p>Vida: <strong id="armor-upgrade-current-vida">0</strong></p>
@@ -463,18 +534,18 @@
         </div>
       </div>
       <p id="armor-upgrade-maxed" class="hidden">Nível máximo de melhoria atingido.</p>
-      <p id="armor-upgrade-cost-row" class="auth-text">
-        Custo: <strong id="armor-upgrade-cost">—</strong> · Tens: <strong id="armor-upgrade-stock">—</strong>
-      </p>
       <button id="btn-armor-upgrade-confirm" class="btn-primary"></button>
+      <p id="armor-upgrade-cost-row" class="cost-line">
+        <span id="armor-upgrade-cost">—</span>
+      </p>
+      <span id="armor-upgrade-stock" class="hidden"></span>
     </div>
   </div>
 
   <nav id="tab-bar">
-    <button class="tab-btn" type="button" data-tab="personagem"><span class="tab-icon">🧍</span>Personagem</button>
-    <button class="tab-btn active" type="button" data-tab="mundo"><span class="tab-icon">🗺️</span>Mundo</button>
-    <button class="tab-btn" type="button" data-tab="trofeus"><span class="tab-icon">🏅</span>Troféus</button>
-    <button class="tab-btn" type="button" data-tab="perfil"><span class="tab-icon">📊</span>Perfil</button>
+    <button class="tab-btn active" type="button" data-tab="treinar"><span class="tab-icon" data-icon="treinar" data-icon-size="21"></span>Treinar</button>
+    <button class="tab-btn" type="button" data-tab="reino"><span class="tab-icon" data-icon="reino" data-icon-size="21"></span>Reino</button>
+    <button class="tab-btn" type="button" data-tab="eu"><span class="tab-icon" data-icon="eu" data-icon-size="21"></span>Eu</button>
   </nav>
 
   <!-- ?v=YYYYMMDD nos scripts locais abaixo: sobe esta data sempre que
@@ -487,10 +558,12 @@
        como THREE.GLTFLoader no mesmo global THREE ja carregado acima. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.142.0/examples/js/loaders/GLTFLoader.js"></script>
   <!-- H3 (indexacao hexagonal da Uber) + Leaflet: hexagonos de descoberta e
-       mapa da aba Missoes (secção 18). Build UMD, sem modulos ES6, mesma
-       razao do three.min.js acima. -->
+       mapa da sub-aba Reino > Mapa (secção 18). Build UMD, sem modulos ES6,
+       mesma razao do three.min.js acima. -->
   <script src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- icons.js antes de tudo o que desenha: js/resources-ui.js chama icon() -->
+  <script src="js/icons.js?v=20260909a"></script>
   <script src="js/storage-keys.js?v=20260908b"></script>
   <script src="js/tab-lock.js?v=20260806p"></script>
   <script src="js/auth.js?v=20260814c"></script>
@@ -498,20 +571,20 @@
   <script src="js/leaderboard.js?v=20260810d"></script>
   <script src="js/main.js?v=20260907a"></script>
   <script src="js/game-config.js?v=20260908b"></script>
-  <script src="js/equipment.js?v=20260908b"></script>
+  <script src="js/equipment.js?v=20260909a"></script>
   <script src="js/experience.js?v=20260814a"></script>
   <script src="js/monsters.js?v=20260806p"></script>
   <script src="js/monthly-medals.js?v=20260810d"></script>
   <script src="js/battle.js?v=20260908b"></script>
   <script src="js/resources.js?v=20260907d"></script>
   <script src="js/hexes.js?v=20260907j"></script>
-  <script src="js/resources-ui.js?v=20260907c"></script>
+  <script src="js/resources-ui.js?v=20260909a"></script>
   <script src="js/training.js?v=20260908b"></script>
   <script src="js/weight.js?v=20260908a"></script>
   <script src="js/profile.js?v=20260908a"></script>
   <script src="js/changelog.js?v=20260908b"></script>
   <script src="js/achievements.js?v=20260908b"></script>
   <script src="js/orientation.js?v=20260806p"></script>
-  <script src="js/nav.js?v=20260814a"></script>
+  <script src="js/nav.js?v=20260909a"></script>
 </body>
 </html>

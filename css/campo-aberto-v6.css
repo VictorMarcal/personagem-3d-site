@@ -1,0 +1,319 @@
+/* ==========================================================================
+   css/campo-aberto-v6.css — patch sobre css/style.css (tema "Campo Aberto")
+   Carregar DEPOIS do style.css. Usa as variáveis que já existem, mais duas
+   (--warn-*) porque "atenção" e "ação" estavam ambas a laranja.
+
+   Índice
+   1. Contraste
+   2. Cor semântica: laranja = ação, sálvia = progresso, barro = aviso
+   3. Superfícies: a secção volta a ter limite (o aninhamento estava trocado)
+   4. Ícones
+   5. Sub-abas (Reino / Eu) e barra inferior de 3 separadores
+   6. Ecrã de treino: uma métrica herói + 3 apoios + detalhe escondido
+   7. Equipamento em lista, com carteira e custo
+   8. Estados desativados
+   ========================================================================== */
+
+/* ---- 1. Contraste ------------------------------------------------------- */
+
+:root {
+  /* --muted-2 (#82796a) dá ~3,4:1 sobre a areia: chumba nos 11-12px em que
+     estava a ser usado (.viewer-hint, .hex-map-hint, .site-version-hero,
+     labels inativos do tab bar). Escurecido para ~5,6:1.
+     Regra: --muted-2 nunca abaixo de 14px. */
+  --muted-2: #6f665a;
+
+  /* 2. Aviso deixa de partilhar o laranja da ação */
+  --warn-bg: #f6e0d6;
+  --warn-border: #d98b6a;
+  --warn-ink: #8c3a1a;
+}
+
+/* ---- 2. Cor semântica --------------------------------------------------- */
+
+/* Antes: o laranja era botão primário, aba ativa, barra de XP, crachá de
+   nível, "+" E aviso. "Ação" e "atenção" com a mesma cor. */
+.speed-warning,
+.construction-warning,
+.resources-warning {
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-ink);
+}
+
+/* Progresso passa a sálvia — que estava subaproveitado — e liberta o
+   laranja para a ação. */
+.xp-bar-fill { background: var(--sage); }
+.resource-rate { color: var(--sage-700); }
+
+/* ---- 3. Superfícies ----------------------------------------------------- */
+
+/* Antes: .card com background transparent e border-radius 0, mas os filhos
+   (#training-readout, .monster-item, .hud-grid p) com superfície e raios de
+   20-28px — a secção não tinha limite, o conteúdo tinha. Daí ter sido
+   preciso o remendo .card + .card { border-top }. Agora o cartão é a
+   superfície e os filhos acalmam. */
+.card {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  margin: 0 16px 12px;
+}
+.card + .card { border-top: 1px solid var(--line); }
+.card .hud-grid p,
+.card .leaderboard-row { border-radius: var(--r-sm); }
+
+/* ---- 4. Ícones ---------------------------------------------------------- */
+
+.icon,
+.icon-svg { display: inline-flex; flex: 0 0 auto; }
+.icon-svg { display: block; }
+
+/* O ponto de cor dos recursos deu lugar ao ícone (js/resources-ui.js) */
+.resource-dot { display: none; }
+.resources-grid dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* ---- 5. Navegação ------------------------------------------------------- */
+
+/* Sub-abas: sempre TRÊS e sempre na mesma ordem. Foi a ordem variável
+   (Campo, Masmorra oculta, Arena oculta, Missões) que tornou o "Mundo"
+   ilegível — uma barra que muda de forma pelas costas do jogador. */
+.subtabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  margin: 0 16px 14px;
+  border-radius: 999px;
+  background: var(--surface);
+}
+.subtabs .nav-tab {
+  flex: 1;
+  min-height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: 700 13px var(--font-body);
+  cursor: pointer;
+}
+.subtabs .nav-tab.active { background: var(--accent); color: var(--bg); }
+
+.subpane { display: none; }
+.subpane.active { display: block; }
+
+/* Barra inferior: 3 separadores em vez de 4 */
+#tab-bar .tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-height: 48px;
+  color: var(--muted);
+}
+#tab-bar .tab-btn.active { color: var(--accent-700); }
+#tab-bar .tab-icon { font-size: 0; } /* mata o glifo emoji herdado */
+#tab-bar .tab-icon .icon-svg { width: 21px; height: 21px; }
+
+/* ---- 6. Ecrã de treino -------------------------------------------------- */
+
+/* Antes: 8 blocos de texto cinzento a 11-13px, todos centrados, e só a
+   distância com hierarquia. Isto lê-se a andar, de relance, com o braço a
+   mexer: uma métrica grande, três apoios grandes, o resto atrás de um
+   toque. */
+.training-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+.training-tile {
+  padding: 10px 6px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  text-align: center;
+}
+.training-tile-label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.training-tile-value {
+  margin-top: 2px;
+  font: 400 20px var(--font-heading);
+  font-variant-numeric: tabular-nums;
+}
+.training-tile.xp .training-tile-label,
+.training-tile.xp .training-tile-value { color: var(--sage-700); }
+
+.training-detail-toggle {
+  margin-top: 14px;
+  border: none;
+  background: none;
+  font: 600 12px var(--font-body);
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* A explicação do modo desce para debaixo do botão: é uma nota, não um
+   cabeçalho. Com ela em cima, o CTA caía ~430px abaixo da dobra num
+   iPhone 13. */
+.mode-xp-explanation {
+  margin: 8px 16px 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---- 7. Equipamento ----------------------------------------------------- */
+
+/* Sai de pastilhas a flutuar sobre o modelo 3D (onde o custo não cabia) e
+   passa a lista, com o stock por cima e o custo debaixo do botão. */
+#equipment-mini-list {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+.equipment-mini-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: none;
+  font: 400 15px var(--font-body);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.equipment-mini-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  font-size: 0; /* mata o emoji herdado */
+}
+.equipment-mini-item.weapon .equipment-mini-icon { background: var(--accent-200); }
+.equipment-mini-item.shield .equipment-mini-icon { background: #dce8f5; }
+.equipment-mini-item.armor  .equipment-mini-icon { background: var(--sage-200); }
+.equipment-mini-name { flex: 1; min-width: 0; }
+.equipment-mini-level { font-weight: 700; }
+
+/* Carteira: o stock onde é gasto, não num relatório noutro separador */
+.wallet {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+.wallet-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  font: 700 12px var(--font-body);
+}
+
+/* Botão + custo por baixo. O botão diz só "Melhorar"; o ESTADO dele é que
+   diz se dá — laranja quando há recursos, cinza quando não. Nada de
+   "Tens 200 pedra e 137 barro — dá". */
+.warehouse-cost,
+.cost-line {
+  margin-top: 8px;
+  font: 600 12.5px var(--font-body);
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---- 8. Estados desativados --------------------------------------------- */
+
+/* Um botão cinza tem de estar realmente inerte: não focável, não clicável,
+   e anunciado como desativado por um leitor de ecrã. */
+button[disabled] {
+  cursor: not-allowed;
+  background: var(--sand-300);
+  color: var(--muted-2);
+  box-shadow: none;
+}
+.subtabs .nav-tab[disabled] {
+  background: transparent;
+  opacity: 0.55;
+}
+
+/* A Masmorra fica à vista mas travada até o combate abrir — melhor que
+   escondê-la: a barra de sub-abas não muda de forma quando ela chegar. */
+.subpane-locked-note {
+  margin: 0 16px 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font: 600 13px var(--font-body);
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---- 9. Reino › Mapa ---------------------------------------------------- */
+
+/* O mapa deixa de ser um bloco pequeno dentro de um cartão que também fazia
+   exploração, produção E construção do armazém. Aqui é o ecrã.
+   (A sub-aba do Mapa é [data-subpane-name="mapa"], não tem id.) */
+[data-subpane-name="mapa"] #hex-map {
+  height: 58vh;
+  min-height: 340px;
+  margin: 0;
+  border-radius: var(--r-md);
+}
+.reino-stats {
+  display: flex;
+  gap: 8px;
+  margin: 14px 16px 0;
+}
+.reino-stat {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  text-align: center;
+}
+.reino-stat-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.reino-stat-value { font: 400 22px var(--font-heading); }
+
+/* ---- 10. Palco 3D em Eu › Personagem ---------------------------------- */
+
+/* O palco (#viewer-stage) deixou de estar duplicado: vive só dentro da
+   sub-aba Eu › Personagem (.subpane[data-subpane-name="personagem"]). A
+   regra do style.css que o mostrava — #view-jogo[data-pane="personagem"|
+   "mundo"] — já não bate com nada: os panes passaram a chamar-se treinar/
+   reino/eu. Sem este override, #view-jogo:not([data-pane="personagem"])
+   :not([data-pane="mundo"]) #viewer-stage{display:none} do style.css
+   escondia o modelo 3D para sempre. A visibilidade passa a ser só a do
+   .subpane que o contém (.subpane:not(.active){display:none} trata do
+   resto); a luta em ecrã inteiro continua a vir do :has(.battle-fullscreen)
+   do style.css. */
+#view-jogo[data-pane="eu"] .subpane[data-subpane-name="personagem"].active #viewer-stage {
+  display: block;
+}
