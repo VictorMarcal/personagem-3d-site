@@ -7,6 +7,19 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.0.0",
+    title: "Três Separadores: Treinar, Reino, Eu",
+    changes: [
+      "A navegação passou de quatro separadores para três. Treinar é um ecrã só, uma ação. Reino é tudo o que é lá fora — Mapa, Economia, Masmorra. Eu é tudo o que é teu — Personagem, Troféus, Números.",
+      "As sub-abas são sempre as mesmas três e nunca mudam de ordem. Antes o \"Mundo\" escondia e mostrava abas conforme o momento, e ninguém sabia onde estava.",
+      "Os recursos e o armazém saíram do cartão do mapa para Reino › Economia. A carteira de recursos aparece agora também por cima do equipamento, que é onde se gastam.",
+      "O equipamento deixou de ser pastilhas a flutuar sobre o modelo 3D e passou a uma lista com o custo à vista. Os botões dizem \"Melhorar\"; ficam cinzentos quando ainda não dá.",
+      "A personagem 3D deixou de aparecer em dois sítios — vive só em Eu › Personagem.",
+      "O ecrã de treino mostra a distância em grande com três valores de apoio; o resto do detalhe fica atrás de \"Ver detalhe da sessão\".",
+      "Os emojis da navegação e do equipamento deram lugar a ícones desenhados. Texto pequeno ficou mais escuro para se ler melhor, e o laranja passou a ser só de ações — os avisos têm cor própria.",
+    ],
+  },
+  {
     version: "v5.4.0",
     title: "Adeus às Moedas",
     changes: [
