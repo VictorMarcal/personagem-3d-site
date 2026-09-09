@@ -42,10 +42,10 @@ const NORMAL_CAMERA_FOV = 45;
 //   BACK  - quanto se recua alem do z base
 //   TARGET- altura do ponto para onde se olha (fracao de character.position.y):
 //           < 1 aponta abaixo do heroi para caber a base da torre + terreno
-const CAM_SIDE_FACTOR = 0.35;
-const CAM_UP_FACTOR = 0.32;
-const CAM_BACK_FACTOR = 1.35;
-const CAM_TARGET_FACTOR = 0.7;
+const CAM_SIDE_FACTOR = 0.45;
+const CAM_UP_FACTOR = 0.42;
+const CAM_BACK_FACTOR = 1.6;
+const CAM_TARGET_FACTOR = 0.85;
 
 function applyNormalCamera() {
   camera.fov = NORMAL_CAMERA_FOV;
