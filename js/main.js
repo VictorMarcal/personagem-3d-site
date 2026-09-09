@@ -304,11 +304,11 @@ function normalizeLoadedModel(model, targetHeight) {
 }
 
 // Nomes aceites para cada soquet, por ordem de preferencia - a convencao
-// mudou entre exports ("SlotBow" -> "BowSoquet"), e nao vale a pena obrigar
-// a reexportar so por causa de um nome. O primeiro que existir no modelo e
-// o que conta.
-const BOW_SLOT_NAMES = ["SlotBow", "BowSoquet", "SoquetBow"];
-const SHIELD_SLOT_NAMES = ["SlotShield", "SoquetShield", "ShieldSoquet"];
+// mudou entre exports ("SlotBow" -> "BowSoquet" -> "BowSlot"), e nao vale a
+// pena obrigar a reexportar so por causa de um nome. O primeiro que existir
+// no modelo e o que conta.
+const BOW_SLOT_NAMES = ["BowSlot", "SlotBow", "BowSoquet", "SoquetBow"];
+const SHIELD_SLOT_NAMES = ["ShieldSlot", "SlotShield", "SoquetShield", "ShieldSoquet"];
 
 function findFirstByName(model, names) {
   for (const name of names) {
@@ -385,11 +385,25 @@ function setupHeroAnimation(gltf, model) {
     gltf.animations.find((a) => /idle/i.test(a.name)) ||
     gltf.animations[0];
 
-  // Descarta tracks que animem o proprio no raiz da Armature (a diferenca
-  // entre "Armature|Idle" e "Idle" era exatamente isso): seria "root
-  // motion" a mexer o modelo por dentro, a lutar com a normalizacao acima
-  // e com a posicao controlada pelo joystick na arena. Só os ossos animam.
-  const boneTracks = clip.tracks.filter((t) => !/^Armature\./.test(t.name));
+  // Descarta o "root motion": translacao/escala do no raiz do rig, que
+  // mexeria o modelo por dentro (a lutar com a normalizacao acima e com a
+  // posicao no joystick da arena). Em exports antigos vinha como
+  // "Armature|Idle" vs "Idle" (prefixo `Armature.`); nos exports Mixamo
+  // recentes vem na propria track de posicao do osso raiz
+  // ("mixamorigHips.position") - se a deixar passar, o heroi desliza para
+  // Z=-60. Descarta-se position E scale do osso raiz; a ROTACAO do osso
+  // raiz fica (e o balanceio do idle). Todos os outros ossos animam.
+  let rootBoneName = null;
+  model.traverse((obj) => {
+    if (!rootBoneName && obj.isSkinnedMesh && obj.skeleton && obj.skeleton.bones[0]) {
+      rootBoneName = obj.skeleton.bones[0].name;
+    }
+  });
+  const boneTracks = clip.tracks.filter((t) => {
+    if (/^Armature\./.test(t.name)) return false;
+    if (rootBoneName && (t.name === rootBoneName + ".position" || t.name === rootBoneName + ".scale")) return false;
+    return true;
+  });
   const idleClip = new THREE.AnimationClip(clip.name, clip.duration, boneTracks);
 
   heroMixer = new THREE.AnimationMixer(model);
