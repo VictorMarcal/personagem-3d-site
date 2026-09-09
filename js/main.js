@@ -128,6 +128,20 @@ loadSceneryFloor();
 let towerModel = null;
 let TOWER_TOP_Y = 0;
 
+// O heroi so assenta no topo da torre quando OS DOIS estao prontos, seja
+// qual for a ordem de chegada dos .glb. Critico: normalizeLoadedModel()
+// mede o heroi em coordenadas do MUNDO e assume `character` na origem -
+// se a torre chegasse primeiro e ja tivesse mexido character.position.y,
+// o heroi era normalizado contra a cota errada e acabava enterrado na
+// base da torre (aconteceu ao vivo, onde a torre - 2KB - chega antes do
+// heroi - 73KB). Por isso o "levantar" fica isolado aqui.
+function settleHeroOnTower() {
+  if (!heroModelReady || !towerModel) return;
+  if (typeof battleInProgress !== "undefined" && battleInProgress) return;
+  character.position.y = TOWER_TOP_Y;
+  applyNormalCamera();
+}
+
 function loadTower() {
   new THREE.GLTFLoader().load(
     "assets/Tower.glb",
@@ -152,13 +166,7 @@ function loadTower() {
       scene.add(model);
       towerModel = model;
       TOWER_TOP_Y = size.y;
-
-      // Poe o heroi no topo e reenquadra a camara - a nao ser que uma luta
-      // esteja a decorrer (ai o heroi vive ao nivel do chao, na arena).
-      if (!(typeof battleInProgress !== "undefined" && battleInProgress)) {
-        character.position.y = TOWER_TOP_Y;
-        applyNormalCamera();
-      }
+      settleHeroOnTower();
     },
     undefined,
     (err) => console.warn("Falha ao carregar assets/Tower.glb, o heroi fica no chao.", err)
@@ -251,22 +259,48 @@ function computeModelWorldBox(model) {
 }
 
 function normalizeLoadedModel(model, targetHeight) {
-  let box = computeModelWorldBox(model);
+  // Mede com o PAI neutralizado. A normalizacao poe a base do modelo na
+  // origem LOCAL do pai; nao pode depender de onde o pai esta agora.
+  // Ate a torre existir, `character` estava sempre na origem no momento do
+  // carregamento e mundo == local; agora a torre move `character` para o
+  // topo e pode chegar ANTES do heroi (ao vivo chega: 2KB vs 73KB), o que
+  // normalizava o heroi contra a cota errada (acabava enterrado na torre)
+  // e punha a ancora `head` a Y≈10.
+  const parent = model.parent;
+  const saved = parent && {
+    p: parent.position.clone(),
+    r: parent.rotation.clone(),
+    s: parent.scale.clone(),
+  };
+  if (parent) {
+    parent.position.set(0, 0, 0);
+    parent.rotation.set(0, 0, 0);
+    parent.scale.set(1, 1, 1);
+    // computeModelWorldBox faz model.updateMatrixWorld, que le a matriz do
+    // PAI - e essa so muda depois de a atualizar explicitamente aqui.
+    parent.updateMatrixWorld(true);
+  }
 
+  let box = computeModelWorldBox(model);
   const height = box.max.y - box.min.y;
   if (targetHeight && height > 0) {
     model.scale.multiplyScalar(targetHeight / height);
     box = computeModelWorldBox(model);
   }
 
-  // `character` esta na origem com escala 1 no momento do carregamento
-  // (arranque da pagina), por isso coordenadas do mundo == locais ao pai.
   const center = box.getCenter(new THREE.Vector3());
   model.position.x -= center.x;
   model.position.z -= center.z;
   model.position.y -= box.min.y;
 
-  return computeModelWorldBox(model);
+  const result = computeModelWorldBox(model);
+  if (parent) {
+    parent.position.copy(saved.p);
+    parent.rotation.copy(saved.r);
+    parent.scale.copy(saved.s);
+    parent.updateMatrixWorld(true);
+  }
+  return result;
 }
 
 // Nomes aceites para cada soquet, por ordem de preferencia - a convencao
@@ -290,21 +324,24 @@ function loadHeroModel() {
     (gltf) => {
       const model = gltf.scene;
       const measure = new THREE.Vector3();
+      const strays = [];
       model.traverse((obj) => {
         if (!obj.isMesh) return;
         // Um plano de chao que escapou do export (ex: a mesh "Plane" do
-        // Blender, achatada e enorme): esconde-se. O cenario e o
-        // assets/Floor.glb, nunca uma mesh dentro do heroi. Nao corrompe a
-        // normalizacao (essa mede pelos ossos), so sujava a caixa e as
-        // sombras.
+        // Blender, achatada e enorme): REMOVE-SE do modelo. O cenario e o
+        // assets/Floor.glb, nunca uma mesh dentro do heroi. Sem esqueleto,
+        // normalizeLoadedModel mede por setFromObject (que apanha ate meshes
+        // invisiveis nesta versao do three), e esse plano escalava o heroi
+        // para nada.
         new THREE.Box3().setFromObject(obj).getSize(measure);
         if (measure.y < 0.05 && Math.max(measure.x, measure.z) > HERO_TARGET_HEIGHT * 2) {
-          obj.visible = false;
+          strays.push(obj);
           return;
         }
         obj.castShadow = true;
         obj.receiveShadow = true;
       });
+      strays.forEach((o) => o.removeFromParent());
       character.add(model);
       const box = normalizeLoadedModel(model, HERO_TARGET_HEIGHT);
       heroModel = model;
@@ -321,6 +358,7 @@ function loadHeroModel() {
 
       setupHeroAnimation(gltf, model);
       attachEquipmentToSlots();
+      settleHeroOnTower(); // se a torre ja tiver chegado, sobe o heroi ao topo
     },
     undefined,
     (err) => console.warn("Falha ao carregar assets/Hero.glb.", err)
