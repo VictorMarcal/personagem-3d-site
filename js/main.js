@@ -50,7 +50,9 @@ dirLight.position.set(0, 3.5, 6);
 dirLight.castShadow = true;
 scene.add(dirLight);
 
-// Chao
+// Chao placeholder: um plano liso, visivel ate assets/Floor.glb carregar
+// (ou para sempre se a carga falhar). Mesmo padrao do chao da arena mais
+// abaixo - o cenario nunca deve depender de um download para aparecer.
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(20, 20),
   new THREE.MeshStandardMaterial({ color: 0x1c1c22 })
@@ -58,6 +60,43 @@ const ground = new THREE.Mesh(
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
+
+// Terreno 3D real (2026-09-09, a pedido - "assets/Floor.glb", cenario puro
+// da aba Eu > Personagem, secção 9). Carregado como vem do editor (sem
+// reescalar), so pousado com a base em Y=0 e centrado em X/Z. Substitui o
+// plano `ground` acima assim que fica pronto; se falhar, o plano fica.
+let floorModel = null;
+
+function loadSceneryFloor() {
+  new THREE.GLTFLoader().load(
+    "assets/Floor.glb",
+    (gltf) => {
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      if (size.x <= 0 || size.z <= 0) return; // modelo vazio, mantem o plano
+
+      const centre = box.getCenter(new THREE.Vector3());
+      model.position.x -= centre.x;
+      model.position.z -= centre.z;
+      model.position.y -= box.min.y; // base assente em Y=0
+
+      model.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.receiveShadow = true;
+          obj.castShadow = true;
+        }
+      });
+
+      scene.add(model);
+      floorModel = model;
+      ground.visible = false;
+    },
+    undefined,
+    (err) => console.warn("Falha ao carregar assets/Floor.glb, mantem-se o plano.", err)
+  );
+}
+loadSceneryFloor();
 
 // Heroi: grupo que recebe o modelo 3D real (assets/Hero.glb, carregado
 // abaixo). `body`/`head`/`bow` deixaram de ser meshes com geometria
@@ -182,11 +221,21 @@ function loadHeroModel() {
     "assets/Hero.glb",
     (gltf) => {
       const model = gltf.scene;
+      const measure = new THREE.Vector3();
       model.traverse((obj) => {
-        if (obj.isMesh) {
-          obj.castShadow = true;
-          obj.receiveShadow = true;
+        if (!obj.isMesh) return;
+        // Um plano de chao que escapou do export (ex: a mesh "Plane" do
+        // Blender, achatada e enorme): esconde-se. O cenario e o
+        // assets/Floor.glb, nunca uma mesh dentro do heroi. Nao corrompe a
+        // normalizacao (essa mede pelos ossos), so sujava a caixa e as
+        // sombras.
+        new THREE.Box3().setFromObject(obj).getSize(measure);
+        if (measure.y < 0.05 && Math.max(measure.x, measure.z) > HERO_TARGET_HEIGHT * 2) {
+          obj.visible = false;
+          return;
         }
+        obj.castShadow = true;
+        obj.receiveShadow = true;
       });
       character.add(model);
       const box = normalizeLoadedModel(model, HERO_TARGET_HEIGHT);
