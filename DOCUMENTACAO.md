@@ -1128,27 +1128,26 @@ Substitui por completo as estrelas colecionáveis (secção 19, removida) e as m
 | **Armadura** | Pele + Ferro |
 | **Fortaleza** | Pedra + Barro |
 | **Minas** | 10 de cada recurso por concelho — 50 ao todo |
-| **Produção** | 5/hora por mina encontrada, × multiplicador |
+| **Produção** (2026-09-09) | cada hexágono descoberto: **0,1/h de cada recurso**; hexágono com mina encontrada: **0,5/h do recurso da mina**. Tudo × multiplicador |
 | **Multiplicador** | 1,0 a 2,0 · +0,1 por sessão · −0,05/dia após 2 dias |
 
 Os três pares possíveis de três materiais esgotam-se exatamente nas três peças: **nenhum material é privilegiado e cada um é pedido por duas peças**. E todas as combinações explicam-se sozinhas — arco de madeira com pontas de ferro, escudo de madeira coberto a pele, armadura de pele com rebites de ferro.
 
-### Minas, não hexágonos (2026-09-07)
+### Todos os hexágonos produzem; as minas produzem mais (2026-09-09)
 
-Nem todos os hexágonos dão recurso. Cada concelho esconde **10 minas de cada recurso — 50 ao todo** — e só elas produzem. Os restantes hexágonos continuam a contar para o território, para desbloquear o concelho e para o multiplicador, mas não rendem nada.
+**Mudança a pedido (era "só as minas produzem" desde 2026-09-07):**
 
-**Não estão visíveis até serem encontradas.** O único sinal é um **aviso sonoro a 500 m**; o mapa não as mostra antes disso.
+- **Hexágono descoberto sem mina** → `HEX_BASE_PER_HOUR = 0,1`/h de **cada** recurso
+- **Hexágono descoberto com a mina já encontrada** → `MINE_HEX_PER_HOUR = 0,5`/h **só** do recurso dessa mina
 
-**Reclama-se uma mina entrando no hexágono dela** — a mesma regra que descobre território, para não haver duas noções diferentes de *cheguei lá*. O aviso a 500 m é só aviso: não apanha nada.
+`producaoPorHora()` (`js/resources.js`) itera `getDiscoveredHexIds()` (não `todasAsMinas()`), aplica o multiplicador do hexágono aos dois casos, e usa `todasAsMinas()` só para saber que hexágonos descobertos têm mina.
 
-**5/hora por mina não é um número escolhido a olho.** Com 10 minas por recurso, um concelho inteiramente explorado dá 50/hora por recurso — o que repõe exatamente o ritmo do modelo anterior (~56 dias para maximizar o equipamento). A fonte mudou; o equilíbrio já discutido ficou igual:
+**As minas continuam invisíveis até serem encontradas** (aviso sonoro a 500 m, reclamadas ao entrar no hexágono — a mesma regra que descobre território). O que muda é só o que rende: antes um hexágono sem mina dava 0.
 
-| Base por mina | 1 concelho | Dias para maximizar o equipamento |
-|---:|---:|---:|
-| 1/h | 10/h | 282 |
-| 3/h | 30/h | 94 |
-| **5/h** | **50/h** | **56** |
-| 8/h | 80/h | 35 |
+**Dois bugs corrigidos no mesmo dia** (a razão do relato "já desbloqueei uma mina e não ganhei nada"):
+
+1. **`recursosDesde` nunca arrancava.** Era escrito só em `acumularProducao()`, que só corre ao pagar/evoluir algo — antes disso `stockAgora()` saía cedo e a produção nunca acumulava. Passa a arrancar o relógio na primeira leitura (`stockAgora`).
+2. **`unlockedConcelhos` só existia com a aba Mapa aberta.** `applyRegions()` tinha `if (!hexMap) return` à frente do cálculo dos concelhos desbloqueados. Extraído para `computeUnlockedRegions()` (só precisa de h3 + hexes descobertos) e chamado no arranque (`hydrateHexesFromSupabase`) — a economia deixa de depender de o jogador abrir o mapa.
 
 **A colocação é determinista** a partir do `osm_id` do concelho: as mesmas minas em qualquer telemóvel, sem nada gravado. Só se guarda **quais já foram encontradas**.
 
@@ -1158,7 +1157,7 @@ Os recursos saem de uma saca com 10 de cada, baralhada — garante o número exa
 
 No mapa, uma mina encontrada mostra o ícone do recurso com um **arco da cor do recurso** à volta — é o multiplicador do hexágono dela, e sem isso não havia forma de ver quais das minas já rendem mais.
 
-*Verificado no browser: 50 minas, 10 de cada recurso, 50 hexágonos distintos, todas dentro da fronteira, determinista entre gerações, e zero produção antes de se encontrar alguma. Aviso aos 450/300 m, recolha ao entrar no hexágono, e sem apitar repetido enquanto se anda perto.*
+*Verificado no browser: 50 minas, 10 de cada recurso, 50 hexágonos distintos, todas dentro da fronteira, determinista entre gerações. Aviso aos 450/300 m, recolha ao entrar no hexágono, e sem apitar repetido enquanto se anda perto. (2026-09-09: 5 hexágonos sem mina → 0,5/h de cada recurso; o relógio de produção arranca na primeira leitura; a produção acumula ao longo de 2 h como esperado.)*
 ### O multiplicador e a tolerância de 2 dias
 
 `+0,1` por **sessão** de treino em que se passa no hexágono — não por leitura de GPS. Sem isso, andava-se para trás e para a frente numa fronteira e enchia-se o multiplicador numa tarde.
