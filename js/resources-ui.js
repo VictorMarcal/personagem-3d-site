@@ -1,11 +1,13 @@
-// Painel de recursos e armazem (2026-09-07, secção 21). Separado de
-// js/resources.js de proposito: ali vive a economia (o que e verdade), aqui
-// vive a apresentacao (como se mostra). Trocar a UI nao mexe nas regras.
+// Painel de recursos e Fortaleza (2026-09-07, secção 21 - a Fortaleza
+// chamava-se "Armazém" ate 2026-09-09; as funcoes/ids em js/resources.js
+// mantem o nome `warehouse`). Separado de js/resources.js de proposito:
+// ali vive a economia (o que e verdade), aqui vive a apresentacao (como se
+// mostra). Trocar a UI nao mexe nas regras.
 //
 // v6: emoji e pontos de cor deram lugar ao set de icones (js/icons.js), e o
-// botao do armazem diz "Melhorar" com o custo numa linha por baixo. O botao
-// nunca explica se da ou nao da: o ESTADO dele e que diz. Laranja = ha
-// recursos, cinza desativado = nao ha.
+// botao da Fortaleza diz "Melhorar" com o custo numa linha por baixo. O
+// botao nunca explica se da ou nao da: o ESTADO dele e que diz. Laranja =
+// ha recursos, cinza desativado = nao ha.
 
 function renderResourcesPanel() {
   const painel = document.getElementById("resources-panel");
@@ -40,7 +42,7 @@ function renderResourcesPanel() {
     // Um armazem cheio deixou de produzir - e a unica informacao aqui que
     // exige accao do jogador, por isso e a unica que aparece em destaque.
     (RESOURCE_IDS.some((id) => stock[id] >= tecto - 0.5)
-      ? '<p class="resources-warning">Armazém cheio — a produção parou. Melhora o armazém ou gasta recursos.</p>'
+      ? '<p class="resources-warning">Fortaleza cheia — a produção parou. Melhora a Fortaleza ou gasta recursos.</p>'
       : "");
 
   if (!armazem) return;
@@ -48,16 +50,16 @@ function renderResourcesPanel() {
   const custo = warehouseUpgradeCost(nivel);
   if (!custo) {
     armazem.innerHTML =
-      '<p class="resources-title">' + icon("armazem", 18) + " Armazém · Nível " + nivel + " (máximo)</p>" +
-      '<p class="warehouse-line">Guarda ' + formatRecurso(tecto) + " de cada recurso.</p>";
+      '<p class="resources-title">' + icon("fortaleza", 18) + " Fortaleza · Nível " + nivel + " (máximo)</p>" +
+      '<p class="warehouse-line">Limite: ' + formatRecurso(tecto) + " por recurso.</p>";
     return;
   }
 
   const podeSubir = podePagar(custo);
   armazem.innerHTML =
-    '<p class="resources-title">' + icon("armazem", 18) + " Armazém · Nível " + nivel + "</p>" +
-    '<p class="warehouse-line">Guarda ' + formatRecurso(tecto) +
-    " de cada recurso. O nível " + (nivel + 1) + " guarda " + formatRecurso(warehouseCap(nivel + 1)) + ".</p>" +
+    '<p class="resources-title">' + icon("fortaleza", 18) + " Fortaleza · Nível " + nivel + "</p>" +
+    '<p class="warehouse-line">Limite: ' + formatRecurso(tecto) +
+    " → " + formatRecurso(warehouseCap(nivel + 1)) + " por recurso.</p>" +
     '<button id="btn-warehouse-upgrade" class="btn-primary"' +
     (podeSubir ? "" : ' disabled aria-disabled="true"') + ">Melhorar</button>" +
     // Custo por baixo do botao, sempre igual esteja ou nao ao alcance:
@@ -69,7 +71,7 @@ function renderResourcesPanel() {
     botao.addEventListener("click", () => {
       if (!upgradeWarehouse()) return;
       if (typeof showGameToast === "function") {
-        showGameToast("Armazém no nível " + getWarehouseLevel() + "!", "medalha");
+        showGameToast("Fortaleza no nível " + getWarehouseLevel() + "!", "medalha");
       }
       renderResourcesPanel();
       if (typeof renderWallet === "function") renderWallet();

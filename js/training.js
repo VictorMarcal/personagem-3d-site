@@ -899,7 +899,9 @@ function updateDistanceDisplay(activeKcal) {
         reparticaoDaSessao().distancia,
         reparticaoDaSessao().tempo
       ) + currentRestingKcal();
-  caloriesEl.textContent = `${Math.round(kcal)} kcal`;
+  // O tile ja tem o rotulo "XP" - o valor e so o numero. O jogador nao
+  // precisa de saber que XP sao calorias por baixo (v6).
+  caloriesEl.textContent = Math.round(kcal).toLocaleString("pt-BR");
 }
 
 // Treino acumulado: copia persistida em localStorage, salva a cada 10s

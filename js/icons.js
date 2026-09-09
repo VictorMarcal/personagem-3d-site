@@ -36,7 +36,9 @@ const ICON_PATHS = {
   eu: '<circle cx="12" cy="8" r="4"/><path d="M5 20c1.5-4 4-5.5 7-5.5s5.5 1.5 7 5.5"/>',
 
   // --- avulsos -------------------------------------------------------------
-  armazem: '<path d="M4 10l8-5 8 5v10H4z"/><path d="M9 20v-6h6v6"/>',
+  // Torre com ameias e um portão em arco — o antigo "Armazém" passou a
+  // "Fortaleza" (2026-09-09). Chave nova; nada usa mais "armazem".
+  fortaleza: '<path d="M4 21V8h3V5h3v3h3V5h3v3h3v13z"/><path d="M9 21v-5a2.5 2.5 0 015 0v5"/>',
   mina: '<path d="M14 4l6 6"/><path d="M17 7c-4-4-9-2-11 0l7 7c2-2 4-7 0-11" transform="translate(-1 1)"/>',
   trofeu: '<path d="M8 4h8v5a4 4 0 01-8 0z"/><path d="M8 6H5v1a3 3 0 003 3M16 6h3v1a3 3 0 01-3 3"/><path d="M12 13v4M9 20h6"/>',
   chama: '<path d="M12 3c4 5 5 6 5 10a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4 1-6 1-9z"/>',

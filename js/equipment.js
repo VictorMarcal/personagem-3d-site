@@ -466,7 +466,7 @@ function createEquipmentUpgradeController(config) {
       confirmBtn.setAttribute("aria-disabled", String(!temMateriais));
       confirmBtn.textContent = "Melhorar";
       costEl.textContent = formatCustoMateriais(cost) +
-        (acimaDoTecto ? " — precisas de um armazém maior" : "");
+        (acimaDoTecto ? " — precisas de uma Fortaleza maior" : "");
     }
   }
 
