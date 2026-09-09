@@ -35,12 +35,36 @@ camera.lookAt(0, 1, 0);
 const NORMAL_CAMERA_POSITION = { x: 0, y: 1.5, z: 4 };
 const NORMAL_CAMERA_FOV = 45;
 
+// Enquadramento da vista normal COM torre, tudo em funcao de TOWER_TOP_Y (a
+// altura do Empty da personagem) para se adaptar a torres mais altas:
+//   SIDE  - deslocamento em X (vista 3/4, ve-se a profundidade da torre)
+//   UP    - quanto acima do meio do heroi a camara sobe
+//   BACK  - quanto se recua alem do z base
+//   TARGET- altura do ponto para onde se olha (fracao de character.position.y):
+//           < 1 aponta abaixo do heroi para caber a base da torre + terreno
+const CAM_SIDE_FACTOR = 0.35;
+const CAM_UP_FACTOR = 0.32;
+const CAM_BACK_FACTOR = 1.35;
+const CAM_TARGET_FACTOR = 0.7;
+
 function applyNormalCamera() {
-  const focusY = character.position.y + 0.9; // meio do heroi (altura 1.8)
   camera.fov = NORMAL_CAMERA_FOV;
   camera.updateProjectionMatrix();
-  camera.position.set(0, focusY + 0.6, NORMAL_CAMERA_POSITION.z + TOWER_TOP_Y * 0.45);
-  camera.lookAt(0, focusY, 0);
+
+  if (TOWER_TOP_Y <= 0) {
+    // Sem torre: o enquadramento de sempre (heroi na origem).
+    camera.position.set(NORMAL_CAMERA_POSITION.x, NORMAL_CAMERA_POSITION.y, NORMAL_CAMERA_POSITION.z);
+    camera.lookAt(0, 1, 0);
+    return;
+  }
+
+  const heroMidY = character.position.y + 0.9;
+  camera.position.set(
+    TOWER_TOP_Y * CAM_SIDE_FACTOR,
+    heroMidY + TOWER_TOP_Y * CAM_UP_FACTOR,
+    NORMAL_CAMERA_POSITION.z + TOWER_TOP_Y * CAM_BACK_FACTOR
+  );
+  camera.lookAt(0, character.position.y * CAM_TARGET_FACTOR, 0);
 }
 
 // --- Custo de desenho (2026-09-07, "a app drena demasiada bateria") --------
