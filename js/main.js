@@ -310,6 +310,11 @@ function normalizeLoadedModel(model, targetHeight) {
 const BOW_SLOT_NAMES = ["BowSlot", "SlotBow", "BowSoquet", "SoquetBow"];
 const SHIELD_SLOT_NAMES = ["ShieldSlot", "SlotShield", "SoquetShield", "ShieldSoquet"];
 
+// 180° a volta do eixo comprido do arco (Z, tip-a-tip) - poe a corda para
+// dentro em vez de para fora. Aplicado em attachEquipmentToSlots por cima
+// do que vem do Empty BowSlot.
+const BOW_STRING_INWARD_FLIP = Math.PI;
+
 function findFirstByName(model, names) {
   for (const name of names) {
     const found = model.getObjectByName(name);
@@ -427,13 +432,16 @@ function attachEquipmentToSlots() {
       bow.position.set(0, 0, 0);
       bow.rotation.set(0, 0, 0);
     }
-    // Com slot, a orientacao vem TODA do Empty do Blender - o modelo do
-    // arco fica em identidade. A rotacao de 90° em loadBowModel e so o
-    // fallback para quando o heroi vem sem `BowSlot`. Corre a cada chamada
-    // (o arco pode carregar depois de o slot ja estar emparelhado).
+    // Com slot, a orientacao vem do Empty do Blender - o modelo do arco
+    // fica em identidade, MAIS 180° a volta do seu eixo comprido (Z, o
+    // eixo tip-a-tip) para a corda ficar para DENTRO (virada ao heroi) e
+    // nao para fora (2026-09-09, a pedido). A rotacao de 90° em
+    // loadBowModel e so o fallback para um heroi sem `BowSlot`. Corre a
+    // cada chamada (o arco pode carregar depois de o slot ja estar
+    // emparelhado).
     if (bowModel) {
       bowModel.position.set(0, 0, 0);
-      bowModel.rotation.set(0, 0, 0);
+      bowModel.rotation.set(0, 0, BOW_STRING_INWARD_FLIP);
     }
   }
   if (slotShield && shieldModel) {
