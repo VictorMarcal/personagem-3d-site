@@ -861,7 +861,7 @@ A lição, generalizável: valores que definem a economia do jogo não podem ser
 | Sobem e descem | Local se houver mutação pendente, senão servidor | `unspent_points`, `peso_kg` |
 | Coleções | União (nunca substituição) | `unlocked_achievements`, `encountered_creatures`, `minas_encontradas`; `defeated_creatures` faz `max` das estrelas por criatura; `hex_visitas` fica com a visita mais recente por hexágono |
 | Stock de recursos (`recursos`/`recursos_desde`, 2026-09-09; revisto 2026-09-10) | Fica o `max` da **base em bruto** por recurso (sem projeção) e o **checkpoint mais antigo** dos dois. A projeção até agora é feita **a seguir** por `acumularProducao()` em `bootstrapAfterLogin`, já com hexágonos/minas hidratados — só aí `producaoPorHora()` conhece o bónus das minas. Projetar no merge (como antes) creditava os recursos de mina à taxa base, apagando a vantagem da mina a cada login | `mergeRecursosBases()` + `checkpointRecursosMaisAntigo()` |
-| Missões mensais (`missoes_mensais`, 2026-09-10) | Meses diferentes → o mais recente; mesmo mês → união das `concluidas`, `ativa` de qualquer lado (largada se já concluída), `rejeitadaEm` mais recente | `mergeMissoes()` (secção 22) |
+| Missões mensais (`missoes_mensais`, 2026-09-10) | Meses diferentes → o mais recente; mesmo mês → união das `concluidas`, `ativa` de qualquer lado (largada se já concluída; se os dois têm a mesma, fica o maior `progressoM`), `rejeitadaEm` mais recente | `mergeMissoes()` (secção 22) |
 
 Depois do merge, se o resultado diferir do que está no servidor, marca-se sincronização pendente para o servidor **também** convergir — a reconciliação é bidirecional, não só uma leitura.
 
@@ -1266,7 +1266,7 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 - **Recusar** (`Desistir`) trava novas aceitações durante **24 h** (`MISSION_REJECT_COOLDOWN_MS`).
 - **Concluir não trava nada** — aceita-se logo a seguinte.
 - Concluídas as 3 dentro do mês, espera-se pelo mês seguinte.
-- O progresso conta a partir do **instante em que se aceita** (baseline), nunca desde o início do mês — recusar/falhar nunca credita trabalho antigo.
+- O progresso conta a partir do **instante em que se aceita**, nunca desde o início do mês — recusar/falhar nunca credita trabalho antigo. Os tipos de descoberta usam um *baseline* (delta face a um snapshot); `correr_km` usa um **acumulador** (só a distância corrida somada no fim de cada treino).
 
 ### Deterministas, como as minas
 
@@ -1274,7 +1274,7 @@ As 3 missões de um mês saem de `mulberry32(hashString("missoes:" + "2026-09"))
 
 ```
 { mes: "2026-09",
-  ativa: { slot, tipo, alvo, recurso?, recompensa, baseline, aceiteEm } | null,
+  ativa: { slot, tipo, alvo, recurso?, recompensa, baseline, progressoM, aceiteEm } | null,
   concluidas: ["facil", ...],
   rejeitadaEm: <ts> | null }
 ```
@@ -1283,22 +1283,24 @@ As 3 missões de um mês saem de `mulberry32(hashString("missoes:" + "2026-09"))
 
 ### Tipos de missão e alvos
 
-| tipo | o que | baseline | fácil / média / difícil |
+| tipo | o que | como conta | fácil / média / difícil |
 |---|---|---|---|
-| `correr_km` | distância corrida (vitalícia − baseline) | `getLifetimeDistanceM()` | 15 / 35 / 70 km |
-| `descobre_hex` | hexágonos novos | `getDiscoveredHexCount()` | 8 / 20 / 45 |
-| `descobre_mina` | uma mina de um recurso específico | ids das minas encontradas | 1 (só média) |
-| `descobre_concelho` | um concelho novo | `osmId`s de `unlockedConcelhos` | 1 (só difícil) |
+| `correr_km` | distância **corrida** (não a caminhada) | acumulador `ativa.progressoM`, `+= sessão.distance_by_mode.correr` no fim de cada treino | 15 / 35 / 70 km |
+| `descobre_hex` | hexágonos novos (qualquer modo) | `getDiscoveredHexCount()` − baseline | 8 / 20 / 45 |
+| `descobre_mina` | uma mina de um recurso específico | ids de minas encontradas fora do baseline, com esse recurso | 1 (só média) |
+| `descobre_concelho` | um concelho novo | `osmId`s de `unlockedConcelhos` fora do baseline | 1 (só difícil) |
+
+**`correr_km` é um acumulador, não um baseline sobre `getLifetimeDistanceM()`** (bug corrigido 2026-09-10: uma caminhada de 6 km contava para a missão "correr 15 km", porque `getLifetimeDistanceM()` soma todos os modos). `verificarMissaoAtiva(sessao)` recebe `sessao.distanciaPorModo` de `stopTraining` e só soma a fatia `correr`. Missões `correr_km` aceites antes desta correção não têm `progressoM` → contam a partir de 0 (a caminhada que tinham contado deixa de valer).
 
 Cada slot escolhe um tipo do seu pool (`MISSION_POOL`), semeado no mês; a geração tenta dar **3 tipos diferentes** no mesmo mês quando o pool permite. Recompensa: `MISSION_RECOMPENSA` = 50 / 120 / 300 unidades de um recurso semeado no mês. **Números provisórios**, mesma nota da secção 21 (derivados do ritmo real dos dois jogadores no primeiro mês). A recompensa é limitada ao teto da Fortaleza ao ser creditada, como a produção — a difícil só rende tudo com a Fortaleza já subida, de propósito.
 
 ### Onde é verificada
 
-`verificarMissaoAtiva()` corre no **fim de um treino** (`js/training.js` `stopTraining`, depois de `checkAndUnlockAchievements`), no **arranque pós-login** (`js/auth.js`, depois da hidratação) e quando as **regiões são recalculadas** (`js/hexes.js` `applyRegions`). Se a missão ativa está concluída: credita a recompensa (`acumularProducao()` → soma → `saveResources`), move o slot para `concluidas`, toast `medalha`, redesenha.
+`verificarMissaoAtiva(sessao?)` corre no **fim de um treino** (`js/training.js` `stopTraining`, com `{ distanciaPorModo }` da sessão), no **arranque pós-login** (`js/auth.js`, depois da hidratação, sem `sessao`) e quando as **regiões são recalculadas** (`js/hexes.js` `applyRegions`, sem `sessao`). Se a missão ativa está concluída: credita a recompensa (`acumularProducao()` → soma → `saveResources`), move o slot para `concluidas`, toast `medalha`, redesenha.
 
 ### Sincronização (secção 14.1)
 
-`mergeMissoes(local, server)`: meses diferentes → fica o mais recente; mesmo mês → união das `concluidas`, `ativa` de qualquer lado que a tenha (largada se já constar das concluídas), `rejeitadaEm` mais recente. Objeto vazio (`{}`, contas antigas / default da coluna) → `hydrateLocalStorageFromProgress` remove a chave e o próximo `getMissionState()` gera o estado limpo do mês.
+`mergeMissoes(local, server)`: meses diferentes → fica o mais recente; mesmo mês → união das `concluidas`, `ativa` de qualquer lado que a tenha (largada se já constar das concluídas; se ambos têm a mesma missão ativa, fica o maior `progressoM`), `rejeitadaEm` mais recente. Objeto vazio (`{}`, contas antigas / default da coluna) → `hydrateLocalStorageFromProgress` remove a chave e o próximo `getMissionState()` gera o estado limpo do mês.
 
 ### O que fica por decidir
 
