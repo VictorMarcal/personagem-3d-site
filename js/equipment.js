@@ -32,9 +32,6 @@ const hudUnspentPointsValueEl = document.getElementById("hud-unspent-points-valu
 const hudLevelEnergiaEl = document.getElementById("hud-level-energia");
 const hudLevelForcaEl = document.getElementById("hud-level-forca");
 const hudLevelResistenciaEl = document.getElementById("hud-level-resistencia");
-const hudWeaponLevelEl = document.getElementById("hud-weapon-level");
-const hudShieldLevelEl = document.getElementById("hud-shield-level");
-const hudArmorLevelEl = document.getElementById("hud-armor-level");
 
 const btnHudUpgradeByType = {
   energia: document.getElementById("btn-hud-upgrade-energia"),
@@ -176,14 +173,6 @@ const EQUIP_COST_CURVES = {
   ],
 };
 
-// Materiais que uma peca pode chegar a pedir, pela ordem em que aparecem na
-// curva (para mostrar o stock no nivel maximo, quando ja nao ha custo).
-function equipMateriaisDaPeca(pieceKey) {
-  const seen = [];
-  (EQUIP_COST_CURVES[pieceKey] || []).forEach((c) => { if (!seen.includes(c.recurso)) seen.push(c.recurso); });
-  return seen;
-}
-
 const WEAPON_BASE_ATAQUE = 5;
 const SHIELD_BASE_DEFESA = 2;
 const ARMOR_BASE_VIDA = 3;
@@ -222,13 +211,6 @@ function computeEquipUpgradeCost(level, pieceKey) {
     custo[c.recurso] = (custo[c.recurso] || 0) + Math.round(c.base * Math.pow(c.fator, de - c.de));
   });
   return Object.keys(custo).length ? custo : undefined;
-}
-
-// "120 madeira + 120 ferro"
-function formatCustoMateriais(custo) {
-  return Object.keys(custo)
-    .map((id) => formatRecurso(custo[id]) + " " + RESOURCE_BY_ID[id].nome.toLowerCase())
-    .join(" + ");
 }
 
 function getEquipLevel(storageKey) {
@@ -396,10 +378,6 @@ function renderStatsHud() {
   hudLevelForcaEl.textContent = forcaLevel;
   hudLevelResistenciaEl.textContent = resistenciaLevel;
 
-  hudWeaponLevelEl.textContent = getWeaponLevel();
-  hudShieldLevelEl.textContent = getShieldLevel();
-  hudArmorLevelEl.textContent = getArmorLevel();
-
   const hasPoints = getUnspentPoints() > 0;
   Object.values(btnHudUpgradeByType).forEach((btn) => {
     btn.classList.toggle("hidden", !hasPoints);
@@ -431,164 +409,120 @@ function updateHpTicker(maxHp) {
   }
 }
 
-// --- Popups de evolucao de Arma/Escudo/Armadura (custo em materiais do
-// mapa, secção 21) --------------------------------------------------------
-// Fabrica generica partilhada pelas 3 pecas - cada uma so difere no
-// prefixo dos ids DOM, na base do status primario e no nome mostrado.
-function createEquipmentUpgradeController(config) {
-  const idPrefix = config.idPrefix;
-  const modalEl = document.getElementById(`${idPrefix}-upgrade-modal`);
-  const titleEl = document.getElementById(`${idPrefix}-upgrade-title`);
-  const currentPrimaryEl = document.getElementById(`${idPrefix}-upgrade-current-${config.primaryIdSuffix}`);
-  const currentSecondaryEl = document.getElementById(`${idPrefix}-upgrade-current-${config.secondaryIdSuffix}`);
-  const nextRowEl = document.getElementById(`${idPrefix}-upgrade-next-row`);
-  const nextPrimaryEl = document.getElementById(`${idPrefix}-upgrade-next-${config.primaryIdSuffix}`);
-  const nextSecondaryEl = document.getElementById(`${idPrefix}-upgrade-next-${config.secondaryIdSuffix}`);
-  const maxedEl = document.getElementById(`${idPrefix}-upgrade-maxed`);
-  const costRowEl = document.getElementById(`${idPrefix}-upgrade-cost-row`);
-  const costEl = document.getElementById(`${idPrefix}-upgrade-cost`);
-  const stockEl = document.getElementById(`${idPrefix}-upgrade-stock`);
-  const confirmBtn = document.getElementById(`btn-${idPrefix}-upgrade-confirm`);
-  const closeBtn = document.getElementById(`btn-${idPrefix}-upgrade-close`);
+// --- Cards de melhoria de Arma/Escudo/Armadura (2026-09-11, a pedido) -----
+// Um card por peca, no molde do card da Fortaleza (js/resources-ui.js): o
+// botao "Melhorar" e o custo estao SEMPRE A VISTA, sem popup - antes o unico
+// caminho era um popup aberto por um clique pouco obvio na mini-lista ou na
+// peca 3D. Preenche #equipment-cards.
+const EQUIP_PIECES = [
+  {
+    pieceKey: "arma", pieceName: "Arco", iconName: "arco",
+    base: WEAPON_BASE_ATAQUE, primaryExponent: WEAPON_PRIMARY_EXPONENT,
+    primaryLabel: "Ataque", secondaryLabel: "Força",
+    getLevel: getWeaponLevel, setLevel: (l) => setEquipLevel(STORAGE_KEY_WEAPON_LEVEL, l),
+  },
+  {
+    pieceKey: "escudo", pieceName: "Escudo", iconName: "escudo",
+    base: SHIELD_BASE_DEFESA, primaryExponent: SHIELD_PRIMARY_EXPONENT,
+    primaryLabel: "Defesa", secondaryLabel: "Resistência",
+    getLevel: getShieldLevel, setLevel: (l) => setEquipLevel(STORAGE_KEY_SHIELD_LEVEL, l),
+  },
+  {
+    pieceKey: "armadura", pieceName: "Armadura", iconName: "armadura",
+    base: ARMOR_BASE_VIDA, primaryExponent: ARMOR_PRIMARY_EXPONENT,
+    primaryLabel: "Vida", secondaryLabel: "Energia",
+    getLevel: getArmorLevel, setLevel: (l) => setEquipLevel(STORAGE_KEY_ARMOR_LEVEL, l),
+  },
+];
+const EQUIP_PIECE_BY_KEY = {};
+EQUIP_PIECES.forEach((p) => { EQUIP_PIECE_BY_KEY[p.pieceKey] = p; });
 
-  function render() {
-    const level = config.getLevel();
-    const maxLevel = EQUIP_MAX_LEVEL;
-    const primary = computeEquipPrimaryStat(config.base, level, config.primaryExponent);
-    const secondary = computeEquipSecondaryStat(level);
-    const stock = acumularProducao();
+const equipmentCardsEl = document.getElementById("equipment-cards");
 
-    const atMax = level >= maxLevel;
-    const nextLevel = level + 1;
-    const canShowNext = !atMax;
-    const cost = canShowNext ? computeEquipUpgradeCost(nextLevel, config.pieceKey) : null;
+function equipCardHtml(p) {
+  const level = p.getLevel();
+  const primary = computeEquipPrimaryStat(p.base, level, p.primaryExponent);
+  const secondary = computeEquipSecondaryStat(level);
+  const atMax = level >= EQUIP_MAX_LEVEL;
 
-    titleEl.textContent = `${config.pieceName} — Nível ${level}/${maxLevel}`;
-    currentPrimaryEl.textContent = primary;
-    currentSecondaryEl.textContent = `+${secondary}`;
-    // Stock dos materiais QUE ESTE UPGRADE PEDE (o arco troca de materiais ao
-    // longo dos niveis) - e o que o jogador precisa de comparar com o custo.
-    // No nivel maximo cai para os materiais fixos da peca.
-    stockEl.textContent = (cost ? Object.keys(cost) : equipMateriaisDaPeca(config.pieceKey))
-      .map((id) => formatRecurso(stock[id]) + " " + RESOURCE_BY_ID[id].nome.toLowerCase())
-      .join(" · ");
+  const head = '<p class="equip-card-head">' + icon(p.iconName, 17) + " " + p.pieceName +
+    " · Nível " + level + (atMax ? " (máx.)" : "/" + EQUIP_MAX_LEVEL) + "</p>";
 
-    nextRowEl.classList.toggle("hidden", !canShowNext);
-    maxedEl.classList.toggle("hidden", !atMax);
-    costRowEl.classList.toggle("hidden", !canShowNext);
-    confirmBtn.classList.toggle("hidden", !canShowNext);
-
-    if (canShowNext) {
-      const nextPrimary = computeEquipPrimaryStat(config.base, nextLevel, config.primaryExponent);
-      const nextSecondary = computeEquipSecondaryStat(nextLevel);
-      nextPrimaryEl.textContent = nextPrimary + " (+" + (nextPrimary - primary) + ")";
-      nextSecondaryEl.textContent = "+" + nextSecondary + " (+" + (nextSecondary - secondary) + ")";
-
-      // O armazem e o que destranca a evolucao: um upgrade que custe mais do
-      // que o tecto NUNCA sera pagavel, e dizer "materiais insuficientes"
-      // seria enganador - o jogador ia treinar mais e continuar bloqueado.
-      const tecto = warehouseCap(getWarehouseLevel());
-      const acimaDoTecto = Object.keys(cost).some((id) => cost[id] > tecto);
-      const temMateriais = podePagar(cost);
-
-      // O botao diz sempre "Melhorar": o ESTADO dele e que diz se da.
-      // Laranja = ha materiais, cinza desativado = nao ha. A razao vive na
-      // linha do custo, por baixo — nao dentro do botao.
-      confirmBtn.disabled = !temMateriais;
-      confirmBtn.setAttribute("aria-disabled", String(!temMateriais));
-      confirmBtn.textContent = "Melhorar";
-      costEl.textContent = formatCustoMateriais(cost) +
-        (acimaDoTecto ? " — precisas de uma Fortaleza maior" : "");
-    }
+  if (atMax) {
+    return '<div class="equip-card" data-piece="' + p.pieceKey + '">' + head +
+      '<p class="equip-card-stats">' + p.primaryLabel + " " + primary + " · " + p.secondaryLabel + " +" + secondary + "</p></div>";
   }
 
-  function open() {
-    render();
-    modalEl.classList.remove("hidden");
-  }
+  const nextLevel = level + 1;
+  const nextPrimary = computeEquipPrimaryStat(p.base, nextLevel, p.primaryExponent);
+  const nextSecondary = computeEquipSecondaryStat(nextLevel);
+  const cost = computeEquipUpgradeCost(nextLevel, p.pieceKey) || {};
+  // O tecto da Fortaleza e que destranca a evolucao: um custo acima dele
+  // NUNCA sera pagavel - dizer "materiais insuficientes" mandava o jogador
+  // treinar mais para continuar bloqueado.
+  const tecto = typeof warehouseCap === "function" ? warehouseCap(getWarehouseLevel()) : Infinity;
+  const acimaDoTecto = Object.keys(cost).some((id) => cost[id] > tecto);
+  const podeSubir = podePagar(cost) && !acimaDoTecto;
 
-  function close() {
-    modalEl.classList.add("hidden");
-  }
+  const secTxt = nextSecondary > secondary
+    ? p.secondaryLabel + " +" + secondary + " → +" + nextSecondary
+    : p.secondaryLabel + " +" + secondary;
+  const stats = '<p class="equip-card-stats">' +
+    p.primaryLabel + " " + primary + " → " + nextPrimary +
+    ' <span class="equip-delta">(+' + (nextPrimary - primary) + ")</span> · " + secTxt + "</p>";
 
-  function upgrade() {
-    const level = config.getLevel();
-    const nextLevel = level + 1;
-    if (nextLevel > EQUIP_MAX_LEVEL) return;
+  const btn = '<button class="btn-primary equip-upgrade-btn" data-piece="' + p.pieceKey + '"' +
+    (podeSubir ? "" : ' disabled aria-disabled="true"') + ">Melhorar</button>";
 
-    const cost = computeEquipUpgradeCost(nextLevel, config.pieceKey);
-    // pagar() valida e debita numa so operacao - sem isto havia uma janela
-    // entre verificar e gastar.
-    if (!pagar(cost)) return;
+  // Ordem dos recursos no custo = ordem em que aparecem na curva da peca
+  // (predominante primeiro), nao a ordem da construcao da Fortaleza.
+  const ordemRecursos = [];
+  (EQUIP_COST_CURVES[p.pieceKey] || []).forEach((c) => { if (!ordemRecursos.includes(c.recurso)) ordemRecursos.push(c.recurso); });
+  const costLine = '<p class="warehouse-cost">' +
+    ordemRecursos.filter((id) => cost[id])
+      .map((id) => '<span class="warehouse-cost-item">' + icon(id, 14) + formatRecurso(cost[id]) + "</span>")
+      .join("") +
+    (acimaDoTecto ? '<span class="equip-cost-warn">precisas de uma Fortaleza maior</span>' : "") +
+    "</p>";
 
-    config.setLevel(nextLevel);
-    if (typeof renderStatsHud === "function") renderStatsHud();
-    if (typeof renderResourcesPanel === "function") renderResourcesPanel();
-    // O arco troca de modelo 3D a cada 5 niveis (js/main.js - so troca de
-    // facto quando o indice muda).
-    if (config.pieceKey === "arma" && typeof refreshWeaponModel === "function") refreshWeaponModel();
-
-    render();
-  }
-
-  confirmBtn.addEventListener("click", upgrade);
-  closeBtn.addEventListener("click", close);
-  modalEl.addEventListener("click", (event) => {
-    if (event.target.id === `${idPrefix}-upgrade-modal`) close();
-  });
-
-  return { open, close, render };
+  return '<div class="equip-card" data-piece="' + p.pieceKey + '">' + head + stats + btn + costLine + "</div>";
 }
 
-const weaponUpgradeController = createEquipmentUpgradeController({
-  idPrefix: "weapon",
-  base: WEAPON_BASE_ATAQUE,
-  primaryExponent: WEAPON_PRIMARY_EXPONENT,
-  getLevel: getWeaponLevel,
-  setLevel: (level) => setEquipLevel(STORAGE_KEY_WEAPON_LEVEL, level),
-  primaryIdSuffix: "ataque",
-  secondaryIdSuffix: "forca",
-  pieceKey: "arma",
-  pieceName: "Arco",
-  pieceNameLower: "arco",
-});
+function renderEquipmentCards() {
+  // Depende de js/resources.js (podePagar/formatRecurso/warehouseCap), que
+  // carrega DEPOIS deste ficheiro - por isso nunca se chama no load, so a
+  // partir do primeiro refreshAllUi / abertura da aba Eu (nav.js).
+  if (!equipmentCardsEl || typeof podePagar !== "function" || typeof formatRecurso !== "function") return;
+  equipmentCardsEl.innerHTML = EQUIP_PIECES.map(equipCardHtml).join("");
+  equipmentCardsEl.querySelectorAll(".equip-upgrade-btn").forEach((btn) => {
+    btn.addEventListener("click", () => upgradeEquipPiece(btn.dataset.piece));
+  });
+}
 
-const shieldUpgradeController = createEquipmentUpgradeController({
-  idPrefix: "shield",
-  base: SHIELD_BASE_DEFESA,
-  primaryExponent: SHIELD_PRIMARY_EXPONENT,
-  getLevel: getShieldLevel,
-  setLevel: (level) => setEquipLevel(STORAGE_KEY_SHIELD_LEVEL, level),
-  primaryIdSuffix: "defesa",
-  secondaryIdSuffix: "resistencia",
-  pieceKey: "escudo",
-  pieceName: "Escudo",
-  pieceNameLower: "escudo",
-});
+function upgradeEquipPiece(pieceKey) {
+  const p = EQUIP_PIECE_BY_KEY[pieceKey];
+  if (!p) return;
+  const nextLevel = p.getLevel() + 1;
+  if (nextLevel > EQUIP_MAX_LEVEL) return;
 
-const armorUpgradeController = createEquipmentUpgradeController({
-  idPrefix: "armor",
-  base: ARMOR_BASE_VIDA,
-  primaryExponent: ARMOR_PRIMARY_EXPONENT,
-  getLevel: getArmorLevel,
-  setLevel: (level) => setEquipLevel(STORAGE_KEY_ARMOR_LEVEL, level),
-  primaryIdSuffix: "vida",
-  secondaryIdSuffix: "energia",
-  pieceKey: "armadura",
-  pieceName: "Armadura",
-  pieceNameLower: "armadura",
-});
+  const cost = computeEquipUpgradeCost(nextLevel, pieceKey);
+  // pagar() valida e debita numa so operacao.
+  if (!pagar(cost)) return;
 
-function openWeaponUpgradeModal() { weaponUpgradeController.open(); }
-function openShieldUpgradeModal() { shieldUpgradeController.open(); }
-function openArmorUpgradeModal() { armorUpgradeController.open(); }
+  p.setLevel(nextLevel);
+  if (typeof showGameToast === "function") showGameToast(p.pieceName + " no nível " + nextLevel + "!", "medalha");
+  renderStatsHud();
+  renderEquipmentCards();
+  if (typeof renderWallet === "function") renderWallet();
+  if (typeof renderResourcesPanel === "function") renderResourcesPanel();
+  // O arco troca de modelo 3D a cada 5 niveis (js/main.js - so troca de
+  // facto quando o indice muda).
+  if (pieceKey === "arma" && typeof refreshWeaponModel === "function") refreshWeaponModel();
+}
 
-// Mini-lista de equipamento pendurada no palco 3D (2026-08-06, a pedido) -
-// abre o mesmo popup que tocar na peca certa no modelo, sem depender de
-// acertar nela (dificil em mobile, com a camera afastada).
-document.getElementById("equipment-mini-weapon").addEventListener("click", openWeaponUpgradeModal);
-document.getElementById("equipment-mini-shield").addEventListener("click", openShieldUpgradeModal);
-document.getElementById("equipment-mini-armor").addEventListener("click", openArmorUpgradeModal);
+// (Os popups openXUpgradeModal foram removidos em 2026-09-11 - o card de
+// cada peca esta sempre a vista, com o botao "Melhorar" e o custo. O
+// raycast na peca 3D ja tinha sido removido em 2026-08-11.)
 
 // Gasta 1 ponto a subir o nivel de um status investido - so pelos botoes
 // "+" do HUD agora (as 3 pecas de equipamento no modelo 3D abrem os

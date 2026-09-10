@@ -264,6 +264,7 @@ function concederRecompensaMissao(recompensa) {
   if (typeof saveResources === "function") saveResources(stock);
   if (typeof renderResourcesPanel === "function") renderResourcesPanel();
   if (typeof renderWallet === "function") renderWallet();
+  if (typeof renderEquipmentCards === "function") renderEquipmentCards();
 }
 
 // Chamada no fim de um treino (com `sessao`), no arranque pos-login e quando

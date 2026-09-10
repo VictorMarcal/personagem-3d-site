@@ -109,10 +109,12 @@
       requestAnimationFrame(() => onResize());
     }
 
-    // A carteira de recursos aparece em cima do equipamento: é o que liga
-    // "andar rende" a "melhorar custa".
-    if (tab === "eu" && sub === "personagem" && typeof renderWallet === "function") {
-      renderWallet();
+    // A carteira de recursos e os cards de equipamento aparecem juntos: é o
+    // que liga "andar rende" a "melhorar custa". Redesenhados ao abrir a aba
+    // para o custo/estado do botão "Melhorar" refletirem o stock atual.
+    if (tab === "eu" && sub === "personagem") {
+      if (typeof renderWallet === "function") renderWallet();
+      if (typeof renderEquipmentCards === "function") renderEquipmentCards();
     }
   }
 

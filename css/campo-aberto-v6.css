@@ -177,47 +177,42 @@
   text-align: center;
 }
 
-/* ---- 7. Equipamento ----------------------------------------------------- */
+/* ---- 7. Equipamento — um card por peça, molde do card da Fortaleza ------ */
 
-/* Sai de pastilhas a flutuar sobre o modelo 3D (onde o custo não cabia) e
-   passa a lista, com o stock por cima e o custo debaixo do botão. */
-#equipment-mini-list {
-  position: static;
+/* 2026-09-11: sai a mini-lista + popup (onde carregar não era óbvio) e
+   passa a 3 cards inline com o botão "Melhorar" e o custo à vista, iguais
+   ao card da Fortaleza (#warehouse-panel). js/equipment.js renderiza. */
+#equipment-cards {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 0;
+  gap: 10px;
 }
-.equipment-mini-item {
+.equip-card {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 12px;
+}
+.equip-card-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: var(--r-md);
-  background: var(--surface);
-  box-shadow: none;
-  font: 400 15px var(--font-body);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
+  gap: 6px;
+  font: 400 15px var(--font-heading);
+  margin: 0 0 4px;
 }
-.equipment-mini-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  flex: 0 0 auto;
-  border-radius: 12px;
-  font-size: 0; /* mata o emoji herdado */
+.equip-card-stats {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 0 0 10px;
 }
-.equipment-mini-item.weapon .equipment-mini-icon { background: var(--accent-200); }
-.equipment-mini-item.shield .equipment-mini-icon { background: #dce8f5; }
-.equipment-mini-item.armor  .equipment-mini-icon { background: var(--sage-200); }
-.equipment-mini-name { flex: 1; min-width: 0; }
-.equipment-mini-level { font-weight: 700; }
+.equip-delta { color: var(--sage-700); font-weight: 600; }
+.equip-card .btn-primary { width: 100%; }
+.equip-cost-warn {
+  flex-basis: 100%;
+  text-align: center;
+  color: var(--warn-ink);
+  font-weight: 600;
+}
 
 /* Carteira: o stock onde é gasto, não num relatório noutro separador */
 .wallet {

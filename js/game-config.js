@@ -198,6 +198,7 @@ function refreshAllUi() {
   // mostrar uma previa que ainda pode ser perdida.
   updateXPDisplay(typeof sessionCaloriesKcal === "number" ? sessionCaloriesKcal : 0);
   renderStatsHud();
+  if (typeof renderEquipmentCards === "function") renderEquipmentCards();
   renderMonsters();
   renderAchievementsSummary();
   renderTodaysTrainings();

@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.7.2",
+    title: "Melhorar Equipamento à Vista",
+    changes: [
+      "O equipamento em Eu › Personagem passa a ter um card por peça, igual ao card da Fortaleza: o botão \"Melhorar\" e o custo estão sempre à vista, sem popup.",
+      "Cada card mostra o que a peça ganha no próximo nível (ataque/defesa/vida e o bónus) e os materiais que custa.",
+    ],
+  },
+  {
     version: "v6.7.1",
     title: "Custo do Escudo e da Armadura",
     changes: [

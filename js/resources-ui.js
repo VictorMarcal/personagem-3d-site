@@ -85,6 +85,9 @@ function renderResourcesPanel() {
       }
       renderResourcesPanel();
       if (typeof renderWallet === "function") renderWallet();
+      // Subir a Fortaleza pode destrancar melhorias de equipamento que
+      // estavam acima do teto - redesenha os cards.
+      if (typeof renderEquipmentCards === "function") renderEquipmentCards();
       // Muda o modelo 3D da torre se este nivel entrar noutra faixa de 5
       // (js/main.js - só troca de facto quando o índice muda).
       if (typeof refreshTowerModel === "function") refreshTowerModel();
