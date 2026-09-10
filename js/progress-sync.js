@@ -259,6 +259,11 @@ function mergeMissoes(local, server) {
 
   const concluidas = [...new Set([...(local.concluidas || []), ...(server.concluidas || [])])];
   let ativa = local.ativa || server.ativa || null;
+  // Se os dois lados tem a MESMA missao ativa, fica o maior progresso de
+  // corrida (progressoM) - senao um treino feito noutro dispositivo perdia-se.
+  if (ativa && local.ativa && server.ativa && local.ativa.slot === server.ativa.slot) {
+    ativa = { ...ativa, progressoM: Math.max(Number(local.ativa.progressoM) || 0, Number(server.ativa.progressoM) || 0) };
+  }
   if (ativa && concluidas.includes(ativa.slot)) ativa = null;
   const rejeitadaEm = Math.max(Number(local.rejeitadaEm) || 0, Number(server.rejeitadaEm) || 0) || null;
   return { mes: local.mes, concluidas, ativa, rejeitadaEm };

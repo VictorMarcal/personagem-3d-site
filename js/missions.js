@@ -147,7 +147,11 @@ function saveMissionState(estado) {
 function missionBaseline(tipo, recurso) {
   switch (tipo) {
     case "correr_km":
-      return { dist: typeof getLifetimeDistanceM === "function" ? getLifetimeDistanceM() : 0 };
+      // Sem baseline: correr_km e um ACUMULADOR (ativa.progressoM), somado no
+      // fim de cada treino APENAS com a fatia de distancia detetada como
+      // "correr" dessa sessao. Um baseline sobre getLifetimeDistanceM()
+      // contava tambem a caminhada (bug reportado 2026-09-10).
+      return {};
     case "descobre_hex":
       return { hex: typeof getDiscoveredHexCount === "function" ? getDiscoveredHexCount() : 0 };
     case "descobre_mina":
@@ -165,8 +169,11 @@ function missionProgress(ativa) {
   const base = ativa.baseline || {};
   switch (ativa.tipo) {
     case "correr_km": {
-      const agora = typeof getLifetimeDistanceM === "function" ? getLifetimeDistanceM() : 0;
-      const feito = Math.max(0, agora - (Number(base.dist) || 0));
+      // Acumulador: so a distancia CORRIDA somada no fim de cada treino
+      // (verificarMissaoAtiva). Missoes aceites antes de 2026-09-10 nao tem
+      // progressoM - contam a partir de 0 (a caminhada que tinham contado
+      // deixa de valer, que e o correto).
+      const feito = Math.max(0, Number(ativa.progressoM) || 0);
       return { current: Math.min(feito, ativa.alvo), target: ativa.alvo, done: feito >= ativa.alvo };
     }
     case "descobre_hex": {
@@ -228,6 +235,8 @@ function aceitarMissao(slot) {
     recurso: missao.recurso || null,
     recompensa: missao.recompensa,
     baseline: missionBaseline(missao.tipo, missao.recurso),
+    // Acumulador de distancia corrida, so usado por correr_km (ver missionProgress).
+    progressoM: 0,
     aceiteEm: Date.now(),
   };
   saveMissionState(estado);
@@ -257,14 +266,27 @@ function concederRecompensaMissao(recompensa) {
   if (typeof renderWallet === "function") renderWallet();
 }
 
-// Chamada no fim de um treino, no arranque pos-login e quando as regioes
-// sao recalculadas - sempre que o progresso de uma missao pode ter mudado.
-function verificarMissaoAtiva() {
+// Chamada no fim de um treino (com `sessao`), no arranque pos-login e quando
+// as regioes sao recalculadas (sem `sessao`) - sempre que o progresso de uma
+// missao pode ter mudado.
+//
+// sessao (opcional): { distanciaPorModo: { correr, caminhar } } da sessao que
+// acabou. So a missao correr_km a usa - soma a fatia CORRIDA ao acumulador.
+function verificarMissaoAtiva(sessao) {
   const estado = getMissionState();
   if (!estado.ativa) {
     renderMissionsPanel();
     return;
   }
+
+  if (sessao && estado.ativa.tipo === "correr_km") {
+    const correu = Number(sessao.distanciaPorModo && sessao.distanciaPorModo.correr) || 0;
+    if (correu > 0) {
+      estado.ativa.progressoM = (Number(estado.ativa.progressoM) || 0) + correu;
+      saveMissionState(estado);
+    }
+  }
+
   const prog = missionProgress(estado.ativa);
   if (!prog.done) {
     renderMissionsPanel();

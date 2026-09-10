@@ -1292,8 +1292,11 @@ function stopTraining() {
     incrementTotalTrainingsCompleted();
     checkAndUnlockAchievements(sessionDistanceM, sessionDurationSeconds, sessionDominantMode, sessionTotalCalories);
     // Missao mensal ativa (secção 22): este treino pode te-la concluido
-    // (km corridos, hexagonos/minas/concelhos novos).
-    if (typeof verificarMissaoAtiva === "function") verificarMissaoAtiva();
+    // (km corridos, hexagonos/minas/concelhos novos). A missao "correr X km"
+    // so soma a fatia detetada como CORRER desta sessao, nao a caminhada.
+    if (typeof verificarMissaoAtiva === "function") {
+      verificarMissaoAtiva({ distanciaPorModo: sessionDistanceByMode });
+    }
     renderMonsters(); // pode ter desbloqueado monstros novos
 
     showTrainingSummary({
