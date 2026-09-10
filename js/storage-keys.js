@@ -56,11 +56,10 @@ const STORAGE_KEY_UNLOCKED_ACHIEVEMENTS = "personagem.conquistasDesbloqueadas";
 
 // Recorde de distancia de sessao, por modo de treino (js/achievements.js
 // generateSessionDistanceAchievements) - Correr reaproveita a chave ja
-// existente sem sufixo (era o unico modo antes de existirem 3), Caminhar/
-// Bicicleta sao registos novos, comecam do zero.
+// existente sem sufixo, Caminhar tem sufixo. A chave `.bicicleta` deixou de
+// ser escrita/lida em 2026-09-10 (bicicleta removida a pedido).
 const STORAGE_KEY_BEST_SESSION_DISTANCE_M = "personagem.melhorDistanciaSessaoM";
 const STORAGE_KEY_BEST_SESSION_DISTANCE_M_CAMINHAR = "personagem.melhorDistanciaSessaoM.caminhar";
-const STORAGE_KEY_BEST_SESSION_DISTANCE_M_BICICLETA = "personagem.melhorDistanciaSessaoM.bicicleta";
 
 const STORAGE_KEY_TOTAL_TRAININGS = "personagem.totalTreinosConcluidos";
 
@@ -93,9 +92,9 @@ const STORAGE_KEY_DISTINCT_MONTHS_TRAINED = "personagem.mesesDistintosTreinados"
 
 // Melhor ritmo (m/s), tambem por modo de treino (mesmo padrao do recorde
 // de distancia de sessao acima) - Correr reaproveita a chave ja existente.
+// `.bicicleta` deixou de ser usada em 2026-09-10.
 const STORAGE_KEY_BEST_PACE_MPS = "personagem.melhorRitmoMps";
 const STORAGE_KEY_BEST_PACE_MPS_CAMINHAR = "personagem.melhorRitmoMps.caminhar";
-const STORAGE_KEY_BEST_PACE_MPS_BICICLETA = "personagem.melhorRitmoMps.bicicleta";
 
 // Contador de distancia do mes de calendario corrente, espelha
 // leaderboard.monthly_distance_m - usado pelas medalhas mensais

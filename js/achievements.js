@@ -89,8 +89,8 @@ const STATIC_ACHIEVEMENTS = [
   { id: "collector_50", name: "Colecionador (50)", icon: "🧩", type: "achievementCount", threshold: 50 },
   // Conquistas de calorias (2026-08-10, secção 10/17.2 da documentação) -
   // ao contrario de sessionDistance, NAO separadas por modo: calorias ja
-  // normalizam esforco entre caminhar/correr/bicicleta (é o que a formula
-  // MET/secção 4.1 faz), nao precisam de 3 copias por limiar.
+  // normalizam esforco entre caminhar e correr (é o que a formula
+  // MET/secção 4.1 faz), nao precisam de uma copia por modo.
   { id: "cal_sessao_200", name: "Primeira Fagulha", icon: "✨", type: "sessionCalories", threshold: 200 },
   { id: "cal_sessao_500", name: "Em Chamas", icon: "🔥", type: "sessionCalories", threshold: 500 },
   { id: "cal_sessao_1000", name: "Fornalha", icon: "🌋", type: "sessionCalories", threshold: 1000 },
@@ -110,8 +110,9 @@ const NIGHT_OWL_ACHIEVEMENT = { id: "night_owl", name: "Notívago", icon: "🌙"
 const EARLY_BIRD_MAX_HOUR = 7; // antes das 7h
 const NIGHT_OWL_MIN_HOUR = 22; // a partir das 22h
 
-// Treinar nos 3 modos pelo menos uma vez cada, nao precisa de ser no mesmo
-// dia (2026-08-07, a pedido).
+// Treinar em cada modo pelo menos uma vez, nao precisa de ser no mesmo dia
+// (2026-08-07, a pedido). Eram 3 modos ate a bicicleta ser removida
+// (2026-09-10); agora sao Caminhar e Correr.
 const MODE_EXPLORER_ACHIEVEMENT = { id: "mode_explorer", name: "Poliglota do Treino", icon: "🧭", type: "allModesTrained" };
 
 // Meses de calendario DISTINTOS com pelo menos um treino, nao precisam de
@@ -148,25 +149,23 @@ const EXPLORATION_ACHIEVEMENTS = [
 ];
 
 // Conquistas de distância de sessão e de ritmo separadas por modo de
-// treino (Caminhar/Correr/Bicicleta) - ver secção 10 da documentação.
-// Distância vitalícia e frequência (acima) ficam combinadas entre modos
+// treino (Caminhar/Correr) - ver secção 10 da documentação. Distância
+// vitalícia e frequência (acima) ficam combinadas entre modos
 // deliberadamente, so estas duas (sessão única e ritmo) fazem sentido
 // separadas, já que dependem diretamente do modo dessa sessão.
-const ACHIEVEMENT_TRAINING_MODES = ["correr", "caminhar", "bicicleta"];
-const MODE_ICON_PT = { correr: "🏃", caminhar: "🚶", bicicleta: "🚴" };
+// Bicicleta foi removida em 2026-09-10 (a pedido) - os ids `*_bicicleta`
+// deixam de ser gerados; unlocks antigos ficam orfaos, sem efeito.
+const ACHIEVEMENT_TRAINING_MODES = ["correr", "caminhar"];
+const MODE_ICON_PT = { correr: "🏃", caminhar: "🚶" };
 // Frase para encaixar em descrições ("... numa sessão ${frase}.") - a
 // label curta (MODE_LABEL_PT) ja existe em js/training.js (carrega antes
 // deste ficheiro).
-const MODE_ACTIVITY_PHRASE_PT = { correr: "a correr", caminhar: "a caminhar", bicicleta: "de bicicleta" };
+const MODE_ACTIVITY_PHRASE_PT = { correr: "a correr", caminhar: "a caminhar" };
 
-// Mesmos limiares (km) para os 3 modos, mas desde 2026-08-10 comparam
-// distância REAL, não mais "efetiva" (esse conceito deixou de existir -
-// secção 4.1/5) - "Maratonista de Bicicleta" passou a significar
-// literalmente pedalar 42.195km, não mais um esforço equivalente ao de
-// correr essa distância (isso já é o que o nível/XP em calorias mede).
-// Correr reaproveita os ids/nomes já existentes (sem sufixo) para não
-// perder conquistas já desbloqueadas por jogadores existentes -
-// Caminhar/Bicicleta são ids novos.
+// Mesmos limiares (km) para os 2 modos; comparam distância REAL (o conceito
+// de distância "efetiva" deixou de existir - secção 4.1/5). Correr
+// reaproveita os ids/nomes já existentes (sem sufixo) para não perder
+// conquistas já desbloqueadas - Caminhar são ids com sufixo `_caminhar`.
 const SESSION_DISTANCE_THRESHOLDS = [
   { key: "dist_1km", name: "1 km seguido", threshold: 1000 },
   { key: "dist_5km", name: "5 km seguidos", threshold: 5000 },
@@ -192,13 +191,11 @@ function generateSessionDistanceAchievements() {
   return achievements;
 }
 
-// O ritmo é sobre velocidade REAL (sempre foi, na intenção - ver correção
-// de 2026-08-10 abaixo) - por isso cada modo tem os seus próprios
-// limiares, calibrados à velocidade típica desse modo (Compendium
-// of Physical Activities, mesma fonte da secção 4.1): Correr mantém os
-// limiares já existentes (~12-15 km/h, ritmo de corrida recreativa);
-// Caminhar usa ritmo de marcha rápida/atlética (~6-7.5 km/h); Bicicleta
-// usa ritmo moderado a veloz (~20-27 km/h).
+// O ritmo é sobre velocidade REAL - cada modo tem os seus próprios
+// limiares, calibrados à velocidade típica desse modo (Compendium of
+// Physical Activities, mesma fonte da secção 4.1): Correr ~12-15 km/h
+// (corrida recreativa); Caminhar ~6-7.5 km/h (marcha rápida/atlética).
+// As de Bicicleta saíram em 2026-09-10 com o modo.
 const PACE_ACHIEVEMENTS = [
   { id: "pace_5km_25min", name: "5km em menos de 25 min (Correr)", icon: MODE_ICON_PT.correr, type: "pace", mode: "correr", distanceM: 5000, maxSeconds: 25 * 60 },
   { id: "pace_10km_50min", name: "10km em menos de 50 min (Correr)", icon: MODE_ICON_PT.correr, type: "pace", mode: "correr", distanceM: 10000, maxSeconds: 50 * 60 },
@@ -206,8 +203,6 @@ const PACE_ACHIEVEMENTS = [
   { id: "pace_10km_45min", name: "10km em menos de 45 min (Correr)", icon: MODE_ICON_PT.correr, type: "pace", mode: "correr", distanceM: 10000, maxSeconds: 45 * 60 },
   { id: "pace_5km_50min_caminhar", name: "5km em menos de 50 min (Caminhar)", icon: MODE_ICON_PT.caminhar, type: "pace", mode: "caminhar", distanceM: 5000, maxSeconds: 50 * 60 },
   { id: "pace_5km_40min_caminhar", name: "5km em menos de 40 min (Caminhar)", icon: MODE_ICON_PT.caminhar, type: "pace", mode: "caminhar", distanceM: 5000, maxSeconds: 40 * 60 },
-  { id: "pace_10km_30min_bicicleta", name: "10km em menos de 30 min (Bicicleta)", icon: MODE_ICON_PT.bicicleta, type: "pace", mode: "bicicleta", distanceM: 10000, maxSeconds: 30 * 60 },
-  { id: "pace_20km_45min_bicicleta", name: "20km em menos de 45 min (Bicicleta)", icon: MODE_ICON_PT.bicicleta, type: "pace", mode: "bicicleta", distanceM: 20000, maxSeconds: 45 * 60 },
 ];
 
 // pace_personal_record (Correr) mantém o id já existente, sem sufixo, pela
@@ -348,11 +343,10 @@ const EQUIP_LEVEL_GETTER_BY_EQUIP_ACHIEVEMENT = {
 const BEST_SESSION_DISTANCE_KEY_BY_MODE = {
   correr: STORAGE_KEY_BEST_SESSION_DISTANCE_M,
   caminhar: STORAGE_KEY_BEST_SESSION_DISTANCE_M_CAMINHAR,
-  bicicleta: STORAGE_KEY_BEST_SESSION_DISTANCE_M_BICICLETA,
 };
 
-// Sem mode: devolve o melhor de sempre entre os 3 (usado pelo card Resumo
-// da aba Perfil, que mostra "o teu recorde", nao um recorde por modo). Com
+// Sem mode: devolve o melhor de sempre entre os modos (usado pelo card
+// Resumo da aba Perfil, que mostra "o teu recorde", nao um recorde por modo). Com
 // mode: devolve o recorde so desse modo (usado pelas conquistas de
 // distancia de sessao, ja separadas por modo - ver generateSessionDistanceAchievements).
 function getBestSessionDistanceM(mode) {
@@ -405,13 +399,12 @@ function incrementTotalBattlesFought() {
 const BEST_PACE_KEY_BY_MODE = {
   correr: STORAGE_KEY_BEST_PACE_MPS,
   caminhar: STORAGE_KEY_BEST_PACE_MPS_CAMINHAR,
-  bicicleta: STORAGE_KEY_BEST_PACE_MPS_BICICLETA,
 };
 
 // Melhor ritmo (m/s) de sempre por modo, numa so sessao - usado para a
 // conquista de recorde pessoal por modo (checkAndUnlockAchievements) e
 // para o card Resumo da aba Perfil (sem mode: o melhor de sempre entre
-// os 3, mesmo padrao de getBestSessionDistanceM acima).
+// os modos, mesmo padrao de getBestSessionDistanceM acima).
 function getBestPaceMps(mode) {
   if (mode) return Number(localStorage.getItem(BEST_PACE_KEY_BY_MODE[mode])) || 0;
   return Math.max(...ACHIEVEMENT_TRAINING_MODES.map((m) => getBestPaceMps(m)));
@@ -620,7 +613,6 @@ function getAchievementProgress(achievement) {
 const PACE_PERSONAL_RECORD_ID_BY_MODE = {
   correr: "pace_personal_record",
   caminhar: "pace_personal_record_caminhar",
-  bicicleta: "pace_personal_record_bicicleta",
 };
 
 // Chamado depois de um treino terminar (com dados da sessao) ou de uma
@@ -751,7 +743,7 @@ function hasNightOwlSession(sessions) {
   return sessions.some((s) => new Date(s.started_at).getHours() >= NIGHT_OWL_MIN_HOUR);
 }
 
-// "Poliglota do Treino" (2026-08-07) - os 3 modos pelo menos uma vez cada,
+// "Poliglota do Treino" (2026-08-07) - cada modo pelo menos uma vez,
 // nao precisa de ser no mesmo dia/sessao.
 function hasTrainedAllModes(sessions) {
   const modesUsed = new Set(sessions.map((s) => s.mode));
@@ -833,7 +825,7 @@ function getAchievementDescription(achievement) {
         ? `Começa um treino antes das ${EARLY_BIRD_MAX_HOUR}h.`
         : `Começa um treino às ${NIGHT_OWL_MIN_HOUR}h ou mais tarde.`;
     case "allModesTrained":
-      return "Treina pelo menos uma vez em cada um dos 3 modos (Caminhar, Correr, Bicicleta).";
+      return "Treina pelo menos uma vez a Caminhar e pelo menos uma vez a Correr.";
     case "distinctMonths":
       return `Treina em ${achievement.threshold} meses de calendário diferentes (não precisam de ser seguidos).`;
     case "hexCount":

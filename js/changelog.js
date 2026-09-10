@@ -7,6 +7,17 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.5.0",
+    title: "Adeus à Bicicleta",
+    changes: [
+      "O modo Bicicleta foi removido. A app passa a detetar só Caminhar e Correr.",
+      "Velocidades acima de ~16 km/h deixam de contar — a distância feita de bicicleta, de carro ou por erro de GPS não dá quilómetros, calorias nem XP.",
+      "Saíram os troféus de distância, de ritmo e de recorde pessoal de bicicleta. Os treinos de bicicleta que já fizeste continuam no teu histórico.",
+      "Deixa de ser preciso dar permissão de movimento ao telemóvel — o acelerómetro só servia para distinguir pedalar de correr.",
+      "Podes converter um treino antigo de bicicleta para Caminhar ou Correr no cartão do treino.",
+    ],
+  },
+  {
     version: "v6.4.0",
     title: "Missões Mensais e Troféus de Exploração",
     changes: [

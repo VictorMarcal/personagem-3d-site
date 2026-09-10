@@ -48,143 +48,43 @@ const STORAGE_KEYS = {
 
 // Para apresentacao (historico do Perfil, treinos de hoje). Declarado aqui
 // (carrega antes de js/profile.js) para nao duplicar o identificador global.
+// `bicicleta` mantem-se aqui SO para rotular sessoes antigas no historico
+// (js/profile.js) - a bicicleta foi removida como treino em 2026-09-10
+// (a pedido). Nada de novo e classificado como bicicleta.
 const MODE_LABEL_PT = { caminhar: "Caminhar", correr: "Correr", bicicleta: "Bicicleta" };
 
 // --- Deteccao automatica de atividade (2026-08-10, secção 17.1 da
-// documentacao) - substitui a escolha manual de modo (Caminhar/Correr/
-// Bicicleta). Cada segmento de GPS e classificado pela velocidade MEDIA de
-// uma janela deslizante (evita reclassificar a cada oscilacao pontual, ex:
-// parar num semaforo), com historese antes de confirmar uma mudanca de
-// categoria (evita "saltar" entre atividades a cada variacao de ritmo
-// momentanea). "parado" nao acumula distancia/calorias (pausa automatica).
+// documentacao) - substitui a escolha manual de modo. Cada segmento de GPS
+// e classificado pela velocidade MEDIA de uma janela deslizante (evita
+// reclassificar a cada oscilacao pontual, ex: parar num semaforo), com
+// historese antes de confirmar uma mudanca de categoria. "parado" nao
+// acumula distancia/calorias (pausa automatica).
+//
+// Desde 2026-09-10 so ha dois modos, Caminhar e Correr: a bicicleta foi
+// removida (a pedido) e velocidades acima do teto de seguranca (que baixou
+// para caber a pe/corrida) sao descartadas como "nao real", nao
+// reclassificadas.
 const ACTIVITY_STOPPED = "parado";
 const ACTIVITY_WALK = "caminhar";
 const ACTIVITY_RUN = "correr";
-const ACTIVITY_CYCLE = "bicicleta";
-const ACTIVITY_LABEL_PT = { parado: "Parado", caminhar: "Caminhar", correr: "Correr", bicicleta: "Bicicleta" };
+const ACTIVITY_LABEL_PT = { parado: "Parado", caminhar: "Caminhar", correr: "Correr" };
 
 function classifySpeedKmh(speedKmh) {
   if (speedKmh < getActivityStoppedMaxKmh()) return ACTIVITY_STOPPED;
   if (speedKmh < getActivityWalkMaxKmh()) return ACTIVITY_WALK;
-  if (speedKmh < getActivityRunMaxKmh()) return ACTIVITY_RUN;
-  return ACTIVITY_CYCLE;
+  return ACTIVITY_RUN;
 }
 
-// --- Desempate por acelerometro / "filtro de passada" (2026-08-12,
-// secção 4.3 da documentação) --------------------------------------------
-//
-// A velocidade sozinha nao distingue "pernas a mexer" de "rodas a rolar".
-// A subir uma encosta de bicicleta a ~8 km/h, a velocidade cai na faixa de
-// CORRER e a sessao era classificada como corrida (reportado: "estar a ser
-// considerado como corrida ou caminhada principalmente em subidas quando
-// na verdade estava de bicicleta") - com o MET errado, as calorias saem
-// erradas atras.
-//
-// Andar e correr produzem uma oscilacao forte e periodica ao ritmo da
-// passada; pedalar produz sobretudo vibracao da estrada, muito mais fraca.
-// Mede-se o DESVIO-PADRAO da magnitude da aceleracao numa janela: alto =
-// ha passada, baixo = nao ha. Serve so de DESEMPATE num sentido (velocidade
-// diz caminhar/correr mas nao ha passada -> bicicleta), nunca o contrario:
-// converter "bicicleta" em "correr" por haver solavancos numa descida
-// esburacada seria pior do que o problema original.
-//
-// Bonus: empurrar a bicicleta a subir passa a ser corretamente CAMINHAR
-// (ha passada, velocidade baixa), que e o que de facto se esta a fazer.
-//
-// Nao existe sem acelerometro ou sem permissao (iOS pede-a explicitamente):
-// nesse caso stepSignalReady fica false e a classificacao e exatamente a
-// de antes, so por velocidade.
-let motionSamples = [];
-let motionListenerAttached = false;
-let stepSignalReady = false;
+// O "filtro de passada" por acelerometro (secção 4.3, 2026-08-12/14) foi
+// REMOVIDO em 2026-09-10 junto com a bicicleta: o seu unico proposito era
+// reclassificar caminhar/correr -> bicicleta quando nao havia passada
+// (pedalar). Sem bicicleta nao ha nada para desempatar - a classificacao
+// e so por velocidade (classifySpeedKmh). Deixou tambem de ser preciso
+// pedir a permissao de movimento no iOS.
 
-function onDeviceMotion(event) {
-  const a = event.accelerationIncludingGravity;
-  if (!a || a.x == null) return;
-  const magnitude = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
-  const now = Date.now();
-  motionSamples.push({ magnitude, timestamp: now });
-  stepSignalReady = true;
-
-  // Mesma janela da classificacao por velocidade, para as duas decisoes
-  // olharem para o mesmo periodo de tempo.
-  const windowMs = getActivityWindowSeconds() * 1000;
-  while (motionSamples.length > 1 && now - motionSamples[0].timestamp > windowMs) {
-    motionSamples.shift();
-  }
-}
-
-// Desvio-padrao da magnitude na janela. Usar o desvio-padrao (e nao a
-// media) remove a gravidade automaticamente: o que interessa e quanto a
-// aceleracao OSCILA, nao o seu valor absoluto (~9.8 parado).
-function stepSignalIntensity() {
-  if (motionSamples.length < 8) return 0;
-  let soma = 0;
-  for (const s of motionSamples) soma += s.magnitude;
-  const media = soma / motionSamples.length;
-  let somaQuadrados = 0;
-  for (const s of motionSamples) somaQuadrados += (s.magnitude - media) ** 2;
-  return Math.sqrt(somaQuadrados / motionSamples.length);
-}
-
-function hasStepSignal() {
-  return stepSignalIntensity() >= getStepSignalThresholdMs2();
-}
-
-// --- Cadencia (2026-08-14, secção 4.3) -------------------------------------
-//
-// A amplitude (desvio-padrao acima) provou nao separar as atividades: numa
-// saida de bicicleta mediu 4.26/4.51 e numa caminhada 5.83 - pedalar oscila
-// TANTO ou MAIS do que andar, e os maximos sao 3 a 5x a media (a estrada da
-// solavancos) contra 1.4x a andar (a passada e regular). O jogador
-// confirmou os dois falhancos no terreno: a subir devagar deu "caminhar", em
-// reta deu "corrida".
-//
-// O que distingue de facto e a FREQUENCIA, nao a forca: andar e correr sao
-// um movimento periodico (~1.5-2.5 Hz a andar, ~2.5-3.5 Hz a correr);
-// pedalar produz vibracao irregular sem ritmo dominante nessa banda. E um
-// sinal INTRINSECO a atividade - nao depende do percurso ter descidas, nem
-// da velocidade, ao contrario de tudo o resto que temos.
-//
-// Isto ainda NAO decide nada: so mede e grava, para podermos escolher o
-// discriminador com dados em vez de a olho (ja falhamos duas vezes hoje a
-// afinar limiares por palpite). Contagem de picos e O(n) - barata o
-// suficiente para correr a cada leitura de GPS.
-function stepCadenceHz() {
-  if (motionSamples.length < 16) return 0;
-
-  let soma = 0;
-  for (const s of motionSamples) soma += s.magnitude;
-  const media = soma / motionSamples.length;
-  const desvio = stepSignalIntensity();
-  // Limiar de deteccao proporcional ao proprio sinal: um pico so conta se
-  // se destacar do ruido de fundo desta janela, e nao por um valor absoluto
-  // (que voltaria a ser um numero escolhido a olho).
-  const limiarPico = media + desvio * 0.5;
-
-  let picos = 0;
-  for (let i = 1; i < motionSamples.length - 1; i++) {
-    const m = motionSamples[i].magnitude;
-    if (m > limiarPico && m >= motionSamples[i - 1].magnitude && m > motionSamples[i + 1].magnitude) {
-      picos += 1;
-    }
-  }
-
-  const duracaoS = (motionSamples[motionSamples.length - 1].timestamp - motionSamples[0].timestamp) / 1000;
-  return duracaoS > 0 ? picos / duracaoS : 0;
-}
-
-// Histogramas em vez de so media/maximo: duas distribuicoes muito diferentes
-// podem ter a mesma media (ex: quase sempre baixo com picos raros, contra
-// sempre a meio), e era exatamente essa ambiguidade que impedia decidir com
-// os dados que tinhamos. Limites escolhidos para cobrir as faixas que
-// interessam: cadencia de andar (1.5-2.5 Hz) e correr (2.5-3.5 Hz) ficam em
-// baldes proprios.
-const STEP_INTENSITY_BUCKETS = [1, 2, 3, 5, 8, 12, 20];
-const STEP_CADENCE_BUCKETS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5];
-// Limites alinhados com as faixas de classificacao por velocidade (2/6.5/14
-// km/h, ver classifySpeedKmh) mais alguns acima, para se ver quanto tempo a
-// sessao passou em cada faixa e nao so a media.
+// Limites alinhados com as faixas de classificacao por velocidade (2/6.5
+// km/h, ver classifySpeedKmh); os acima do teto de seguranca ficam so para
+// se ver quanto ruido/tempo a sessao passou fora do limite.
 const SPEED_BUCKETS = [2, 6.5, 10, 14, 20, 25, 35];
 
 function bucketIndex(value, limits) {
@@ -192,68 +92,6 @@ function bucketIndex(value, limits) {
     if (value < limits[i]) return i;
   }
   return limits.length;
-}
-
-// iOS 13+ exige permissao explicita a partir de um gesto do utilizador -
-// chamada a partir do clique em "Iniciar Treino" (startTraining). No
-// Android basta subscrever o evento.
-async function startMotionSensing() {
-  if (motionListenerAttached) return;
-  if (typeof DeviceMotionEvent === "undefined") return;
-
-  try {
-    if (typeof DeviceMotionEvent.requestPermission === "function") {
-      const resposta = await DeviceMotionEvent.requestPermission();
-      if (resposta !== "granted") return;
-    }
-  } catch (e) {
-    return; // sem permissao, fica so a classificacao por velocidade
-  }
-
-  window.addEventListener("devicemotion", onDeviceMotion);
-  motionListenerAttached = true;
-}
-
-function stopMotionSensing() {
-  if (!motionListenerAttached) return;
-  window.removeEventListener("devicemotion", onDeviceMotion);
-  motionListenerAttached = false;
-  motionSamples = [];
-  stepSignalReady = false;
-}
-
-// Classificacao final: velocidade + desempate de passada.
-function classifyActivity(speedKmh) {
-  const porVelocidade = classifySpeedKmh(speedKmh);
-
-  // "Parado" e uma decisao de deslocamento, nao de passada - nao se mexe
-  // e nao se mexe, venha o acelerometro que vier (ex: pedalar parado num
-  // semaforo continua a ser pausa).
-  if (porVelocidade === ACTIVITY_STOPPED) return porVelocidade;
-  if (!stepSignalReady) return porVelocidade;
-
-  // Registado a cada classificacao (nao so quando desempata) para o
-  // diagnostico ter a distribuicao real do sinal ao longo da sessao.
-  const intensidade = stepSignalIntensity();
-  if (gpsDiag) {
-    gpsDiag.stepSignalSoma += intensidade;
-    gpsDiag.stepSignalAmostras += 1;
-    if (intensidade > gpsDiag.stepSignalMax) gpsDiag.stepSignalMax = intensidade;
-    gpsDiag.stepIntensityHist[bucketIndex(intensidade, STEP_INTENSITY_BUCKETS)] += 1;
-
-    // Cadencia: so mede e grava, nao decide nada ainda (ver stepCadenceHz).
-    const cadencia = stepCadenceHz();
-    gpsDiag.stepCadenceSoma += cadencia;
-    if (cadencia > gpsDiag.stepCadenceMax) gpsDiag.stepCadenceMax = cadencia;
-    gpsDiag.stepCadenceHist[bucketIndex(cadencia, STEP_CADENCE_BUCKETS)] += 1;
-  }
-
-  if ((porVelocidade === ACTIVITY_WALK || porVelocidade === ACTIVITY_RUN) &&
-      intensidade < getStepSignalThresholdMs2()) {
-    if (gpsDiag) gpsDiag.desempatesParaBicicleta += 1;
-    return ACTIVITY_CYCLE;
-  }
-  return porVelocidade;
 }
 
 // Amostras {speedMps, timestamp} dos ultimos getActivityWindowSeconds()
@@ -292,7 +130,7 @@ let pendingMode = null;
 let pendingModeSinceMs = null;
 
 function updateDetectedActivity(timestamp) {
-  const candidate = classifyActivity(windowAverageSpeedMps() * 3.6);
+  const candidate = classifySpeedKmh(windowAverageSpeedMps() * 3.6);
 
   if (currentActiveMode === null) {
     currentActiveMode = candidate; // primeira leitura da sessao, sem periodo de graca
@@ -317,64 +155,21 @@ function updateDetectedActivity(timestamp) {
 // --- Formula MET (calorias) -----------------------------------------------
 //
 // Caminhar/Correr: equacoes continuas do ACSM (VO2 em ml/kg/min a partir da
-// velocidade em m/min). Bicicleta: tabela por faixas de velocidade
-// (Compendium of Physical Activities, Ainsworth et al.) - nao ha uma formula
-// linear tao limpa como andar/correr. Calorias = MET x peso(kg) x horas,
-// por segmento, somadas ao longo da sessao (secção 17.1 da documentação).
+// velocidade em m/min). Calorias = MET x peso(kg) x horas, por segmento,
+// somadas ao longo da sessao (secção 17.1 da documentação).
+//
+// A tabela por faixas da bicicleta (Compendium of Physical Activities) foi
+// removida em 2026-09-10 com o resto do modo bicicleta - so andar/correr
+// usam esta formula, e ambos sao lineares na velocidade.
 function computeWalkOrRunMet(speedKmh, isRunning) {
   const speedMPerMin = (speedKmh * 1000) / 60;
   const vo2 = (isRunning ? 0.2 : 0.1) * speedMPerMin + 3.5;
   return vo2 / 3.5;
 }
 
-// Modos cujo MET vem de uma TABELA POR FAIXAS e nao de uma formula linear.
-// A distincao nao e cosmetica - decide se a velocidade pode ou nao ser
-// diluida pelo tempo parado (ver computeSessionCaloriesFromTotals).
-function metIsBracketed(activity) {
-  return activity === ACTIVITY_CYCLE;
-}
-
-// Pontos do Compendium para bicicleta, com as velocidades convertidas de
-// milhas por hora (10/12/14/16/20 mph) em vez de arredondadas a olho como
-// estavam antes.
-//
-// INTERPOLADO, nao em degraus (2026-08-15). Os degraus sao um artefacto da
-// forma como o Compendium esta escrito - uma lista de atividades discretas -
-// nao da fisiologia: o custo energetico varia de forma continua com a
-// velocidade. Com degraus, 22,5 km/h valia 8,0 e 22,6 km/h valia 10,0, um
-// salto de 25% por 0,1 km/h.
-//
-// Validado contra o relogio do Bernardo (sessao 108, 24,99 km/h): a tabela em
-// degraus mandava MET 10,0 e o corpo dele fez 9,14; interpolado da 9,53. O
-// erro nas calorias da sessao caiu de +10,4% para +5,5%.
-//
-// O ultimo ponto (15,8 aos 40 km/h) e uma ancora escolhida: o Compendium so
-// diz ">20 mph" sem teto, e sem ancora nao havia como interpolar o ultimo
-// troco. Acima disso fica plano.
-const CYCLING_MET_POINTS = [
-  [16.09, 4.0],   // 10 mph - lazer
-  [19.31, 6.8],   // 12 mph - lento, esforco leve
-  [22.53, 8.0],   // 14 mph - moderado
-  [25.75, 10.0],  // 16 mph - rapido, vigoroso
-  [32.19, 12.0],  // 20 mph - muito rapido
-  [40.0, 15.8],   // ancora escolhida (ver acima)
-];
-
-function computeCyclingMet(speedKmh) {
-  const points = CYCLING_MET_POINTS;
-  if (speedKmh <= points[0][0]) return points[0][1];
-  for (let i = 1; i < points.length; i += 1) {
-    const [x0, y0] = points[i - 1];
-    const [x1, y1] = points[i];
-    if (speedKmh <= x1) return y0 + ((y1 - y0) * (speedKmh - x0)) / (x1 - x0);
-  }
-  return points[points.length - 1][1];
-}
-
 function computeMetForActivity(activity, speedKmh) {
   if (activity === ACTIVITY_WALK) return computeWalkOrRunMet(speedKmh, false);
   if (activity === ACTIVITY_RUN) return computeWalkOrRunMet(speedKmh, true);
-  if (activity === ACTIVITY_CYCLE) return computeCyclingMet(speedKmh);
   return 0; // parado - nunca chamado (ver onPositionUpdate, parado nao gera segmento)
 }
 
@@ -407,67 +202,40 @@ function computeSegmentCalories(activity, speedKmh, durationSeconds) {
 // A soma por segmento (sessionCaloriesKcal) CONTINUA a existir, so que
 // apenas para o mostrador ao vivo durante o treino: ali um erro nao
 // persiste, e ter feedback imediato a cada leitura vale mais que a precisao.
-// CORRECAO 2026-08-15 (secção 4.6), provada contra o relogio do Bernardo:
-// a bicicleta precisa do tempo EM MOVIMENTO, nao do relogio de parede.
 //
-// Porque so a bicicleta: a caminhada/corrida usa a equacao do ACSM, que e
-// LINEAR na velocidade. Substituindo v = d/t na formula, o t corta-se:
+// A caminhada/corrida usa a equacao do ACSM, que e LINEAR na velocidade.
+// Substituindo v = d/t na formula, o t corta-se:
 //
 //   kcal = peso x (0,476 x distancia_km + horas)
 //
 // ou seja, o tempo parado entra sozinho a 1 MET - exatamente o metabolismo
-// em repouso, que e o valor certo. A diluicao cancela-se por construcao, e
-// por isso nunca deu problema a andar a pe.
+// em repouso, que e o valor certo. A diluicao cancela-se por construcao.
+// (Ate 2026-09-10 havia aqui um ramo para a bicicleta, cuja tabela por
+// faixas NAO tinha esse cancelamento e precisava do tempo em movimento; saiu
+// com o modo bicicleta.)
 //
-// A bicicleta usa uma TABELA POR FAIXAS. Aí a diluicao nao se cancela: cai-se
-// numa faixa mais baixa E aplica-se essa faixa ao tempo todo. Medido na
-// sessao 108 do Bernardo (21,94 km reais em 52:41 de movimento, dentro de
-// 1:24:29 de relogio):
-//
-//   errado : 18,35 km / 1,4053 h = 13,1 km/h -> 4,0 MET -> 495 kcal
-//   certo  : 21,94 km / 0,8781 h = 24,9 km/h -> 10,0 MET -> 773 kcal
-//   relogio: 742 kcal totais
-//
-// O tempo parado passa a contar a 1 MET, como ja acontecia a pe.
-// Calorias de UM modo, a partir dos totais desse modo. E a formula da secção
-// 4.4/4.6 isolada, para poder ser aplicada uma vez por sessao ou uma vez por
-// modo sem duplicar a logica.
-function caloriasDeUmModo(distanceM, durationSeconds, mode, movingSeconds) {
+// Calorias de UM modo, a partir dos totais desse modo - isolada para poder
+// ser aplicada uma vez por sessao ou uma vez por modo sem duplicar a logica.
+function caloriasDeUmModo(distanceM, durationSeconds, mode) {
   if (!durationSeconds || durationSeconds <= 0) return 0;
   const hours = durationSeconds / 3600;
-
-  if (metIsBracketed(mode)) {
-    // Sessoes antigas nao trazem tempo de movimento: sem ele nao ha nada
-    // melhor a fazer do que o calculo antigo (nao se inventa um valor).
-    const movingHours = movingSeconds > 0 ? Math.min(movingSeconds, durationSeconds) / 3600 : 0;
-    if (movingHours > 0) {
-      const movingSpeedKmh = distanceM / 1000 / movingHours;
-      const restingHours = Math.max(0, hours - movingHours);
-      return computeMetForActivity(mode, movingSpeedKmh) * getPesoKg() * movingHours + 1.0 * getPesoKg() * restingHours;
-    }
-  }
-
   const avgSpeedKmh = distanceM / 1000 / hours;
   return computeMetForActivity(mode, avgSpeedKmh) * getPesoKg() * hours;
 }
 
 // CALORIAS POR MODO (2026-09-07, secção 4.9). Antes usava-se o MET do modo
-// DOMINANTE na sessao inteira: numa sessao mista, os quilometros de bicicleta
-// eram pagos ao MET de corrida.
+// DOMINANTE na sessao inteira. Hoje so ha Caminhar e Correr, mas uma sessao
+// ainda pode passar pelos dois.
 //
-// O cuidado aqui e nao reintroduzir o bug da secção 4.4. O tempo acumulado
-// por modo (modeTimeAccumMs) vem de creditedDurationSeconds, que e CAPADO por
-// segmento - nao serve como numero absoluto de horas, foi exatamente isso que
-// deixou uma sessao do Bernardo com 32% das calorias. O que se aproveita dele
-// e so a PROPORCAO entre modos, que sobrevive as falhas de sinal porque elas
-// afetam todos os modos por igual.
+// O tempo ATIVO real da sessao (relogio, fiavel) e repartido pelos modos na
+// proporcao de modeTimeAccumMs (so se aproveita a PROPORCAO, nao o valor
+// absoluto - esta capado por segmento), e cada fatia leva o seu proprio MET.
+// A soma das horas continua a ser a duracao real - a propriedade que a
+// secção 4.4 exige. Com um so modo a proporcao e 1 e o resultado e identico.
 //
-// Ou seja: o tempo ATIVO real da sessao (relogio, fiavel) e repartido pelos
-// modos nessa proporcao, e cada fatia leva o seu proprio MET. A soma das
-// horas continua a ser a duracao real - a propriedade que a secção 4.4 exige.
-//
-// Com um so modo, a proporcao e 1 e o resultado e identico ao anterior: nao
-// ha regressao no caso comum.
+// `movingSeconds` ja nao e usado (era so para a tabela por faixas da
+// bicicleta, removida em 2026-09-10) - mantido na assinatura porque varios
+// chamadores ainda o passam a partir de training_sessions.moving_seconds.
 function computeSessionCaloriesFromTotals(distanceM, durationSeconds, mode, movingSeconds, distanciaPorModo, tempoPorModo) {
   if (!durationSeconds || durationSeconds <= 0) return 0;
 
@@ -475,17 +243,12 @@ function computeSessionCaloriesFromTotals(distanceM, durationSeconds, mode, movi
   const somaTempos = modos.reduce((s, m) => s + (Number(tempoPorModo && tempoPorModo[m]) || 0), 0);
 
   if (modos.length <= 1 || somaTempos <= 0) {
-    return caloriasDeUmModo(distanceM, durationSeconds, mode, movingSeconds);
+    return caloriasDeUmModo(distanceM, durationSeconds, mode);
   }
 
   return modos.reduce((total, m) => {
     const fatia = (Number(tempoPorModo[m]) || 0) / somaTempos;
-    return total + caloriasDeUmModo(
-      distanciaPorModo[m],
-      durationSeconds * fatia,
-      m,
-      (movingSeconds || 0) * fatia
-    );
+    return total + caloriasDeUmModo(distanciaPorModo[m], durationSeconds * fatia, m);
   }, 0);
 }
 
@@ -512,12 +275,12 @@ function reparticaoDaSessao() {
 // Tempo (ms) acumulado em cada atividade nesta sessao - decide o "modo
 // dominante" (o que ocupou mais tempo), gravado em training_sessions.mode
 // e usado pelas conquistas de ritmo/recorde pessoal por modo (secção 10).
-let modeTimeAccumMs = { caminhar: 0, correr: 0, bicicleta: 0 };
+let modeTimeAccumMs = { caminhar: 0, correr: 0 };
 
 function getDominantMode() {
   let best = "correr";
   let bestMs = 0;
-  [ACTIVITY_WALK, ACTIVITY_RUN, ACTIVITY_CYCLE].forEach((mode) => {
+  [ACTIVITY_WALK, ACTIVITY_RUN].forEach((mode) => {
     if ((modeTimeAccumMs[mode] || 0) > bestMs) {
       bestMs = modeTimeAccumMs[mode];
       best = mode;
@@ -596,25 +359,8 @@ function resetGpsDiag() {
     paradoIgnorado: 0,      // classificado "parado" (pausa automatica)
     maxGapMs: 0,            // maior intervalo entre leituras consecutivas
     somaPrecisaoM: 0,       // para a media de precisao no fim
-    // Filtro de passada (secção 4.3) - gravado para poder CALIBRAR o
-    // limiar com dados reais de uma saida de bicicleta/corrida, em vez de
-    // o afinar por palpite.
-    stepSignalSoma: 0,
-    stepSignalAmostras: 0,
-    stepSignalMax: 0,
-    desempatesParaBicicleta: 0, // vezes que o filtro corrigiu caminhar/correr -> bicicleta
-    // Distribuicoes, nao so media/maximo (2026-08-14): duas realidades muito
-    // diferentes podem ter a mesma media, e era essa ambiguidade que impedia
-    // decidir. Ver STEP_INTENSITY_BUCKETS/STEP_CADENCE_BUCKETS.
-    stepIntensityHist: new Array(STEP_INTENSITY_BUCKETS.length + 1).fill(0),
-    stepCadenceHist: new Array(STEP_CADENCE_BUCKETS.length + 1).fill(0),
-    stepCadenceSoma: 0,
-    stepCadenceMax: 0,
-    // Distribuicao de velocidades (2026-08-14): a regra "houve descidas, logo
-    // nao foi a correr" so funciona se o percurso TIVER descidas - numa volta
-    // plana nunca dispara. Guardar a distribuicao permite ver, com dados de
-    // varias saidas, se ha algum padrao de velocidade que separe as
-    // atividades independentemente do terreno.
+    // Distribuicao de velocidades: quanto tempo a sessao passou em cada
+    // faixa (e nao so a media/maximo).
     velocidadeMaxKmh: 0,
     velocidadeHist: new Array(SPEED_BUCKETS.length + 1).fill(0),
     // Pontos cegos tapados em 2026-08-14: o diagnostico dizia o TAMANHO de
@@ -683,28 +429,14 @@ function buildGpsDiagRecord() {
     // visibilitychange nao esta a apanhar as pausas (tipico do iOS a
     // bloquear o ecra).
     segundosSemLeituras: Math.round(gpsDiag.msSemLeituras / 1000),
-    // Config em vigor na altura - sem isto, um diagnostico antigo fica
-    // impossivel de interpretar depois de alguem mexer no card de Debug.
-    acelerometro: motionListenerAttached,
-    stepSignalMedio: gpsDiag.stepSignalAmostras > 0
-      ? Math.round((gpsDiag.stepSignalSoma / gpsDiag.stepSignalAmostras) * 100) / 100
-      : null,
-    stepSignalMax: Math.round(gpsDiag.stepSignalMax * 100) / 100,
-    stepCadenceMedioHz: gpsDiag.stepSignalAmostras > 0
-      ? Math.round((gpsDiag.stepCadenceSoma / gpsDiag.stepSignalAmostras) * 100) / 100
-      : null,
-    stepCadenceMaxHz: Math.round(gpsDiag.stepCadenceMax * 100) / 100,
     // Limites incluidos no proprio registo: sem isto, um histograma antigo
     // fica impossivel de ler depois de os baldes mudarem.
-    stepIntensityBuckets: STEP_INTENSITY_BUCKETS,
-    stepCadenceBuckets: STEP_CADENCE_BUCKETS,
     speedBuckets: SPEED_BUCKETS,
     velocidadeMaxKmh: Math.round(gpsDiag.velocidadeMaxKmh * 10) / 10,
     config: {
       maxAccuracyM: getMaxAccuracyM(),
       minMovementM: getMinMovementM(),
       maxSafeSpeedKmh: getMaxSafeSpeedKmh(),
-      stepSignalThresholdMs2: getStepSignalThresholdMs2(),
     },
   };
 }
@@ -851,17 +583,10 @@ function updateGpsDiagDisplay() {
   }
   gpsDiagEl.classList.remove("hidden");
   const wake = !("wakeLock" in navigator) ? "n/d" : wakeLockSentinel ? "on" : "off";
-  // Passada ao vivo: e com este numero que se calibra o limiar - basta
-  // olhar para o telemovel a pedalar e a andar e ver os dois valores.
-  const passada = !stepSignalReady
-    ? "passada n/d"
-    : `passada ${stepSignalIntensity().toFixed(2)}/${getStepSignalThresholdMs2()}` +
-      ` (${gpsDiag.desempatesParaBicicleta} desemp.)`;
   gpsDiagEl.textContent =
     `GPS ${gpsDiag.leituras} · ok ${gpsDiag.creditadas} · <mín ${gpsDiag.abaixoMovimentoMin}` +
     ` · precisão ${gpsDiag.rejeitadasPrecisao} · veloc. ${gpsDiag.rejeitadasVelocidade}` +
-    ` · parado ${gpsDiag.paradoIgnorado} · gap máx ${(gpsDiag.maxGapMs / 1000).toFixed(0)}s · ecrã ${wake}` +
-    ` · ${passada}`;
+    ` · parado ${gpsDiag.paradoIgnorado} · gap máx ${(gpsDiag.maxGapMs / 1000).toFixed(0)}s · ecrã ${wake}`;
 }
 
 let liveStatsIntervalId = null;
@@ -1055,11 +780,11 @@ function onPositionUpdate(position) {
     const speedMps = deltaSeconds > 0 ? segmentM / deltaSeconds : Infinity;
     const speedKmh = speedMps * 3.6;
 
-    // Teto de seguranca UNICO (2026-08-10, substitui os tetos/pisos por
-    // modo de antes de existir deteccao automatica - secção 4.1/17.1 da
-    // documentação) - so filtra erro de GPS/veiculo (nenhum humano sustem
-    // isto a pe/de bicicleta), nao decide esforco (isso e a formula MET,
-    // mais abaixo, aplicada a qualquer velocidade dentro do teto).
+    // Teto de seguranca UNICO (2026-08-10; baixado para ~16 km/h em
+    // 2026-09-10 com a remocao da bicicleta). Acima dele a distancia e
+    // DESCARTADA - deixou de haver atividade a pe que sustente isto, e a
+    // bicicleta/veiculo nao contam. Nao decide esforco dentro do teto (isso
+    // e a formula MET, mais abaixo).
     if (speedKmh > getMaxSafeSpeedKmh()) {
       // A ancora avanca SEMPRE a partir daqui (linha lastPosition = ... no
       // fim da funcao, ja fora deste bloco) - mesmo numa rejeicao. Antes
@@ -1262,7 +987,7 @@ let trainingCountdownIntervalId = null;
 function showTrainingCountdown() {
   let secondsLeft = TRAINING_COUNTDOWN_SECONDS;
   trainingCountdownMessageEl.textContent =
-    "A atividade (Caminhar/Correr/Bicicleta) é detetada automaticamente pelo teu ritmo ao longo do treino.";
+    "A atividade (Caminhar ou Correr) é detetada automaticamente pelo teu ritmo ao longo do treino.";
   trainingCountdownNumberEl.textContent = String(secondsLeft);
   trainingCountdownModalEl.classList.remove("hidden");
 
@@ -1301,12 +1026,6 @@ function startTraining() {
     return;
   }
 
-  // Pedido AQUI (e nao em beginTrainingSession) de proposito: no iOS a
-  // permissao de acelerometro so pode ser pedida a partir de um gesto do
-  // utilizador, e este e o clique. Nao se espera pela resposta - se for
-  // recusada, a classificacao fica so por velocidade (secção 4.3).
-  startMotionSensing();
-
   showTrainingCountdown();
 }
 
@@ -1331,7 +1050,7 @@ function beginTrainingSession() {
   currentActiveMode = null;
   pendingMode = null;
   pendingModeSinceMs = null;
-  modeTimeAccumMs = { caminhar: 0, correr: 0, bicicleta: 0 };
+  modeTimeAccumMs = { caminhar: 0, correr: 0 };
   resetGpsDiag();
   updateDistanceDisplay();
   showTrainingScreen();
@@ -1469,7 +1188,6 @@ function stopTraining() {
   }
   stopLiveStatsTicker();
   releaseWakeLock();
-  stopMotionSensing();
 
   // Uma visita por hexagono e por sessao (secção 21). Feito aqui, no fim, e
   // nao a cada leitura.
@@ -1548,7 +1266,8 @@ function stopTraining() {
       // dados: sem a proporcao de tempo nao se conseguia refazer a conta.
       time_by_mode: sessionTimeByMode,
       duration_seconds: sessionDurationSeconds,
-      // Tempo em movimento (secção 4.6) - o MET da bicicleta sai daqui.
+      // Tempo em movimento - ja nao entra nas calorias (era para a tabela por
+      // faixas da bicicleta, removida em 2026-09-10); mantido como registo.
       moving_seconds: sessionMoving,
       // Tempo em pausa e calorias totais (secção 4.7) - calories_kcal
       // continua a ser so o ATIVO, que e o que conta para XP.
@@ -1655,10 +1374,6 @@ function resumeTrainingIfNeeded() {
     updatePauseDisplay();
     pauseTickerId = setInterval(updatePauseDisplay, 1000);
   }
-  // Best-effort apos um refresh: no Android volta a ligar sozinho; no iOS
-  // a permissao exige um gesto do utilizador, por isso pode nao voltar ate
-  // ao proximo treino iniciado a mao (secção 4.3).
-  startMotionSensing();
 }
 
 // --- Treinos de hoje (2026-08-10, secção 17.2) -----------------------------
@@ -1752,17 +1467,18 @@ async function renderTodaysTrainings() {
 // renderModeFixControl/wireModeFixControls em renderTodaysTrainings acima, e
 // o CSS .training-mode-fix.
 //
-// Porque existe: a velocidade sozinha nao distingue pedalar de andar/correr
-// quando o ritmo cai na mesma faixa (reportado no terreno: a subir devagar
-// deu "caminhar", em reta deu "corrida"), e o desempate por acelerometro
-// mede AMPLITUDE, que se provou nao separar as atividades (secção 4.3).
-// Enquanto nao houver um discriminador que funcione, isto garante que
-// nenhum treino fica mal contado - e evita ter de corrigir a mao na base de
-// dados, como aconteceu varias vezes.
+// Porque existe: a classificacao por velocidade pode enganar-se junto ao
+// limiar caminhar/correr (ACTIVITY_WALK_MAX_KMH). Enquanto nao houver
+// confianca total nela, isto garante que nenhum treino fica mal contado - e
+// evita ter de corrigir a mao na base de dados, como aconteceu varias vezes.
+// (Servia tambem para corrigir bicicleta -> a pe; a bicicleta foi removida
+// em 2026-09-10.)
 //
 // Nao contraria a decisao original de nao escolher o modo ANTES do treino:
 // isto corrige DEPOIS, so quando a app se enganou.
-const MODE_FIX_OPTIONS = ["caminhar", "correr", "bicicleta"];
+// Sem "bicicleta" desde 2026-09-10 - serve tambem para converter sessoes
+// antigas de bicicleta em caminhar/correr.
+const MODE_FIX_OPTIONS = ["caminhar", "correr"];
 
 function renderModeFixControl(session) {
   const options = MODE_FIX_OPTIONS.map(
@@ -1848,8 +1564,8 @@ async function recomputeRecordsFromSessions() {
 
   if (error || !data) return;
 
-  const bestDistance = { caminhar: 0, correr: 0, bicicleta: 0 };
-  const bestPace = { caminhar: 0, correr: 0, bicicleta: 0 };
+  const bestDistance = { caminhar: 0, correr: 0 };
+  const bestPace = { caminhar: 0, correr: 0 };
   let bestCalories = 0;
 
   data.forEach((s) => {
@@ -1864,10 +1580,8 @@ async function recomputeRecordsFromSessions() {
 
   localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M, String(bestDistance.correr));
   localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M_CAMINHAR, String(bestDistance.caminhar));
-  localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M_BICICLETA, String(bestDistance.bicicleta));
   localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS, String(bestPace.correr));
   localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS_CAMINHAR, String(bestPace.caminhar));
-  localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS_BICICLETA, String(bestPace.bicicleta));
   localStorage.setItem(STORAGE_KEY_BEST_SESSION_CALORIES_KCAL, String(bestCalories));
 }
 // ===== FIM DO BLOCO TEMPORARIO =============================================

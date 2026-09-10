@@ -90,16 +90,18 @@ const LEVEL_UP_POINTS = 1;
 // --- Filtros de GPS (secção 4) --------------------------------------------
 const MAX_ACCURACY_M = 20;
 const MIN_MOVEMENT_M = 3;
-// Teto de seguranca UNICO (2026-08-10, substitui os tetos/pisos por modo que
-// existiam antes de haver deteccao automatica de atividade, secção 4.1) - so
-// filtra erro de GPS/veiculo (nenhum humano sustem isto a pe/de bicicleta),
-// nao decide esforco (isso e a formula MET, por velocidade real de cada
-// segmento).
-const MAX_SAFE_SPEED_KMH = 45;
+// Teto de seguranca UNICO. Ate 2026-09-10 era 45 km/h (so filtrava erro de
+// GPS/veiculo, deixando a bicicleta contar); com a bicicleta removida (a
+// pedido) baixou para 16 - acima disso a distancia e DESCARTADA (nao ha
+// atividade a pe que sustente este ritmo, e pedalar/andar de carro nao
+// contam). Fica um pouco acima do limiar de corrida (ACTIVITY_RUN_MAX_KMH)
+// para nao penalizar um sprint curto ou um pico de GPS num treino a serio.
+const MAX_SAFE_SPEED_KMH = 16;
 
 // Limiares que classificam cada segmento por atividade (pela velocidade
 // media de uma janela deslizante) - so escolhem QUAL formula MET usar
-// (andar/correr/bicicleta), ja nao bloqueiam nada.
+// (andar/correr), ja nao bloqueiam nada. Acima de ACTIVITY_RUN_MAX_KMH e
+// "correr", ate ao teto de seguranca acima.
 const ACTIVITY_STOPPED_MAX_KMH = 2;
 const ACTIVITY_WALK_MAX_KMH = 6.5;
 const ACTIVITY_RUN_MAX_KMH = 14;
@@ -114,16 +116,6 @@ const ACTIVITY_RUN_MAX_KMH = 14;
 const ACTIVITY_WINDOW_SECONDS = 20;
 const ACTIVITY_HYSTERESIS_SECONDS = 8;
 
-// Desempate por acelerometro (2026-08-12, secção 4.3): so a velocidade nao
-// distingue "pernas a mexer" de "rodas a rolar" - a subir de bicicleta
-// devagar a velocidade cai nas faixas de caminhar/correr. Desvio-padrao
-// (m/s2) da magnitude da aceleracao acima do qual se considera que HA
-// passada. ATENCAO: os primeiros dados reais (2026-08-14) mostram que este
-// valor NAO separa as duas atividades - pedalar mediu 4.26 e caminhar 5.83,
-// ambos muito acima de 1.2, por isso o desempate praticamente nunca dispara.
-// O discriminador certo e a frequencia (cadencia da passada), nao a
-// amplitude. Por resolver - ver secção 4.3.
-const STEP_SIGNAL_THRESHOLD_MS2 = 1.2;
 
 // Resolucao H3 dos hexagonos de descoberta (secção 18). 9 = ~427m de
 // diametro, ~0.11 km2, ~14 hexagonos numa caminhada de 5km - medido, nao
@@ -183,7 +175,6 @@ function getActivityWalkMaxKmh() { return ACTIVITY_WALK_MAX_KMH; }
 function getActivityRunMaxKmh() { return ACTIVITY_RUN_MAX_KMH; }
 function getActivityWindowSeconds() { return ACTIVITY_WINDOW_SECONDS; }
 function getActivityHysteresisSeconds() { return ACTIVITY_HYSTERESIS_SECONDS; }
-function getStepSignalThresholdMs2() { return STEP_SIGNAL_THRESHOLD_MS2; }
 function getHexResolution() { return HEX_RESOLUTION; }
 function getMiniBossLevelStep() { return MINI_BOSS_LEVEL_STEP; }
 function getBossLevelStep() { return BOSS_LEVEL_STEP; }

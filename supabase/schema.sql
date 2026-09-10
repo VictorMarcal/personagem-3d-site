@@ -476,3 +476,12 @@ alter table public.player_progress
 --                       concluidas: [slot...], rejeitadaEm: ts | null }
 alter table public.player_progress
   add column if not exists missoes_mensais jsonb not null default '{}';
+
+-- Migracao (2026-09-10): o modo de treino BICICLETA foi removido (a pedido,
+-- secção 4.1). O codigo deixa de escrever/ler
+-- `best_session_distance_m_bicicleta` e `best_pace_mps_bicicleta` (e as
+-- conquistas `*_bicicleta`). As colunas NAO sao apagadas - mesma convencao
+-- da remocao das moedas: nunca apagar colunas so por deixarem de ser lidas,
+-- para nao partir a sincronizacao de clientes com JS antigo em cache.
+-- Sessoes antigas em `training_sessions` com mode='bicicleta' ficam como
+-- estao (historico); podem ser convertidas a mao no cartao do treino.
