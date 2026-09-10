@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.7.1",
+    title: "Custo do Escudo Afinado",
+    changes: [
+      "O Escudo passa a pedir madeira (a armação), pele no início (a cobertura) e ferro a partir do nível 30 (a couraça) — deixa de ser só madeira e pele.",
+      "Lá para o nível 48 o ferro passa a pesar mais que a madeira: o escudo torna-se de ferro com núcleo de madeira.",
+    ],
+  },
+  {
     version: "v6.7.0",
     title: "Equipamento até ao Nível 100",
     changes: [

@@ -602,12 +602,13 @@ base: Arma (Ataque) = 5, Escudo (Defesa) = 2, Armadura (Vida) = 3
 | **Arco** (a pedido) | madeira (corpo — sempre, e sempre a maior) | 1–99 | 35 | 1,06 |
 | | pele (corda / punho) | 1–29 | 22 | 1,06 |
 | | ferro (pontas / reforço) | 30–99 | 110 | 1,065 |
-| **Escudo** (provisório) | madeira (armação — sempre, a maior) | 1–99 | 32 | 1,06 |
-| | pele (cobertura) | 1–99 | 18 | 1,06 |
+| **Escudo** (a pedido, v6.7.1) | madeira (armação) | 1–99 | 30 | 1,06 |
+| | pele (cobertura) | 1–29 | 25 | 1,06 |
+| | ferro (couraça / umbo) | 30–99 | 150 | 1,065 |
 | **Armadura** (provisório) | pele (base — sempre, a maior) | 1–99 | 30 | 1,06 |
 | | ferro (placas / rebites) | 1–99 | 20 | 1,062 |
 
-Totais Nv 1→100: **Arco** madeira ~186 k + pele ~1,6 k + ferro ~137 k ≈ **325 k**; Escudo ≈ 260 k; Armadura ≈ 290 k. (A Fortaleza são ~1,34 M.) **Números provisórios** — só o Arco foi desenhado; Escudo/Armadura a afinar.
+Totais Nv 1→100: **Arco** ≈ **325 k** (madeira ~186 k + pele ~1,6 k + ferro ~137 k); **Escudo** ≈ **349 k** (madeira ~160 k + pele ~1,8 k + ferro ~187 k — o ferro passa a madeira lá para o Nv 48, "escudo de ferro com núcleo de madeira"); **Armadura** ≈ 290 k (**provisório**). A Fortaleza são ~1,34 M.
 
 **Modelo 3D novo a cada 5 níveis** (v6.7.0, `refreshWeaponModel` / `weaponModelIndexForLevel = ⌊Lv/5⌋+1` em `js/main.js`, mesmo padrão da torre da secção 9): `WEAPON_MODEL_COUNT` conta quantos `assets/Bows/BowN.glb` existem; enquanto for 0, usa-se o `assets/Bow.glb` único. Sem HEAD-checks nem 404s.
 

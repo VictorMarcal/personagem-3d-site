@@ -153,10 +153,10 @@ const EQUIP_SECONDARY_MAX = 20;
 // Cada peca tem uma curva por recurso com janela de niveis, mesmo molde da
 // Fortaleza (secção 21): `base * fator ^ (nivel_de_origem - entrada)`. A
 // necessidade de cada recurso sobe sempre dentro da sua janela e o total
-// nunca desce. O ARCO foi desenhado a pedido (2026-09-11); ESCUDO e ARMADURA
-// usam curvas provisorias no mesmo espirito, ainda por afinar.
-//   Arco:     madeira (corpo - sempre, e sempre a maior) + pele (corda, ate Nv 30) + ferro (pontas, do Nv 30)
-//   Escudo:   madeira (armacao - sempre, a maior) + pele (cobertura - sempre)
+// nunca desce. Arco e Escudo desenhados a pedido (2026-09-11); ARMADURA
+// ainda com curva provisoria.
+//   Arco:   madeira (corpo - sempre, e sempre a maior) + pele (corda, ate Nv 30) + ferro (pontas, do Nv 30)
+//   Escudo: madeira (armacao) + pele (cobertura, ate Nv 30) + ferro (couraca/umbo, do Nv 30 - passa a madeira ~Nv 48, "escudo de ferro com nucleo de madeira")
 //   Armadura: pele (base - sempre, a maior) + ferro (placas/rebites - sempre)
 const EQUIP_COST_CURVES = {
   arma: [
@@ -165,8 +165,9 @@ const EQUIP_COST_CURVES = {
     { recurso: "ferro",   de: 30, ate: 99, base: 110, fator: 1.065 },
   ],
   escudo: [
-    { recurso: "madeira", de: 1, ate: 99, base: 32, fator: 1.06 },
-    { recurso: "pele",    de: 1, ate: 99, base: 18, fator: 1.06 },
+    { recurso: "madeira", de: 1,  ate: 99, base: 30,  fator: 1.06 },
+    { recurso: "pele",    de: 1,  ate: 29, base: 25,  fator: 1.06 },
+    { recurso: "ferro",   de: 30, ate: 99, base: 150, fator: 1.065 },
   ],
   armadura: [
     { recurso: "pele",  de: 1, ate: 99, base: 30, fator: 1.06 },
