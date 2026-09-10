@@ -1235,6 +1235,8 @@ Sem essa separação, desenhar o painel gravava no `localStorage` **uma vez por 
 
 O ticker **só corre com a sub-aba visível** e pára quando a página fica escondida — o erro que a cena 3D tinha (secção 4.8) não se repete aqui.
 
+**Uma casa decimal no stock que se TEM** (`formatRecursoStock`, 2026-09-10): o painel e a carteira mostravam o stock com `Math.floor` (`formatRecurso`), o que escondia a diferença de taxa entre recursos — com uma mina de pedra, a pedra rende +0,5/h que os outros, mas "4,9" e "4,4" apareciam ambos como "4" e parecia que a produção estava parada/igual. `formatRecursoStock` mostra uma casa decimal abaixo de 1000 (onde a diferença se vê) e volta a inteiro acima. O **tecto e os custos** continuam com `formatRecurso` (inteiro) — é o que faz sentido para um preço.
+
 ### O que fica por fazer
 
 - **O mar não é azul.** Precisa de dados de terra/água que não temos; ambos os jogadores são de zona interior, por isso não muda nada hoje.
