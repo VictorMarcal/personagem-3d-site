@@ -8,10 +8,11 @@
 const CHANGELOG = [
   {
     version: "v6.7.1",
-    title: "Custo do Escudo Afinado",
+    title: "Custo do Escudo e da Armadura",
     changes: [
-      "O Escudo passa a pedir madeira (a armação), pele no início (a cobertura) e ferro a partir do nível 30 (a couraça) — deixa de ser só madeira e pele.",
-      "Lá para o nível 48 o ferro passa a pesar mais que a madeira: o escudo torna-se de ferro com núcleo de madeira.",
+      "O Escudo passa a pedir madeira (a armação), pele no início (a cobertura) e ferro a partir do nível 30 (a couraça). Lá para o nível 48 o ferro passa a pesar mais que a madeira: escudo de ferro com núcleo de madeira.",
+      "A Armadura tem a pele como material principal do início ao fim, com madeira até ao nível 30 (o forro) e ferro a partir daí (as placas).",
+      "As três peças ficam com curvas de custo definitivas, cada uma no mesmo espírito da Fortaleza.",
     ],
   },
   {

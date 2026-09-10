@@ -605,10 +605,11 @@ base: Arma (Ataque) = 5, Escudo (Defesa) = 2, Armadura (Vida) = 3
 | **Escudo** (a pedido, v6.7.1) | madeira (armação) | 1–99 | 30 | 1,06 |
 | | pele (cobertura) | 1–29 | 25 | 1,06 |
 | | ferro (couraça / umbo) | 30–99 | 150 | 1,065 |
-| **Armadura** (provisório) | pele (base — sempre, a maior) | 1–99 | 30 | 1,06 |
-| | ferro (placas / rebites) | 1–99 | 20 | 1,062 |
+| **Armadura** (a pedido, v6.7.1) | pele (base de couro — predominante) | 1–99 | 35 | 1,06 |
+| | madeira (forro) | 1–29 | 20 | 1,06 |
+| | ferro (placas / rebites) | 30–99 | 130 | 1,06 |
 
-Totais Nv 1→100: **Arco** ≈ **325 k** (madeira ~186 k + pele ~1,6 k + ferro ~137 k); **Escudo** ≈ **349 k** (madeira ~160 k + pele ~1,8 k + ferro ~187 k — o ferro passa a madeira lá para o Nv 48, "escudo de ferro com núcleo de madeira"); **Armadura** ≈ 290 k (**provisório**). A Fortaleza são ~1,34 M.
+Totais Nv 1→100: **Arco** ≈ **325 k** (madeira ~186 k + pele ~1,6 k + ferro ~137 k); **Escudo** ≈ **349 k** (madeira ~160 k + pele ~1,8 k + ferro ~187 k — o ferro passa a madeira lá para o Nv 48); **Armadura** ≈ **313 k** (pele ~186 k + madeira ~1,5 k + ferro ~126 k). A Fortaleza são ~1,34 M. Cada peça tem um recurso **predominante** que é sempre a maior necessidade (arco/escudo: madeira até dado nível; armadura: pele sempre).
 
 **Modelo 3D novo a cada 5 níveis** (v6.7.0, `refreshWeaponModel` / `weaponModelIndexForLevel = ⌊Lv/5⌋+1` em `js/main.js`, mesmo padrão da torre da secção 9): `WEAPON_MODEL_COUNT` conta quantos `assets/Bows/BowN.glb` existem; enquanto for 0, usa-se o `assets/Bow.glb` único. Sem HEAD-checks nem 404s.
 
