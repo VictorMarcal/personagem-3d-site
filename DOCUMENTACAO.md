@@ -1206,17 +1206,32 @@ Uma semana parado custa 0,25 (12% da produção), recuperável em três treinos.
 
 O tecto da Fortaleza é o que limita a evolução: não se compra um upgrade de 8 000 se só se conseguem guardar 2 000. É a **primeira escolha a sério** do sistema — gastar já em equipamento ou investir em capacidade.
 
-O custo de cada nível é uma **fração do tecto anterior** (55%), e não uma curva própria. Não é estética: a primeira versão tinha uma curva independente e criava um **bloqueio circular** — o nível 1 guardava 200 e o nível 2 custava 386, ou seja, nunca se conseguia pagar. Definido como fração, é impossível por construção.
+**100 níveis (v6.6.0, 2026-09-11, a pedido — eram 10.)** `WAREHOUSE_MAX_LEVEL = 100`. O **tecto de armazenamento** continua `warehouseCap(n) = 200 × n^1,7` (por recurso), agora até ao Nv 100 (~502 000).
+
+**O custo de melhoria passou a ter curva própria por recurso** (`WAREHOUSE_COST_CURVES` em `js/resources.js`, v6.6.0 — até aqui era uma fração fixa do tecto anterior). Cada recurso é `base × fator^(nível − entrada)` dentro de uma **janela de níveis**, e a Fortaleza percorre os materiais pela ordem da construção:
+
+| Recurso | Janela (Nv) | base | fator |
+|---|:-:|--:|--:|
+| Madeira | 1 – 49 | 100 | 1,05 |
+| Pele | 1 – 29 | 22 | 1,075 |
+| Pedra | 30 – 49 | 200 | 1,075 |
+| Pedra | 50 – 99 | 1 200 | 1,075 |
+| Barro | 50 – 99 | 700 | 1,075 |
+| Ferro | 75 – 99 | 5 800 | 1,075 |
+
+Regras do design: **(1)** a necessidade de cada recurso **sobe sempre** dentro da sua janela; **(2)** o **total nunca desce**, mesmo nas trocas (pele→pedra ao Nv 30, madeira→barro ao Nv 50, +ferro ao Nv 75); **(3)** a **pedra é sempre a maior** necessidade a partir do momento em que entra. A pedra tem **dois troços** — dá um degrau ao Nv 50 (base 200 → 1 200) para assumir a carga estrutural quando a madeira sai, sem quebra no total.
+
+O **bloqueio circular** que a versão-fração evitava (custo > tecto, nunca se consegue guardar o suficiente) foi verificado em toda a gama 1–100: o custo por recurso está sempre muito abaixo de `warehouseCap(n)` (folga de 8× ao Nv 100, muito mais cedo).
 
 O botão de evoluir equipamento distingue **"materiais insuficientes"** de **"precisas de uma Fortaleza maior"**: dizer o primeiro quando o problema é o segundo mandava o jogador treinar mais para continuar bloqueado.
 
-A linha da capacidade no painel (v6.1.0) é curta — `Limite: 200 → 650 por recurso` — em vez da frase antiga ("Guarda 200 de cada recurso. O nível 2 guarda 650.").
+A linha de custo no painel (`js/resources-ui.js`) mostra só os recursos ativos nesse nível, ícone + quantidade, pela ordem da construção (`WAREHOUSE_COST_ORDER`).
 
 ### Números provisórios, e porquê
 
 Foram derivados do ritmo real dos dois jogadores no primeiro mês (30–40 hexágonos/semana) — a fase em que tudo à volta de casa é novo. **Vão estar errados.** Como o próprio jogador observou: *"nunca sabemos quais hexágonos alguém vai desbloquear nem que distâncias vai percorrer"*.
 
-A resposta não é melhor matemática, é **tornar o erro barato**: tudo em `js/resources.js` é calculado ao vivo e nada é gravado já resolvido. Mudar qualquer constante reavalia a economia inteira sem migração — exatamente como aconteceu com o `LEVEL_BASE`, que esteve 7× errado e se corrigiu com um número.
+A resposta não é melhor matemática, é **tornar o erro barato**: tudo em `js/resources.js` é calculado ao vivo e nada é gravado já resolvido. Mudar qualquer constante (produção, `WAREHOUSE_COST_CURVES`, tecto) reavalia a economia inteira sem migração — exatamente como aconteceu com o `LEVEL_BASE`, que esteve 7× errado e se corrigiu com um número.
 
 ### O mapa: satélite desfocado com ícones por cima
 
@@ -1251,7 +1266,8 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 
 - **O mar não é azul.** Precisa de dados de terra/água que não temos; ambos os jogadores são de zona interior, por isso não muda nada hoje.
 - As moedas foram removidas do jogo em 2026-09-08 (secção 7). As colunas `moedas`/`total_moedas_ganhas`/`total_moedas_gastas` ficam na tabela (já não lidas) — um `drop column` partiu a sincronização de clientes com JS antigo em cache e foi revertido.
-- **Pedra e barro morrem** quando a Fortaleza chegar ao nível 10.
+- ~~Pedra e barro morrem quando a Fortaleza chegar ao nível 10.~~ **Resolvido em v6.6.0**: a Fortaleza tem 100 níveis e o custo de melhoria percorre madeira → pele → pedra → barro → ferro (secção "A Fortaleza destranca o equipamento"). Nenhum recurso fica sem uso.
+- **Ritmo do endgame por afinar.** À produção de 30/h, o Nv 99→100 leva ~46 dias só do recurso dominante e o jogo todo ≈ 1,5–2 anos. Provisório — mexe-se nos `fator` das `WAREHOUSE_COST_CURVES` quando houver produção real de fim de jogo para comparar.
 - ~~As visitas por hexágono só existem em `localStorage`.~~ **Toda a economia sincroniza desde 2026-09-09** (stock, `recursos_desde`, nível da Fortaleza, minas encontradas, multiplicadores dos hexágonos) — colunas novas em `player_progress`, reconciliação na secção 14.1. O stock **acumula offline** na mesma: a produção nunca é um temporizador, é `checkpoint + taxa × (agora − recursos_desde)`, com `recursos_desde` parado no `localStorage`/servidor enquanto a app está fechada. Um checkpoint é fixado no login (`acumularProducao()` em `bootstrapAfterLogin`, já com hexágonos/minas hidratados) para o servidor ter sempre um valor recente mesmo de um jogador que só olha para a Economia. **É também esse `acumularProducao()` pós-hidratação que projeta a produção da janela offline** — a reconciliação (secção 14.1) já não projeta o stock, só junta as bases e preserva o checkpoint mais antigo, senão a produção da mina saía à taxa base (bug de 2026-09-10: a pedra com uma mina rendia 4,9/h mas só ficava 0,1 à frente das outras, porque o merge no login recreditava-a a 4,4/h sem o bónus).
 
 ## 22. Missões mensais (2026-09-10)
