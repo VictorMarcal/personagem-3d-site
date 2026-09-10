@@ -9,6 +9,10 @@
 // botao nunca explica se da ou nao da: o ESTADO dele e que diz. Laranja =
 // ha recursos, cinza desativado = nao ha.
 
+// Ordem em que os recursos aparecem na linha de custo da Fortaleza -
+// progressao da construcao, nao a ordem de RESOURCES (que comeca no ferro).
+const WAREHOUSE_COST_ORDER = ["madeira", "pele", "pedra", "barro", "ferro"];
+
 function renderResourcesPanel() {
   const painel = document.getElementById("resources-panel");
   const armazem = document.getElementById("warehouse-panel");
@@ -63,8 +67,14 @@ function renderResourcesPanel() {
     '<button id="btn-warehouse-upgrade" class="btn-primary"' +
     (podeSubir ? "" : ' disabled aria-disabled="true"') + ">Melhorar</button>" +
     // Custo por baixo do botao, sempre igual esteja ou nao ao alcance:
-    // o jogador aprende o preco, o botao diz-lhe se ja da.
-    '<p class="warehouse-cost">' + formatRecurso(custo.pedra) + " pedra · " + formatRecurso(custo.barro) + " barro</p>";
+    // o jogador aprende o preco, o botao diz-lhe se ja da. Os recursos
+    // ativos mudam com o nivel (madeira/pele -> pedra -> barro -> ferro),
+    // por isso mostra-se so os que estao no `custo`, pela ordem de RESOURCES.
+    '<p class="warehouse-cost">' +
+    WAREHOUSE_COST_ORDER.filter((id) => custo[id])
+      .map((id) => '<span class="warehouse-cost-item">' + icon(id, 14) + formatRecurso(custo[id]) + "</span>")
+      .join("") +
+    "</p>";
 
   const botao = document.getElementById("btn-warehouse-upgrade");
   if (botao && podeSubir) {

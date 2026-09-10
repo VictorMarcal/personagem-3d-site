@@ -164,20 +164,18 @@ function producaoPorHora() {
   return total;
 }
 
-// --- armazem ----------------------------------------------------------------
+// --- Fortaleza (armazem) --------------------------------------------------
 //
 // O tecto e o que destranca o equipamento: nao se compra um upgrade de 8000
 // se so se conseguem guardar 2000. E a primeira escolha a serio do sistema -
 // gastar ja em equipamento ou investir em capacidade.
 //
-// O custo de cada nivel e uma FRACAO DO TECTO ANTERIOR, e nao uma curva
-// propria. Nao e estetica: a primeira versao tinha uma curva independente e
-// criava um bloqueio circular - o nivel 1 guardava 200 e o nivel 2 custava
-// 386, ou seja, nunca se conseguia pagar. Assim e impossivel por construcao.
-const WAREHOUSE_MAX_LEVEL = 10;
+// 100 niveis (2026-09-11, a pedido - antes eram 10). O tecto de armazenamento
+// continua a curva `BASE * nivel^EXP`; o custo de MELHORIA passou a ter uma
+// curva propria por recurso (WAREHOUSE_COST_CURVES abaixo).
+const WAREHOUSE_MAX_LEVEL = 100;
 const WAREHOUSE_CAP_BASE = 200;
 const WAREHOUSE_CAP_EXP = 1.7;
-const WAREHOUSE_COST_FRACTION = 0.55;
 
 function warehouseCap(level) {
   const n = Math.max(1, Math.min(WAREHOUSE_MAX_LEVEL, level));
@@ -189,11 +187,36 @@ function getWarehouseLevel() {
   return Number.isFinite(n) && n >= 1 ? Math.min(WAREHOUSE_MAX_LEVEL, n) : 1;
 }
 
-// undefined quando ja esta no maximo.
+// Custo de melhoria da Fortaleza (2026-09-11, a pedido). Cada recurso e a sua
+// propria curva `base * fator ^ (nivel - entrada)` dentro de uma janela de
+// niveis - a Fortaleza comeca de madeira/pele, passa a pedra, depois barro,
+// depois ferro, e a necessidade de cada um SOBE sempre dentro da sua janela.
+// A pedra tem DOIS trocos: da um degrau ao Nv 50, quando a madeira sai, para
+// assumir a carga estrutural sem quebra no total. Regra do design: a pedra e
+// sempre a maior necessidade a partir do momento em que entra.
+//
+// O custo esta sempre MUITO abaixo do tecto do nivel (`warehouseCap`), por
+// isso nao ha bloqueio circular (nao se consegue guardar o que se precisa) -
+// verificado em toda a gama 1..100.
+const WAREHOUSE_COST_CURVES = [
+  { recurso: "madeira", de: 1,  ate: 49, base: 100,  fator: 1.05 },
+  { recurso: "pele",    de: 1,  ate: 29, base: 22,   fator: 1.075 },
+  { recurso: "pedra",   de: 30, ate: 49, base: 200,  fator: 1.075 },
+  { recurso: "pedra",   de: 50, ate: 99, base: 1200, fator: 1.075 }, // degrau ao Nv 50
+  { recurso: "barro",   de: 50, ate: 99, base: 700,  fator: 1.075 },
+  { recurso: "ferro",   de: 75, ate: 99, base: 5800, fator: 1.075 },
+];
+
+// undefined quando ja esta no maximo. Devolve um objeto { recurso: quantia }
+// so com os recursos ativos nesse nivel.
 function warehouseUpgradeCost(level) {
   if (level >= WAREHOUSE_MAX_LEVEL) return undefined;
-  const custo = Math.round(WAREHOUSE_COST_FRACTION * warehouseCap(level));
-  return { pedra: custo, barro: custo };
+  const custo = {};
+  WAREHOUSE_COST_CURVES.forEach((c) => {
+    if (level < c.de || level > c.ate) return;
+    custo[c.recurso] = (custo[c.recurso] || 0) + Math.round(c.base * Math.pow(c.fator, level - c.de));
+  });
+  return custo;
 }
 
 // --- stock ------------------------------------------------------------------

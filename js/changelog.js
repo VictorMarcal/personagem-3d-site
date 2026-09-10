@@ -7,6 +7,16 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.6.0",
+    title: "A Fortaleza até ao Nível 100",
+    changes: [
+      "A Fortaleza passa a ter 100 níveis (eram 10).",
+      "Cada melhoria custa materiais diferentes conforme o nível: começas com madeira e pele, depois entra a pedra, a partir do nível 50 o barro, e a partir do 75 o ferro. A necessidade de cada material vai sempre a subir enquanto for preciso.",
+      "A pedra é sempre o material que mais pesa, a partir do momento em que entra.",
+      "O limite de armazenamento continua a crescer com o nível, sempre com folga para o custo da melhoria seguinte.",
+    ],
+  },
+  {
     version: "v6.5.0",
     title: "Adeus à Bicicleta",
     changes: [

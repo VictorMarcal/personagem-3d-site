@@ -246,6 +246,20 @@
   color: var(--muted);
   text-align: center;
 }
+/* Custo da Fortaleza: 1 a 3 recursos (madeira/pele -> pedra -> barro -> ferro),
+   cada um icone + numero, numa linha centrada que quebra se preciso. */
+.warehouse-cost {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+}
+.warehouse-cost-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
 
 /* ---- 8. Estados desativados --------------------------------------------- */
 
