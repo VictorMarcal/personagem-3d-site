@@ -288,20 +288,6 @@ function formatRecurso(valor) {
   return Math.floor(valor).toLocaleString("pt-PT");
 }
 
-// Para MOSTRAR quanto se tem AGORA (painel da Economia, carteira). Uma casa
-// decimal enquanto os numeros sao pequenos - e onde a diferenca de taxa
-// entre recursos se ve: com uma mina de pedra, a pedra rende +0,5/h que os
-// outros, mas Math.floor mostrava "4" para a pedra a 4,9 E para o ferro a
-// 4,4. A partir de 1000 a casa decimal e so ruido (o tecto ja vai em
-// milhares) - volta a inteiro. Os custos e o tecto continuam com
-// formatRecurso (inteiro), que e o que faz sentido para um preco.
-function formatRecursoStock(valor) {
-  const n = Math.max(0, Number(valor) || 0);
-  if (n === 0) return "0";
-  if (n >= 1000) return Math.round(n).toLocaleString("pt-PT");
-  return (Math.floor(n * 10) / 10).toLocaleString("pt-PT", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-}
-
 // --- minas ------------------------------------------------------------------
 //
 // Existem 10 MINAS de cada recurso em cada concelho - 50 ao todo. Desde

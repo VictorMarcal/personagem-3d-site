@@ -33,7 +33,7 @@ function renderResourcesPanel() {
         // que o r.cor de js/resources.js, mas em traco em vez de bola cheia
         "<dt>" + icon(r.id, 17) + r.nome + "</dt>" +
         '<dd class="' + (cheio ? "resource-full" : "") + '">' +
-        formatRecursoStock(quantidade) + " / " + formatRecurso(tecto) +
+        formatRecurso(quantidade) + " / " + formatRecurso(tecto) +
         '<span class="resource-rate">' + (cheio ? "parada" : "+" + porHora[r.id].toFixed(1) + "/h") + "</span>" +
         "</dd>"
       );
@@ -96,7 +96,7 @@ function renderWallet() {
   const stock = stockAgora();
   el.innerHTML = RESOURCES.map(
     (r) =>
-      '<span class="wallet-chip">' + icon(r.id, 15) + r.nome + " " + formatRecursoStock(stock[r.id]) + "</span>"
+      '<span class="wallet-chip">' + icon(r.id, 15) + r.nome + " " + formatRecurso(stock[r.id]) + "</span>"
   ).join("");
 }
 

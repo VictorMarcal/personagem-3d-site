@@ -194,7 +194,7 @@ const MONOTONIC_PROGRESS_FIELDS = [
   "nivel_escudo",
   "nivel_armadura",
   // Nivel da Fortaleza (armazem): so sobe. (O stock de recursos em si e
-  // reconciliado a parte, ver mergeRecursos.)
+  // reconciliado a parte, ver mergeRecursosBases.)
   "nivel_fortaleza",
 ];
 
@@ -213,35 +213,41 @@ function mergeDefeatedCreatures(local, server) {
   return merged;
 }
 
-// Stock de recursos (secção 21): projeta OS DOIS lados para agora
-// (checkpoint + taxa x tempo desde o proprio recursos_desde) e fica com o
-// maior por recurso. Nunca perde producao offline; pode restaurar recursos
-// gastos noutro dispositivo (mesmo compromisso ja aceite nos campos
-// monotonicos). O recursos_desde do resultado e "agora" - o valor devolvido
-// ja esta projetado ate ca.
-function mergeRecursos(localRec, localDesde, serverRec, serverDesde, nivelFortaleza) {
-  const now = Date.now();
-  const taxa = typeof producaoPorHora === "function" ? producaoPorHora() : {};
-  const tecto = typeof warehouseCap === "function" ? warehouseCap(nivelFortaleza || 1) : Infinity;
+// Stock de recursos (secção 21): fica o MAXIMO da base em bruto por recurso,
+// SEM projecao. Nunca perde producao offline; pode restaurar recursos gastos
+// noutro dispositivo (mesmo compromisso ja aceite nos campos monotonicos).
+//
+// A projecao (base + taxa x horas) NAO e feita aqui de proposito: e feita a
+// seguir por acumularProducao() em bootstrapAfterLogin, ja com hexagonos/
+// minas/concelhos hidratados. So ai producaoPorHora() sabe o bonus das minas
+// - fazer a projecao aqui creditava os recursos de mina a taxa base (sem o
+// +0,5/h da mina), apagando a vantagem da mina a cada login (bug de
+// 2026-09-10). Por isso este merge tem de vir a par de checkpointRecursosMaisAntigo,
+// que preserva o checkpoint para acumularProducao() ter uma janela para projetar.
+function mergeRecursosBases(localRec, serverRec) {
   const ids = typeof RESOURCE_IDS !== "undefined"
     ? RESOURCE_IDS
     : [...new Set([...Object.keys(localRec || {}), ...Object.keys(serverRec || {})])];
-
-  const projetar = (rec, desde) => {
-    const horas = Number.isFinite(desde) && desde > 0 ? Math.max(0, (now - desde) / 3600000) : 0;
-    const out = {};
-    ids.forEach((id) => {
-      const base = Math.max(0, Number(rec && rec[id]) || 0);
-      out[id] = Math.min(tecto, base + (Number(taxa[id]) || 0) * horas);
-    });
-    return out;
-  };
-
-  const a = projetar(localRec, Number(localDesde));
-  const b = projetar(serverRec, Number(serverDesde));
   const merged = {};
-  ids.forEach((id) => { merged[id] = Math.max(a[id], b[id]); });
+  ids.forEach((id) => {
+    const a = Math.max(0, Number(localRec && localRec[id]) || 0);
+    const b = Math.max(0, Number(serverRec && serverRec[id]) || 0);
+    merged[id] = Math.max(a, b);
+  });
   return merged;
+}
+
+// O checkpoint (recursos_desde) do resultado do merge: o MAIS ANTIGO dos
+// dois, para acumularProducao() a seguir projetar a producao de toda a
+// janela ainda por contabilizar. Nulo/invalido de um lado -> usa o outro;
+// dos dois -> agora (nao ha nada para recuperar).
+function checkpointRecursosMaisAntigo(a, b) {
+  const na = Number(a);
+  const nb = Number(b);
+  const va = Number.isFinite(na) && na > 0 ? na : null;
+  const vb = Number.isFinite(nb) && nb > 0 ? nb : null;
+  if (va && vb) return Math.min(va, vb);
+  return va || vb || Date.now();
 }
 
 // Missoes mensais (secção 22). Meses diferentes: fica o mais recente (o
@@ -304,14 +310,12 @@ function reconcileProgressWithServer(serverProgress) {
     ...(local.unlocked_achievements || {}),
   };
 
-  // Economia de recursos (secção 21). nivel_fortaleza ja foi feito acima
-  // (monotonico); e ele que decide o tecto no merge do stock.
-  merged.recursos = mergeRecursos(
-    local.recursos, local.recursos_desde,
-    serverProgress.recursos, serverProgress.recursos_desde,
-    merged.nivel_fortaleza
-  );
-  merged.recursos_desde = Date.now(); // o stock acima ja esta projetado ate agora
+  // Economia de recursos (secção 21). O stock fica com o maximo da base em
+  // bruto e o checkpoint mais antigo dos dois; a projecao ate agora e feita
+  // logo a seguir por acumularProducao() (bootstrapAfterLogin), ja com as
+  // minas hidratadas - ver mergeRecursosBases.
+  merged.recursos = mergeRecursosBases(local.recursos, serverProgress.recursos);
+  merged.recursos_desde = checkpointRecursosMaisAntigo(local.recursos_desde, serverProgress.recursos_desde);
   merged.minas_encontradas = [
     ...new Set([...(local.minas_encontradas || []), ...(serverProgress.minas_encontradas || [])]),
   ];
