@@ -73,7 +73,7 @@ const STATIC_ACHIEVEMENTS = [
   { id: "level_25", name: "Nível 25", icon: "🏅", type: "characterLevel", threshold: 25 },
   { id: "level_50", name: "Nível 50", icon: "🏅", type: "characterLevel", threshold: 50 },
   { id: "level_100", name: "Nível 100", icon: "🏅", type: "characterLevel", threshold: 100 },
-  // Equipamento no nivel maximo (2026-08-07, a pedido) - EQUIP_MAX_LEVEL=99
+  // Equipamento no nivel maximo (2026-08-07, a pedido) - EQUIP_MAX_LEVEL=100 (2026-09-11)
   // (js/equipment.js), o mesmo teto usado pela barra de melhoria de cada
   // peca.
   { id: "weapon_maxed", name: "Arco no máximo", icon: "🏹", type: "equipmentMaxed", equip: "arma" },
@@ -816,8 +816,8 @@ function getAchievementDescription(achievement) {
       return `Chega ao Nível ${achievement.threshold}.`;
     case "equipmentMaxed":
       return achievement.equip === "todos"
-        ? "Leva a Arma, o Escudo e a Armadura todos ao nível máximo (99)."
-        : `Leva ${achievement.equip === "arma" ? "a Arma" : achievement.equip === "escudo" ? "o Escudo" : "a Armadura"} ao nível máximo (99).`;
+        ? `Leva a Arma, o Escudo e a Armadura todos ao nível máximo (${EQUIP_MAX_LEVEL}).`
+        : `Leva ${achievement.equip === "arma" ? "a Arma" : achievement.equip === "escudo" ? "o Escudo" : "a Armadura"} ao nível máximo (${EQUIP_MAX_LEVEL}).`;
     case "achievementCount":
       return `Desbloqueia ${achievement.threshold} conquistas (medalhas mensais não contam - dependem de competir com outros jogadores, não só de esforço próprio).`;
     case "sessionTime":

@@ -135,27 +135,52 @@ function computeStatValue(type, equipLevel) {
 // base^nivel cresceria para valores astronomicos por volta do nivel 90,
 // ver secção 7 da documentação):
 //   primario   = base + round(nivel ^ expoentePrimarioDaPeca)
-//   secundario = round((nivel-1)/(EQUIP_MAX_LEVEL-1) ^ EQUIP_SECONDARY_EXPONENT * EQUIP_SECONDARY_MAX)
-//   custo(nivel) = round(EQUIP_COST_BASE * nivel ^ EQUIP_COST_EXPONENT)   (custo do PASSO nivel-1 -> nivel; nivel 1 e sempre gratis)
-// 99 niveis eram decorativos: a curva antiga pedia um esforco equivalente a
-// uns 75 mil km de treino por peca. Passam a 20, todos alcancaveis.
-const EQUIP_MAX_LEVEL = 20;
+//   secundario = round(min(1,(nivel-1)/(EQUIP_SECONDARY_RAMP_LEVELS-1)) ^ EQUIP_SECONDARY_EXPONENT * EQUIP_SECONDARY_MAX)
+//
+// NIVEL MAXIMO = 100 para as 3 pecas (2026-09-11, a pedido - "nivel maximo
+// de todos os equipamentos e 100"). Cada peca ganha um modelo 3D novo a
+// cada 5 niveis (refreshWeaponModel etc. em js/main.js). O bonus SECUNDARIO
+// satura aos 20 niveis (EQUIP_SECONDARY_RAMP_LEVELS) - a partir dai um nivel
+// novo so sobe o primario e o visual, e nao ha regressao para quem ja maxou
+// aos 20 antes desta mudanca.
+const EQUIP_MAX_LEVEL = 100;
+const EQUIP_SECONDARY_RAMP_LEVELS = 20;
 const EQUIP_SECONDARY_EXPONENT = 0.5;
 const EQUIP_SECONDARY_MAX = 20;
 
-// Custo em MATERIAIS do mapa (secção 21), nao em moedas. Cada peca pede dois
-// dos tres materiais de equipamento, e os tres pares possiveis esgotam-se
-// exatamente nas tres pecas: nenhum material e privilegiado e cada um e
-// pedido por duas pecas. Todas as combinacoes explicam-se sozinhas - arco de
-// madeira com pontas de ferro, escudo de madeira coberto a pele, armadura de
-// pele com rebites de ferro.
-const EQUIP_COST_BASE = 6;
-const EQUIP_COST_EXPONENT = 2.4;
-const EQUIP_MATERIAIS = {
-  arma: ["madeira", "ferro"],
-  escudo: ["madeira", "pele"],
-  armadura: ["pele", "ferro"],
+// --- Custo de melhoria em MATERIAIS do mapa (secção 21) --------------------
+//
+// Cada peca tem uma curva por recurso com janela de niveis, mesmo molde da
+// Fortaleza (secção 21): `base * fator ^ (nivel_de_origem - entrada)`. A
+// necessidade de cada recurso sobe sempre dentro da sua janela e o total
+// nunca desce. O ARCO foi desenhado a pedido (2026-09-11); ESCUDO e ARMADURA
+// usam curvas provisorias no mesmo espirito, ainda por afinar.
+//   Arco:     madeira (corpo - sempre, e sempre a maior) + pele (corda, ate Nv 30) + ferro (pontas, do Nv 30)
+//   Escudo:   madeira (armacao - sempre, a maior) + pele (cobertura - sempre)
+//   Armadura: pele (base - sempre, a maior) + ferro (placas/rebites - sempre)
+const EQUIP_COST_CURVES = {
+  arma: [
+    { recurso: "madeira", de: 1,  ate: 99, base: 35,  fator: 1.06 },
+    { recurso: "pele",    de: 1,  ate: 29, base: 22,  fator: 1.06 },
+    { recurso: "ferro",   de: 30, ate: 99, base: 110, fator: 1.065 },
+  ],
+  escudo: [
+    { recurso: "madeira", de: 1, ate: 99, base: 32, fator: 1.06 },
+    { recurso: "pele",    de: 1, ate: 99, base: 18, fator: 1.06 },
+  ],
+  armadura: [
+    { recurso: "pele",  de: 1, ate: 99, base: 30, fator: 1.06 },
+    { recurso: "ferro", de: 1, ate: 99, base: 20, fator: 1.062 },
+  ],
 };
+
+// Materiais que uma peca pode chegar a pedir, pela ordem em que aparecem na
+// curva (para mostrar o stock no nivel maximo, quando ja nao ha custo).
+function equipMateriaisDaPeca(pieceKey) {
+  const seen = [];
+  (EQUIP_COST_CURVES[pieceKey] || []).forEach((c) => { if (!seen.includes(c.recurso)) seen.push(c.recurso); });
+  return seen;
+}
 
 const WEAPON_BASE_ATAQUE = 5;
 const SHIELD_BASE_DEFESA = 2;
@@ -178,20 +203,23 @@ function computeEquipPrimaryStat(base, level, exponent) {
 // ao nivel (que nunca chegaria exatamente a 0 no Lv1 nem a um alvo fixo
 // no Lv maximo).
 function computeEquipSecondaryStat(level) {
-  const progress = (level - 1) / (EQUIP_MAX_LEVEL - 1);
+  const progress = Math.min(1, Math.max(0, (level - 1) / (EQUIP_SECONDARY_RAMP_LEVELS - 1)));
   return Math.round(Math.pow(progress, EQUIP_SECONDARY_EXPONENT) * EQUIP_SECONDARY_MAX);
 }
 
-// Custo do PASSO para chegar a "level" (vindo de level-1), em cada um dos
-// dois materiais da peca - undefined se o nivel pedido nao fizer sentido.
-// Devolve { madeira: n, ferro: n } e nao um numero solto, para quem chama
-// nunca poder esquecer-se de qual material se trata.
+// Custo do PASSO para chegar a "level" (vindo de level-1) - undefined se o
+// nivel pedido nao fizer sentido. Devolve { recurso: n, ... } e nao um
+// numero solto, para quem chama nunca poder esquecer-se de que material se
+// trata. Cada peca usa a sua curva em EQUIP_COST_CURVES (janela por recurso).
 function computeEquipUpgradeCost(level, pieceKey) {
   if (level <= 1 || level > EQUIP_MAX_LEVEL) return undefined;
-  const porMaterial = Math.round(EQUIP_COST_BASE * Math.pow(level, EQUIP_COST_EXPONENT));
+  const de = level - 1; // custo do PASSO `de` -> `de + 1`, indexado pelo nivel de ORIGEM
   const custo = {};
-  (EQUIP_MATERIAIS[pieceKey] || []).forEach((m) => { custo[m] = porMaterial; });
-  return custo;
+  (EQUIP_COST_CURVES[pieceKey] || []).forEach((c) => {
+    if (de < c.de || de > c.ate) return;
+    custo[c.recurso] = (custo[c.recurso] || 0) + Math.round(c.base * Math.pow(c.fator, de - c.de));
+  });
+  return Object.keys(custo).length ? custo : undefined;
 }
 
 // "120 madeira + 120 ferro"
@@ -423,22 +451,25 @@ function createEquipmentUpgradeController(config) {
 
   function render() {
     const level = config.getLevel();
+    const maxLevel = EQUIP_MAX_LEVEL;
     const primary = computeEquipPrimaryStat(config.base, level, config.primaryExponent);
     const secondary = computeEquipSecondaryStat(level);
     const stock = acumularProducao();
 
-    titleEl.textContent = `${config.pieceName} — Nível ${level}/${EQUIP_MAX_LEVEL}`;
-    currentPrimaryEl.textContent = primary;
-    currentSecondaryEl.textContent = `+${secondary}`;
-    // Stock atual dos DOIS materiais desta peca - e o que o jogador
-    // precisa de comparar com o custo.
-    stockEl.textContent = (EQUIP_MATERIAIS[config.pieceKey] || [])
-      .map((id) => formatRecurso(stock[id]) + " " + RESOURCE_BY_ID[id].nome.toLowerCase())
-      .join(" · ");
-
-    const atMax = level >= EQUIP_MAX_LEVEL;
+    const atMax = level >= maxLevel;
     const nextLevel = level + 1;
     const canShowNext = !atMax;
+    const cost = canShowNext ? computeEquipUpgradeCost(nextLevel, config.pieceKey) : null;
+
+    titleEl.textContent = `${config.pieceName} — Nível ${level}/${maxLevel}`;
+    currentPrimaryEl.textContent = primary;
+    currentSecondaryEl.textContent = `+${secondary}`;
+    // Stock dos materiais QUE ESTE UPGRADE PEDE (o arco troca de materiais ao
+    // longo dos niveis) - e o que o jogador precisa de comparar com o custo.
+    // No nivel maximo cai para os materiais fixos da peca.
+    stockEl.textContent = (cost ? Object.keys(cost) : equipMateriaisDaPeca(config.pieceKey))
+      .map((id) => formatRecurso(stock[id]) + " " + RESOURCE_BY_ID[id].nome.toLowerCase())
+      .join(" · ");
 
     nextRowEl.classList.toggle("hidden", !canShowNext);
     maxedEl.classList.toggle("hidden", !atMax);
@@ -448,7 +479,6 @@ function createEquipmentUpgradeController(config) {
     if (canShowNext) {
       const nextPrimary = computeEquipPrimaryStat(config.base, nextLevel, config.primaryExponent);
       const nextSecondary = computeEquipSecondaryStat(nextLevel);
-      const cost = computeEquipUpgradeCost(nextLevel, config.pieceKey);
       nextPrimaryEl.textContent = nextPrimary + " (+" + (nextPrimary - primary) + ")";
       nextSecondaryEl.textContent = "+" + nextSecondary + " (+" + (nextSecondary - secondary) + ")";
 
@@ -492,6 +522,9 @@ function createEquipmentUpgradeController(config) {
     config.setLevel(nextLevel);
     if (typeof renderStatsHud === "function") renderStatsHud();
     if (typeof renderResourcesPanel === "function") renderResourcesPanel();
+    // O arco troca de modelo 3D a cada 5 niveis (js/main.js - so troca de
+    // facto quando o indice muda).
+    if (config.pieceKey === "arma" && typeof refreshWeaponModel === "function") refreshWeaponModel();
 
     render();
   }

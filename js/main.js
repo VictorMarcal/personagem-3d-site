@@ -524,8 +524,8 @@ function attachEquipmentToSlots() {
     // fica em identidade, MAIS 180° a volta do seu eixo comprido (Z, o
     // eixo tip-a-tip) para a corda ficar para DENTRO (virada ao heroi) e
     // nao para fora (2026-09-09, a pedido). A rotacao de 90° em
-    // loadBowModel e so o fallback para um heroi sem `BowSlot`. Corre a
-    // cada chamada (o arco pode carregar depois de o slot ja estar
+    // applyBowModel e so o fallback para um heroi sem `BowSlot`. Corre a
+    // cada chamada (o arco pode carregar/trocar depois de o slot ja estar
     // emparelhado).
     if (bowModel) {
       bowModel.position.set(0, 0, 0);
@@ -578,31 +578,54 @@ loadShieldModel();
 // fallback para quando o heroi vem sem `BowSlot` - com slot, a orientacao
 // vem do Empty do Blender e attachEquipmentToSlots poe o modelo em
 // identidade (mesmo tratamento do escudo).
+// UPGRADE VISUAL DO ARCO A CADA 5 NIVEIS (2026-09-11, a pedido - mesmo
+// padrao da torre, ver refreshTowerModel acima). weaponModelIndexForLevel
+// = floor(nivel/5) + 1. WEAPON_MODEL_COUNT = quantos assets/Bows/BowN.glb JA
+// existem; enquanto for 0 usa-se o assets/Bow.glb unico. Um jogador acima do
+// ultimo modelo feito fica com esse. Sem HEAD-checks nem 404s.
+const WEAPON_MODEL_COUNT = 0;
+function weaponModelIndexForLevel(level) {
+  return Math.floor(Math.max(1, level || 1) / 5) + 1;
+}
+
 let bowModel = null;
 let bowModelReady = false;
+let currentWeaponModelIndex = -1;
 
-function loadBowModel() {
+function applyBowModel(model) {
+  model.traverse((obj) => {
+    if (obj.isMesh) {
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+    }
+  });
+  // 90° em X e SO o fallback para um heroi sem `BowSlot` - com slot,
+  // attachEquipmentToSlots poe o modelo em identidade + BOW_STRING_INWARD_FLIP.
+  model.rotation.x = Math.PI / 2;
+  if (bowModel && bowModel.parent) bowModel.parent.remove(bowModel);
+  bow.add(model);
+  bowModel = model;
+  bowModelReady = true;
+  attachEquipmentToSlots();
+}
+
+// Carrega/troca o arco para o nivel atual da Arma. Idempotente: nao faz nada
+// se o modelo a mostrar nao mudou. Chamada no arranque, no login (o nivel
+// pode vir do servidor) e depois de evoluir a Arma (js/equipment.js).
+function refreshWeaponModel() {
+  const level = typeof getWeaponLevel === "function" ? getWeaponLevel() : 1;
+  const idx = Math.min(weaponModelIndexForLevel(level), WEAPON_MODEL_COUNT);
+  if (idx === currentWeaponModelIndex) return;
+  currentWeaponModelIndex = idx;
+  const url = idx >= 1 ? asset("assets/Bows/Bow" + idx + ".glb") : asset("assets/Bow.glb");
   new THREE.GLTFLoader().load(
-    asset("assets/Bow.glb"),
-    (gltf) => {
-      const model = gltf.scene;
-      model.traverse((obj) => {
-        if (obj.isMesh) {
-          obj.castShadow = true;
-          obj.receiveShadow = true;
-        }
-      });
-      model.rotation.x = Math.PI / 2;
-      bow.add(model);
-      bowModel = model;
-      bowModelReady = true;
-      attachEquipmentToSlots();
-    },
+    url,
+    (gltf) => applyBowModel(gltf.scene),
     undefined,
-    (err) => console.warn("Falha ao carregar assets/Bow.glb.", err)
+    (err) => console.warn("Falha ao carregar " + url + ".", err)
   );
 }
-loadBowModel();
+refreshWeaponModel();
 
 // Placeholder do monstro (mesma forma do personagem, cores diferentes),
 // escondido ate uma batalha comecar (js/battle.js)

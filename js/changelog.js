@@ -7,6 +7,16 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.7.0",
+    title: "Equipamento até ao Nível 100",
+    changes: [
+      "O Arco, o Escudo e a Armadura passam a ter 100 níveis (eram 20), cada um com um modelo 3D novo a cada 5 níveis.",
+      "O custo de cada melhoria passa a ser uma curva de materiais como a da Fortaleza. O Arco precisa sempre de madeira (o corpo), com pele no início (a corda) e ferro a partir do nível 30 (as pontas).",
+      "O bónus de Força/Resistência/Energia que o equipamento dá continua a chegar ao máximo por volta do nível 20 — os níveis a partir daí sobem o dano/defesa/vida e o visual. Quem já tinha uma peça no máximo antigo não perde nada.",
+      "As curvas do Escudo e da Armadura são provisórias — vão ser afinadas.",
+    ],
+  },
+  {
     version: "v6.6.0",
     title: "A Fortaleza até ao Nível 100",
     changes: [

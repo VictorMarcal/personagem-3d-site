@@ -256,12 +256,13 @@ async function bootstrapAfterLogin(user) {
     console.error("Falha ao fixar checkpoint de recursos:", err);
   }
 
-  // O nivel da Fortaleza pode ter vindo do servidor - troca o modelo 3D da
-  // torre se calhar noutra faixa de 5 niveis (js/main.js).
+  // Os niveis da Fortaleza e da Arma podem ter vindo do servidor - troca os
+  // modelos 3D da torre e do arco se calharem noutra faixa de 5 (js/main.js).
   try {
     if (typeof refreshTowerModel === "function") refreshTowerModel();
+    if (typeof refreshWeaponModel === "function") refreshWeaponModel();
   } catch (err) {
-    console.error("Falha ao atualizar o modelo da torre:", err);
+    console.error("Falha ao atualizar os modelos 3D:", err);
   }
 
   // Missoes mensais (secção 22): o estado pode ter vindo do servidor
