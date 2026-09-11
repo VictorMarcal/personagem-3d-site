@@ -26,7 +26,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `css/style.css` | Todo o estilo (tema escuro, mobile-first) |
 | `js/storage-keys.js` | Constantes de chaves de `localStorage` do progresso (`personagem.*`) — centralizadas porque `auth.js` precisa delas antes dos ficheiros que historicamente as declaravam |
 | `js/tab-lock.js` | Bloqueio entre abas/janelas do mesmo dispositivo (treino e luta) — ver secções 4 e 9 |
-| `js/auth.js` | Login Google (Supabase Auth), popup de escolha de nome, gate do card de Debug, orquestração do arranque pós-login |
+| `js/auth.js` | Login (Supabase Auth: Google, Apple, email/palavra-passe — secção 14.2), popup de escolha de nome, recuperação de palavra-passe, gate do card de Debug, orquestração do arranque pós-login |
 | `js/progress-sync.js` | Migração/hidratação do progresso local ↔ Supabase, sincronização contínua (`queueProgressSync`) |
 | `js/leaderboard.js` | Card de leaderboard: abas Geral/Mensal/Histórico, fila de renderização anti-corrida |
 | `js/main.js` | Cena 3D (Three.js): personagem, equipamentos, monstro placeholder, câmara, rotação por arraste, raycasting de equipamento |
@@ -839,8 +839,8 @@ A lição, generalizável: valores que definem a economia do jogo não podem ser
 
 ## 14. Contas e Leaderboard (Supabase)
 
-- **Login obrigatório com Google** — sem modo convidado; `#auth-modal` cobre o ecrã todo até haver sessão confirmada
-- Depois do primeiro login, popup pede o **nome da personagem** (nunca o nome real da conta Google) — nomes são **únicos** (índice único case-insensitive em `profiles.display_name`, erro `23505` tratado no popup)
+- **Login obrigatório** — sem modo convidado; `#auth-modal` cobre o ecrã todo até haver sessão confirmada. Três caminhos desde 2026-09-11 (secção 14.2): **Google**, **Apple** e **email + palavra-passe**
+- Depois do primeiro login, popup pede o **nome da personagem** (nunca o nome/email real da conta) — nomes são **únicos** (índice único case-insensitive em `profiles.display_name`, erro `23505` tratado no popup)
 - **Supabase passa a ser a fonte de verdade do progresso** (`player_progress`: distância/calorias vitalícias, pontos, níveis dos 3 status investíveis — `nivel_energia/forca/resistencia`, secção 7 —, nível de melhoria de cada peça — `nivel_arma/escudo/armadura`, secção 7 —, monstros derrotados, conquistas, distância anulada por velocidade, e desde 2026-09-09 toda a economia de recursos — `recursos/recursos_desde/nivel_fortaleza/minas_encontradas/hex_visitas`, secção 21). `localStorage` fica como cache/buffer offline — continua a funcionar sem rede, sincroniza quando volta a haver ligação
 - `treino.*` (checkpoint de sessão GPS em curso) e `debug.*` (afinação de jogo) **nunca** são sincronizados — ficam sempre só locais
 - Sincronização contínua via `queueProgressSync()` (debounce ~400ms, snapshot completo, seguro para reenviar) chamada a seguir a cada mutação de progresso existente
@@ -883,6 +883,30 @@ Depois do merge, se o resultado diferir do que está no servidor, marca-se sincr
 **Caveat conhecido**: um reset feito **só por SQL**, sem limpar o dispositivo, seria desfeito pelos campos monotónicos (o telemóvel voltaria a empurrar os valores antigos, mais altos). É uma operação de administração rara e o custo de não proteger o caso normal é maior — mas convém limpar também o `localStorage` do dispositivo ao fazer um reset desses.
 
 **Testado nos cinco cenários** antes de aplicar, incluindo os dois que antes eram mutuamente exclusivos: correção do servidor a chegar ao dispositivo com mutação pendente (nível 4 → 10 ✓) e treino local por sincronizar a não ser apagado pelo servidor ✓.
+
+### 14.2 Login: Google, Apple e email/palavra-passe (2026-09-11, a pedido)
+
+Até aqui só havia Google. `#auth-modal` (`js/auth.js`) passa a ter os 3 caminhos empilhados no mesmo `.auth-box`: botão Google, botão Apple, separador "ou com email", e um formulário de email+palavra-passe com dois modos (**Entrar** / **Criar conta**, `emailAuthMode`) — um botão só, o texto/ação mudam consoante o modo, para não duplicar o markup.
+
+**Agnóstico ao provider por construção**: o trigger `on_auth_user_created` (secção 5 do schema) dispara para **qualquer** inserção em `auth.users`, seja qual for o método — cria sempre a linha em `profiles` só com o `id`. `bootstrapAfterLogin()` nunca olha para `user.app_metadata.provider`, por isso os 3 caminhos convergem no mesmo arranque (perfil → nome da personagem se vazio → migração/reconciliação do progresso) sem código extra por provider.
+
+**Email + palavra-passe**:
+- `signUp({ email, password, options: { emailRedirectTo } })` / `signInWithPassword({ email, password })`. Validação do lado do cliente antes de tocar na rede: email preenchido, palavra-passe com 6+ caracteres (mínimo do próprio Supabase)
+- Com **"Confirmar email"** ligado no Supabase (a pré-definição de um projeto novo), `signUp()` **não** cria sessão logo — só depois de o link no email ser clicado. Sem sessão, `onAuthStateChange` nunca dispara, por isso `data.session` é verificado a seguir ao `signUp()` e mostra-se "Conta criada! Vai ao teu email e confirma-a" nesse caso, em vez de tratar como erro
+- **Esqueci a palavra-passe**: `resetPasswordForEmail(email, { redirectTo })`. A mensagem de sucesso é a mesma quer o email exista ou não ("se houver uma conta...") — não confirmar/negar a existência de uma conta por um email é uma prática de segurança comum, evita um caminho para descobrir que emails estão registados
+- **Seguir o link do email de recuperação** volta ao site já com uma sessão ativa, mas o Supabase dispara o evento **`PASSWORD_RECOVERY`** em vez de `SIGNED_IN` — o listener principal intercepta esse evento e abre `#password-reset-modal` em vez de arrancar o jogo (`openPasswordResetModal()`), para o jogador nunca ficar "a meio" de escolher a palavra-passe nova. Só depois de `updateUser({ password })` ter sucesso é que a sessão é tratada como login completo (`bootstrapAfterLogin` chamado manualmente nesse ponto, já que o evento `PASSWORD_RECOVERY` foi ignorado pelo listener normal)
+- Erros do Supabase chegam em inglês (`translateAuthError()`, sem tabela exaustiva — só os que aparecem na prática): credenciais inválidas, conta duplicada, email por confirmar, palavra-passe curta, email inválido, provider por configurar
+
+**Apple — precisa de configuração fora do código, só o dono da conta consegue fazer**: o botão fica sempre visível, mas até isto estar feito o Supabase devolve *"provider is not enabled"* (traduzido e mostrado ao jogador, não é um erro silencioso). Passos no [dashboard da Apple Developer](https://developer.apple.com/account) (exige **Apple Developer Program, US$99/ano**) e no do Supabase:
+1. **Apple Developer → Certificates, Identifiers & Profiles → Identifiers**: criar um **Services ID** (ex: `com.victormarcal.personagem3d.web`) com "Sign in with Apple" ativado; configurar o domínio do site (`victormarcal.github.io`) e o **Return URL** = `https://vnqjaepjfqlhgmlrhzlr.supabase.co/auth/v1/callback` (o callback do Supabase, não o do site)
+2. **Apple Developer → Keys**: criar uma chave nova com "Sign in with Apple" ativado, transferir o ficheiro `.p8` (só se consegue transferir **uma vez**) e anotar o **Key ID**
+3. Anotar também o **Team ID** (canto superior direito do portal Apple Developer)
+4. **Supabase → Authentication → Providers → Apple**: ativar, e preencher **Client ID** (o Services ID do passo 1), **Team ID**, **Key ID** e colar o conteúdo do `.p8` no campo da chave privada
+5. **Supabase → Authentication → URL Configuration**: confirmar que `https://victormarcal.github.io/personagem-3d-site/` está nos **Redirect URLs** (deve já lá estar, é o mesmo usado pelo Google)
+
+Sem isto, o botão Apple é só decorativo — mas fica pronto para ligar assim que os passos acima estiverem feitos, sem tocar mais em código.
+
+**Email — verificar no dashboard**: o provider "Email" costuma vir ativado por omissão num projeto Supabase novo (Authentication → Providers → Email). Se "Confirm email" estiver desligado, contas novas entram logo sem precisar de clicar num link — decisão do dono do projeto, o código lida com os dois casos (`data.session` presente ou não, ver acima).
 
 ## 15. Aba de Perfil e histórico de treinos
 
