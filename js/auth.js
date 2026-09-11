@@ -1,9 +1,24 @@
-// Login obrigatorio via Google (Supabase Auth). A partir daqui o Supabase
-// e a fonte de verdade do progresso (personagem.*); o localStorage passa a
-// ser cache/buffer offline. Corre antes de main.js e dos restantes ficheiros
-// de jogo, mas o boot real e assincrono (ver fim do ficheiro) - por isso
-// pode chamar getters/funcoes definidas nesses ficheiros sem problema, uma
-// vez que so o faz depois de todos os scripts terem corrido.
+// Login obrigatorio via Supabase Auth - Google, Apple ou email+palavra-passe
+// (2026-09-11, a pedido; ate aqui so Google). A partir daqui o Supabase e a
+// fonte de verdade do progresso (personagem.*); o localStorage passa a ser
+// cache/buffer offline. Corre antes de main.js e dos restantes ficheiros de
+// jogo, mas o boot real e assincrono (ver fim do ficheiro) - por isso pode
+// chamar getters/funcoes definidas nesses ficheiros sem problema, uma vez
+// que so o faz depois de todos os scripts terem corrido.
+//
+// O TRIGGER on_auth_user_created (supabase/schema.sql) e disparado por
+// QUALQUER insercao em auth.users, seja qual for o metodo - bootstrapAfterLogin
+// abaixo e ja inteiramente agnostico ao provider (nunca olha para
+// user.app_metadata.provider), por isso os 3 caminhos convergem no mesmo
+// arranque sem codigo extra.
+//
+// Apple PRECISA de configuracao fora deste ficheiro, que so o dono da conta
+// consegue fazer (Apple Developer Program, US$99/ano): criar um Services ID
+// com "Sign in with Apple" ligado ao dominio do site, gerar uma chave
+// privada (.p8) e introduzir Team ID/Key ID/Client ID/chave no dashboard do
+// Supabase (Authentication -> Providers -> Apple). Sem isso, o botao Apple
+// fica visivel mas o Supabase devolve erro ao clicar (mensagem tratada
+// abaixo). Ver DOCUMENTACAO.md secção 14 para o passo a passo.
 const SUPABASE_URL = "https://vnqjaepjfqlhgmlrhzlr.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_5o0ebiPFcC8jKjQbpbok2A_p1ozZMEz";
 
@@ -38,16 +53,176 @@ function currentDisplayName() {
   return (currentProfile && currentProfile.display_name) || "Jogador";
 }
 
+// URL limpo (sem query/hash) para qualquer redirect de autenticacao - se o
+// clique acontecer depois de um erro anterior deixar #error=...  ou
+// ?error=... na barra de endereco, usar window.location.href arrastaria
+// esse lixo para o redirect final e misturava-o com o token novo,
+// impedindo o supabase-js de o interpretar. Partilhado por Google, Apple e
+// pelo email de recuperacao de palavra-passe.
+function cleanRedirectUrl() {
+  return window.location.origin + window.location.pathname;
+}
+
 document.getElementById("btn-google-signin").addEventListener("click", () => {
-  // URL limpo (sem query/hash) - se o clique acontecer depois de um erro
-  // anterior deixar #error=... ou ?error=... na barra de endereco, usar
-  // window.location.href arrastaria esse lixo para o redirect final e
-  // misturava-o com o token novo, impedindo o supabase-js de o interpretar.
-  const cleanRedirectUrl = window.location.origin + window.location.pathname;
   supabaseClient.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: cleanRedirectUrl },
+    options: { redirectTo: cleanRedirectUrl() },
   });
+});
+
+// Sign in with Apple (2026-09-11, a pedido). SO FUNCIONA depois de o dono da
+// conta configurar o provider Apple no dashboard do Supabase (Services ID +
+// chave privada da Apple Developer Program - ver nota no topo do ficheiro e
+// DOCUMENTACAO.md secção 14). Ate la, o Supabase devolve um erro assim que
+// se clica - mostra-se na mesma zona de estado do formulario de email, para
+// nao ficar sem feedback nenhum.
+document.getElementById("btn-apple-signin").addEventListener("click", async () => {
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: "apple",
+    options: { redirectTo: cleanRedirectUrl() },
+  });
+  if (error) showEmailAuthStatus(translateAuthError(error), true);
+});
+
+// --- Email + palavra-passe (2026-09-11, a pedido) --------------------------
+//
+// Um formulario so, com DOIS modos (entrar / criar conta) - trocar de modo
+// so muda o texto do botao e o que o submit faz, evita duplicar o markup.
+const formEmailAuthEl = document.getElementById("form-email-auth");
+const emailAuthEmailEl = document.getElementById("email-auth-email");
+const emailAuthPasswordEl = document.getElementById("email-auth-password");
+const btnEmailAuthSubmit = document.getElementById("btn-email-auth-submit");
+const btnEmailAuthToggle = document.getElementById("btn-email-auth-toggle");
+const btnEmailAuthForgot = document.getElementById("btn-email-auth-forgot");
+const emailAuthStatusEl = document.getElementById("email-auth-status");
+
+let emailAuthMode = "entrar"; // "entrar" | "criar"
+
+function showEmailAuthStatus(text, isError) {
+  emailAuthStatusEl.textContent = text;
+  emailAuthStatusEl.classList.toggle("auth-status-error", Boolean(isError));
+}
+
+function setEmailAuthMode(mode) {
+  emailAuthMode = mode;
+  btnEmailAuthSubmit.textContent = mode === "criar" ? "Criar conta" : "Entrar";
+  btnEmailAuthToggle.textContent = mode === "criar" ? "Já tens conta? Entra" : "Ainda não tens conta? Cria uma";
+  showEmailAuthStatus("", false);
+}
+
+btnEmailAuthToggle.addEventListener("click", () => {
+  setEmailAuthMode(emailAuthMode === "criar" ? "entrar" : "criar");
+});
+
+// Traducoes das mensagens mais comuns que o Supabase devolve em ingles -
+// sem tabela exaustiva, so as que realmente aparecem na pratica (login
+// errado, conta duplicada, provider por configurar).
+function translateAuthError(error) {
+  const msg = (error && error.message) || "";
+  if (/invalid login credentials/i.test(msg)) return "Email ou palavra-passe incorretos.";
+  if (/user already registered/i.test(msg)) return "Já existe uma conta com este email — tenta entrar.";
+  if (/email not confirmed/i.test(msg)) return "Confirma o teu email antes de entrares (vê a caixa de entrada).";
+  if (/password should be at least/i.test(msg)) return "A palavra-passe precisa de pelo menos 6 caracteres.";
+  if (/unable to validate email address/i.test(msg)) return "Esse email não é válido.";
+  if (/provider is not enabled/i.test(msg)) return "Este método de login ainda não está configurado.";
+  return msg || "Não foi possível continuar. Tenta novamente.";
+}
+
+formEmailAuthEl.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const email = emailAuthEmailEl.value.trim();
+  const password = emailAuthPasswordEl.value;
+  if (!email || password.length < 6) {
+    showEmailAuthStatus("Preenche o email e uma palavra-passe com 6+ caracteres.", true);
+    return;
+  }
+
+  btnEmailAuthSubmit.disabled = true;
+  showEmailAuthStatus("", false);
+
+  if (emailAuthMode === "criar") {
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: cleanRedirectUrl() },
+    });
+    btnEmailAuthSubmit.disabled = false;
+    if (error) {
+      showEmailAuthStatus(translateAuthError(error), true);
+      return;
+    }
+    // Com "Confirmar email" ligado no Supabase (a pré-definição), signUp()
+    // NAO cria sessao - so depois de o link no email ser clicado. Sem
+    // sessao aqui, onAuthStateChange abaixo nunca dispara, por isso o aviso
+    // tem de vir deste lado.
+    if (!data.session) {
+      showEmailAuthStatus("Conta criada! Vai ao teu email e confirma-a para entrares.", false);
+      return;
+    }
+    // "Confirmar email" desligado: ja ha sessao, onAuthStateChange trata do resto.
+  } else {
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    btnEmailAuthSubmit.disabled = false;
+    if (error) showEmailAuthStatus(translateAuthError(error), true);
+  }
+});
+
+btnEmailAuthForgot.addEventListener("click", async () => {
+  const email = emailAuthEmailEl.value.trim();
+  if (!email) {
+    showEmailAuthStatus("Escreve o teu email em cima e carrega outra vez aqui.", true);
+    return;
+  }
+  btnEmailAuthForgot.disabled = true;
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: cleanRedirectUrl() });
+  btnEmailAuthForgot.disabled = false;
+  showEmailAuthStatus(
+    error ? translateAuthError(error) : "Se houver uma conta com este email, foi enviado um link para repor a palavra-passe.",
+    Boolean(error)
+  );
+});
+
+// --- Repor palavra-passe (link recebido por email) -------------------------
+//
+// Clicar no link do email de recuperacao volta ao site JA com uma sessao de
+// recuperacao ativa - o Supabase dispara PASSWORD_RECOVERY em vez de
+// SIGNED_IN (ver o listener principal, mais abaixo). So falta escolher a
+// palavra-passe nova; a sessao so e tratada como login completo depois de
+// updateUser() ter sucesso.
+const passwordResetModalEl = document.getElementById("password-reset-modal");
+const passwordResetInputEl = document.getElementById("password-reset-input");
+const btnPasswordResetConfirm = document.getElementById("btn-password-reset-confirm");
+const passwordResetStatusEl = document.getElementById("password-reset-status");
+
+function openPasswordResetModal() {
+  authModalEl.classList.add("hidden");
+  passwordResetModalEl.classList.remove("hidden");
+}
+
+btnPasswordResetConfirm.addEventListener("click", async () => {
+  const novaPassword = passwordResetInputEl.value;
+  if (novaPassword.length < 6) {
+    passwordResetStatusEl.textContent = "A palavra-passe precisa de pelo menos 6 caracteres.";
+    return;
+  }
+  btnPasswordResetConfirm.disabled = true;
+  const { data, error } = await supabaseClient.auth.updateUser({ password: novaPassword });
+  btnPasswordResetConfirm.disabled = false;
+  if (error) {
+    passwordResetStatusEl.textContent = translateAuthError(error);
+    return;
+  }
+  passwordResetModalEl.classList.add("hidden");
+  // A sessao de recuperacao ja e uma sessao valida - so nao foi tratada como
+  // login (o listener principal ignora PASSWORD_RECOVERY de proposito) ate
+  // a palavra-passe ficar definida, para nao arrancar o jogo com uma conta
+  // "a meio" de escolher a palavra-passe.
+  if (!bootstrapped && data.user) {
+    bootstrapped = true;
+    bootstrapAfterLogin(data.user).catch((err) => {
+      console.error("Falha ao preparar sessão após repor a palavra-passe:", err);
+    });
+  }
 });
 
 // --- HUD ------------------------------------------------------------------
@@ -275,7 +450,15 @@ async function bootstrapAfterLogin(user) {
   }
 }
 
-supabaseClient.auth.onAuthStateChange((_event, session) => {
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  // PASSWORD_RECOVERY: ha sessao, mas ainda NAO e um login - o jogador
+  // seguiu o link do email so para repor a palavra-passe (fluxo acima,
+  // btnPasswordResetConfirm). So depois de a definir e que se arranca o
+  // jogo com esta sessao.
+  if (event === "PASSWORD_RECOVERY") {
+    openPasswordResetModal();
+    return;
+  }
   if (!session) return;
   hideAuthModal();
   if (bootstrapped) return;

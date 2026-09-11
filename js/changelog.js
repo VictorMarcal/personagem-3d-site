@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.8.0",
+    title: "Entrar com Apple ou Email",
+    changes: [
+      "Já não é preciso ter conta Google: dá para entrar com a Apple ou criar conta com email e palavra-passe.",
+      "Quem esquecer a palavra-passe pode repô-la por email.",
+      "O login com a Apple ainda não está ativo (falta configuração do lado da conta) — o botão já lá está, pronto a ligar.",
+    ],
+  },
+  {
     version: "v6.7.2",
     title: "Melhorar Equipamento à Vista",
     changes: [

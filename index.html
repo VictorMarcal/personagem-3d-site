@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="css/style.css?v=20260908b">
   <!-- Patch v6: contraste, cor semântica, superfícies, ícones, sub-abas.
        DEPOIS do style.css de propósito — só sobrepõe o que muda. -->
-  <link rel="stylesheet" href="css/campo-aberto-v6.css?v=20260911b">
+  <link rel="stylesheet" href="css/campo-aberto-v6.css?v=20260911c">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -21,15 +21,43 @@
   <div id="auth-modal">
     <div class="auth-box">
       <h2 class="card-title">Personagem 3D</h2>
-      <p class="auth-text">Entra com a tua conta Google para guardares o teu progresso e apareceres no leaderboard.</p>
-      <button id="btn-google-signin" class="btn-primary">Entrar com Google</button>
+      <p class="auth-text">Entra para guardares o teu progresso e apareceres no leaderboard.</p>
+
+      <button id="btn-google-signin" class="btn-primary auth-provider-btn">Entrar com Google</button>
+      <button id="btn-apple-signin" class="btn-primary auth-provider-btn auth-provider-btn-apple">Entrar com a Apple</button>
+
+      <p class="auth-divider"><span>ou com email</span></p>
+
+      <form id="form-email-auth" class="auth-email-form" novalidate>
+        <input type="email" id="email-auth-email" class="auth-input" placeholder="Email" autocomplete="email" required>
+        <input type="password" id="email-auth-password" class="auth-input" placeholder="Palavra-passe" autocomplete="current-password" minlength="6" required>
+        <button type="submit" id="btn-email-auth-submit" class="btn-primary auth-provider-btn">Entrar</button>
+      </form>
+
+      <p class="auth-toggle-row">
+        <button type="button" id="btn-email-auth-toggle" class="auth-link">Ainda não tens conta? Cria uma</button>
+        <button type="button" id="btn-email-auth-forgot" class="auth-link">Esqueceste a palavra-passe?</button>
+      </p>
+      <p id="email-auth-status" class="debug-status"></p>
+    </div>
+  </div>
+
+  <!-- Aberto quando se segue o link de recuperação de palavra-passe no email
+       (js/auth.js, evento PASSWORD_RECOVERY) - a sessão de recuperação já
+       está ativa, só falta escolher a palavra-passe nova. -->
+  <div id="password-reset-modal" class="hidden">
+    <div class="auth-box">
+      <h2 class="card-title">Escolhe uma palavra-passe nova</h2>
+      <input type="password" id="password-reset-input" class="auth-input" placeholder="Palavra-passe nova" autocomplete="new-password" minlength="6">
+      <button id="btn-password-reset-confirm" class="btn-primary">Guardar e entrar</button>
+      <p id="password-reset-status" class="debug-status"></p>
     </div>
   </div>
 
   <div id="name-picker-modal" class="hidden">
     <div class="auth-box">
       <h2 class="card-title">Escolhe o nome da tua personagem</h2>
-      <p class="auth-text">Este nome vai aparecer no leaderboard, em vez do nome da tua conta Google.</p>
+      <p class="auth-text">Este nome vai aparecer no leaderboard.</p>
       <input type="text" id="name-picker-input" maxlength="24" placeholder="Nome da personagem">
       <button id="btn-name-picker-confirm" class="btn-primary" disabled>Confirmar</button>
       <p id="name-picker-status" class="debug-status"></p>
@@ -40,7 +68,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v6.7.2</span>
+      <span id="site-version" class="site-version-hero">v6.8.0</span>
     </div>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
          dependem destes dois botoes. Fica invisivel (.legacy-nav no CSS) - a
@@ -481,7 +509,7 @@
   <script src="js/icons.js?v=20260909c"></script>
   <script src="js/storage-keys.js?v=20260910d"></script>
   <script src="js/tab-lock.js?v=20260806p"></script>
-  <script src="js/auth.js?v=20260911b"></script>
+  <script src="js/auth.js?v=20260911c"></script>
   <script src="js/progress-sync.js?v=20260910e"></script>
   <script src="js/leaderboard.js?v=20260810d"></script>
   <script src="js/main.js?v=20260911b"></script>
@@ -497,7 +525,7 @@
   <script src="js/training.js?v=20260910e"></script>
   <script src="js/weight.js?v=20260908a"></script>
   <script src="js/profile.js?v=20260908a"></script>
-  <script src="js/changelog.js?v=20260911e"></script>
+  <script src="js/changelog.js?v=20260911f"></script>
   <script src="js/achievements.js?v=20260911b"></script>
   <script src="js/missions.js?v=20260911e"></script>
   <script src="js/orientation.js?v=20260806p"></script>

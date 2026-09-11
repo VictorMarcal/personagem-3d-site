@@ -12,6 +12,7 @@
    6. Ecrã de treino: uma métrica herói + 3 apoios + detalhe escondido
    7. Equipamento em lista, com carteira e custo
    8. Estados desativados
+   12. Login: Google + Apple + email/palavra-passe
    ========================================================================== */
 
 /* ---- 1. Contraste ------------------------------------------------------- */
@@ -429,3 +430,84 @@ button[disabled] {
   font-size: 13px;
   cursor: pointer;
 }
+
+/* ---- 12. Login: Google + Apple + email/palavra-passe (2026-09-11) ------ */
+/* Antes so havia o botao do Google. Os 3 caminhos ficam empilhados no
+   mesmo `.auth-box` (secção 14 da documentação), com um separador "ou com
+   email" entre os botoes de provider e o formulario. */
+.auth-provider-btn { width: 100%; margin-bottom: 8px; }
+.auth-provider-btn:last-of-type { margin-bottom: 0; }
+/* A Apple pede o botao proprio a preto (guia de marca) - unica excecao ao
+   laranja de acao, porque nao e uma acao "nossa", e a marca de outra empresa. */
+.auth-provider-btn-apple {
+  background: #000;
+  color: #fff;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 12px;
+  font-size: 12px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.auth-email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.auth-input {
+  width: 100%;
+  max-width: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  text-align: center;
+}
+.auth-toggle-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+}
+.auth-link {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 2px;
+  font: 600 12.5px var(--font-body);
+  color: var(--accent-700);
+  cursor: pointer;
+  text-decoration: underline;
+}
+#email-auth-status.auth-status-error { color: var(--warn-ink); font-weight: 600; }
+
+/* Modal de "nova palavra-passe" (link de recuperação por email) - mesmo
+   posicionamento fixo/centrado que o style.css já dá a #auth-modal e
+   #name-picker-modal, repetido aqui porque este id é novo. */
+#password-reset-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+}
+#password-reset-modal.hidden { display: none; }
+#password-reset-modal .auth-box > * + * { margin-top: 10px; }
