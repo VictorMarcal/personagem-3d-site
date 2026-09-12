@@ -48,7 +48,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `assets/Hero.glb` | Modelo 3D do herói (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Shield.glb` | Modelo 3D do escudo (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Bow.glb` | Modelo 3D do arco (secção 9), fallback de `refreshWeaponModel()` enquanto não houver `assets/Bows/BowN.glb` (modelo novo a cada 5 níveis, v6.7.0 — secção 7) |
-| `js/weight.js` | Historico de peso, regra das 24 h e grafico de evolucao — ver secção 20 |
+| `js/weight.js` | Historico de peso e grafico de evolucao (sem limite de cadência) — ver secção 20 |
 | `js/resources.js` | Economia de recursos do mapa: producao, multiplicadores, Fortaleza — ver secção 21 |
 | `js/resources-ui.js` | Painel de recursos e Fortaleza — ver secção 21 |
 | `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de satélite desfocado da aba Missões — ver secção 18 |
@@ -1147,19 +1147,11 @@ Existiu durante um dia (2026-09-07). Substituído pela economia de recursos da s
 
 A pedido: *"histórico de peso com data de introdução"* + *"gráfico que mostra a evolução do peso"*.
 
-**Cadência mínima entre alterações: 24 h** (2026-09-08, a pedido *"possibilidade de atualizar o peso a cada 24h"*). Era 15 dias no arranque da funcionalidade. A regra passou de dias para horas: `WEIGHT_MIN_HOURS_BETWEEN = 24`, `horasAteProximaAlteracao()`, e o texto de estado mostra horas em falta (dias só se passar de 24 h, o que já não acontece com o limite atual).
+**Sem limite de cadência entre alterações** (2026-09-12, a pedido *"remove o intervalo de tempo para colocar o peso"*). Chegou a ter 15 dias, depois 24 h (2026-09-08); agora não há espera nenhuma — o input e o botão estão sempre ativos.
 
 **Tabela `weight_history`** (`user_id`, `peso_kg`, `recorded_at`), com RLS por utilizador (`select` e `insert` próprios, mesmo padrão de `discovered_hexes`). O `check` de 20–300 kg vive na coluna, não só no cliente.
 
 **Aditivo, não substitui nada**: o peso atual continua em `STORAGE_KEY_WEIGHT_KG` e `player_progress.peso_kg`, lido por `getPesoKg()` na fórmula das calorias. **A fórmula não foi tocada.**
-
-### A regra das 24 h é validada contra o servidor
-
-`registarPeso()` **relê o histórico do Supabase antes de decidir**, em vez de confiar na cache local. Validar contra `localStorage` seria contornável de duas formas triviais: limpar os dados do browser, ou abrir a app noutro telemóvel. O `localStorage` aqui é só cache de leitura.
-
-O input e o botão ficam **desativados** enquanto não der, com o número de horas em falta à vista — em vez de deixar tentar e falhar.
-
-Verificado no browser: 24 h exatas desbloqueia, 23 h ainda não, e sem histórico nenhum deixa registar à primeira.
 
 O peso atual só é escrito **depois** de o registo ficar gravado no servidor. Se a rede falhar, os dois lados ficam coerentes em vez de o peso mudar sem ter entrado no histórico.
 

@@ -1,20 +1,14 @@
 // Historico de peso (2026-09-07, a pedido: "histórico de peso com data de
-// introdução" + "gráfico que mostra a evolução do peso"). A cadencia minima
-// entre alteracoes passou de 15 dias para 24 horas (2026-09-08, a pedido:
-// "possibilidade de atualizar o peso a cada 24h").
+// introdução" + "gráfico que mostra a evolução do peso"). Sem limite de
+// cadencia entre alteracoes (2026-09-12, a pedido: "remove o intervalo de
+// tempo para colocar o peso") - podes registar sempre que quiseres.
 //
 // O peso ATUAL continua onde estava (STORAGE_KEY_WEIGHT_KG, lido por
 // getPesoKg() na formula das calorias) - isto e aditivo e nao mexe em nada do
 // calculo. O que e novo e a tabela weight_history no Supabase, que guarda
 // cada valor com a data em que foi introduzido.
-//
-// A REGRA DAS 24 HORAS E VALIDADA CONTRA O SERVIDOR, nao contra o
-// localStorage: senao bastava limpar os dados do browser (ou abrir noutro
-// telemovel) para a contornar. O localStorage aqui e so cache de leitura.
-const WEIGHT_MIN_HOURS_BETWEEN = 24;
 const WEIGHT_MIN_KG = 20;
 const WEIGHT_MAX_KG = 300;
-const MS_POR_HORA = 60 * 60 * 1000;
 
 let weightHistoryCache = [];
 
@@ -40,24 +34,6 @@ function ultimoRegistoPeso() {
   return weightHistoryCache.length > 0 ? weightHistoryCache[weightHistoryCache.length - 1] : null;
 }
 
-// Devolve quantas horas faltam para se poder voltar a alterar. 0 = ja pode.
-function horasAteProximaAlteracao() {
-  const ultimo = ultimoRegistoPeso();
-  if (!ultimo) return 0;
-  const passadas = (Date.now() - ultimo.data.getTime()) / MS_POR_HORA;
-  return Math.max(0, Math.ceil(WEIGHT_MIN_HOURS_BETWEEN - passadas));
-}
-
-// Horas -> texto legivel ("3 horas", "1 hora", "2 dias"): acima de 24 h passa a
-// dias, o que ja nao acontece com o limite atual mas fica correto se mudar.
-function duracaoEmFalta(horas) {
-  if (horas >= 24) {
-    const dias = Math.ceil(horas / 24);
-    return `${dias} ${dias === 1 ? "dia" : "dias"}`;
-  }
-  return `${horas} ${horas === 1 ? "hora" : "horas"}`;
-}
-
 // Devolve { ok, motivo }. Nunca lanca - quem chama e um handler de clique.
 async function registarPeso(kg) {
   if (!Number.isFinite(kg) || kg < WEIGHT_MIN_KG || kg > WEIGHT_MAX_KG) {
@@ -65,17 +41,6 @@ async function registarPeso(kg) {
   }
   if (!currentUserId) {
     return { ok: false, motivo: "Precisas de estar ligado para guardar o peso." };
-  }
-
-  // Reler do servidor antes de decidir: a cache local pode estar velha (outro
-  // telemovel) ou ter sido limpa.
-  await loadWeightHistory();
-  const faltam = horasAteProximaAlteracao();
-  if (faltam > 0) {
-    return {
-      ok: false,
-      motivo: `Só podes alterar o peso a cada ${WEIGHT_MIN_HOURS_BETWEEN} h. Faltam ${duracaoEmFalta(faltam)}.`,
-    };
   }
 
   const { error } = await supabaseClient
@@ -191,20 +156,13 @@ function renderWeightHistory() {
   }
 
   if (!estado) return;
-  const faltam = horasAteProximaAlteracao();
   const ultimo = ultimoRegistoPeso();
 
-  if (faltam > 0) {
-    estado.textContent = `Último registo: ${formatKg(ultimo.kg)} em ${ultimo.data.toLocaleDateString("pt-PT")}. Podes voltar a alterar daqui a ${duracaoEmFalta(faltam)}.`;
-    if (input) input.disabled = true;
-    if (botao) botao.disabled = true;
-  } else {
-    estado.textContent = ultimo
-      ? `Último registo: ${formatKg(ultimo.kg)} em ${ultimo.data.toLocaleDateString("pt-PT")}. Já podes atualizar.`
-      : `Podes registar o teu peso. Depois disso, só a cada ${WEIGHT_MIN_HOURS_BETWEEN} h.`;
-    if (input) input.disabled = false;
-    if (botao) botao.disabled = false;
-  }
+  estado.textContent = ultimo
+    ? `Último registo: ${formatKg(ultimo.kg)} em ${ultimo.data.toLocaleDateString("pt-PT")}.`
+    : "Podes registar o teu peso quando quiseres.";
+  if (input) input.disabled = false;
+  if (botao) botao.disabled = false;
 }
 
 async function refreshWeightSection() {

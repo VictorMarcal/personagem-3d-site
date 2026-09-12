@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.9.0",
+    title: "Peso Sem Espera",
+    changes: [
+      "Já não há limite de tempo para atualizares o teu peso — regista quando quiseres.",
+    ],
+  },
+  {
     version: "v6.8.0",
     title: "Entrar com Apple ou Email",
     changes: [
