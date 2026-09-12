@@ -48,7 +48,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `assets/Hero.glb` | Modelo 3D do herói (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Shield.glb` | Modelo 3D do escudo (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Bow.glb` | Modelo 3D do arco (secção 9), fallback de `refreshWeaponModel()` enquanto não houver `assets/Bows/BowN.glb` (modelo novo a cada 5 níveis, v6.7.0 — secção 7) |
-| `js/weight.js` | Historico de peso e grafico de evolucao (sem limite de cadência) — ver secção 20 |
+| `js/weight.js` | Historico de peso, grafico de evolucao, popup de boas-vindas e lembrete de 15 dias — ver secção 20 |
 | `js/resources.js` | Economia de recursos do mapa: producao, multiplicadores, Fortaleza — ver secção 21 |
 | `js/resources-ui.js` | Painel de recursos e Fortaleza — ver secção 21 |
 | `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de satélite desfocado da aba Missões — ver secção 18 |
@@ -1171,6 +1171,16 @@ O peso atual de cada jogador entrou no histórico **datado do primeiro treino de
 ### O que fica por decidir
 
 As calorias de um treino usam o peso **atual**, não o peso à data do treino. Agora que o histórico existe, era possível recalcular cada sessão com o peso em vigor nessa altura — mas isso mexeria em XP já atribuído, e a diferença entre 85 e 83 kg é de ~2%. Não foi feito.
+
+### Boas-vindas e lembrete de 15 dias (2026-09-12)
+
+A pedido: *"todos os jogadores ao entrar pela primeira vez na app tem um popup de boas vindas e um explicação muito breve do jogo que termina com um pedido de adicionar o peso"* + *"de 15 em 15 dias, se o jogador não atualizou o peso nesse intervalo, aparece um popup ao abrir a app... a pedir para atualizar o peso"*.
+
+**Boas-vindas (`#welcome-modal`, `promptForWelcomeWeight()` em `js/weight.js`)**: corre uma única vez, logo a seguir ao `promptForDisplayName` (mesmo gate de sempre em `js/auth.js`, `bootstrapAfterLogin` — `!profile.display_name`, só verdadeiro no primeiríssimo login de uma conta). Mostra uma explicação curta do jogo (distância real → XP/recursos/equipamento) e termina com o campo de peso. **Sem botão de saltar**, mesmo padrão do nome escolhido logo antes: sem isto o peso ficava no valor por omissão (`DEFAULT_WEIGHT_KG`, 70 kg) e entrava direto, errado, na fórmula das calorias. O peso introduzido passa por `registarPeso()` — a mesma função do campo de peso do Perfil — por isso cria já a primeira linha em `weight_history`.
+
+**Lembrete a cada 15 dias (`#weight-reminder-modal`, `checkWeightReminder()`)**: corre em todo o login (incluindo o mesmo primeiro login, mas *depois* do passo de boas-vindas, por isso nunca dispara logo a seguir a um peso que acabou de ser gravado). Compara `Date.now()` com a data do último registo em `weight_history`; a partir de **15 dias** sem atualizar, mostra o popup ao abrir a app. Ao contrário do de boas-vindas, este **é dispensável** ("Agora não") — já existe um valor guardado, só pode estar desatualizado, e obrigar sempre seria excessivo. Se dispensado, volta a aparecer no arranque seguinte enquanto o peso não for atualizado (não há "adiar por X dias").
+
+**Efeito colateral desejado para jogadores já existentes**: quem já tinha conta antes desta funcionalidade (`display_name` já preenchido, `weight_history` vazio) não passa pelas boas-vindas, mas `checkWeightReminder()` trata "sem histórico nenhum" como "há mais de 15 dias" — por isso todos recebem o lembrete no primeiro login depois desta versão, sem precisar de uma migração à parte.
 
 ## 21. Economia de recursos do mapa (2026-09-07)
 

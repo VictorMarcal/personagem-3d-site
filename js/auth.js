@@ -365,6 +365,19 @@ async function bootstrapAfterLogin(user) {
     } catch (err) {
       console.error("Falha ao guardar nome:", err);
     }
+    try {
+      if (typeof promptForWelcomeWeight === "function") await promptForWelcomeWeight();
+    } catch (err) {
+      console.error("Falha ao guardar peso inicial:", err);
+    }
+  }
+
+  // Lembrete de peso a cada 15 dias (secção 20): nunca dispara logo a seguir
+  // ao passo de boas-vindas acima, porque o peso acabou de ser registado.
+  try {
+    if (typeof checkWeightReminder === "function") await checkWeightReminder();
+  } catch (err) {
+    console.error("Falha ao verificar lembrete de peso:", err);
   }
 
   readyForSync = true;

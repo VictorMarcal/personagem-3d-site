@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.10.0",
+    title: "Boas-Vindas e Lembrete de Peso",
+    changes: [
+      "Quem entra pela primeira vez recebe agora uma explicação rápida do jogo e um pedido para indicar o peso.",
+      "Se passarem 15 dias sem atualizares o peso, aparece um lembrete ao abrir a app.",
+    ],
+  },
+  {
     version: "v6.9.0",
     title: "Peso Sem Espera",
     changes: [

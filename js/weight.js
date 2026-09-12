@@ -169,3 +169,96 @@ async function refreshWeightSection() {
   await loadWeightHistory();
   renderWeightHistory();
 }
+
+// --- Boas-vindas (2026-09-12, a pedido) --------------------------------------
+//
+// Todo o jogador novo ve isto uma unica vez, logo a seguir a escolher o nome
+// (js/auth.js, promptForDisplayName) - o gate e o mesmo (!profile.display_name
+// no primeiro login), por isso corre sempre e so ai. Sem botao de saltar,
+// mesmo padrao do nome: sem isto o peso ficava no valor por defeito
+// (DEFAULT_WEIGHT_KG, 70 kg) e entrava logo errado na formula das calorias.
+const welcomeModalEl = document.getElementById("welcome-modal");
+const welcomeWeightInputEl = document.getElementById("welcome-weight-input");
+const btnWelcomeConfirm = document.getElementById("btn-welcome-confirm");
+const welcomeStatusEl = document.getElementById("welcome-status");
+
+function promptForWelcomeWeight() {
+  return new Promise((resolve) => {
+    welcomeModalEl.classList.remove("hidden");
+
+    function updateButtonState() {
+      const kg = Number(welcomeWeightInputEl.value);
+      btnWelcomeConfirm.disabled = !Number.isFinite(kg) || kg < WEIGHT_MIN_KG || kg > WEIGHT_MAX_KG;
+    }
+
+    async function onConfirm() {
+      const kg = Number(welcomeWeightInputEl.value);
+      btnWelcomeConfirm.disabled = true;
+      welcomeStatusEl.textContent = "";
+
+      const resultado = await registarPeso(kg);
+      if (!resultado.ok) {
+        btnWelcomeConfirm.disabled = false;
+        welcomeStatusEl.textContent = resultado.motivo;
+        return;
+      }
+
+      welcomeModalEl.classList.add("hidden");
+      btnWelcomeConfirm.removeEventListener("click", onConfirm);
+      welcomeWeightInputEl.removeEventListener("input", updateButtonState);
+      resolve();
+    }
+
+    welcomeWeightInputEl.addEventListener("input", updateButtonState);
+    btnWelcomeConfirm.addEventListener("click", onConfirm);
+    updateButtonState();
+  });
+}
+
+// --- Lembrete a cada 15 dias (2026-09-12, a pedido) --------------------------
+//
+// So verificado DEPOIS do fluxo de boas-vindas em js/auth.js - nunca dispara
+// para quem acabou de registar o peso agora mesmo. Ao contrario do popup de
+// boas-vindas, este e dispensavel ("Agora não"): ja ha um valor guardado, so
+// pode estar desatualizado, e obrigar sempre seria demasiado chato. Se
+// dispensado, volta a aparecer no proximo arranque da app enquanto o peso
+// continuar sem ser atualizado.
+const WEIGHT_REMINDER_DAYS = 15;
+const MS_POR_DIA = 24 * 60 * 60 * 1000;
+const weightReminderModalEl = document.getElementById("weight-reminder-modal");
+const weightReminderInputEl = document.getElementById("weight-reminder-input");
+const btnWeightReminderSave = document.getElementById("btn-weight-reminder-save");
+const btnWeightReminderDismiss = document.getElementById("btn-weight-reminder-dismiss");
+const weightReminderStatusEl = document.getElementById("weight-reminder-status");
+
+function diasDesdeUltimoRegistoPeso() {
+  const ultimo = ultimoRegistoPeso();
+  return ultimo ? (Date.now() - ultimo.data.getTime()) / MS_POR_DIA : Infinity;
+}
+
+function closeWeightReminderModal() {
+  weightReminderModalEl.classList.add("hidden");
+}
+
+async function checkWeightReminder() {
+  await loadWeightHistory();
+  if (diasDesdeUltimoRegistoPeso() < WEIGHT_REMINDER_DAYS) return;
+
+  weightReminderInputEl.value = getPesoKg();
+  weightReminderStatusEl.textContent = "";
+  weightReminderModalEl.classList.remove("hidden");
+}
+
+btnWeightReminderDismiss.addEventListener("click", closeWeightReminderModal);
+
+btnWeightReminderSave.addEventListener("click", async () => {
+  const kg = Number(weightReminderInputEl.value);
+  btnWeightReminderSave.disabled = true;
+  const resultado = await registarPeso(kg);
+  btnWeightReminderSave.disabled = false;
+  if (!resultado.ok) {
+    weightReminderStatusEl.textContent = resultado.motivo;
+    return;
+  }
+  closeWeightReminderModal();
+});
