@@ -574,9 +574,11 @@ async function identifyRegions() {
 // precisa de expirar, so de crescer a cada concelho novo desbloqueado.
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 // v2 (2026-09-14): corrigido o alargamento excessivo do rio (ver
-// waterCellsFromWaterwayGeometry) - sobe a versao para forcar reconsulta em
-// quem ja tinha concelhos com agua cacheada da versao antiga, demasiado larga.
-const WATER_CACHE_VERSION = 2;
+// waterCellsFromWaterwayGeometry). v3 (2026-09-14): "stream" saiu da query
+// (rios sem nome/vãos de rega deixam de contar como agua real) - sobe a
+// versao outra vez para forcar reconsulta em quem ja tinha agua cacheada de
+// uma versao anterior.
+const WATER_CACHE_VERSION = 3;
 const WATER_LOOKUPS_PER_OPEN = 1;
 // Amostragem ao longo de um rio/ribeira, em metros - nao e um buffer
 // geometrico exato (a pedido, o que interessa e VER o rio no mapa, nao a
@@ -654,11 +656,18 @@ function waterCellsFromWaterwayGeometry(geometry, resolution) {
 
 async function fetchWaterCellsForConcelho(concelho) {
   const { minLat, minLng, maxLat, maxLng } = bboxOfGeoJson(concelho.geojson);
+  // So "river" e "canal" - "stream" saiu (2026-09-14, a pedido: um jogador
+  // via o mapa a inventar um rio ao lado de casa dele, "totalmente mentira").
+  // No OSM, "stream" e usado para qualquer coisa desde uma ribeira real ate
+  // uma vala de rega agricola - qualidade muito irregular, sobretudo em zonas
+  // rurais. "river" e reservado a cursos de agua reconhecidos e quase sempre
+  // tem nome; e um filtro mais apertado, prefere-se mostrar menos agua a
+  // mostrar agua que nao existe de facto.
   const query =
     "[out:json][timeout:25];(" +
     `way["natural"="water"](${minLat},${minLng},${maxLat},${maxLng});` +
     `relation["natural"="water"](${minLat},${minLng},${maxLat},${maxLng});` +
-    `way["waterway"~"^(river|stream|canal)$"](${minLat},${minLng},${maxLat},${maxLng});` +
+    `way["waterway"~"^(river|canal)$"]["name"](${minLat},${minLng},${maxLat},${maxLng});` +
     ");out geom;";
 
   const response = await fetch(OVERPASS_URL, {
@@ -682,7 +691,7 @@ async function fetchWaterCellsForConcelho(concelho) {
       (el.members || []).forEach((m) => {
         waterCellsFromPolygonGeometry(m.geometry, resolution).forEach((c) => cells.add(c));
       });
-    } else if (el.tags.waterway && el.type === "way") {
+    } else if (el.tags.waterway && el.tags.name && el.type === "way") {
       waterCellsFromWaterwayGeometry(el.geometry, resolution).forEach((c) => cells.add(c));
     }
   });
