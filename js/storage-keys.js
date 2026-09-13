@@ -131,6 +131,12 @@ const STORAGE_KEY_DISCOVERED_HEXES_QUEUE = "personagem.hexagonosPorEnviar";
 // segundo: sem isto, abrir o mapa dispararia pedidos de cada vez.
 const STORAGE_KEY_DISTRICTS = "personagem.distritosDescobertos";
 
+// Agua real (rios/lagos/mar) por concelho, vinda da Overpass API (secção 18,
+// mapa estilizado 2026-09) - guarda so os IDs de hexagono ja calculados, nao
+// a geometria. Agua real nao muda, por isso este cache nunca expira (so
+// cresce a cada concelho novo desbloqueado).
+const STORAGE_KEY_WATERWAYS = "personagem.aguaDescoberta";
+
 // Estrelas colecionaveis ja apanhadas (secção 19). As POSICOES nao sao
 // guardadas - saem de um gerador determinista semeado no osm_id do concelho
 // (js/stars.js); so faz falta saber quais e que ja foram apanhadas.

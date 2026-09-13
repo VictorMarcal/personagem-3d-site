@@ -132,21 +132,24 @@ async function hydrateHexesFromSupabase() {
 
 // --- Mapa de territorio ----------------------------------------------------
 //
-// Imagem de satelite real usada como TEXTURA, nao como mapa: desfocada, sem
-// cor e escurecida onde ainda nao se treinou. A pedido (2026-08-15):
-// "imagina o mapa em vista satelite mas com um desfoque".
+// Mapa estilizado (2026-09, a pedido: mostrar um exemplo de mapa de
+// tabuleiro hexagonal tipo Battle for Wesnoth e pedir "quero tornar o mapa
+// real mais stylish como este exemplo"). Substitui a foto de satelite
+// desfocada por hexagonos de cor lisa - so 2 cores base, azul para agua real
+// e verde para o resto; o que existe em cada hexagono (mina de recurso) e um
+// icone por cima, nao uma terceira cor (ver drawHexGrid).
 //
-// Tres niveis de conhecimento do mundo, do mais escuro ao mais claro:
-//   1. por explorar          - cinzento, desfocado, escuro
-//   2. distrito desbloqueado - o mesmo, um pouco mais claro (sabes que e teu
-//                              para explorar, mas ainda nao la puseste os pes)
-//   3. hexagono descoberto   - a cores e quase nitido
+// Dois niveis de conhecimento do mundo (era tres ate aqui - o nivel
+// intermedio "concelho desbloqueado, ainda por visitar" saiu a pedido):
+//   1. por explorar        - nevoeiro, uniforme em qualquer parte do mundo
+//   2. hexagono descoberto  - a cor real (agua ou terra) + icone da mina
 //
-// Nada disto tem uma regiao escrita no codigo: o distrito e identificado a
-// partir dos proprios hexagonos (identifyRegions) e o enquadramento segue o
-// jogador. Para o Skllrx da Braga porque foi so onde treinou; para outro
-// jogador dara o distrito dele.
-const MAP_TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+// Nada disto tem uma regiao escrita no codigo: o distrito/concelho e
+// identificado a partir dos proprios hexagonos (identifyRegions) e o
+// enquadramento segue o jogador. Os CONTORNOS de concelho/distrito deixaram
+// de se desenhar no mapa (a pedido) - o desbloqueio continua a valer para a
+// economia (secção 21) e o texto "Concelhos: X" por baixo do mapa, so a
+// linha e o nome deixaram de aparecer em cima do mapa.
 const MAP_MAX_ZOOM = 17;
 
 // Entrada no mapa: vista geral e depois voo ate onde estas.
@@ -164,17 +167,19 @@ const hexCountEl = document.getElementById("hex-count");
 const hexDistrictEl = document.getElementById("hex-district");
 let hexMap = null;
 let hexCanvas = null;
-let hexConcelhoLayer = null;
-let hexDistritoLayer = null;
-let hexDistritoLabelLayer = null;
 let playerMarker = null;
 let playerLatLng = null;
 // Ultima direcao conhecida, em graus a partir do norte. null enquanto nunca
 // se soube - ai nao se mostra cone nenhum.
 let playerHeading = null;
 let unlockedConcelhos = [];
-let unlockedDistritos = [];
 let territoryOutline = [];
+// Cores lidas do CSS (--hexmap-*) uma vez, quando o mapa e criado - ver
+// createHexMap(). Valores aqui sao so o fallback antes disso acontecer.
+let hexColors = { fog: "#3b3d3a", land: "#7c9a5e", water: "#3f7ea6" };
+// Uniao dos hexagonos de agua real (rios/lagos/mar) de todos os concelhos ja
+// resolvidos - ver identifyWaterForUnlockedConcelhos() mais abaixo.
+let waterHexIds = new Set();
 
 function renderHexCount() {
   if (hexCountEl) hexCountEl.textContent = String(getDiscoveredHexCount());
@@ -189,45 +194,6 @@ function hexPathIn(cellId, project) {
     d += (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1) + " ";
   });
   return d + "Z";
-}
-
-// Aneis ja em [lat, lng] (o que o H3 devolve, e o que o Leaflet quer).
-function latLngRingPath(ring, project) {
-  let d = "";
-  ring.forEach(([lat, lng], i) => {
-    const p = project([lat, lng]);
-    d += (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1) + " ";
-  });
-  return d + "Z";
-}
-
-// Fronteira "encaixada" na grelha de hexagonos, a pedido: o contorno segue as
-// linhas dos hexagonos mais proximos em vez da fronteira administrativa real.
-// Nao fica exato ao mapa - com este desfoque ninguem consegue ler o mapa ao
-// pormenor, por isso o que se ganha em coerencia visual vale mais do que a
-// precisao que se perde.
-//
-// Resolucao 8 (~1,15 km): grande o suficiente para o encaixe se NOTAR ao
-// aproximar, pequeno o suficiente para o concelho continuar reconhecivel.
-const REGION_OUTLINE_RES = 8;
-
-function hexifyRegion(geojson) {
-  const polys = geojson.type === "Polygon" ? [geojson.coordinates] : geojson.coordinates;
-  const cells = new Set();
-  polys.forEach((poly) => {
-    // O H3 quer [lat, lng] e o GeoJSON traz [lng, lat]. O primeiro anel e o
-    // contorno, os seguintes sao buracos.
-    const loops = poly.map((ring) => ring.map(([lng, lat]) => [lat, lng]));
-    try {
-      h3.polygonToCells(loops, REGION_OUTLINE_RES).forEach((c) => cells.add(c));
-    } catch (e) {
-      // Poligono degenerado: fica sem contorno hexagonal, nao rebenta nada.
-    }
-  });
-  if (cells.size === 0) return null;
-  // Devolve [[anel, ...buracos], ...] em [lat, lng] - exatamente o formato de
-  // latlngs que o L.polygon aceita.
-  return h3.cellsToMultiPolygon([...cells]);
 }
 
 function pointInRing(lat, lng, ring) {
@@ -254,28 +220,6 @@ function countHexesInside(gj) {
   return n;
 }
 
-// --- recortes --------------------------------------------------------------
-//
-// Trabalham em "layer points", cuja origem so muda no zoom: nao e preciso
-// recalcula-los ao arrastar, e a fronteira de um distrito tem milhares de
-// vertices.
-function updateClips() {
-  if (!hexMap) return;
-  const project = (ll) => hexMap.latLngToLayerPoint(ll);
-
-  const hexParts = [];
-  getDiscoveredHexIds().forEach((c) => hexParts.push(hexPathIn(c, project)));
-  hexMap.getPane("hexclear").style.clipPath = hexParts.length ? `path("${hexParts.join(" ")}")` : `path("M0 0Z")`;
-
-  // O recorte usa a MESMA fronteira hexagonal que se desenha, senao a mancha
-  // clara e o contorno nao coincidiam.
-  const regionParts = [];
-  unlockedConcelhos.forEach(({ hexOutline }) => {
-    (hexOutline || []).forEach((poly) => poly.forEach((ring) => regionParts.push(latLngRingPath(ring, project))));
-  });
-  hexMap.getPane("hexdistrictfog").style.clipPath = regionParts.length ? `path("${regionParts.join(" ")}")` : `path("M0 0Z")`;
-}
-
 // --- grelha ----------------------------------------------------------------
 //
 // A grelha acompanha o zoom: os hexagonos de descoberta (resolucao 9, ~427m)
@@ -287,11 +231,10 @@ const H3_CELL_DIAMETER_M = { 5: 21300, 6: 8060, 7: 3050, 8: 1150, 9: 435 };
 const GRID_TARGET_PX = 40;
 const MAX_GRID_CELLS = 4000;
 
-// Escolhas do jogador no mockup: SEM linhas de grelha, mas COM o sombreado
-// por hexagono - o mosaico continua a ler-se pelas manchas, sem a malha
-// desenhada por cima da imagem.
-const SHOW_GRID_LINES = false;
-const SHOW_HEX_SHADING = true;
+// Com cor lisa em vez de foto, a linha do hexagono e que da a leitura de
+// "tabuleiro" - sem ela, hexagonos vizinhos da mesma cor fundem-se numa
+// mancha so (2026-09, mapa estilizado - antes disto era false).
+const SHOW_GRID_LINES = true;
 
 function gridResolution() {
   const size = hexMap.getSize();
@@ -352,35 +295,60 @@ function drawHexGrid() {
   if (cells.length > MAX_GRID_CELLS) cells = [];
 
   const project = (ll) => hexMap.latLngToContainerPoint(ll);
-  const discovered = getDiscoveredHexIds();
-  const discoveryRes = getHexResolution();
 
-  if (SHOW_GRID_LINES || SHOW_HEX_SHADING) {
-    cells.forEach((cell) => {
-      const isMine = res === discoveryRes && discovered.has(cell);
-      const path = new Path2D(hexPathIn(cell, project));
-      if (SHOW_HEX_SHADING && !isMine) {
-        // Leve variacao de escuridao por hexagono: da a leitura de "peca" em
-        // vez de fotografia continua.
-        const jitter = Math.abs(Math.sin(parseInt(cell.slice(-6), 16) || 1)) * 0.16;
-        ctx.fillStyle = `rgba(6,10,16,${0.1 + jitter})`;
-        ctx.fill(path);
-      }
-      if (SHOW_GRID_LINES) {
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = isMine ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.35)";
-        ctx.stroke(path);
-      }
+  // 1) Nevoeiro: grelha grosseira (resolucao por zoom), cobre tudo o que
+  // esta visivel - e o fundo por defeito de qualquer hexagono ainda nao
+  // pisado. Leve variacao por hexagono (jitter) para dar leitura de "peca"
+  // em vez de mancha uniforme.
+  cells.forEach((cell) => {
+    const path = new Path2D(hexPathIn(cell, project));
+    const jitter = Math.abs(Math.sin(parseInt(cell.slice(-6), 16) || 1)) * 0.08;
+    ctx.fillStyle = hexColors.fog;
+    ctx.globalAlpha = 1 - jitter;
+    ctx.fill(path);
+    ctx.globalAlpha = 1;
+    if (SHOW_GRID_LINES) {
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.stroke(path);
+    }
+  });
+
+  // 2) Hexagonos ja descobertos: sempre na resolucao REAL de descoberta
+  // (getDiscoveredHexIds ja devolve os ids nessa resolucao), desenhados por
+  // cima do nevoeiro - independente da resolucao grosseira escolhida acima
+  // para o nevoeiro, senao a vista de longe "esquecia" tudo o que ja foi
+  // explorado (a resolucao grosseira nunca bate certo com a de descoberta).
+  // Agua real (secção 18) ou terra - uma mina encontrada manda sempre para
+  // terra, mesmo que calhe de estar sobre agua real (a mina "ganha").
+  const encontradasParaCor = typeof getMinasEncontradas === "function" ? getMinasEncontradas() : new Set();
+  const minaPorHex = {};
+  if (typeof todasAsMinas === "function") {
+    todasAsMinas().forEach((mina) => {
+      if (encontradasParaCor.has(mina.id)) minaPorHex[mina.hexId] = mina;
     });
   }
+  getDiscoveredHexIds().forEach((cell) => {
+    const [lat, lng] = h3.cellToLatLng(cell);
+    if (!bounds.contains([lat, lng])) return;
+    const path = new Path2D(hexPathIn(cell, project));
+    const ehAgua = !minaPorHex[cell] && waterHexIds.has(cell);
+    ctx.fillStyle = ehAgua ? hexColors.water : hexColors.land;
+    ctx.fill(path);
+    if (SHOW_GRID_LINES) {
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.stroke(path);
+    }
+  });
 
-  // Minas encontradas, por cima do satelite desfocado. So as ENCONTRADAS:
-  // as outras nao estao visiveis ate se la chegar, e o unico sinal delas e o
-  // aviso sonoro a 500 m (secção 21).
+  // Minas encontradas: icone do recurso por cima do hexagono dela. So as
+  // ENCONTRADAS: as outras nao estao visiveis ate se la chegar, e o unico
+  // sinal delas e o aviso sonoro a 500 m (secção 21).
   //
-  // Ao contrario dos icones anteriores, que eram um por hexagono descoberto,
-  // estes nao dependem da resolucao desenhada - uma mina e um ponto, nao um
-  // hexagono, por isso faz sentido em qualquer zoom.
+  // Ao contrario dos hexagonos acima, estes nao dependem da resolucao
+  // desenhada - uma mina e um ponto, nao um hexagono, por isso faz sentido
+  // em qualquer zoom.
   if (typeof todasAsMinas === "function") {
     const encontradas = getMinasEncontradas();
     const visitas = typeof getHexVisits === "function" ? getHexVisits() : {};
@@ -439,22 +407,8 @@ function drawHexGrid() {
 
 }
 
-// Afastado, o escurecimento deixa o pais irreconhecivel - o nevoeiro passa a
-// ser so uma mancha preta. Alivia-se com o zoom: vista geral legivel,
-// nevoeiro cerrado ao perto, que e onde a exploracao se nota.
-function updateFogLift() {
-  // O mapa so e criado quando a sub-aba Missoes e aberta pela primeira vez.
-  // Durante um treino, apanhar uma estrela pede um redesenho, e sem esta
-  // guarda isso rebentava dentro do onPositionUpdate - ou seja, partia o GPS
-  // a meio do treino de quem nunca tinha aberto o mapa.
-  if (!hexMap || !hexMapEl) return;
-  const t = Math.min(1, Math.max(0, (12 - hexMap.getZoom()) / 5));
-  hexMapEl.style.setProperty("--hexmap-fog-lift", String(1 + t));
-}
-
 function redrawHexMap() {
   drawHexGrid();
-  updateFogLift();
 }
 
 // --- concelhos e distritos -------------------------------------------------
@@ -484,11 +438,6 @@ const REGION_CACHE_VERSION = 2;
 // Nivel administrativo em Portugal: 7 = concelho/municipio, 6 = distrito.
 const ADMIN_LEVEL_CONCELHO = 7;
 const ADMIN_LEVEL_DISTRITO = 6;
-
-// Abaixo deste zoom mostra-se o distrito; a partir dele, os concelhos. Um
-// concelho ocupa praticamente o ecra de um telemovel no zoom 11, por isso e
-// dai para cima que faz sentido ler os nomes deles.
-const CONCELHO_LABEL_MIN_ZOOM = 11;
 
 function loadRegionCache() {
   try {
@@ -613,6 +562,162 @@ async function identifyRegions() {
   }
 }
 
+// --- agua real (rios/lagos/mar) ---------------------------------------------
+//
+// Mesma filosofia dos concelhos acima (pedir uma vez, cachear para sempre,
+// um de cada vez por abertura do mapa) mas para a Overpass API em vez do
+// Nominatim - a pedido: "onde na vida existir agua/mar/rios, desenhar tb no
+// mapa" (secção 18, mapa estilizado 2026-09).
+//
+// So se guarda o CONJUNTO DE HEXAGONOS resultante (ids H3, strings curtas),
+// nunca a geometria da agua - agua real nao muda, por isso o cache nao
+// precisa de expirar, so de crescer a cada concelho novo desbloqueado.
+const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const WATER_CACHE_VERSION = 1;
+const WATER_LOOKUPS_PER_OPEN = 1;
+// Amostragem ao longo de um rio/ribeira, em metros - nao e um buffer
+// geometrico exato (a pedido, o que interessa e VER o rio no mapa, nao a
+// largura certa ao metro).
+const RIVER_SAMPLE_STEP_M = 100;
+
+function loadWaterCache() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY_WATERWAYS) || "{}");
+    if (parsed.v !== WATER_CACHE_VERSION || !parsed.porConcelho) return { v: WATER_CACHE_VERSION, porConcelho: {} };
+    return parsed;
+  } catch (e) {
+    return { v: WATER_CACHE_VERSION, porConcelho: {} };
+  }
+}
+
+function saveWaterCache(cache) {
+  localStorage.setItem(STORAGE_KEY_WATERWAYS, JSON.stringify(cache));
+}
+
+// Mesmo calculo de bbox que buildMinesFor() em js/resources.js - simples e
+// suficiente para uma query Overpass, nao precisa do poligono exato.
+function bboxOfGeoJson(gj) {
+  const polys = gj.type === "Polygon" ? [gj.coordinates] : gj.coordinates;
+  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+  polys.forEach((poly) =>
+    poly[0].forEach(([lng, lat]) => {
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    })
+  );
+  return { minLat, minLng, maxLat, maxLng };
+}
+
+// Poligono de agua (lago/albufeira/mar fechado) -> hexagonos que cobre.
+function waterCellsFromPolygonGeometry(geometry, resolution) {
+  if (!geometry || geometry.length < 3) return [];
+  const ring = geometry.map((pt) => [pt.lat, pt.lon]);
+  try {
+    return [...h3.polygonToCells([ring], resolution)];
+  } catch (e) {
+    return [];
+  }
+}
+
+// Linha de rio/ribeira -> amostra pontos ao longo dela e alarga 1 anel de
+// hexagonos a volta de cada amostra, para o rio ter alguma largura visivel.
+function waterCellsFromWaterwayGeometry(geometry, resolution) {
+  if (!geometry || geometry.length < 2) return [];
+  const cells = new Set();
+  for (let i = 0; i < geometry.length - 1; i += 1) {
+    const a = geometry[i];
+    const b = geometry[i + 1];
+    const segMeters = haversineDistance(a.lat, a.lon, b.lat, b.lon);
+    const passos = Math.max(1, Math.round(segMeters / RIVER_SAMPLE_STEP_M));
+    for (let s = 0; s <= passos; s += 1) {
+      const t = s / passos;
+      const lat = a.lat + (b.lat - a.lat) * t;
+      const lng = a.lon + (b.lon - a.lon) * t;
+      try {
+        const cell = h3.latLngToCell(lat, lng, resolution);
+        h3.gridDisk(cell, 1).forEach((c) => cells.add(c));
+      } catch (e) {
+        // Coordenadas invalidas: ignora esta amostra, nunca rebenta o resto.
+      }
+    }
+  }
+  return [...cells];
+}
+
+async function fetchWaterCellsForConcelho(concelho) {
+  const { minLat, minLng, maxLat, maxLng } = bboxOfGeoJson(concelho.geojson);
+  const query =
+    "[out:json][timeout:25];(" +
+    `way["natural"="water"](${minLat},${minLng},${maxLat},${maxLng});` +
+    `relation["natural"="water"](${minLat},${minLng},${maxLat},${maxLng});` +
+    `way["waterway"~"^(river|stream|canal)$"](${minLat},${minLng},${maxLat},${maxLng});` +
+    ");out geom;";
+
+  const response = await fetch(OVERPASS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: "data=" + encodeURIComponent(query),
+  });
+  const data = await response.json();
+  const resolution = getHexResolution();
+  const cells = new Set();
+
+  (data.elements || []).forEach((el) => {
+    if (!el.tags) return;
+    if (el.tags.natural === "water" && el.type === "way") {
+      waterCellsFromPolygonGeometry(el.geometry, resolution).forEach((c) => cells.add(c));
+    } else if (el.tags.natural === "water" && el.type === "relation") {
+      // Multipoligono: trata-se cada membro como um anel de agua, sem
+      // distinguir buracos (uma ilha no meio de um lago fica, na pratica,
+      // tambem pintada de agua) - simplificacao aceite, o que importa e a
+      // forma geral do lago, nao o recorte exato de cada ilhota.
+      (el.members || []).forEach((m) => {
+        waterCellsFromPolygonGeometry(m.geometry, resolution).forEach((c) => cells.add(c));
+      });
+    } else if (el.tags.waterway && el.type === "way") {
+      waterCellsFromWaterwayGeometry(el.geometry, resolution).forEach((c) => cells.add(c));
+    }
+  });
+
+  return [...cells];
+}
+
+// Junta o cache inteiro num Set so, para o render (drawHexGrid) fazer uma
+// pergunta O(1) por hexagono em vez de percorrer concelho a concelho.
+function mergeWaterCache(cache) {
+  waterHexIds = new Set();
+  Object.values(cache.porConcelho || {}).forEach((cells) => cells.forEach((c) => waterHexIds.add(c)));
+}
+
+// Um concelho de cada vez por abertura do mapa (mesmo espirito de
+// REGION_LOOKUPS_PER_OPEN para o Nominatim) - a Overpass e uma API publica
+// partilhada, nao se justifica pedir tudo de uma vez.
+async function identifyWaterForUnlockedConcelhos() {
+  const cache = loadWaterCache();
+  mergeWaterCache(cache);
+
+  const pendentes = unlockedConcelhos.filter((c) => !(c.osmId in cache.porConcelho));
+  if (pendentes.length === 0) return;
+
+  let changed = false;
+  for (const concelho of pendentes.slice(0, WATER_LOOKUPS_PER_OPEN)) {
+    try {
+      cache.porConcelho[concelho.osmId] = await fetchWaterCellsForConcelho(concelho);
+      changed = true;
+    } catch (e) {
+      // Sem rede ou Overpass em baixo: tenta-se de novo na proxima abertura.
+    }
+  }
+
+  if (changed) {
+    saveWaterCache(cache);
+    mergeWaterCache(cache);
+    redrawHexMap();
+  }
+}
+
 // So a parte de DADOS de applyRegions: que concelhos/distritos estao
 // desbloqueados. Nao precisa do mapa (so de h3 + do conjunto de hexes
 // descobertos), por isso pode correr no arranque - a economia (js/resources.js
@@ -620,67 +725,16 @@ async function identifyRegions() {
 function computeUnlockedRegions(cache) {
   if (typeof h3 === "undefined" || !cache || !cache.concelhos) return;
   unlockedConcelhos = cache.concelhos.filter((c) => countHexesInside(c.geojson) >= MIN_HEXES_FOR_REGION);
-  // So se mostra o distrito que tem pelo menos um concelho ja desbloqueado.
-  const distritosAtivos = new Set(unlockedConcelhos.map((c) => c.distritoOsmId));
-  unlockedDistritos = cache.distritos.filter((d) => distritosAtivos.has(d.osmId));
-  // Fronteira encaixada na grelha, calculada uma vez por regiao.
-  [...unlockedConcelhos, ...unlockedDistritos].forEach((r) => {
-    if (!r.hexOutline) r.hexOutline = hexifyRegion(r.geojson);
-  });
 }
 
+// Concelho/distrito deixaram de se desenhar no mapa (2026-09, mapa
+// estilizado, a pedido) - fica so o texto "Concelhos: X" (fora do mapa) e o
+// pedido de agua real para os concelhos ja desbloqueados. `cache.distritos`
+// continua a ser guardado por identifyRegions/resolveRegionAt (vem de borla
+// no mesmo pedido do concelho), mesmo sem consumidor agora - fica disponivel
+// se um dia se quiser voltar a mostrar o distrito nalgum sitio.
 function applyRegions(cache) {
   computeUnlockedRegions(cache);
-  if (!hexMap) return;
-
-  hexConcelhoLayer.clearLayers();
-  unlockedConcelhos.forEach(({ name, hexOutline }) => {
-    if (!hexOutline) return;
-    const shape = L.polygon(hexOutline, {
-      pane: "hexdistrict",
-      interactive: false,
-      color: "#ffd48a",
-      weight: 2,
-      opacity: 0.9,
-      dashArray: "7 5",
-      fill: true,
-      fillColor: "#ffcf80",
-      fillOpacity: 0.05,
-    }).addTo(hexConcelhoLayer);
-
-    L.marker(shape.getBounds().getCenter(), {
-      pane: "hexdistrict",
-      interactive: false,
-      keyboard: false,
-      icon: L.divIcon({ className: "hex-region-label", html: name, iconSize: null }),
-    }).addTo(hexConcelhoLayer);
-  });
-
-  // O contorno do distrito fica sempre visivel; so a etiqueta e que troca
-  // com o zoom, por isso vivem em camadas separadas.
-  hexDistritoLayer.clearLayers();
-  hexDistritoLabelLayer.clearLayers();
-  unlockedDistritos.forEach(({ name, hexOutline }) => {
-    if (!hexOutline) return;
-    const shape = L.polygon(hexOutline, {
-      pane: "hexdistrict",
-      interactive: false,
-      color: "#ffd48a",
-      weight: 1.5,
-      opacity: 0.55,
-      dashArray: "10 7",
-      fill: false,
-    }).addTo(hexDistritoLayer);
-
-    L.marker(shape.getBounds().getCenter(), {
-      pane: "hexdistrict",
-      interactive: false,
-      keyboard: false,
-      icon: L.divIcon({ className: "hex-region-label distrito", html: name, iconSize: null }),
-    }).addTo(hexDistritoLabelLayer);
-  });
-
-  if (!hexMap.hasLayer(hexDistritoLayer)) hexMap.addLayer(hexDistritoLayer);
 
   if (hexDistrictEl) {
     hexDistrictEl.textContent = unlockedConcelhos.length
@@ -688,29 +742,13 @@ function applyRegions(cache) {
       : "nenhum ainda";
   }
 
-
-  updateRegionZoomLevel();
-  updateClips();
+  if (hexMap) {
+    identifyWaterForUnlockedConcelhos();
+    redrawHexMap();
+  }
 
   // Um concelho novo desbloqueado pode concluir uma missao mensal (secção 22).
   if (typeof verificarMissaoAtiva === "function") verificarMissaoAtiva();
-}
-
-// A pedido: o contorno do distrito esta SEMPRE la. Na vista geral ve-se so
-// ele, com o nome; ao aproximar juntam-se-lhe os contornos e os nomes dos
-// concelhos desbloqueados, e o nome do distrito sai - o concelho e o distrito
-// tem muitas vezes o mesmo nome (Braga e Braga) e os dois ao mesmo tempo
-// ficavam ilegiveis.
-function updateRegionZoomLevel() {
-  if (!hexMap || !hexConcelhoLayer || !hexDistritoLabelLayer) return;
-  const perto = hexMap.getZoom() >= CONCELHO_LABEL_MIN_ZOOM;
-
-  const toggle = (layer, visible) => {
-    if (visible && !hexMap.hasLayer(layer)) hexMap.addLayer(layer);
-    if (!visible && hexMap.hasLayer(layer)) hexMap.removeLayer(layer);
-  };
-  toggle(hexConcelhoLayer, perto);
-  toggle(hexDistritoLabelLayer, !perto);
 }
 // --- onde estas ------------------------------------------------------------
 //
@@ -821,35 +859,31 @@ function territoryCenter() {
 
 function createHexMap() {
   hexMap = L.map(hexMapEl, { minZoom: 3, maxZoom: MAP_MAX_ZOOM });
-  hexMap.attributionControl.addAttribution("Fronteiras: OpenStreetMap");
+  hexMap.attributionControl.addAttribution("Dados: OpenStreetMap");
   hexMap.setView([39.5, -8.0], MAP_OVERVIEW_ZOOM);
 
-  [["hexfog", 200], ["hexdistrictfog", 250], ["hexclear", 300],
-   ["hexgrid", 400], ["hexdistrict", 450], ["hexplayer", 550]].forEach(([name, z]) => {
+  // So 2 panes: o canvas (nevoeiro + terreno + icones das minas, tudo
+  // desenhado ali - ver drawHexGrid) e o marcador do jogador por cima. As
+  // camadas de foto de satelite e os poligonos de concelho/distrito sairam
+  // com o mapa estilizado (2026-09, a pedido).
+  [["hexgrid", 400], ["hexplayer", 550]].forEach(([name, z]) => {
     hexMap.createPane(name);
     hexMap.getPane(name).style.zIndex = z;
   });
-  ["hexgrid", "hexdistrict", "hexplayer"].forEach((name) => {
-    hexMap.getPane(name).style.pointerEvents = "none";
-  });
-
-  // A MESMA imagem em tres camadas; o que as distingue e o filtro CSS e o
-  // recorte. O browser so descarrega os tiles uma vez - as outras duas
-  // camadas saem da cache HTTP.
-  ["hexfog", "hexdistrictfog", "hexclear"].forEach((pane) => {
-    L.tileLayer(MAP_TILE_URL, { pane, maxZoom: MAP_MAX_ZOOM }).addTo(hexMap);
-  });
-  // Ate haver descobertas, so se ve o nevoeiro.
-  hexMap.getPane("hexdistrictfog").style.clipPath = `path("M0 0Z")`;
-  hexMap.getPane("hexclear").style.clipPath = `path("M0 0Z")`;
+  hexMap.getPane("hexgrid").style.pointerEvents = "none";
 
   hexCanvas = document.createElement("canvas");
   hexCanvas.className = "hex-map-canvas";
   hexMap.getPane("hexgrid").appendChild(hexCanvas);
 
-  hexConcelhoLayer = L.layerGroup([], { pane: "hexdistrict" });
-  hexDistritoLayer = L.layerGroup([], { pane: "hexdistrict" });
-  hexDistritoLabelLayer = L.layerGroup([], { pane: "hexdistrict" });
+  // Cores lidas do CSS uma vez (nao mudam em runtime) - ver a declaracao de
+  // hexColors mais acima.
+  const style = getComputedStyle(hexMapEl);
+  hexColors = {
+    fog: style.getPropertyValue("--hexmap-fog").trim() || hexColors.fog,
+    land: style.getPropertyValue("--hexmap-land").trim() || hexColors.land,
+    water: style.getPropertyValue("--hexmap-water").trim() || hexColors.water,
+  };
 
   playerMarker = L.marker([0, 0], {
     pane: "hexplayer",
@@ -866,12 +900,8 @@ function createHexMap() {
 
   addRecenterControl();
 
-  // O canvas trabalha em coordenadas de ecra: redesenha a cada movimento. Os
-  // recortes so mudam quando muda o zoom.
+  // O canvas trabalha em coordenadas de ecra: redesenha a cada movimento.
   hexMap.on("move zoom viewreset resize", redrawHexMap);
-  hexMap.on("zoom zoomend viewreset resize", updateClips);
-  // Distrito na vista geral, concelhos ao aproximar.
-  hexMap.on("zoomend", updateRegionZoomLevel);
 }
 
 // Sempre que se entra no mapa: vista geral e depois voo ate onde estas, a
@@ -881,7 +911,6 @@ async function enterHexMapMode() {
   const start = playerLatLng || territoryCenter();
   if (start) hexMap.setView(start, MAP_OVERVIEW_ZOOM, { animate: false });
   redrawHexMap();
-  updateClips();
 
   const target = (await locatePlayer()) || territoryCenter();
   if (!target) return;
@@ -914,6 +943,5 @@ function refreshHexMapSize() {
   if (hexMap) {
     hexMap.invalidateSize();
     redrawHexMap();
-    updateClips();
   }
 }

@@ -612,50 +612,26 @@ main {
 .training-calories-row span { font-weight: 700; color: var(--text); }
 
 /* Mapa de territorios descobertos (2026-08-15, secção 18.1). Altura fixa: o
-   Leaflet precisa de um contentor com altura definida, senao colapsa a 0. */
+   Leaflet precisa de um contentor com altura definida, senao colapsa a 0.
+   Mapa estilizado (2026-09, a pedido): hexagonos de cor lisa em vez de foto
+   de satelite - as 3 cores base, lidas uma vez por js/hexes.js
+   (createHexMap). `background` e so o fallback antes do 1o desenho do
+   canvas. */
 #hex-map {
   height: 320px;
   width: 100%;
   border-radius: var(--r-md);
   margin-top: 12px;
-  background: #10151c;
   overflow: hidden;
 
-  /* Afinacao do aspeto do mapa, escolhida no mockup com o jogador. O
-     --hexmap-fog-lift e o unico que muda em runtime (js/hexes.js): alivia o
-     escurecimento nos zooms afastados, senao a vista geral do pais fica uma
-     mancha preta ilegivel. */
-  --hexmap-blur-fog: 12px;
-  --hexmap-blur-clear: 12px;
-  --hexmap-dark: 0.45;
-  --hexmap-fog-lift: 1;
-  --hexmap-district-lift: 1.7;
-  --hexmap-sat: 2.2;
+  --hexmap-fog: #3b3d3a;
+  --hexmap-land: #7c9a5e;
+  --hexmap-water: #3f7ea6;
+  background: var(--hexmap-fog);
 }
 
-/* Tres niveis de conhecimento do mundo, todos a partir da MESMA imagem de
-   satelite - o que os distingue e o filtro CSS e o recorte (js/hexes.js).
-   Os icones de recurso sao desenhados por cima, no canvas. */
-
-/* 1. Por explorar: cinzento, desfocado, escuro. */
-.leaflet-hexfog-pane {
-  filter: blur(var(--hexmap-blur-fog)) grayscale(1)
-          brightness(calc(var(--hexmap-dark) * var(--hexmap-fog-lift))) contrast(1.05);
-}
-
-/* 2. Concelho desbloqueado: o mesmo, um pouco mais claro. */
-.leaflet-hexdistrictfog-pane {
-  filter: blur(var(--hexmap-blur-fog)) grayscale(1)
-          brightness(calc(var(--hexmap-dark) * var(--hexmap-fog-lift) * var(--hexmap-district-lift)))
-          contrast(1.05);
-}
-
-/* 3. Hexagono descoberto: a cores. */
-.leaflet-hexclear-pane {
-  filter: blur(var(--hexmap-blur-clear)) saturate(var(--hexmap-sat)) contrast(1.05);
-}
-
-/* Canvas da grelha hexagonal (js/hexes.js), por cima das tres camadas. */
+/* Canvas da grelha hexagonal (js/hexes.js) - nevoeiro, terreno e icones das
+   minas, tudo desenhado ali. */
 .hex-map-canvas {
   position: absolute;
   top: 0;
@@ -706,27 +682,6 @@ main {
 
 @media (prefers-reduced-motion: reduce) {
   .hex-recenter-btn.locating { animation: none; opacity: 0.6; }
-}
-
-/* Nome da regiao desbloqueada, escrito sobre o mapa. Nunca aparecem os dois
-   ao mesmo tempo (js/hexes.js): distrito na vista geral, concelhos ao
-   aproximar - com nomes muitas vezes iguais, ficava ilegivel. */
-.hex-region-label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #ffdca5;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-  white-space: nowrap;
-}
-
-/* O distrito e o nivel de cima: mais discreto que o concelho. */
-.hex-region-label.distrito {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  color: rgba(255, 220, 165, 0.75);
 }
 
 /* Onde estas. Azul-branco de proposito: o dourado ja e do territorio e do

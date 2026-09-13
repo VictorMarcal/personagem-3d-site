@@ -7,6 +7,16 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.12.0",
+    title: "Mapa com Cara Nova",
+    changes: [
+      "O mapa deixou de ser uma foto de satélite desfocada — agora é um tabuleiro de hexágonos, água a azul e terra a verde.",
+      "Rios, lagos e o mar aparecem desenhados nos sítios certos, tal como existem na realidade.",
+      "As minas já encontradas mostram um ícone que combina com o recurso: árvore para madeira, montanha para pedra, vulcão para ferro.",
+      "O nevoeiro por explorar é mais simples: só há \"por explorar\" e \"já lá estive\", sem contornos de concelho ou distrito desenhados por cima do mapa.",
+    ],
+  },
+  {
     version: "v6.11.0",
     title: "Cards de Treino Mais Simples",
     changes: [

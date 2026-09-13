@@ -19,9 +19,15 @@
 // pelo armazem). Nada abaixo de ~15%: simulamos, e com menos do que isso um
 // jogador com poucos hexagonos podia ficar sem NENHUM de um tipo e travado
 // sem perceber porque.
+// `icone` so e usado no mapa (js/hexes.js, mina encontrada) - la, o icone faz
+// as vezes de "terreno" do hexagono (secção 18, mapa estilizado 2026-09, a
+// pedido: "arvores indicam madeira, montanhas indicam pedra"). Ferro e pedra
+// sao os dois "montanha", por isso o icone do ferro e deliberadamente um tipo
+// de montanha diferente (vulcao, mais escuro) em vez de reaproveitar o da
+// pedra - sem isso ficavam visualmente iguais no mapa.
 const RESOURCES = [
-  { id: "ferro", nome: "Ferro", cor: "#C3C2CE", peso: 22, familia: "equipamento" , icone: "⚒️" },
-  { id: "madeira", nome: "Madeira", cor: "#C0A386", peso: 22, familia: "equipamento" , icone: "🪵" },
+  { id: "ferro", nome: "Ferro", cor: "#C3C2CE", peso: 22, familia: "equipamento" , icone: "🌋" },
+  { id: "madeira", nome: "Madeira", cor: "#C0A386", peso: 22, familia: "equipamento" , icone: "🌲" },
   { id: "pele", nome: "Pele", cor: "#E2B5AC", peso: 22, familia: "equipamento" , icone: "🐾" },
   { id: "pedra", nome: "Pedra", cor: "#BFC9B9", peso: 17, familia: "construcao" , icone: "🪨" },
   { id: "barro", nome: "Barro", cor: "#E3C89A", peso: 17, familia: "construcao" , icone: "🏺" },
