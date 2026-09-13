@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.13.0",
+    title: "Mapa Real, Outra Vez",
+    changes: [
+      "O mapa volta a mostrar a foto de satélite real, desfocada onde ainda não treinaste, a cores onde já estiveste.",
+      "Já não há grelha de hexágonos por dentro do território — só um contorno na margem, sem poluir o mapa com linhas.",
+      "As minas continuam a mostrar o ícone do recurso (árvore, montanha, vulcão, etc.) exatamente como antes.",
+    ],
+  },
+  {
     version: "v6.12.2",
     title: "Mapa com Cara Nova",
     changes: [

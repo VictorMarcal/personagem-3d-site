@@ -51,7 +51,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/weight.js` | Historico de peso, grafico de evolucao, popup de boas-vindas e lembrete de 15 dias — ver secção 20 |
 | `js/resources.js` | Economia de recursos do mapa: producao, multiplicadores, Fortaleza — ver secção 21 |
 | `js/resources-ui.js` | Painel de recursos e Fortaleza — ver secção 21 |
-| `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa estilizado (água real via Overpass) da aba Mapa — ver secção 18 |
+| `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de satélite desfocado da aba Mapa — ver secção 18 |
 | `js/missions.js` | Missões mensais (3 por mês, recompensa em recursos), painel no separador Treinar — ver secção 22 |
 | `supabase/schema.sql` | Referência do schema Postgres (tabelas, RLS) — histórico/registo, não é lido pelo site nem pelo Supabase |
 | `.mcp.json` | Liga o Claude Code ao projeto Supabase via MCP (`--project-ref=vnqjaepjfqlhgmlrhzlr`), token vem de uma variável de ambiente (`SUPABASE_ACCESS_TOKEN`), nunca gravado no ficheiro. Desde 2026-08-03, migrações novas são aplicadas diretamente via este MCP (`apply_migration`) em vez de copiar/colar SQL manualmente no dashboard — `supabase/schema.sql` continua a ser atualizado a cada migração, só como registo/referência |
@@ -1002,34 +1002,22 @@ Confirmado depois com uma caminhada simulada de 2 km em linha reta: **8 hexágon
 
 **Limitação herdada**: como toda a deteção depende do GPS, só conta com o treino a decorrer e o ecrã ligado (secção 4.2).
 
-### 18.1 Mapa de território (v3.3.0, 2026-08-15) — **estilizado desde v6.12.0 (2026-09-13)**
+### 18.1 Mapa de território (v3.3.0, 2026-08-15)
 
-**Satélite real usado como textura, não como mapa** foi a versão original (a pedido: *"imagina o mapa em vista satélite mas com um desfoque"*), com três níveis de conhecimento do mundo a partir da mesma foto desfocada (cinzento / concelho desbloqueado, um pouco mais claro / hexágono descoberto, a cores). **Substituído** a pedido, depois de o jogador mostrar um exemplo de mapa de tabuleiro hexagonal (estilo Battle for Wesnoth) e pedir para *"tornar o mapa real mais stylish como este exemplo"*, com água/rios/mar reais desenhados nos sítios certos. Fica como registo histórico mais abaixo (secção "Como era antes"); o resto desta secção descreve o sistema atual.
+**Satélite real usado como textura, não como mapa.** A pedido: *"imagina o mapa em vista satélite mas com um desfoque"*. A imagem (Esri World Imagery) aparece desfocada, cinzenta e escura onde ainda não se treinou — não se lê como um mapa de estradas, lê-se como território por descobrir.
 
-**Hexágonos de cor lisa, só 2 cores base** — azul para água real, verde-claro para tudo o resto (`js/hexes.js`, `drawHexGrid`, variáveis `--hexmap-fog`/`--hexmap-land`/`--hexmap-water` em `#hex-map`). O que existe num hexágono (uma mina de recurso) é um **ícone** por cima, não uma terceira cor — ver "Ícones de terreno" mais abaixo.
+**Passou por uma volta completa em 2026-09** — vale a pena registar, porque explica decisões que já não fazem sentido isoladas. O jogador pediu para tornar o mapa "mais stylish" (mostrou um exemplo de tabuleiro hexagonal tipo Battle for Wesnoth), o que levou a substituir a foto por hexágonos de cor lisa (água azul, terra verde) com água real vinda da Overpass API. Essa versão teve dois bugs de dados reais (rio largo demais, depois um "rio" que era uma vala de rega sem nome) e, ao ver o resultado, o jogador decidiu recomeçar do zero: *"não muda nada, vamos fazendo, vais me mostrando e quando gostar implementamos"*. Reconstruído passo a passo num mockup à parte (`mockup-mapa.html`, ver mais abaixo) — mapa real → desfoque → grelha → só o limite da área desbloqueada → área bloqueada a cinzento — e só then portado para a app. O resultado final é muito parecido com a versão de 2026-08-15, com duas diferenças que ficaram da tentativa "estilizada": só 2 níveis de nevoeiro (não 3) e sem contornos de concelho/distrito desenhados no mapa. A tentativa de água via Overpass foi abandonada por inteiro — a foto real já mostra a água onde ela existe, sem precisar de nenhuma classificação.
 
-**Dois níveis de conhecimento do mundo** (eram três até 2026-09-13 — o nível intermédio "concelho desbloqueado, ainda por visitar" saiu a pedido, junto com os contornos desenhados no mapa):
+**Dois níveis de conhecimento do mundo** (eram três até 2026-09 — o nível intermédio "concelho desbloqueado, ainda por visitar" saiu a pedido):
 
 | Nível | O que é | Tratamento |
 |---|---|---|
-| 1 | Por explorar | nevoeiro (`--hexmap-fog`), uniforme em qualquer parte do mundo |
-| 2 | Hexágono descoberto | cor real (água ou terra) + ícone da mina, se houver |
+| 1 | Por explorar | cinzento, desfocado, escuro (`--hexmap-blur`/`--hexmap-dark` em `#hex-map`) |
+| 2 | Hexágono descoberto | a mesma foto, a cores, com o mesmo desfoque |
 
-**Sem contornos de concelho nem de distrito desenhados no mapa** (saíram os dois, a pedido — antes havia um contorno tracejado + nome para cada um, secções abaixo ficam como registo histórico). O desbloqueio de concelho continua a valer **para a economia** (secção 21, minas) e o texto "Concelhos: X" por baixo do mapa (fora dele) continua a mostrar os nomes — só a linha desenhada em cima do mapa é que deixou de existir.
+**Sem contornos de concelho nem de distrito desenhados no mapa** (o desbloqueio continua a valer para a economia, secção 21, e o texto "Concelhos: X" por baixo do mapa — só a linha desenhada em cima do mapa não existe; ver subsecção própria mais abaixo).
 
 **Nenhuma região está escrita no código.** Vale para tudo nesta secção. O concelho é identificado a partir dos próprios hexágonos e o enquadramento segue o jogador. Para o Skllrx dá Braga porque foi só onde treinou; para o Bernardo dará o concelho dele, sem uma linha diferente.
-
-#### Água real (rios, lagos, mar)
-
-A pedido: *"onde na vida existir água/mar/rios, desenhar tb no mapa"*. Vem da **Overpass API** (dados OpenStreetMap), consultada por concelho já desbloqueado — mesma filosofia do Nominatim para concelhos/distritos (pedir uma vez, cachear para sempre, um pedido de cada vez por abertura do mapa, nunca bloquear o resto do mapa se falhar):
-
-- Pedido único por concelho, com a bbox do próprio concelho (mesmo cálculo que `buildMinesFor` usa para gerar minas): `natural=water` (lagos/albufeiras, incluindo relações/multipolígonos) e `waterway~"river|canal"` **com nome** (linhas de rio/canal).
-- **Só "river"/"canal" com nome, nunca "stream"** (corrigido em 2026-09-14, a pedido — um jogador via o mapa a "inventar" um rio ao lado de casa dele: *"não faz sentido, pelo teu mapa estás a dizer que tenho um rio ao lado de casa. Totalmente mentira"*). No OSM, `waterway=stream` é usado para qualquer coisa entre uma ribeira real e uma vala de rega agrícola — qualidade muito irregular, sobretudo em zonas rurais. `river` é reservado a cursos de água reconhecidos e quase sempre tem nome; exigir nome filtra ainda mais o ruído. Prefere-se mostrar **menos** água a mostrar água que não existe de facto — o mesmo princípio já usado para o alargamento a seguir.
-- **Conversão para hexágonos feita uma vez e cacheada** (`STORAGE_KEY_WATERWAYS`) — guarda-se só o conjunto de IDs de hexágono H3, nunca a geometria: água real não muda, por isso o cache nunca expira.
-- Polígonos de água → `h3.polygonToCells`, os mesmos hexágonos que a água cobre.
-- Linhas de rio → amostradas a cada ~100 m, um hexágono por amostra (~427 m, já mais largo que a maioria dos rios reais). **Não é um buffer geométrico exato** — o que importa é ver o rio no mapa, não a largura certa ao metro. **Chegou a alargar 1 anel de hexágonos à volta de cada amostra (`h3.gridDisk`) — corrigido em 2026-09-14** (`WATER_CACHE_VERSION` subiu para forçar reconsulta): dava uma faixa de ~1,2 km a fingir ser rio, larga o suficiente para pintar de água um passeio normal à beira-rio (reportado pelo jogador: *"andei a correr em cima da água? agora sou deus?"*).
-- **Multipolígonos de água**: cada membro é tratado como um anel de água, sem distinguir buracos — uma ilha no meio de um lago fica também pintada de água. Simplificação aceite: o que importa é a forma geral do lago.
-- **Um hexágono com mina é sempre pintado como terra**, nunca água, mesmo que calhe de estar sobre água real (a mina "ganha" — a colocação das minas continua aleatória, secção 21, independente do terreno real).
 
 #### Ícones de terreno por recurso
 
@@ -1109,24 +1097,22 @@ Uma leitura de GPS ao abrir o mapa (`getCurrentPosition`), **não** um `watchPos
 
 A pedido: *"sempre que entramos neste modo, o mapa tem uma vista geral do país e depois faz zoom para o sítio em que estás"*. Abre no zoom 6 (o suficiente para se ver um país em qualquer parte do mundo), espera 900 ms e voa até à posição em 2,6 s. **Centrada no jogador**, não numa região fixa. Sem GPS, cai para o centro do território já descoberto. Respeita `prefers-reduced-motion` — quem tem isso ligado entra direto na posição, sem voo.
 
-#### Grelha e desenho
+#### Sem grelha hexágono a hexágono, só o limite do território
 
-Tudo desenhado num único `<canvas>` (`drawHexGrid`, `js/hexes.js`), em **duas passagens**:
+Ao contrário do que se tentou na versão "estilizada", não há nenhuma linha a separar hexágonos vizinhos dentro do território já descoberto — só o contorno dourado da **união** de todos eles (`h3.cellsToMultiPolygon`, o mesmo mecanismo de sempre), desenhado num `<canvas>` por cima das duas camadas de foto. A pedido, depois de ver no mockup como uma grelha completa por cima da foto ficava com "uma teia de linhas" a poluir o mapa — só o traço na margem, onde a área desbloqueada acaba, é que sobrevive.
 
-1. **Nevoeiro** — grelha grosseira, resolução escolhida pelo tamanho aparente **no ecrã** (alvo ~40 px, via metros-por-pixel do próprio Leaflet) e não por uma tabela de níveis de zoom, para o resultado ser igual em qualquer latitude/ecrã. Teto de `MAX_GRID_CELLS = 4000`. Cobre **todo** o viewport visível, com um leve jitter por hexágono (dá leitura de "peça", não mancha uniforme).
-2. **Hexágonos descobertos** — desenhados por cima, sempre na resolução **real** de descoberta (`getHexResolution()`, independente da resolução grosseira do nevoeiro escolhida no passo 1 — sem isto, a vista de longe "esquecia" tudo o que já foi explorado, porque a resolução grosseira nunca bate certo com a de descoberta). Água real ou terra, mais o ícone da mina se houver (ver "Ícones de terreno" acima).
+**Duas coordenadas diferentes, de propósito:**
 
-Por cima de tudo: os ícones das minas encontradas (um ponto, não dependem de resolução nenhuma) e o contorno dourado da **união** do território (`h3.cellsToMultiPolygon`) — não de cada hexágono, senão a fronteira sai um emaranhado de linhas.
-
-**Uma só coordenada agora** (era duas até 2026-09-13: canvas em coordenadas de ecrã + recortes CSS em *layer points*, que só recalculavam no zoom) — sem a foto de satélite e os recortes que a acompanhavam, o canvas passou a ser a única coisa desenhada, sempre em coordenadas de ecrã, redesenhado a cada `move`.
+- o **canvas** (ícones das minas + contorno do território) desenha em coordenadas de ecrã e é redesenhado a cada `move` — vive num pane arrastado pelo Leaflet, por isso a translação é anulada com um `transform` inverso
+- o **recorte** da camada a cores (`updateClips`) usa *layer points*, cuja origem só muda no zoom — por isso só se recalcula em `zoom`/`viewreset`, não a cada frame de arrasto
 
 #### Custo assumido
 
-**Já não depende de tiles externas de foto de satélite** (a ArcGIS World Imagery saiu com o mapa estilizado) — só a **água** (Overpass) e as fronteiras de concelho/distrito (Nominatim) continuam a pedir à rede, e só uma vez por concelho, cacheado para sempre. Offline, o mapa mostra nevoeiro + o que já estiver cacheado, sem quebrar.
+Depende de tiles externas: pedidos de rede ao navegar e mapa vazio offline — ao contrário do terreno gerado por código de versões anteriores, que não tinha esse problema mas também não tinha o realismo do satélite. As duas camadas (`hexfog`/`hexclear`) usam a **mesma** URL de tile, por isso o browser só descarrega cada tile uma vez; a segunda sai da cache HTTP. As fronteiras de concelho/distrito (Nominatim) continuam a pedir à rede à parte, uma vez por concelho, cacheado para sempre.
 
 Continua a ser criado só quando a sub-aba é aberta pela primeira vez (`js/nav.js`), com `invalidateSize()` ao abrir — o Leaflet calcula dimensão 0 se o contentor estava escondido quando o mapa foi criado.
 
-**Mockup**: `mockup-mapa.html` (não versionado) foi onde a versão de satélite desfocada foi desenhada e afinada com sliders ao vivo — **desatualizado** desde o mapa estilizado (2026-09-13), fica só como registo de como se chegou à versão anterior.
+**Mockup**: `mockup-mapa.html` (não versionado) é onde este mapa foi desenhado e afinado passo a passo com o jogador — mapa real, depois desfoque, depois a grelha, depois só o limite da área desbloqueada, depois a área bloqueada a cinzento — antes de entrar aqui. Serve para voltar a afinar sem mexer no código da app.
 
 ## 19. Estrelas colecionáveis — **removido**
 

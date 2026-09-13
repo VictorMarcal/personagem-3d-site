@@ -613,25 +613,35 @@ main {
 
 /* Mapa de territorios descobertos (2026-08-15, secção 18.1). Altura fixa: o
    Leaflet precisa de um contentor com altura definida, senao colapsa a 0.
-   Mapa estilizado (2026-09, a pedido): hexagonos de cor lisa em vez de foto
-   de satelite - as 3 cores base, lidas uma vez por js/hexes.js
-   (createHexMap). `background` e so o fallback antes do 1o desenho do
-   canvas. */
+   Desenhado num mockup a parte (mockup-mapa.html) antes de entrar aqui:
+   foto de satelite real desfocada, cinzenta onde nao se treinou, a cores
+   onde ja se pos os pes. */
 #hex-map {
   height: 320px;
   width: 100%;
   border-radius: var(--r-md);
   margin-top: 12px;
+  background: #10151c;
   overflow: hidden;
 
-  --hexmap-fog: #3b3d3a;
-  --hexmap-land: #7c9a5e;
-  --hexmap-water: #3f7ea6;
-  background: var(--hexmap-fog);
+  --hexmap-blur: 8px;
+  --hexmap-dark: 0.45;
 }
 
-/* Canvas da grelha hexagonal (js/hexes.js) - nevoeiro, terreno e icones das
-   minas, tudo desenhado ali. */
+/* Por explorar: cinzento, escuro, desfocado. */
+.leaflet-hexfog-pane {
+  filter: blur(var(--hexmap-blur)) grayscale(1) brightness(var(--hexmap-dark));
+}
+
+/* Ja descoberto: a mesma foto, a cores, com o mesmo desfoque - recortada
+   (updateClips, js/hexes.js) aos hexagonos ja pisados. */
+.leaflet-hexclear-pane {
+  filter: blur(var(--hexmap-blur));
+}
+
+/* Canvas por cima das duas camadas de foto - icones das minas encontradas e
+   o contorno do territorio (js/hexes.js). Sem grelha hexagono a hexagono por
+   dentro do territorio, a pedido - so o traco na margem. */
 .hex-map-canvas {
   position: absolute;
   top: 0;
