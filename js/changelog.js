@@ -7,6 +7,16 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.11.0",
+    title: "Cards de Treino Mais Simples",
+    changes: [
+      "Os cards de treinos feitos mostram agora só a distância, a velocidade média e o XP — o resto fica atrás de \"Ver mais detalhes\".",
+      "Já não é preciso escolher se um treino foi caminhada ou corrida (deixou de haver dúvidas com a bicicleta, que já não existe).",
+      "Os títulos passam a \"Caminhada\" e \"Corrida\".",
+      "Os treinos de hoje aparecem sempre por baixo das missões.",
+    ],
+  },
+  {
     version: "v6.10.0",
     title: "Boas-Vindas e Lembrete de Peso",
     changes: [

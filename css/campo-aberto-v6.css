@@ -157,6 +157,11 @@
 .training-tile.xp .training-tile-label,
 .training-tile.xp .training-tile-value { color: var(--sage-700); }
 
+/* Card de um treino já feito (2026-09-13, a pedido): só 2 apoios, não 3 -
+   sem "Tempo ativo", que fica atrás do "Ver mais detalhes" junto com o
+   resto. */
+.training-card .training-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
 .training-detail-toggle {
   margin-top: 14px;
   border: none;

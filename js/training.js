@@ -53,6 +53,12 @@ const STORAGE_KEYS = {
 // (a pedido). Nada de novo e classificado como bicicleta.
 const MODE_LABEL_PT = { caminhar: "Caminhar", correr: "Correr", bicicleta: "Bicicleta" };
 
+// So para o titulo do card de um treino ja feito (2026-09-13, a pedido) -
+// substantivo, nao verbo: "Caminhada"/"Corrida", nao "Caminhar"/"Correr".
+// Continua so com estes dois porque nao ha treinos novos de bicicleta desde
+// 2026-09-10 (ver comentario acima do MODE_LABEL_PT).
+const TRAINING_CARD_TITLE_PT = { caminhar: "Caminhada", correr: "Corrida" };
+
 // --- Deteccao automatica de atividade (2026-08-10, secção 17.1 da
 // documentacao) - substitui a escolha manual de modo. Cada segmento de GPS
 // e classificado pela velocidade MEDIA de uma janela deslizante (evita
@@ -1406,6 +1412,7 @@ function renderTrainingCard(s) {
   const pausedSeconds = Number(pausedRaw) || 0;
 
   const linha = (rotulo, valor) => `<dt>${rotulo}</dt><dd>${valor}</dd>`;
+  const avgSpeed = activeSeconds > 0 ? formatSpeedKmh((Number(s.distance_m) || 0) / activeSeconds) : desconhecido;
 
   // Reparticao por modo (secção 4.9). So se mostra quando ha mais do que um
   // modo: numa sessao inteirinha a correr, repetir "Corrida: 5,19 km" por
@@ -1419,21 +1426,49 @@ function renderTrainingCard(s) {
         .join("") + "</dl>"
     : "";
 
+  // So distancia, velocidade média e XP à vista (2026-09-13, a pedido) - o
+  // resto (tempos, calorias, repartição por modo) fica atrás do mesmo botão
+  // "Ver mais detalhes" que o painel de treino ao vivo já usa (js/nav.js).
   return `<li class="training-card">
-      <p class="training-label">${MODE_LABEL_PT[s.mode] || "Treino"}</p>
+      <p class="training-label">${TRAINING_CARD_TITLE_PT[s.mode] || "Treino"}</p>
       <p class="training-distance">${formatDistanceKm(Number(s.distance_m) || 0)}</p>
-      ${reparticao}
-      <dl class="summary-grid">
-        ${linha("Tempo ativo", formatDurationClock(activeSeconds))}
-        ${linha("Tempo em pausa", temPausa ? formatDurationClock(pausedSeconds) : desconhecido)}
-        ${linha("Tempo total", temPausa ? formatDurationClock(activeSeconds + pausedSeconds) : desconhecido)}
-        ${linha("Velocidade média", activeSeconds > 0 ? formatSpeedKmh((Number(s.distance_m) || 0) / activeSeconds) : desconhecido)}
-        ${linha("Calorias ativas", temAtivas ? `${Math.round(Number(activeKcalRaw))} kcal` : desconhecido)}
-        ${linha("Calorias totais", `${Math.round(Number(s.calories_kcal) || 0)} kcal`)}
-      </dl>
-      <p class="training-calories-row">XP: <span>${Math.round(Number(s.calories_kcal) || 0)} kcal</span></p>
-      ${renderModeFixControl(s)}
+      <div class="training-tiles">
+        <div class="training-tile">
+          <p class="training-tile-label">Velocidade Média</p>
+          <p class="training-tile-value">${avgSpeed}</p>
+        </div>
+        <div class="training-tile xp">
+          <p class="training-tile-label">XP</p>
+          <p class="training-tile-value">${Math.round(Number(s.calories_kcal) || 0)}</p>
+        </div>
+      </div>
+      <button class="training-detail-toggle training-card-detail-toggle" type="button" aria-expanded="false">Ver mais detalhes</button>
+      <div class="training-card-detail" hidden>
+        ${reparticao}
+        <dl class="summary-grid">
+          ${linha("Tempo ativo", formatDurationClock(activeSeconds))}
+          ${linha("Tempo em pausa", temPausa ? formatDurationClock(pausedSeconds) : desconhecido)}
+          ${linha("Tempo total", temPausa ? formatDurationClock(activeSeconds + pausedSeconds) : desconhecido)}
+          ${linha("Calorias ativas", temAtivas ? `${Math.round(Number(activeKcalRaw))} kcal` : desconhecido)}
+          ${linha("Calorias totais", `${Math.round(Number(s.calories_kcal) || 0)} kcal`)}
+        </dl>
+      </div>
     </li>`;
+}
+
+// Mesmo padrao do botao "Ver detalhe da sessao" do painel ao vivo (js/nav.js),
+// um por card em vez de um so - cada treino esconde/mostra o seu proprio
+// detalhe independentemente dos outros.
+function wireTrainingCardToggles() {
+  trainingTodayListEl.querySelectorAll(".training-card-detail-toggle").forEach((botao) => {
+    botao.addEventListener("click", () => {
+      const detalhe = botao.nextElementSibling;
+      const aberto = !detalhe.hidden;
+      detalhe.hidden = aberto;
+      botao.textContent = aberto ? "Ver mais detalhes" : "Esconder detalhes";
+      botao.setAttribute("aria-expanded", String(!aberto));
+    });
+  });
 }
 
 async function renderTodaysTrainings() {
@@ -1457,137 +1492,8 @@ async function renderTodaysTrainings() {
   }
 
   trainingTodayListEl.innerHTML = data.map(renderTrainingCard).join("");
-  wireModeFixControls();
+  wireTrainingCardToggles();
 }
-
-// ===========================================================================
-// CORRECAO MANUAL DO MODO — TEMPORARIO (2026-08-14)
-// ===========================================================================
-// Bloco deliberadamente isolado: existe so enquanto a deteccao automatica de
-// atividade nao for fiavel, e a intencao e REMOVE-LO por inteiro quando for
-// (a pedido: "quando acharmos que a afinacao esta perfeita, retiramos o modo
-// de ajuste manual"). Para o tirar: apagar esta seccao, a chamada a
-// renderModeFixControl/wireModeFixControls em renderTodaysTrainings acima, e
-// o CSS .training-mode-fix.
-//
-// Porque existe: a classificacao por velocidade pode enganar-se junto ao
-// limiar caminhar/correr (ACTIVITY_WALK_MAX_KMH). Enquanto nao houver
-// confianca total nela, isto garante que nenhum treino fica mal contado - e
-// evita ter de corrigir a mao na base de dados, como aconteceu varias vezes.
-// (Servia tambem para corrigir bicicleta -> a pe; a bicicleta foi removida
-// em 2026-09-10.)
-//
-// Nao contraria a decisao original de nao escolher o modo ANTES do treino:
-// isto corrige DEPOIS, so quando a app se enganou.
-// Sem "bicicleta" desde 2026-09-10 - serve tambem para converter sessoes
-// antigas de bicicleta em caminhar/correr.
-const MODE_FIX_OPTIONS = ["caminhar", "correr"];
-
-function renderModeFixControl(session) {
-  const options = MODE_FIX_OPTIONS.map(
-    (m) => `<option value="${m}"${m === session.mode ? " selected" : ""}>${MODE_LABEL_PT[m]}</option>`
-  ).join("");
-  return `<select class="training-mode-fix" data-session-id="${session.id}" aria-label="Corrigir tipo de treino">${options}</select>`;
-}
-
-function wireModeFixControls() {
-  trainingTodayListEl.querySelectorAll(".training-mode-fix").forEach((select) => {
-    select.addEventListener("change", () => {
-      changeSessionMode(Number(select.dataset.sessionId), select.value);
-    });
-  });
-}
-
-// Recalcula as calorias com a MESMA regra dos totais usada no fim de um
-// treino (secção 4.4) - mudar o modo e literalmente reavaliar essa formula.
-async function changeSessionMode(sessionId, newMode) {
-  const { data: session, error } = await supabaseClient
-    .from("training_sessions")
-    .select("distance_m, duration_seconds, moving_seconds, paused_seconds, mode, calories_kcal")
-    .eq("id", sessionId)
-    .single();
-
-  if (error || !session || session.mode === newMode) return;
-
-  const newActiveCalories = computeSessionCaloriesFromTotals(
-    Number(session.distance_m),
-    Number(session.duration_seconds),
-    newMode,
-    Number(session.moving_seconds) || 0
-  );
-  // O repouso das pausas nao depende do modo - so a parte ativa e que muda.
-  const restingCalories = 1.0 * getPesoKg() * ((Number(session.paused_seconds) || 0) / 3600);
-  const newCalories = newActiveCalories + restingCalories;
-  const deltaKcal = newCalories - Number(session.calories_kcal);
-
-  const { error: updateError } = await supabaseClient
-    .from("training_sessions")
-    // Corrigir o modo significa "afinal foi tudo X" - a reparticao detetada
-    // deixa de fazer sentido e passa a ser toda do modo corrigido. Deixa-la
-    // como estava punha o card a dizer "Bicicleta" em cima e "Corrida 5 km"
-    // por baixo.
-    .update({
-      mode: newMode,
-      calories_kcal: newCalories,
-      calories_active_kcal: newActiveCalories,
-      distance_by_mode: { [newMode]: Math.round(Number(session.distance_m) || 0) },
-      time_by_mode: { [newMode]: Math.round((Number(session.duration_seconds) || 0) * 1000) },
-    })
-    .eq("id", sessionId);
-
-  if (updateError) {
-    showGameToast("Não foi possível corrigir o treino", "aviso");
-    return;
-  }
-
-  // Agregados locais. CUIDADO: quando o delta e negativo, escrever so no
-  // localStorage nao chega - a reconciliacao no arranque (secção 14.1) faz
-  // max(local, servidor) nos campos que so crescem, e restauraria o valor
-  // antigo, mais alto. Por isso o sync abaixo e AWAIT direto, nao o
-  // queueProgressSync com debounce: os dois lados tem de ficar iguais antes
-  // de qualquer outra coisa correr.
-  localStorage.setItem(STORAGE_KEY_LIFETIME_KCAL, String(Math.max(0, getLifetimeCaloriesKcal() + deltaKcal)));
-  localStorage.setItem(STORAGE_KEY_MONTHLY_KCAL, String(Math.max(0, getMonthlyCaloriesKcal() + deltaKcal)));
-  await recomputeRecordsFromSessions();
-  await syncProgressToSupabase();
-
-  showGameToast(`Treino corrigido para ${MODE_LABEL_PT[newMode]}`, "medalha");
-  refreshAllUi();
-}
-
-// Recordes por modo (distancia/ritmo) e recorde de calorias sao recalculados
-// A PARTIR das sessoes, nao ajustados por delta: ao mudar o modo de uma
-// sessao, o recorde de um modo pode ter de descer para a segunda melhor, e
-// isso nao se consegue exprimir como um delta.
-async function recomputeRecordsFromSessions() {
-  const { data, error } = await supabaseClient
-    .from("training_sessions")
-    .select("distance_m, duration_seconds, moving_seconds, mode, calories_kcal")
-    .eq("user_id", currentUserId);
-
-  if (error || !data) return;
-
-  const bestDistance = { caminhar: 0, correr: 0 };
-  const bestPace = { caminhar: 0, correr: 0 };
-  let bestCalories = 0;
-
-  data.forEach((s) => {
-    const mode = s.mode;
-    if (!(mode in bestDistance)) return;
-    const distance = Number(s.distance_m) || 0;
-    const duration = Number(s.duration_seconds) || 0;
-    bestDistance[mode] = Math.max(bestDistance[mode], distance);
-    if (duration > 0) bestPace[mode] = Math.max(bestPace[mode], distance / duration);
-    bestCalories = Math.max(bestCalories, Number(s.calories_kcal) || 0);
-  });
-
-  localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M, String(bestDistance.correr));
-  localStorage.setItem(STORAGE_KEY_BEST_SESSION_DISTANCE_M_CAMINHAR, String(bestDistance.caminhar));
-  localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS, String(bestPace.correr));
-  localStorage.setItem(STORAGE_KEY_BEST_PACE_MPS_CAMINHAR, String(bestPace.caminhar));
-  localStorage.setItem(STORAGE_KEY_BEST_SESSION_CALORIES_KCAL, String(bestCalories));
-}
-// ===== FIM DO BLOCO TEMPORARIO =============================================
 
 btnStart.addEventListener("click", startTraining);
 btnPause.addEventListener("click", pauseTraining);

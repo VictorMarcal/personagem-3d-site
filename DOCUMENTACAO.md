@@ -215,22 +215,11 @@ Reportado pelo Bernardo ("as calorias não fazem sentido; a app dele dizia 720 k
 **Compromisso assumido**: numa sessão com GPS perfeito e intensidade muito variável, a média pode subestimar face à soma por segmento (o MET da bicicleta é convexo na velocidade — trechos rápidos valem desproporcionadamente mais). A sessão de 3h10 do Skllrx, que teve GPS impecável (5435 leituras, falha máxima de 1,2 s), dava 2274 kcal por segmento e 1792 pelos totais. **Recalculada também (a pedido, 2026-08-14)**, para todo o histórico seguir a mesma regra — a coerência valeu mais do que o ganho num caso que depende de condições que não se conseguem garantir. Consequência aceite explicitamente: o jogador desceu de **nível 10 para 9** (5678,39 → 5196,17 kcal; o nível 10 começa aos 5385), ficando a 189 kcal de o reconquistar. Não perdeu pontos já investidos — `awardPointsIfNeeded` (`js/equipment.js`) só credita ao **subir**, nunca retira.
 
 
-### 4.5 Correção manual do modo — **temporário, para remover**
+### 4.5 Correção manual do modo — **removida (2026-09-13)**
 
-**Existe para ser removido.** Enquanto a deteção automática não tiver confiança total, o jogador pode corrigir o modo de um treino já concluído, na lista "Treinos de hoje". Quando estiver boa, apaga-se — foi construído isolado precisamente para isso: um bloco delimitado em `js/training.js` (entre os marcadores `CORRECAO MANUAL DO MODO — TEMPORARIO` e `FIM DO BLOCO TEMPORARIO`), a chamada a `renderModeFixControl`/`wireModeFixControls` em `renderTodaysTrainings`, e a regra `.training-mode-fix` no CSS.
+Existiu para ser removida, e foi: *"cada card de treino deixa de ter a opção de definir no final que treino foi feito (isso era usado por causa das dúvidas com bicicleta que agora não existe)"*. Enquanto a bicicleta existiu, a classificação por velocidade podia enganar-se junto ao limiar caminhar/correr (ou classificar como bicicleta por engano); este bloco deixava o jogador corrigir o modo de um treino já concluído, na lista "Treinos de hoje". Sem bicicleta desde 2026-09-10, a ambiguidade que justificava a correção manual deixou de existir.
 
-**As opções são só Caminhar e Correr desde 2026-09-10** (`MODE_FIX_OPTIONS`) — serve também para **converter sessões antigas de bicicleta** para um modo a pé (o que recalcula as calorias com a fórmula ACSM).
-
-**Porquê**: a classificação por velocidade pode enganar-se junto ao limiar caminhar/correr. Sem isto, um treino mal classificado só se corrigia com SQL direto na base de dados — o que aconteceu várias vezes em 2026-08-14.
-
-**Não contraria a decisão original** de não escolher o modo *antes* do treino (secção 4.1): corrige **depois**, e só quando a app se enganou.
-
-**Como funciona**: mudar o modo recalcula as calorias com a **mesma regra dos totais** do fim de um treino (secção 4.4) — é literalmente reavaliar a fórmula com outro MET.
-
-Dois detalhes que não são óbvios:
-
-- **O sync é `await` direto, não o `queueProgressSync` com debounce.** Quando o delta de calorias é negativo (ex: corrida → bicicleta), escrever só no `localStorage` não chega: a reconciliação no arranque (secção 14.1) faz `max(local, servidor)` nos campos que só crescem e **restauraria o valor antigo, mais alto**. Os dois lados têm de ficar iguais antes de qualquer outra coisa correr.
-- **Os recordes por modo são recalculados a partir das sessões**, não ajustados por delta (`recomputeRecordsFromSessions`): ao mudar o modo de uma sessão, o recorde do modo de origem pode ter de **descer** para o segundo melhor, e isso não se exprime como um delta.
+Removido por inteiro, como o próprio bloco já previa: `js/training.js` (`renderModeFixControl`, `wireModeFixControls`, `changeSessionMode`, `recomputeRecordsFromSessions`, `MODE_FIX_OPTIONS`), a chamada em `renderTodaysTrainings`, e a regra `.training-mode-fix` no CSS. Fica como registo o que fazia: mudar o modo recalculava as calorias com a mesma fórmula do fim de um treino (secção 4.4) e recalculava os recordes por modo **a partir das sessões** (não por delta), porque baixar o modo podia obrigar um recorde a descer para o segundo melhor.
 
 ### 4.6b MET da bicicleta interpolado, não em degraus (2026-08-15) — **REMOVIDO (2026-09-10)**
 
@@ -343,6 +332,10 @@ Antes era uma linha de texto (`Bicicleta — 25.40 km · 62 min · 877 kcal`) qu
 **Sessões anteriores a 2026-08-15** não têm `paused_seconds` nem `calories_active_kcal`. Nesses campos mostra-se **"—"**, não zero: zero seria uma afirmação falsa (não é que não tenha havido pausa, é que não se sabe).
 
 O contentor "Treinos de hoje" deixou de ter fundo próprio — dois fundos encaixados um no outro ficavam pesados agora que os cards são os treinos.
+
+**Título do card: substantivo, não verbo (2026-09-13, a pedido)** — "Caminhada"/"Corrida", não "Caminhar"/"Correr" (`TRAINING_CARD_TITLE_PT` em `js/training.js`, separado do `MODE_LABEL_PT` partilhado por achievements/perfil/resumo do fim, que continua com o verbo). Só o título do card muda; a repartição por modo dentro do card (abaixo) continua a usar o rótulo partilhado.
+
+**Só a essência à vista: distância, velocidade média e XP (2026-09-13, a pedido)** — o resto (tempos, calorias ativas/totais, repartição por modo) passou para trás do mesmo botão **"Ver mais detalhes"** que o painel de treino ao vivo já usa (`.training-detail-toggle`, mesmo texto/comportamento do "Ver detalhe da sessão" de `js/nav.js`, mas um por card — `wireTrainingCardToggles()`). Motivo: já não havia opção de corrigir o modo no fim do card (ver secção 4.5, removida na mesma data), e sem ela a grelha completa ficava a ocupar espaço que a maioria dos jogadores não lê no dia a dia.
 
 #### Repartição por modo dentro de um treino (2026-09-07)
 
@@ -1313,7 +1306,7 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 
 ## 22. Missões mensais (2026-09-10)
 
-`js/missions.js` + painel `#missions-panel` no separador **Treinar** (dentro do `#start-screen`, por baixo de "Treinos de hoje"). A pedido: *"adicionar missões mensais (secção treinar) que dão como recompensa recursos"*.
+`js/missions.js` + painel `#missions-panel` no separador **Treinar** (dentro do `#start-screen`, **por cima** de "Treinos de hoje" — 2026-09-13, a pedido; era por baixo até essa data). A pedido: *"adicionar missões mensais (secção treinar) que dão como recompensa recursos"*.
 
 ### As regras (todas a pedido)
 
