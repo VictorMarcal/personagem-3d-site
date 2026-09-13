@@ -573,7 +573,10 @@ async function identifyRegions() {
 // nunca a geometria da agua - agua real nao muda, por isso o cache nao
 // precisa de expirar, so de crescer a cada concelho novo desbloqueado.
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
-const WATER_CACHE_VERSION = 1;
+// v2 (2026-09-14): corrigido o alargamento excessivo do rio (ver
+// waterCellsFromWaterwayGeometry) - sobe a versao para forcar reconsulta em
+// quem ja tinha concelhos com agua cacheada da versao antiga, demasiado larga.
+const WATER_CACHE_VERSION = 2;
 const WATER_LOOKUPS_PER_OPEN = 1;
 // Amostragem ao longo de um rio/ribeira, em metros - nao e um buffer
 // geometrico exato (a pedido, o que interessa e VER o rio no mapa, nao a
@@ -621,8 +624,12 @@ function waterCellsFromPolygonGeometry(geometry, resolution) {
   }
 }
 
-// Linha de rio/ribeira -> amostra pontos ao longo dela e alarga 1 anel de
-// hexagonos a volta de cada amostra, para o rio ter alguma largura visivel.
+// Linha de rio/ribeira -> amostra pontos ao longo dela, um hexagono por
+// amostra - SEM alargar a vizinhos (2026-09-14, corrigido: um anel a volta de
+// CADA amostra a cada 100 m dava uma faixa de ~1,2 km a fingir ser rio, larga
+// o suficiente para apanhar um passeio normal a beira-rio e pintar o caminho
+// do jogador de agua. Um hexagono por amostra (~427 m) ja e mais largo que a
+// maioria dos rios reais, sem exagerar tanto).
 function waterCellsFromWaterwayGeometry(geometry, resolution) {
   if (!geometry || geometry.length < 2) return [];
   const cells = new Set();
@@ -636,8 +643,7 @@ function waterCellsFromWaterwayGeometry(geometry, resolution) {
       const lat = a.lat + (b.lat - a.lat) * t;
       const lng = a.lon + (b.lon - a.lon) * t;
       try {
-        const cell = h3.latLngToCell(lat, lng, resolution);
-        h3.gridDisk(cell, 1).forEach((c) => cells.add(c));
+        cells.add(h3.latLngToCell(lat, lng, resolution));
       } catch (e) {
         // Coordenadas invalidas: ignora esta amostra, nunca rebenta o resto.
       }
