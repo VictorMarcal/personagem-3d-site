@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.17.0",
+    title: "Teclado Já Não Tapa a Palavra-Passe",
+    changes: [
+      "No telemóvel, o teclado deixa de tapar o campo da palavra-passe nos popups de entrar/repor palavra-passe.",
+    ],
+  },
+  {
     version: "v6.16.1",
     title: "\"Acumulado\" Sempre Visível",
     changes: [

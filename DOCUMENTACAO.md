@@ -897,6 +897,8 @@ Começou só com Google (até 2026-09-11), depois ganhou Apple e email/palavra-p
 
 **Email — verificar no dashboard**: o provider "Email" costuma vir ativado por omissão num projeto Supabase novo (Authentication → Providers → Email). Se "Confirm email" estiver desligado, contas novas entram logo sem precisar de clicar num link — decisão do dono do projeto, o código lida com os dois casos (`data.session` presente ou não, ver acima).
 
+**Bug corrigido (2026-09-14, via Trello): o teclado do telemóvel tapava o campo da palavra-passe.** Os popups de login/repor-palavra-passe são `position: fixed; inset: 0` centrados no ecrã — em Android, o teclado a abrir não encolhia sempre o viewport contra o qual isto é medido, por isso o popup continuava "centrado" no ecrã inteiro, com o campo a meio a ficar por baixo do teclado. Corrigido com `interactive-widget=resizes-content` no `<meta name="viewport">` (`index.html`) — pede ao browser para encolher a sério o viewport quando o teclado aparece, para o popup se recentrar no espaço que sobra por cima dele. Só funciona em Chrome Android moderno; como reforço para os restantes, os popups (`#auth-modal`/`#name-picker-modal`/`#welcome-modal`/`#weight-reminder-modal`/`#password-reset-modal`) ganharam `overflow-y: auto`, para pelo menos dar para fazer scroll até ao campo em vez de ficar inacessível. **Não testável neste ambiente** (precisa de um teclado real de telemóvel) — a confirmar pelo jogador num aparelho a sério.
+
 **Nota**: os providers Google/Apple continuam ativados/configurados do lado do Supabase (nada foi tocado no dashboard) — só deixaram de ter botão no site. Se um dia se quiser reverter, é só repor o HTML/JS dos botões, sem nenhuma configuração nova.
 
 ## 15. Aba de Perfil e histórico de treinos

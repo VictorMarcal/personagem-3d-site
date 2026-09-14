@@ -505,6 +505,9 @@ button[disabled] {
   justify-content: center;
   padding: 24px;
   background: var(--bg);
+  /* Mesmo reforco de scroll do #auth-modal (css/style.css) - ver o
+     comentario la e o <meta name="viewport"> no index.html. */
+  overflow-y: auto;
 }
 #password-reset-modal.hidden { display: none; }
 #password-reset-modal .auth-box > * + * { margin-top: 10px; }

@@ -2,15 +2,22 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- interactive-widget=resizes-content (2026-09-14, bug reportado via
+       Trello): sem isto, no Android o teclado abria por CIMA dos campos de
+       palavra-passe dos popups de login/repor-palavra-passe - o layout fixo
+       "inset:0" media-se contra o viewport todo, que nao encolhia quando o
+       teclado aparecia. Com isto, o browser encolhe o viewport a serio e o
+       popup centra-se no espaco que sobra, por cima do teclado. So Chrome
+       Android moderno suporta - noutros fica igual a antes, inofensivo. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
   <title>Personagem 3D</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/style.css?v=20260914a">
+  <link rel="stylesheet" href="css/style.css?v=20260914b">
   <!-- Patch v6: contraste, cor semântica, superfícies, ícones, sub-abas.
        DEPOIS do style.css de propósito — só sobrepõe o que muda. -->
-  <link rel="stylesheet" href="css/campo-aberto-v6.css?v=20260914c">
+  <link rel="stylesheet" href="css/campo-aberto-v6.css?v=20260914d">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -85,7 +92,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v6.16.1</span>
+      <span id="site-version" class="site-version-hero">v6.17.0</span>
     </div>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
          dependem destes dois botoes. Fica invisivel (.legacy-nav no CSS) - a
@@ -549,7 +556,7 @@
   <script src="js/training.js?v=20260913a"></script>
   <script src="js/weight.js?v=20260912b"></script>
   <script src="js/profile.js?v=20260914a"></script>
-  <script src="js/changelog.js?v=20260914i"></script>
+  <script src="js/changelog.js?v=20260914j"></script>
   <script src="js/achievements.js?v=20260911b"></script>
   <script src="js/missions.js?v=20260914b"></script>
   <script src="js/orientation.js?v=20260806p"></script>

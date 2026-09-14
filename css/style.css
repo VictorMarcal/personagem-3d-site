@@ -1545,6 +1545,11 @@ main {
   justify-content: center;
   padding: 24px;
   background: var(--bg);
+  /* Reforco para browsers sem interactive-widget=resizes-content (ver
+     <meta name="viewport"> no index.html): se o teclado nao encolher o
+     viewport, pelo menos da para fazer scroll ate ao campo em vez de ficar
+     escondido atras dele sem hipotese nenhuma de chegar la. */
+  overflow-y: auto;
 }
 
 #auth-modal.hidden,
