@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.15.0",
+    title: "Sair da Conta",
+    changes: [
+      "Nova secção \"Conta\" no separador Eu › Números, com um botão para saíres da tua conta.",
+    ],
+  },
+  {
     version: "v6.14.0",
     title: "Só Email para Entrar",
     changes: [

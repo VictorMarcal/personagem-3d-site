@@ -16,6 +16,20 @@ const viewPerfilEl = document.getElementById("view-perfil");
 // e util para qualquer jogador, por isso fica tambem aqui, fora do gate.
 document.getElementById("btn-reset-character-profile").addEventListener("click", resetCharacterAndDistance);
 
+// Sair da conta (2026-09-14, a pedido - ate aqui nao havia forma nenhuma de
+// terminar sessao). `localStorage.clear()` antes do reload e de proposito:
+// sem isto, a cache local desta conta ficava no dispositivo e a
+// reconciliacao no proximo login (secção 14.1, "max" nos campos monotonos)
+// podia misturar-se com a de OUTRA conta que entrasse a seguir no mesmo
+// aparelho - o Supabase e sempre a fonte de verdade, por isso arrancar sem
+// nada em cache e seguro e mais simples do que tentar limpar so parte dela.
+document.getElementById("btn-sign-out").addEventListener("click", async () => {
+  if (!confirm("Sair da tua conta?")) return;
+  await supabaseClient.auth.signOut();
+  localStorage.clear();
+  window.location.reload();
+});
+
 // --- Definicoes: peso corporal (kg), pre-requisito da formula de calorias/
 // MET planeada (secção 17 da documentação) - so afeta o que ainda nao
 // existe, guardado ja para nao bloquear essa mudanca mais tarde.
