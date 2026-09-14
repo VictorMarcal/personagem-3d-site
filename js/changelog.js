@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.18.2",
+    title: "Mais um Ajuste à Fortaleza",
+    changes: [
+      "Pequeno afinamento aos modelos novos da Fortaleza (níveis 5-9 e 10-14).",
+    ],
+  },
+  {
     version: "v6.18.1",
     title: "Corrige Sobreposição na Fortaleza",
     changes: [
