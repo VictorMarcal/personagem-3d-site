@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.16.1",
+    title: "\"Acumulado\" Sempre Visível",
+    changes: [
+      "O aviso de que o progresso das missões é acumulado passa a aparecer no próprio nome da missão — mesmo depois de já a teres aceite.",
+    ],
+  },
+  {
     version: "v6.16.0",
     title: "Missões Mais Claras",
     changes: [
