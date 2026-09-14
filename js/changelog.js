@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.18.1",
+    title: "Corrige Sobreposição na Fortaleza",
+    changes: [
+      "Corrigida uma sobreposição de geometria nos modelos novos da Fortaleza e no chão da cena.",
+    ],
+  },
+  {
     version: "v6.18.0",
     title: "Fortaleza com Mais Duas Aparências",
     changes: [
