@@ -170,7 +170,7 @@ loadSceneryFloor();
 // (o mais alto que ha). Sem HEAD-checks nem 404s.
 // O custo de cada evolucao vive em warehouseUpgradeCost (js/resources.js)
 // e e afinado a parte, para bater com o que o modelo mostra.
-const TOWER_MODEL_COUNT = 1;
+const TOWER_MODEL_COUNT = 3;
 
 // Nomes aceites para o Empty que marca onde a personagem fica no topo da
 // torre (2026-09-09, a pedido - "adicionei um empty para saberes a posicao

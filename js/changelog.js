@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.18.0",
+    title: "Fortaleza com Mais Duas Aparências",
+    changes: [
+      "A Fortaleza ganha mais dois visuais novos à medida que sobe de nível (níveis 5-9 e 10-14).",
+    ],
+  },
+  {
     version: "v6.17.0",
     title: "Teclado Já Não Tapa a Palavra-Passe",
     changes: [
