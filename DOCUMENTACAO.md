@@ -1297,6 +1297,7 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 - **Concluir não trava nada** — aceita-se logo a seguinte.
 - Concluídas as 3 dentro do mês, espera-se pelo mês seguinte.
 - O progresso conta a partir do **instante em que se aceita**, nunca desde o início do mês — recusar/falhar nunca credita trabalho antigo. Os tipos de descoberta usam um *baseline* (delta face a um snapshot); `correr_km` usa um **acumulador** (só a distância corrida somada no fim de cada treino).
+- **Todas cumulativas, nunca "de seguida"** — nem `correr_km` (soma o que se correu em qualquer número de treinos) nem `descobre_hex` exigem uma sessão só. Isto não estava explícito na UI (bug reportado via Trello, 2026-09-14: *"não há indicação de que correr 15km são acumulativos ou seguidos"*) — o texto de ajuda por cima das missões por aceitar passou a dizê-lo (`js/missions.js`, `renderMissionsPanel`): "...soma-se ao longo de vários treinos — não precisas de fazer tudo de seguida."
 
 ### Deterministas, como as minas
 

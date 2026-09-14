@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.16.0",
+    title: "Missões Mais Claras",
+    changes: [
+      "Fica claro que o progresso das missões soma-se ao longo de vários treinos — não precisas de fazer tudo de seguida numa sessão só.",
+    ],
+  },
+  {
     version: "v6.15.2",
     title: "Erro de Login Mais Visível",
     changes: [

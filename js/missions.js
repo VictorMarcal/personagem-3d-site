@@ -380,7 +380,7 @@ function renderMissionsPanel() {
       corpo = `<p class="mission-empty">Recusaste uma missão. Podes aceitar outra daqui a ${formatCooldownRestante(restante)}.</p>`;
     } else {
       corpo =
-        '<p class="mission-help">Aceita uma de cada vez. O progresso conta a partir do momento em que aceitas.</p>' +
+        '<p class="mission-help">Aceita uma de cada vez. O progresso conta a partir do momento em que aceitas e soma-se ao longo de vários treinos — não precisas de fazer tudo de seguida.</p>' +
         missoesDisponiveis(estado)
           .map(
             (m) =>
