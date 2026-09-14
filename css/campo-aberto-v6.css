@@ -476,9 +476,22 @@ button[disabled] {
 }
 /* Corrigido 2026-09-14: so o de email tinha esta regra - o de repor
    palavra-passe usava a mesma classe mas ficava sem estilo nenhum (texto
-   cinzento discreto, facil de nao reparar que algo tinha corrido mal). */
+   cinzento discreto, facil de nao reparar que algo tinha corrido mal).
+   Destacado ainda mais no mesmo dia (a pedido, via Trello): deixa de ser so
+   texto a cores e passa a caixa de aviso, mesmo tratamento visual do
+   .speed-warning/.construction-warning - e o mesmo "isto precisa da tua
+   atencao", só que dentro do formulario de login em vez de por cima do mapa. */
 #email-auth-status.auth-status-error,
-#password-reset-status.auth-status-error { color: var(--warn-ink); font-weight: 600; }
+#password-reset-status.auth-status-error {
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-ink);
+  font-weight: 600;
+}
 
 /* Modal de "nova palavra-passe" (link de recuperação por email) - mesmo
    posicionamento fixo/centrado que o style.css já dá a #auth-modal e

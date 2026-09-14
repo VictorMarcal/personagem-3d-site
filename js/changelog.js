@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.15.2",
+    title: "Erro de Login Mais Visível",
+    changes: [
+      "A mensagem \"Email ou palavra-passe incorretos\" passa a aparecer numa caixa de aviso destacada, em vez de só texto a cores.",
+    ],
+  },
+  {
     version: "v6.15.1",
     title: "Erro Visível ao Repor a Palavra-Passe",
     changes: [
