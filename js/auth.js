@@ -1,24 +1,18 @@
-// Login obrigatorio via Supabase Auth - Google, Apple ou email+palavra-passe
-// (2026-09-11, a pedido; ate aqui so Google). A partir daqui o Supabase e a
-// fonte de verdade do progresso (personagem.*); o localStorage passa a ser
-// cache/buffer offline. Corre antes de main.js e dos restantes ficheiros de
-// jogo, mas o boot real e assincrono (ver fim do ficheiro) - por isso pode
-// chamar getters/funcoes definidas nesses ficheiros sem problema, uma vez
-// que so o faz depois de todos os scripts terem corrido.
+// Login obrigatorio via Supabase Auth - so email+palavra-passe (2026-09-14;
+// existiram tambem Google e Apple entre 2026-09-11 e esta data, removidos a
+// pedido). A partir daqui o Supabase e a fonte de verdade do progresso
+// (personagem.*); o localStorage passa a ser cache/buffer offline. Corre
+// antes de main.js e dos restantes ficheiros de jogo, mas o boot real e
+// assincrono (ver fim do ficheiro) - por isso pode chamar getters/funcoes
+// definidas nesses ficheiros sem problema, uma vez que so o faz depois de
+// todos os scripts terem corrido.
 //
 // O TRIGGER on_auth_user_created (supabase/schema.sql) e disparado por
-// QUALQUER insercao em auth.users, seja qual for o metodo - bootstrapAfterLogin
-// abaixo e ja inteiramente agnostico ao provider (nunca olha para
-// user.app_metadata.provider), por isso os 3 caminhos convergem no mesmo
-// arranque sem codigo extra.
-//
-// Apple PRECISA de configuracao fora deste ficheiro, que so o dono da conta
-// consegue fazer (Apple Developer Program, US$99/ano): criar um Services ID
-// com "Sign in with Apple" ligado ao dominio do site, gerar uma chave
-// privada (.p8) e introduzir Team ID/Key ID/Client ID/chave no dashboard do
-// Supabase (Authentication -> Providers -> Apple). Sem isso, o botao Apple
-// fica visivel mas o Supabase devolve erro ao clicar (mensagem tratada
-// abaixo). Ver DOCUMENTACAO.md secção 14 para o passo a passo.
+// QUALQUER insercao em auth.users - bootstrapAfterLogin abaixo nunca olhou
+// para o provider, por isso remover Google/Apple nao mexeu em nada deste
+// arranque. Quem tinha conta criada por Google/Apple continua a conseguir
+// entrar: "Esqueceste a palavra-passe?" com o mesmo email dessa conta define
+// uma palavra-passe nova, independente de como a conta foi criada.
 const SUPABASE_URL = "https://vnqjaepjfqlhgmlrhzlr.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_5o0ebiPFcC8jKjQbpbok2A_p1ozZMEz";
 
@@ -53,36 +47,14 @@ function currentDisplayName() {
   return (currentProfile && currentProfile.display_name) || "Jogador";
 }
 
-// URL limpo (sem query/hash) para qualquer redirect de autenticacao - se o
-// clique acontecer depois de um erro anterior deixar #error=...  ou
-// ?error=... na barra de endereco, usar window.location.href arrastaria
-// esse lixo para o redirect final e misturava-o com o token novo,
-// impedindo o supabase-js de o interpretar. Partilhado por Google, Apple e
-// pelo email de recuperacao de palavra-passe.
+// URL limpo (sem query/hash) para o redirect do email de recuperacao de
+// palavra-passe - se o clique acontecer depois de um erro anterior deixar
+// #error=... ou ?error=... na barra de endereco, usar window.location.href
+// arrastaria esse lixo para o redirect final e misturava-o com o token novo,
+// impedindo o supabase-js de o interpretar.
 function cleanRedirectUrl() {
   return window.location.origin + window.location.pathname;
 }
-
-document.getElementById("btn-google-signin").addEventListener("click", () => {
-  supabaseClient.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: cleanRedirectUrl() },
-  });
-});
-
-// Sign in with Apple (2026-09-11, a pedido). SO FUNCIONA depois de o dono da
-// conta configurar o provider Apple no dashboard do Supabase (Services ID +
-// chave privada da Apple Developer Program - ver nota no topo do ficheiro e
-// DOCUMENTACAO.md secção 14). Ate la, o Supabase devolve um erro assim que
-// se clica - mostra-se na mesma zona de estado do formulario de email, para
-// nao ficar sem feedback nenhum.
-document.getElementById("btn-apple-signin").addEventListener("click", async () => {
-  const { error } = await supabaseClient.auth.signInWithOAuth({
-    provider: "apple",
-    options: { redirectTo: cleanRedirectUrl() },
-  });
-  if (error) showEmailAuthStatus(translateAuthError(error), true);
-});
 
 // --- Email + palavra-passe (2026-09-11, a pedido) --------------------------
 //

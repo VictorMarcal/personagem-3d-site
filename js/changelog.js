@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.14.0",
+    title: "Só Email para Entrar",
+    changes: [
+      "Deixou de haver entrada com Google ou Apple — só email e palavra-passe.",
+      "Quem já tinha conta criada por Google ou Apple continua a conseguir entrar: usa \"Esqueceste a palavra-passe?\" com o mesmo email para definir uma palavra-passe nova.",
+    ],
+  },
+  {
     version: "v6.13.0",
     title: "Mapa Real, Outra Vez",
     changes: [
