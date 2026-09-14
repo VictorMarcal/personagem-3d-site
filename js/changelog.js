@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.15.1",
+    title: "Erro Visível ao Repor a Palavra-Passe",
+    changes: [
+      "Corrigido: um erro ao definir a palavra-passe nova ficava em texto cinzento discreto, fácil de não reparar — agora aparece bem visível.",
+      "Mensagem clara quando o link de recuperação já expirou ou já foi usado.",
+    ],
+  },
+  {
     version: "v6.15.0",
     title: "Sair da Conta",
     changes: [

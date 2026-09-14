@@ -97,6 +97,9 @@ function translateAuthError(error) {
   if (/password should be at least/i.test(msg)) return "A palavra-passe precisa de pelo menos 6 caracteres.";
   if (/unable to validate email address/i.test(msg)) return "Esse email não é válido.";
   if (/provider is not enabled/i.test(msg)) return "Este método de login ainda não está configurado.";
+  if (/auth session missing|session.*expired|invalid.*(token|refresh)/i.test(msg)) {
+    return "O link de recuperação expirou ou já foi usado. Pede um novo em \"Esqueceste a palavra-passe?\".";
+  }
   return msg || "Não foi possível continuar. Tenta novamente.";
 }
 
@@ -173,17 +176,26 @@ function openPasswordResetModal() {
 
 btnPasswordResetConfirm.addEventListener("click", async () => {
   const novaPassword = passwordResetInputEl.value;
+  passwordResetStatusEl.classList.remove("auth-status-error");
   if (novaPassword.length < 6) {
     passwordResetStatusEl.textContent = "A palavra-passe precisa de pelo menos 6 caracteres.";
+    passwordResetStatusEl.classList.add("auth-status-error");
     return;
   }
   btnPasswordResetConfirm.disabled = true;
+  passwordResetStatusEl.textContent = "";
   const { data, error } = await supabaseClient.auth.updateUser({ password: novaPassword });
   btnPasswordResetConfirm.disabled = false;
   if (error) {
+    // Bug real (2026-09-14): esta mensagem antes ficava em texto simples,
+    // sem cor nem destaque (CSS so tinha a regra para o form de email) -
+    // quem via isto achava que "nao tinha acontecido nada" em vez de ver um
+    // erro. Ver .auth-status-error em css/campo-aberto-v6.css.
     passwordResetStatusEl.textContent = translateAuthError(error);
+    passwordResetStatusEl.classList.add("auth-status-error");
     return;
   }
+  if (typeof showGameToast === "function") showGameToast("Palavra-passe guardada!", "medalha");
   passwordResetModalEl.classList.add("hidden");
   // A sessao de recuperacao ja e uma sessao valida - so nao foi tratada como
   // login (o listener principal ignora PASSWORD_RECOVERY de proposito) ate

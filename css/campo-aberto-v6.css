@@ -474,7 +474,11 @@ button[disabled] {
   cursor: pointer;
   text-decoration: underline;
 }
-#email-auth-status.auth-status-error { color: var(--warn-ink); font-weight: 600; }
+/* Corrigido 2026-09-14: so o de email tinha esta regra - o de repor
+   palavra-passe usava a mesma classe mas ficava sem estilo nenhum (texto
+   cinzento discreto, facil de nao reparar que algo tinha corrido mal). */
+#email-auth-status.auth-status-error,
+#password-reset-status.auth-status-error { color: var(--warn-ink); font-weight: 600; }
 
 /* Modal de "nova palavra-passe" (link de recuperação por email) - mesmo
    posicionamento fixo/centrado que o style.css já dá a #auth-modal e
