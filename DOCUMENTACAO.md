@@ -1300,7 +1300,7 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 - **Recusar** (`Desistir`) trava novas aceitações durante **24 h** (`MISSION_REJECT_COOLDOWN_MS`).
 - **Concluir não trava nada** — aceita-se logo a seguinte.
 - Concluídas as 3 dentro do mês, espera-se pelo mês seguinte.
-- O progresso conta a partir do **instante em que se aceita**, nunca desde o início do mês — recusar/falhar nunca credita trabalho antigo. Os tipos de descoberta usam um *baseline* (delta face a um snapshot); `correr_km` usa um **acumulador** (só a distância corrida somada no fim de cada treino).
+- O progresso conta a partir do **instante em que se aceita**, nunca desde o início do mês — recusar/falhar nunca credita trabalho antigo. Os tipos de descoberta usam um *baseline* (delta face a um snapshot); `correr_km`/`caminhar_km` usam um **acumulador** (só a distância corrida/caminhada somada no fim de cada treino, mais um mostrador ao vivo durante o treino — ver "Progresso ao vivo" abaixo).
 - **Todas cumulativas, nunca "de seguida"** — nem `correr_km` (soma o que se correu em qualquer número de treinos) nem `descobre_hex` exigem uma sessão só. Isto não estava explícito na UI (bug reportado via Trello, 2026-09-14: *"não há indicação de que correr 15km são acumulativos ou seguidos"*).
   - **1ª tentativa**: um texto de ajuda por cima das missões por aceitar. **Insuficiente** (validado com "Com bug" no Trello) — só aparece no ecrã "por aceitar"; quem já tinha a missão aceite (o caso mais comum, já a meio de a cumprir) nunca chegava a ver esse aviso.
   - **Corrigido**: o "(acumulado)" entra no próprio texto da missão (`missaoTexto()`, `js/missions.js`) — "Corre 15 km (acumulado)", "Descobre 20 hexágonos novos (acumulado)" — por isso aparece sempre, aceite ou não, já que `missaoTexto()` é usada nos dois ecrãs. Só nos dois tipos com alvo numérico; `descobre_mina`/`descobre_concelho` são um evento único, sem ambiguidade nenhuma para desfazer.
@@ -1323,17 +1323,26 @@ As 3 missões de um mês saem de `mulberry32(hashString("missoes:" + "2026-09"))
 | tipo | o que | como conta | fácil / média / difícil |
 |---|---|---|---|
 | `correr_km` | distância **corrida** (não a caminhada) | acumulador `ativa.progressoM`, `+= sessão.distance_by_mode.correr` no fim de cada treino | 15 / 35 / 70 km |
+| `caminhar_km` | distância **caminhada** (não a corrida) | acumulador `ativa.progressoM`, `+= sessão.distance_by_mode.caminhar` no fim de cada treino | 15 / 35 / 70 km |
 | `descobre_hex` | hexágonos novos (qualquer modo) | `getDiscoveredHexCount()` − baseline | 8 / 20 / 45 |
 | `descobre_mina` | uma mina de um recurso específico | ids de minas encontradas fora do baseline, com esse recurso | 1 (só média) |
 | `descobre_concelho` | um concelho novo | `osmId`s de `unlockedConcelhos` fora do baseline | 1 (só difícil) |
 
-**`correr_km` é um acumulador, não um baseline sobre `getLifetimeDistanceM()`** (bug corrigido 2026-09-10: uma caminhada de 6 km contava para a missão "correr 15 km", porque `getLifetimeDistanceM()` soma todos os modos). `verificarMissaoAtiva(sessao)` recebe `sessao.distanciaPorModo` de `stopTraining` e só soma a fatia `correr`. Missões `correr_km` aceites antes desta correção não têm `progressoM` → contam a partir de 0 (a caminhada que tinham contado deixa de valer).
+**`correr_km`/`caminhar_km` são um acumulador, não um baseline sobre `getLifetimeDistanceM()`** (bug corrigido 2026-09-10: uma caminhada de 6 km contava para a missão "correr 15 km", porque `getLifetimeDistanceM()` soma todos os modos). `verificarMissaoAtiva(sessao)` recebe `sessao.distanciaPorModo` de `stopTraining` e só soma a fatia correspondente (`correr` ou `caminhar`, conforme o tipo). Missões `correr_km` aceites antes desta correção não têm `progressoM` → contam a partir de 0 (a caminhada que tinham contado deixa de valer).
+
+**`caminhar_km` adicionado 2026-09-15** (Trello: *"é necessário ter opção de missões para corrida e caminhada, sejam elas fáceis médias ou difíceis"*) — mesma lógica de `correr_km`, tipo irmão no `MISSION_POOL` das 3 dificuldades, só muda a fatia de distância que conta (`caminhar` em vez de `correr`). Alvos **provisórios**, iguais aos de `correr_km` por agora (sem histórico real de ritmo de caminhada ainda).
 
 Cada slot escolhe um tipo do seu pool (`MISSION_POOL`), semeado no mês; a geração tenta dar **3 tipos diferentes** no mesmo mês quando o pool permite. Recompensa: `MISSION_RECOMPENSA` = 50 / 120 / 300 unidades de um recurso semeado no mês. **Números provisórios**, mesma nota da secção 21 (derivados do ritmo real dos dois jogadores no primeiro mês). A recompensa é limitada ao teto da Fortaleza ao ser creditada, como a produção — a difícil só rende tudo com a Fortaleza já subida, de propósito.
 
 ### Onde é verificada
 
 `verificarMissaoAtiva(sessao?)` corre no **fim de um treino** (`js/training.js` `stopTraining`, com `{ distanciaPorModo }` da sessão), no **arranque pós-login** (`js/auth.js`, depois da hidratação, sem `sessao`) e quando as **regiões são recalculadas** (`js/hexes.js` `applyRegions`, sem `sessao`). Se a missão ativa está concluída: credita a recompensa (`acumularProducao()` → soma → `saveResources`), move o slot para `concluidas`, toast `medalha`, redesenha.
+
+### Progresso ao vivo durante o treino (2026-09-15)
+
+**Bug corrigido** (Trello: *"estou neste momento a correr e a missão não está a incrementar os quilómetros"*) — `correr_km`/`caminhar_km` só creditavam `progressoM` no **fim** do treino (`stopTraining` → `verificarMissaoAtiva`); enquanto o treino decorria, o painel de missões (já visível durante o treino desde a correção anterior desta secção) mostrava sempre o valor de antes de começar, parado, mesmo a quilómetros a andar/correr.
+
+`renderMissionsPanel(sessaoAoVivo?)` e `missionProgress(ativa, sessaoAoVivo?)` (`js/missions.js`) passam a aceitar um segundo argumento opcional `{ distanciaPorModo }` — quando presente, soma-se à distância *já gravada* (`progressoM`) só para efeitos de MOSTRADOR, sem tocar no `localStorage`; o crédito real continua a só acontecer no fim. `updateLiveStatsDisplay()` (`js/training.js`, chamada a cada segundo enquanto o treino decorre) passa `reparticaoDaSessao().distancia` — a mesma repartição por modo já usada ali para as calorias ao vivo, para o número da missão e o das calorias nunca poderem divergir.
 
 ### Sincronização (secção 14.1)
 

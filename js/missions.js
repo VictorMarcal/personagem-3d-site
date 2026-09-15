@@ -30,19 +30,26 @@ const MISSION_REJECT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 // Pools por dificuldade. Cada slot escolhe UM tipo, semeado no mes - a
 // media pode calhar "corre" num mes e "mina" no outro. Mantem-se sempre
 // uma facil de esforco puro (km/hexes), a dificil e que traz os objetivos
-// de mapa mais raros (concelho novo).
+// de mapa mais raros (concelho novo). "correr_km" e "caminhar_km" sao dois
+// tipos irmaos (mesma logica, cada um so conta a sua fatia de distancia -
+// ver missionProgress) - a pedido via Trello 2026-09-15: "e necessario ter
+// opção de missões para corrida e caminhada... faceis medias ou dificeis",
+// para quem caminha mais do que corre tambem ter missoes de distancia
+// atingiveis nas 3 dificuldades.
 const MISSION_POOL = {
-  facil: ["correr_km", "descobre_hex"],
-  media: ["correr_km", "descobre_hex", "descobre_mina"],
-  dificil: ["correr_km", "descobre_hex", "descobre_concelho"],
+  facil: ["correr_km", "caminhar_km", "descobre_hex"],
+  media: ["correr_km", "caminhar_km", "descobre_hex", "descobre_mina"],
+  dificil: ["correr_km", "caminhar_km", "descobre_hex", "descobre_concelho"],
 };
 
 // Alvos por tipo e dificuldade. NUMEROS PROVISORIOS, mesma nota da secção 21:
 // derivados do ritmo dos dois jogadores no primeiro mes (~30-40 hexes/semana,
 // e a fase em que tudo a volta de casa e novo). A rever quando houver mais
-// historico real.
+// historico real. caminhar_km comeca com os mesmos alvos de correr_km -
+// tambem provisorio, ainda sem historico de ritmo de caminhada dos jogadores.
 const MISSION_ALVO = {
   correr_km: { facil: 15, media: 35, dificil: 70 }, // km
+  caminhar_km: { facil: 15, media: 35, dificil: 70 }, // km
   descobre_hex: { facil: 8, media: 20, dificil: 45 }, // hexagonos novos
   descobre_mina: { facil: 1, media: 1, dificil: 1 },
   descobre_concelho: { facil: 1, media: 1, dificil: 1 },
@@ -91,7 +98,7 @@ function generateMonthlyMissions(monthKey) {
     }
     tiposUsados.add(tipo);
     const alvoBruto = MISSION_ALVO[tipo][slot];
-    const alvo = tipo === "correr_km" ? alvoBruto * 1000 : alvoBruto; // km -> metros
+    const alvo = tipo === "correr_km" || tipo === "caminhar_km" ? alvoBruto * 1000 : alvoBruto; // km -> metros
     const recompensaRecurso = ids[Math.floor(rand() * ids.length)];
     const missao = {
       slot,
@@ -147,10 +154,12 @@ function saveMissionState(estado) {
 function missionBaseline(tipo, recurso) {
   switch (tipo) {
     case "correr_km":
-      // Sem baseline: correr_km e um ACUMULADOR (ativa.progressoM), somado no
-      // fim de cada treino APENAS com a fatia de distancia detetada como
-      // "correr" dessa sessao. Um baseline sobre getLifetimeDistanceM()
-      // contava tambem a caminhada (bug reportado 2026-09-10).
+    case "caminhar_km":
+      // Sem baseline: correr_km/caminhar_km sao um ACUMULADOR (ativa.progressoM),
+      // somado no fim de cada treino APENAS com a fatia de distancia detetada
+      // como "correr"/"caminhar" dessa sessao. Um baseline sobre
+      // getLifetimeDistanceM() contava os dois modos ao mesmo tempo (bug
+      // reportado 2026-09-10).
       return {};
     case "descobre_hex":
       return { hex: typeof getDiscoveredHexCount === "function" ? getDiscoveredHexCount() : 0 };
@@ -163,17 +172,30 @@ function missionBaseline(tipo, recurso) {
   }
 }
 
+// sessaoAoVivo (opcional): { distanciaPorModo: { correr, caminhar } } da
+// sessao de treino EM CURSO (ver reparticaoDaSessao() em js/training.js,
+// chamada a cada segundo por updateLiveStatsDisplay enquanto o treino
+// decorre) - so serve para MOSTRAR o progresso a subir ao vivo durante o
+// treino; o credito real (progressoM) continua a só acontecer no fim
+// (verificarMissaoAtiva). Bug corrigido 2026-09-15 (Trello: "estou neste
+// momento a correr e a missão não está a incrementar os quilómetros") - sem
+// isto, o numero so mudava depois de "Terminar", nunca durante o treino.
+//
 // { current, target, done } para a barra e para a verificacao de conclusao.
-function missionProgress(ativa) {
+function missionProgress(ativa, sessaoAoVivo) {
   if (!ativa) return { current: 0, target: 1, done: false };
   const base = ativa.baseline || {};
   switch (ativa.tipo) {
-    case "correr_km": {
-      // Acumulador: so a distancia CORRIDA somada no fim de cada treino
-      // (verificarMissaoAtiva). Missoes aceites antes de 2026-09-10 nao tem
-      // progressoM - contam a partir de 0 (a caminhada que tinham contado
-      // deixa de valer, que e o correto).
-      const feito = Math.max(0, Number(ativa.progressoM) || 0);
+    case "correr_km":
+    case "caminhar_km": {
+      // Acumulador: so a distancia CORRIDA/CAMINHADA somada no fim de cada
+      // treino (verificarMissaoAtiva), mais a fatia da sessao em curso (se
+      // houver) so para efeitos de mostrador ao vivo. Missoes aceites antes
+      // de 2026-09-10 nao tem progressoM - contam a partir de 0 (a
+      // caminhada que tinham contado deixa de valer, que e o correto).
+      const modo = ativa.tipo === "correr_km" ? "correr" : "caminhar";
+      const aoVivo = sessaoAoVivo && sessaoAoVivo.distanciaPorModo ? Number(sessaoAoVivo.distanciaPorModo[modo]) || 0 : 0;
+      const feito = Math.max(0, (Number(ativa.progressoM) || 0) + aoVivo);
       return { current: Math.min(feito, ativa.alvo), target: ativa.alvo, done: feito >= ativa.alvo };
     }
     case "descobre_hex": {
@@ -235,7 +257,7 @@ function aceitarMissao(slot) {
     recurso: missao.recurso || null,
     recompensa: missao.recompensa,
     baseline: missionBaseline(missao.tipo, missao.recurso),
-    // Acumulador de distancia corrida, so usado por correr_km (ver missionProgress).
+    // Acumulador de distancia, so usado por correr_km/caminhar_km (ver missionProgress).
     progressoM: 0,
     aceiteEm: Date.now(),
   };
@@ -272,7 +294,8 @@ function concederRecompensaMissao(recompensa) {
 // missao pode ter mudado.
 //
 // sessao (opcional): { distanciaPorModo: { correr, caminhar } } da sessao que
-// acabou. So a missao correr_km a usa - soma a fatia CORRIDA ao acumulador.
+// acabou. So correr_km/caminhar_km a usam - cada uma so soma a sua propria
+// fatia (correr ou caminhar) ao acumulador.
 function verificarMissaoAtiva(sessao) {
   const estado = getMissionState();
   if (!estado.ativa) {
@@ -280,10 +303,11 @@ function verificarMissaoAtiva(sessao) {
     return;
   }
 
-  if (sessao && estado.ativa.tipo === "correr_km") {
-    const correu = Number(sessao.distanciaPorModo && sessao.distanciaPorModo.correr) || 0;
-    if (correu > 0) {
-      estado.ativa.progressoM = (Number(estado.ativa.progressoM) || 0) + correu;
+  if (sessao && (estado.ativa.tipo === "correr_km" || estado.ativa.tipo === "caminhar_km")) {
+    const modo = estado.ativa.tipo === "correr_km" ? "correr" : "caminhar";
+    const andou = Number(sessao.distanciaPorModo && sessao.distanciaPorModo[modo]) || 0;
+    if (andou > 0) {
+      estado.ativa.progressoM = (Number(estado.ativa.progressoM) || 0) + andou;
       saveMissionState(estado);
     }
   }
@@ -321,6 +345,8 @@ function missaoTexto(missao) {
   switch (missao.tipo) {
     case "correr_km":
       return `Corre ${Math.round(missao.alvo / 1000)} km (acumulado)`;
+    case "caminhar_km":
+      return `Caminha ${Math.round(missao.alvo / 1000)} km (acumulado)`;
     case "descobre_hex":
       return `Descobre ${missao.alvo} hexágonos novos (acumulado)`;
     case "descobre_mina": {
@@ -340,7 +366,7 @@ function missaoRecompensaHtml(recompensa) {
 }
 
 function missaoProgressoTexto(missao, prog) {
-  if (missao.tipo === "correr_km") {
+  if (missao.tipo === "correr_km" || missao.tipo === "caminhar_km") {
     return `${(prog.current / 1000).toFixed(1)} / ${Math.round(prog.target / 1000)} km`;
   }
   if (missao.tipo === "descobre_hex") {
@@ -363,7 +389,11 @@ function formatCooldownRestante(ms) {
 // (bug 2026-09-15, "missões desaparecem ao iniciar um treino, não devia"):
 // os dois sao renderizados com o mesmo conteudo, so um fica visivel de
 // cada vez consoante o `panel-screen` ativo.
-function renderMissionsPanel() {
+// sessaoAoVivo (opcional): repassado a missionProgress - so quem tem um
+// treino em curso o passa (js/training.js updateLiveStatsDisplay); todas as
+// outras chamadas (aceitar/desistir/fim de treino/arranque) ficam sem ele,
+// mostrando so o progresso ja gravado.
+function renderMissionsPanel(sessaoAoVivo) {
   const paineis = ["missions-panel", "missions-panel-training"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
@@ -375,7 +405,7 @@ function renderMissionsPanel() {
   let corpo = "";
 
   if (estado.ativa) {
-    const prog = missionProgress(estado.ativa);
+    const prog = missionProgress(estado.ativa, sessaoAoVivo);
     const pct = Math.max(0, Math.min(100, (prog.current / prog.target) * 100));
     corpo =
       '<div class="mission-card mission-active">' +

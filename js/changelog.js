@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.21.0",
+    title: "Missões de Caminhada e Progresso ao Vivo",
+    changes: [
+      "Agora também há missões de caminhada, além das de corrida, nas três dificuldades.",
+      "O progresso das missões de distância já sobe ao vivo enquanto treinas, em vez de só no fim.",
+    ],
+  },
+  {
     version: "v6.20.0",
     title: "Missões Sempre Visíveis",
     changes: [

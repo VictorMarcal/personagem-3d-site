@@ -572,6 +572,15 @@ function updateLiveStatsDisplay() {
   set("live-total-kcal", `${Math.round(activeKcal + restingKcal)} kcal`);
   updateDistanceDisplay(activeKcal + restingKcal);
 
+  // Mostra o progresso da missão de distância a subir AO VIVO durante o
+  // treino (bug 2026-09-15: "estou a correr e a missão não está a
+  // incrementar") - o credito real só é gravado no fim (verificarMissaoAtiva,
+  // stopTraining), isto é só para o jogador ver o número mexer-se enquanto
+  // treina, com a mesma reparticao usada para as calorias acima.
+  if (typeof renderMissionsPanel === "function") {
+    renderMissionsPanel({ distanciaPorModo: reparticaoAoVivo.distancia });
+  }
+
   updateGpsDiagDisplay();
 }
 
