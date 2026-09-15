@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.20.0",
+    title: "Missões Sempre Visíveis",
+    changes: [
+      "As missões deixam de desaparecer quando começas um treino — continuas a ver a missão ativa e o progresso enquanto treinas.",
+      "Corrigida a personagem a aparecer a levitar acima da Fortaleza em alguns níveis.",
+    ],
+  },
+  {
     version: "v6.19.0",
     title: "Câmara Mais Diagonal na Fortaleza",
     changes: [

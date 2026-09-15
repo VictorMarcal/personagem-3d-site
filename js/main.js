@@ -174,7 +174,12 @@ const TOWER_MODEL_COUNT = 3;
 
 // Nomes aceites para o Empty que marca onde a personagem fica no topo da
 // torre (2026-09-09, a pedido - "adicionei um empty para saberes a posicao
-// da personagem"). O primeiro que existir no modelo e o que conta.
+// da personagem"). O primeiro que existir no modelo e o que conta. Aceita
+// tambem variantes numeradas (ex: "PlayerPosition2", "PlayerPosition3" -
+// Tower2.glb/Tower3.glb usam o nome do Empty com o numero da torre) por
+// prefixo, nao so o nome exato - bug 2026-09-15: sem isto, o Empty
+// numerado nao era encontrado e caia no topo da caixa, mais alto que o
+// pivo real, dando a sensacao de a personagem estar a levitar.
 const TOWER_PLAYER_EMPTY_NAMES = ["PlayerPosition", "PlayerPos", "HeroPosition", "HeroPos", "HeroSlot", "CharacterPos"];
 
 let towerModel = null;
@@ -227,10 +232,12 @@ function applyTowerModel(model, index) {
   // Posicao da personagem: o Empty do modelo se existir, senao o topo da
   // caixa centrado (comportamento antigo).
   let empty = null;
-  for (const nome of TOWER_PLAYER_EMPTY_NAMES) {
-    empty = model.getObjectByName(nome);
-    if (empty) break;
-  }
+  model.traverse((obj) => {
+    if (empty || !obj.name) return;
+    if (TOWER_PLAYER_EMPTY_NAMES.some((nome) => obj.name === nome || obj.name.startsWith(nome))) {
+      empty = obj;
+    }
+  });
   if (empty) {
     TOWER_PLAYER_POS.setFromMatrixPosition(empty.matrixWorld);
   } else {

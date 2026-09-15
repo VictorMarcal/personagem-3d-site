@@ -358,9 +358,16 @@ function formatCooldownRestante(ms) {
 
 // --- UI -------------------------------------------------------------------
 
+// Dois pontos de montagem (ecrã inicial e ecrã de treino em curso, index.html
+// secção "Separador 1") - o painel deixou de desaparecer ao iniciar um treino
+// (bug 2026-09-15, "missões desaparecem ao iniciar um treino, não devia"):
+// os dois sao renderizados com o mesmo conteudo, so um fica visivel de
+// cada vez consoante o `panel-screen` ativo.
 function renderMissionsPanel() {
-  const painel = document.getElementById("missions-panel");
-  if (!painel) return;
+  const paineis = ["missions-panel", "missions-panel-training"]
+    .map((id) => document.getElementById(id))
+    .filter(Boolean);
+  if (!paineis.length) return;
 
   const estado = getMissionState();
   const mesLabel = missionMonthLabel(estado.mes);
@@ -377,7 +384,7 @@ function renderMissionsPanel() {
       `<p class="mission-goal">${missaoTexto(estado.ativa)}</p>` +
       `<div class="mission-progress-track"><div class="mission-progress-fill" style="width:${pct}%"></div></div>` +
       `<p class="mission-progress-text">${missaoProgressoTexto(estado.ativa, prog)}</p>` +
-      '<button id="btn-mission-desistir" class="mission-btn-ghost" type="button">Desistir</button>' +
+      '<button class="btn-mission-desistir mission-btn-ghost" type="button">Desistir</button>' +
       "</div>";
   } else if (estado.concluidas.length >= MISSION_SLOTS.length) {
     corpo = `<p class="mission-empty">As três missões de ${mesLabel} estão concluídas. Novas missões em ${nextMonthLabel(estado.mes)}.</p>`;
@@ -401,19 +408,23 @@ function renderMissionsPanel() {
     }
   }
 
-  painel.innerHTML =
+  const html =
     `<div class="mission-head"><span class="mission-title">Missões · ${mesLabel}</span>` +
     `<span class="mission-count">${estado.concluidas.length}/${MISSION_SLOTS.length}</span></div>` +
     corpo;
 
-  const btnDesistir = document.getElementById("btn-mission-desistir");
-  if (btnDesistir) {
-    btnDesistir.addEventListener("click", () => {
-      if (confirm("Desistir desta missão? Ficas 24 horas sem poder aceitar outra.")) desistirMissao();
+  paineis.forEach((painel) => {
+    painel.innerHTML = html;
+
+    const btnDesistir = painel.querySelector(".btn-mission-desistir");
+    if (btnDesistir) {
+      btnDesistir.addEventListener("click", () => {
+        if (confirm("Desistir desta missão? Ficas 24 horas sem poder aceitar outra.")) desistirMissao();
+      });
+    }
+    painel.querySelectorAll("[data-mission-slot]").forEach((btn) => {
+      btn.addEventListener("click", () => aceitarMissao(btn.dataset.missionSlot));
     });
-  }
-  painel.querySelectorAll("[data-mission-slot]").forEach((btn) => {
-    btn.addEventListener("click", () => aceitarMissao(btn.dataset.missionSlot));
   });
 }
 
