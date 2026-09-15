@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.25.0",
+    title: "3 Missões ao Mesmo Tempo",
+    changes: [
+      "Já podes ter uma missão fácil, uma média e uma difícil ativas ao mesmo tempo, em vez de só uma no total.",
+      "Desistir de uma missão só bloqueia essa dificuldade durante 24h, não as outras duas.",
+    ],
+  },
+  {
     version: "v6.24.0",
     title: "Radar de Minas",
     changes: [

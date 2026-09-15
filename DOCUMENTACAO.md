@@ -1298,10 +1298,10 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 
 - Cada mês de calendário tem **3 missões**: uma **fácil**, uma **média**, uma **difícil**.
 - Concluir uma dá **recursos** (um recurso, quantidade fixa por dificuldade).
-- **Só 1 missão aceite de cada vez.**
-- **Recusar** (`Desistir`) trava novas aceitações durante **24 h** (`MISSION_REJECT_COOLDOWN_MS`).
-- **Concluir não trava nada** — aceita-se logo a seguinte.
-- Concluídas as 3 dentro do mês, espera-se pelo mês seguinte.
+- **Até 1 missão aceite POR DIFICULDADE — as 3 podem estar ativas ao mesmo tempo** (mudou 2026-09-15, a pedido: *"deve ser possível ativar 3 missões (uma fácil, uma média, uma difícil)"*; até aqui só podia haver 1 no total, de qualquer dificuldade). As 3 dificuldades são completamente independentes entre si.
+- **Recusar** (`Desistir`) trava novas aceitações **nessa dificuldade** durante **24 h** (`MISSION_REJECT_COOLDOWN_MS`) — não afeta as outras duas.
+- **Concluir não trava nada** — aceita-se logo a seguinte dessa dificuldade.
+- Concluída uma dificuldade, só no mês seguinte volta a ter missão nova nela; as outras continuam por sua conta.
 - O progresso conta a partir do **instante em que se aceita**, nunca desde o início do mês — recusar/falhar nunca credita trabalho antigo. Os tipos de descoberta usam um *baseline* (delta face a um snapshot); `correr_km`/`caminhar_km` usam um **acumulador** (só a distância corrida/caminhada somada no fim de cada treino, mais um mostrador ao vivo durante o treino — ver "Progresso ao vivo" abaixo).
 - **Todas cumulativas, nunca "de seguida"** — nem `correr_km` (soma o que se correu em qualquer número de treinos) nem `descobre_hex` exigem uma sessão só. Isto não estava explícito na UI (bug reportado via Trello, 2026-09-14: *"não há indicação de que correr 15km são acumulativos ou seguidos"*).
   - **1ª tentativa**: um texto de ajuda por cima das missões por aceitar. **Insuficiente** (validado com "Com bug" no Trello) — só aparece no ecrã "por aceitar"; quem já tinha a missão aceite (o caso mais comum, já a meio de a cumprir) nunca chegava a ver esse aviso.
@@ -1313,12 +1313,18 @@ As 3 missões de um mês saem de `mulberry32(hashString("missoes:" + "2026-09"))
 
 ```
 { mes: "2026-09",
-  ativa: { slot, tipo, alvo, recurso?, recompensa, baseline, progressoM, aceiteEm } | null,
+  ativas: {
+    facil: { slot, tipo, alvo, recurso?, recompensa, baseline, progressoM, aceiteEm } | null,
+    media: ... | null,
+    dificil: ... | null,
+  },
   concluidas: ["facil", ...],
-  rejeitadaEm: <ts> | null }
+  rejeitadaEm: { facil: <ts>|null, media: <ts>|null, dificil: <ts>|null } }
 ```
 
-`getMissionState()` faz o **rollover** de mês (se `mes` mudou, começa do zero e grava); `getMissionStateRaw()` é a leitura pura, sem efeitos, usada pelo snapshot de sincronização (não pode escrever a meio).
+**Formato por dificuldade desde 2026-09-15** (antes era uma só `ativa`/`rejeitadaEm` GLOBAL, quando só podia haver 1 missão aceite no total — ver acima). `migrarEstadoMissoes(estado)` (`js/missions.js`) converte o formato antigo para o novo na leitura (idempotente — um estado já novo passa incólume); chamada por `getMissionStateRaw()` e por `mergeMissoes()` (secção "Sincronização" abaixo), nunca escreve no `localStorage` sozinha. O cooldown de recusa antigo era global e sem registo de qual dificuldade tinha sido recusada — perde-se na migração (efeito único e mínimo) em vez de aplicar as 3 de uma vez.
+
+`getMissionState()` faz o **rollover** de mês (se `mes` mudou, começa do zero e grava); `getMissionStateRaw()` é a leitura pura (com a migração acima já aplicada), sem efeitos, usada pelo snapshot de sincronização (não pode escrever a meio).
 
 ### Tipos de missão e alvos
 
@@ -1340,11 +1346,11 @@ As 3 missões de um mês saem de `mulberry32(hashString("missoes:" + "2026-09"))
 
 Até aqui, `generateMonthlyMissions()` sorteava **1 tipo por dificuldade** (com lógica extra para tentar não repetir tipo entre dificuldades no mesmo mês). **Bug reportado via Trello** logo depois de `caminhar_km` ter sido adicionado ao pool (ver acima): *"não vejo opção de missão de caminhada"* — o sorteio simplesmente não tinha calhado nesse tipo nesse mês, e o jogador diagnosticou a causa raiz no próprio comentário: *"provavelmente porque temos um limite de 3 missões por mês, vamos passar a ter [uma por tipo]"*.
 
-**Corrigido**: `generateMonthlyMissions(monthKey)` devolve agora `{ facil, media, dificil }`, cada uma um **array com uma missão por tipo do pool** dessa dificuldade (fácil: 3, média: 4, difícil: 4 — o tamanho depende do pool, não é um número fixo de 3 por dificuldade), em vez de sortear 1. `missoesDisponiveis(estado)` passa a devolver todos os tipos das dificuldades ainda por concluir (achatado num só array); `aceitarMissao(slot, tipo)` ganhou o segundo parâmetro para saber qual dos tipos dessa dificuldade aceitar. Continua a regra de **só 1 missão aceite de cada vez, e só 1 conclusão por dificuldade por mês** (3 no total) — só a fase de *escolha* deixou de ser sorteio e passou a ser o jogador a decidir. A lista colapsável (`renderMissionsListaCompleta`, ver secção "Lista completa" abaixo) mostra os 11 tipos possíveis do mês, cada um com o seu estado.
+**Corrigido**: `generateMonthlyMissions(monthKey)` devolve agora `{ facil, media, dificil }`, cada uma um **array com uma missão por tipo do pool** dessa dificuldade (fácil: 3, média: 4, difícil: 4 — o tamanho depende do pool, não é um número fixo de 3 por dificuldade), em vez de sortear 1. `tiposDisponiveis(estado, slot)` devolve os tipos de UMA dificuldade; `aceitarMissao(slot, tipo)` ganhou o segundo parâmetro para saber qual dos tipos dessa dificuldade aceitar. Só a fase de *escolha* deixou de ser sorteio e passou a ser o jogador a decidir — a regra de quantas se pode ter ativas ao mesmo tempo é a descrita acima ("Até 1 por dificuldade"). A lista colapsável (`renderMissionsListaCompleta`, ver secção "Lista completa" abaixo) mostra os 11 tipos possíveis do mês, cada um com o seu estado.
 
 ### Onde é verificada
 
-`verificarMissaoAtiva(sessao?)` corre no **fim de um treino** (`js/training.js` `stopTraining`, com `{ distanciaPorModo }` da sessão), no **arranque pós-login** (`js/auth.js`, depois da hidratação, sem `sessao`) e quando as **regiões são recalculadas** (`js/hexes.js` `applyRegions`, sem `sessao`). Se a missão ativa está concluída: credita a recompensa (`acumularProducao()` → soma → `saveResources`), move o slot para `concluidas`, toast `medalha`, redesenha.
+`verificarMissaoAtiva(sessao?)` corre no **fim de um treino** (`js/training.js` `stopTraining`, com `{ distanciaPorModo }` da sessão), no **arranque pós-login** (`js/auth.js`, depois da hidratação, sem `sessao`) e quando as **regiões são recalculadas** (`js/hexes.js` `applyRegions`, sem `sessao`). Desde 2026-09-15 verifica **as 3 dificuldades independentemente** (podem estar as 3 ativas ao mesmo tempo) — para cada uma com missão ativa: se concluída, credita a recompensa (`acumularProducao()` → soma → `saveResources`), move o slot para `concluidas`, toast `medalha`; redesenha uma vez no fim.
 
 ### Progresso ao vivo durante o treino (2026-09-15)
 
@@ -1354,11 +1360,11 @@ Até aqui, `generateMonthlyMissions()` sorteava **1 tipo por dificuldade** (com 
 
 ### Lista completa dos tipos do mês, colapsável (2026-09-15)
 
-A pedido via Trello (*"Missões existentes ficam mesmo visíveis mas bloqueadas... uma lista que encolhe para não ocupar muito espaço... botão tipo 'ver lista de missões'"*): por defeito o painel só mostra a missão ativa (ou as disponíveis para aceitar, se nenhuma estiver aceite) — os outros tipos do mês ficavam invisíveis. Um botão **"Ver lista de missões"** (mesmo estilo do `.training-detail-toggle` já usado no card de sessão) abre/fecha uma lista compacta com **todos os tipos das 3 dificuldades** (11 no total desde que `caminhar_km` existe — ver "Todos os tipos por dificuldade" acima), cada um com um estado: **Em curso** (o ativo), **Concluída** (a dificuldade desse tipo já foi cumprida este mês, por qualquer tipo), **Bloqueada** (não é o ativo e já há outro em curso — regra global de só 1 de cada vez, qualquer dificuldade) ou **Disponível** (nenhum ativo ainda). `renderMissionsListaCompleta(estado)` (`js/missions.js`) gera a lista a partir de `generateMonthlyMissions(estado.mes)` (determinístico, não precisa de vir do estado gravado). O aberto/fechado (`missionsListaAberta`) é uma variável de módulo, não gravada (reabre fechada a cada carregamento da página) — tem de sobreviver aos redesenhos de `renderMissionsPanel()` chamados a cada segundo durante um treino (ver secção acima), senão fechava-se sozinha.
+A pedido via Trello (*"Missões existentes ficam mesmo visíveis mas bloqueadas... uma lista que encolhe para não ocupar muito espaço... botão tipo 'ver lista de missões'"*): por defeito o painel mostra, para cada dificuldade, a sua missão ativa (ou as disponíveis para aceitar, se essa dificuldade não tiver nenhuma) — os outros tipos do mês ficavam invisíveis. Um botão **"Ver lista de missões"** (mesmo estilo do `.training-detail-toggle` já usado no card de sessão) abre/fecha uma lista compacta com **todos os tipos das 3 dificuldades** (11 no total desde que `caminhar_km` existe — ver "Todos os tipos por dificuldade" acima), cada um com um estado: **Em curso** (o ativo dessa dificuldade), **Concluída** (essa dificuldade já foi cumprida este mês, por qualquer tipo), **Bloqueada** (não é o ativo e já há outro tipo em curso NESSA MESMA dificuldade, ou está em cooldown de recusa — desde 2026-09-15 o bloqueio é só dentro da própria dificuldade, uma média ativa não bloqueia a fácil nem a difícil) ou **Disponível** (essa dificuldade livre para aceitar). `renderMissionsListaCompleta(estado)` (`js/missions.js`) gera a lista a partir de `generateMonthlyMissions(estado.mes)` (determinístico, não precisa de vir do estado gravado). O aberto/fechado (`missionsListaAberta`) é uma variável de módulo, não gravada (reabre fechada a cada carregamento da página) — tem de sobreviver aos redesenhos de `renderMissionsPanel()` chamados a cada segundo durante um treino (ver secção acima), senão fechava-se sozinha.
 
 ### Sincronização (secção 14.1)
 
-`mergeMissoes(local, server)`: meses diferentes → fica o mais recente; mesmo mês → união das `concluidas`, `ativa` de qualquer lado que a tenha (largada se já constar das concluídas; se ambos têm a mesma missão ativa, fica o maior `progressoM`), `rejeitadaEm` mais recente. Objeto vazio (`{}`, contas antigas / default da coluna) → `hydrateLocalStorageFromProgress` remove a chave e o próximo `getMissionState()` gera o estado limpo do mês.
+`mergeMissoes(local, server)`: normaliza os dois lados primeiro (`migrarEstadoMissoes` — podem chegar no formato antigo se o servidor ainda não tiver sido escrito com o novo). Depois: meses diferentes → fica o mais recente; mesmo mês → união das `concluidas`, e **por cada dificuldade** independentemente: a `ativa` de qualquer lado que a tenha (largada se essa dificuldade já constar das concluídas; se ambos têm o mesmo tipo ativo nessa dificuldade, fica o maior `progressoM`), `rejeitadaEm` dessa dificuldade mais recente. Objeto vazio (`{}`, contas antigas / default da coluna) → `hydrateLocalStorageFromProgress` remove a chave e o próximo `getMissionState()` gera o estado limpo do mês.
 
 ### O que fica por decidir
 

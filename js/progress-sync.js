@@ -249,24 +249,41 @@ function checkpointRecursosMaisAntigo(a, b) {
 // Missoes mensais (secção 22). Meses diferentes: fica o mais recente (o
 // outro dispositivo esta atrasado, ou o mes ja virou). Mesmo mes: uniao das
 // concluidas (uma missao feita num dispositivo nao "desconclui"), a ativa de
-// qualquer lado que a tenha, e o rejeitadaEm mais recente. Se a ativa ja
-// consta das concluidas depois da uniao, larga-se.
+// CADA dificuldade (2026-09-15 - as 3 sao independentes, ver js/missions.js)
+// de qualquer lado que a tenha, e o rejeitadaEm mais recente de cada
+// dificuldade. Se a ativa de uma dificuldade ja consta das concluidas depois
+// da uniao, larga-se. Normaliza os dois lados primeiro (migrarEstadoMissoes)
+// - podem chegar no formato antigo (uma so `ativa` global) se o servidor
+// ainda nao tiver sido escrito com o formato novo.
 function mergeMissoes(local, server) {
   if (!local && !server) return {};
+  const migrar = typeof migrarEstadoMissoes === "function" ? migrarEstadoMissoes : (e) => e;
+  local = migrar(local);
+  server = migrar(server);
   if (!local || !local.mes) return server || {};
   if (!server || !server.mes) return local;
   if (local.mes !== server.mes) return String(local.mes) > String(server.mes) ? local : server;
 
   const concluidas = [...new Set([...(local.concluidas || []), ...(server.concluidas || [])])];
-  let ativa = local.ativa || server.ativa || null;
-  // Se os dois lados tem a MESMA missao ativa, fica o maior progresso de
-  // corrida (progressoM) - senao um treino feito noutro dispositivo perdia-se.
-  if (ativa && local.ativa && server.ativa && local.ativa.slot === server.ativa.slot) {
-    ativa = { ...ativa, progressoM: Math.max(Number(local.ativa.progressoM) || 0, Number(server.ativa.progressoM) || 0) };
-  }
-  if (ativa && concluidas.includes(ativa.slot)) ativa = null;
-  const rejeitadaEm = Math.max(Number(local.rejeitadaEm) || 0, Number(server.rejeitadaEm) || 0) || null;
-  return { mes: local.mes, concluidas, ativa, rejeitadaEm };
+  const slots = typeof MISSION_SLOTS !== "undefined" ? MISSION_SLOTS : ["facil", "media", "dificil"];
+  const ativas = {};
+  const rejeitadaEm = {};
+  slots.forEach((slot) => {
+    const localAtiva = (local.ativas || {})[slot];
+    const serverAtiva = (server.ativas || {})[slot];
+    let ativa = localAtiva || serverAtiva || null;
+    // Se os dois lados tem a MESMA missao ativa nesta dificuldade, fica o
+    // maior progresso de distancia (progressoM) - senao um treino feito
+    // noutro dispositivo perdia-se.
+    if (ativa && localAtiva && serverAtiva && localAtiva.tipo === serverAtiva.tipo) {
+      ativa = { ...ativa, progressoM: Math.max(Number(localAtiva.progressoM) || 0, Number(serverAtiva.progressoM) || 0) };
+    }
+    if (ativa && concluidas.includes(slot)) ativa = null;
+    ativas[slot] = ativa;
+    rejeitadaEm[slot] =
+      Math.max(Number((local.rejeitadaEm || {})[slot]) || 0, Number((server.rejeitadaEm || {})[slot]) || 0) || null;
+  });
+  return { mes: local.mes, concluidas, ativas, rejeitadaEm };
 }
 
 // Multiplicadores por hexagono (hexId -> {m, d}): por hexagono, fica o
