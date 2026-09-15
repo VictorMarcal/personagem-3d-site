@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.26.0",
+    title: "Missões Sempre à Vista",
+    changes: [
+      "As 9 missões do mês (3 por dificuldade) estão sempre todas visíveis, sem lista escondida.",
+      "Desistir de uma missão perde o progresso e bloqueia essa dificuldade por 12h (em vez de 24h).",
+    ],
+  },
+  {
     version: "v6.25.1",
     title: "Aceitar Missões Durante o Treino",
     changes: [

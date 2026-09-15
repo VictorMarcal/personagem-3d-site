@@ -424,39 +424,16 @@ button[disabled] {
   margin: 0 0 10px;
 }
 .mission-btn-accept { width: 100%; }
-.btn-missions-lista-toggle { margin-top: 4px; }
-.mission-mini-list {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0;
-  flex-direction: column;
-  gap: 6px;
-}
-.mission-mini-list:not(.hidden) { display: flex; }
-.mission-mini {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.mission-subpanel { margin-bottom: 16px; }
+.mission-subpanel:last-child { margin-bottom: 0; }
+.mission-subpanel-title {
   font-size: 12px;
-  padding: 6px 8px;
-  border-radius: var(--r-sm);
-  background: var(--surface-2);
-}
-.mission-mini-text {
-  flex: 1;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin: 0 0 6px;
 }
-.mission-mini-status {
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.mission-mini-locked { opacity: 0.6; }
-.mission-mini-done .mission-mini-text { text-decoration: line-through; color: var(--muted); }
-.mission-mini-active { border: 1px solid var(--sage-200); }
+.mission-card-locked { opacity: 0.55; }
 .mission-btn-ghost {
   width: 100%;
   padding: 8px 12px;

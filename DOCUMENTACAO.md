@@ -1294,12 +1294,12 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 
 `js/missions.js` + painel no separador **Treinar**, com **dois pontos de montagem** — `#missions-panel` dentro do `#start-screen` (**por cima** de "Treinos de hoje" — 2026-09-13, a pedido; era por baixo até essa data) e `#missions-panel-training` dentro do `#training-screen`, por baixo do botão "Pausa". `renderMissionsPanel()` escreve o mesmo HTML nos dois; só um fica visível de cada vez, consoante `showStartScreen()`/`showTrainingScreen()` (`js/training.js`). O segundo ponto de montagem foi adicionado a corrigir um bug (2026-09-15, Trello: *"Missões desaparecem ao iniciar um treino, não devia"*) — antes só existia dentro do `#start-screen`, por isso desaparecia por completo assim que o treino começava (o ecrã trocava para `#training-screen`, sem missões nenhumas lá dentro), em vez de continuar visível para o jogador acompanhar o progresso a meio do treino. A pedido original: *"adicionar missões mensais (secção treinar) que dão como recompensa recursos"*.
 
-### As regras (todas a pedido)
+### As regras (todas a pedido; ver "Redesenho final" abaixo para a versão em vigor)
 
-- Cada mês de calendário tem **3 missões**: uma **fácil**, uma **média**, uma **difícil**.
+- Cada mês de calendário tem **9 missões**: 3 dificuldades (**fácil**, **média**, **difícil**) × 3 tipos cada — ver "Redesenho final".
 - Concluir uma dá **recursos** (um recurso, quantidade fixa por dificuldade).
 - **Até 1 missão aceite POR DIFICULDADE — as 3 podem estar ativas ao mesmo tempo** (mudou 2026-09-15, a pedido: *"deve ser possível ativar 3 missões (uma fácil, uma média, uma difícil)"*; até aqui só podia haver 1 no total, de qualquer dificuldade). As 3 dificuldades são completamente independentes entre si.
-- **Recusar** (`Desistir`) trava novas aceitações **nessa dificuldade** durante **24 h** (`MISSION_REJECT_COOLDOWN_MS`) — não afeta as outras duas.
+- **Desistir perde o progresso da missão** e trava novas aceitações **nessa dificuldade** durante **12 h** (`MISSION_REJECT_COOLDOWN_MS`) — não afeta as outras duas.
 - **Concluir não trava nada** — aceita-se logo a seguinte dessa dificuldade.
 - Concluída uma dificuldade, só no mês seguinte volta a ter missão nova nela; as outras continuam por sua conta.
 - O progresso conta a partir do **instante em que se aceita**, nunca desde o início do mês — recusar/falhar nunca credita trabalho antigo. Os tipos de descoberta usam um *baseline* (delta face a um snapshot); `correr_km`/`caminhar_km` usam um **acumulador** (só a distância corrida/caminhada somada no fim de cada treino, mais um mostrador ao vivo durante o treino — ver "Progresso ao vivo" abaixo).
@@ -1309,7 +1309,7 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 
 ### Deterministas, como as minas
 
-As 3 missões de um mês saem de `mulberry32(hashString("missoes:" + "2026-09"))` — **não são guardadas**, tal como as minas saem do `osm_id` do concelho (secção 21). Só o **estado** é guardado/sincronizado (`STORAGE_KEY_MISSIONS` → coluna `missoes_mensais` em `player_progress`):
+As missões de um mês saem de `mulberry32(hashString("missoes:" + "2026-09"))` — **não são guardadas**, tal como as minas saem do `osm_id` do concelho (secção 21). Só o **estado** é guardado/sincronizado (`STORAGE_KEY_MISSIONS` → coluna `missoes_mensais` em `player_progress`):
 
 ```
 { mes: "2026-09",
@@ -1328,25 +1328,41 @@ As 3 missões de um mês saem de `mulberry32(hashString("missoes:" + "2026-09"))
 
 ### Tipos de missão e alvos
 
-| tipo | o que | como conta | fácil / média / difícil |
-|---|---|---|---|
-| `correr_km` | distância **corrida** (não a caminhada) | acumulador `ativa.progressoM`, `+= sessão.distance_by_mode.correr` no fim de cada treino | 15 / 35 / 70 km |
-| `caminhar_km` | distância **caminhada** (não a corrida) | acumulador `ativa.progressoM`, `+= sessão.distance_by_mode.caminhar` no fim de cada treino | 15 / 35 / 70 km |
-| `descobre_hex` | hexágonos novos (qualquer modo) | `getDiscoveredHexCount()` − baseline | 8 / 20 / 45 |
-| `descobre_mina` | uma mina de um recurso específico | ids de minas encontradas fora do baseline, com esse recurso | 1 (só média) |
-| `descobre_concelho` | um concelho novo | `osmId`s de `unlockedConcelhos` fora do baseline | 1 (só difícil) |
+| tipo | o que | como conta | fácil / média / difícil | em que dificuldades |
+|---|---|---|---|---|
+| `correr_km` | distância **corrida** (não a caminhada) | acumulador `ativa.progressoM`, `+= sessão.distance_by_mode.correr` no fim de cada treino | 15 / 35 / 70 km | as 3 |
+| `caminhar_km` | distância **caminhada** (não a corrida) | acumulador `ativa.progressoM`, `+= sessão.distance_by_mode.caminhar` no fim de cada treino | 15 / 35 / 70 km | as 3 |
+| `descobre_hex` | hexágonos novos (qualquer modo) | `getDiscoveredHexCount()` − baseline | 8 | só fácil |
+| `descobre_mina` | uma mina de um recurso específico | ids de minas encontradas fora do baseline, com esse recurso | 1 | só média |
+| `descobre_concelho` | um concelho novo | `osmId`s de `unlockedConcelhos` fora do baseline | 1 | só difícil |
 
 **`correr_km`/`caminhar_km` são um acumulador, não um baseline sobre `getLifetimeDistanceM()`** (bug corrigido 2026-09-10: uma caminhada de 6 km contava para a missão "correr 15 km", porque `getLifetimeDistanceM()` soma todos os modos). `verificarMissaoAtiva(sessao)` recebe `sessao.distanciaPorModo` de `stopTraining` e só soma a fatia correspondente (`correr` ou `caminhar`, conforme o tipo). Missões `correr_km` aceites antes desta correção não têm `progressoM` → contam a partir de 0 (a caminhada que tinham contado deixa de valer).
 
 **`caminhar_km` adicionado 2026-09-15** (Trello: *"é necessário ter opção de missões para corrida e caminhada, sejam elas fáceis médias ou difíceis"*) — mesma lógica de `correr_km`, tipo irmão no `MISSION_POOL` das 3 dificuldades, só muda a fatia de distância que conta (`caminhar` em vez de `correr`). Alvos **provisórios**, iguais aos de `correr_km` por agora (sem histórico real de ritmo de caminhada ainda).
 
-**Cada dificuldade mostra TODOS os tipos do seu pool (`MISSION_POOL`) ao mesmo tempo, não só 1 sorteado** (mudou 2026-09-15 — ver "Todos os tipos por dificuldade" abaixo). Recompensa: `MISSION_RECOMPENSA` = 50 / 120 / 300 unidades de um recurso semeado no mês, **partilhada por todos os tipos da mesma dificuldade** (a quantidade e o recurso só dependem da dificuldade, não de qual tipo o jogador escolhe). **Números provisórios**, mesma nota da secção 21 (derivados do ritmo real dos dois jogadores no primeiro mês). A recompensa é limitada ao teto da Fortaleza ao ser creditada, como a produção — a difícil só rende tudo com a Fortaleza já subida, de propósito.
+Recompensa: `MISSION_RECOMPENSA` = 50 / 120 / 300 unidades de um recurso semeado no mês, **partilhada pelos 3 tipos da mesma dificuldade** (a quantidade e o recurso só dependem da dificuldade, não de qual tipo o jogador escolhe). **Números provisórios**, mesma nota da secção 21 (derivados do ritmo real dos dois jogadores no primeiro mês). A recompensa é limitada ao teto da Fortaleza ao ser creditada, como a produção — a difícil só rende tudo com a Fortaleza já subida, de propósito.
 
-### Todos os tipos por dificuldade, não só 1 sorteado (2026-09-15)
+### Redesenho final: 9 missões sempre visíveis, 3 sub-painéis (2026-09-15)
 
-Até aqui, `generateMonthlyMissions()` sorteava **1 tipo por dificuldade** (com lógica extra para tentar não repetir tipo entre dificuldades no mesmo mês). **Bug reportado via Trello** logo depois de `caminhar_km` ter sido adicionado ao pool (ver acima): *"não vejo opção de missão de caminhada"* — o sorteio simplesmente não tinha calhado nesse tipo nesse mês, e o jogador diagnosticou a causa raiz no próprio comentário: *"provavelmente porque temos um limite de 3 missões por mês, vamos passar a ter [uma por tipo]"*.
+Esta secção teve **duas iterações erradas no mesmo dia** antes de chegar à versão em vigor — registadas aqui porque explicam decisões de código que já não aparecem à superfície:
 
-**Corrigido**: `generateMonthlyMissions(monthKey)` devolve agora `{ facil, media, dificil }`, cada uma um **array com uma missão por tipo do pool** dessa dificuldade (fácil: 3, média: 4, difícil: 4 — o tamanho depende do pool, não é um número fixo de 3 por dificuldade), em vez de sortear 1. `tiposDisponiveis(estado, slot)` devolve os tipos de UMA dificuldade; `aceitarMissao(slot, tipo)` ganhou o segundo parâmetro para saber qual dos tipos dessa dificuldade aceitar. Só a fase de *escolha* deixou de ser sorteio e passou a ser o jogador a decidir — a regra de quantas se pode ter ativas ao mesmo tempo é a descrita acima ("Até 1 por dificuldade"). A lista colapsável (`renderMissionsListaCompleta`, ver secção "Lista completa" abaixo) mostra os 11 tipos possíveis do mês, cada um com o seu estado.
+1. **1ª versão**: `generateMonthlyMissions()` sorteava **1 tipo por dificuldade** (com lógica extra para tentar não repetir tipo entre dificuldades no mesmo mês). Depois de `caminhar_km` ser adicionado ao pool, bug reportado via Trello: *"não vejo opção de missão de caminhada"* — o sorteio simplesmente não tinha calhado nesse tipo nesse mês.
+2. **2ª versão**: em vez de sortear, mostrar **todos** os tipos do pool de cada dificuldade (facil: 3, media: 4, dificil: 4 = 11 no total, já que media/dificil tinham `descobre_hex` a mais), mas só a missão *ativa* de cada dificuldade ficava à vista por defeito — as outras escondiam-se atrás de um botão colapsável "Ver lista de missões". **Rejeitado pelo jogador** ("que confusão que estás a fazer") com um pedido claro e direto do desenho final a usar:
+   - **9 missões por mês**, não 11 — 3 dificuldades × exatamente 3 tipos.
+   - **Todas as missões estão sempre visíveis** — sem lista escondida, sem toggle.
+   - **3 sub-painéis**, um por dificuldade (Fácil/Média/Difícil).
+   - Aceitar uma bloqueia as outras da MESMA dificuldade; as outras dificuldades não são afetadas.
+   - Desistir **perde o progresso** e trava essa dificuldade **12 h** (não 24h).
+
+**Versão em vigor**: `MISSION_POOL` tem exatamente 3 tipos por dificuldade — `descobre_hex` saiu dos pools de média/difícil (ficou só na fácil, como "esforço puro de explorar"; média ficou com `descobre_mina` como o tipo que a distingue, difícil com `descobre_concelho`):
+
+```
+facil:   [correr_km, caminhar_km, descobre_hex]
+media:   [correr_km, caminhar_km, descobre_mina]
+dificil: [correr_km, caminhar_km, descobre_concelho]
+```
+
+`generateMonthlyMissions(monthKey)` devolve `{ facil, media, dificil }`, cada uma um array com as 3 missões do pool dessa dificuldade. `renderMissionSlotBlock(estado, slot, sessaoAoVivo)` (`js/missions.js`) desenha UM sub-painel (`<section class="mission-subpanel">`, título = `MISSION_SLOT_LABEL[slot]`) com as 3 sempre visíveis, cada uma num de 4 estados — **ativa** (progresso + Desistir), **concluída este mês**, **bloqueada** (outro tipo da mesma dificuldade já ativo, ou dificuldade em cooldown — mostra as horas restantes) ou **disponível** (botão Aceitar). Não há lista separada nem estado de UI para abrir/fechar — tudo num único render sempre igual à mesma altura. `tiposDisponiveis(estado, slot)` devolve os 3 tipos de UMA dificuldade; `aceitarMissao(slot, tipo)` recebe os dois para saber qual aceitar.
 
 ### Onde é verificada
 
@@ -1358,11 +1374,7 @@ Até aqui, `generateMonthlyMissions()` sorteava **1 tipo por dificuldade** (com 
 
 `missionProgress(ativa, sessaoAoVivo?)` (`js/missions.js`) passa a aceitar um segundo argumento opcional `{ distanciaPorModo }` — quando presente, soma-se à distância *já gravada* (`progressoM`) só para efeitos de MOSTRADOR, sem tocar no `localStorage`; o crédito real continua a só acontecer no fim. `updateLiveStatsDisplay()` (`js/training.js`, chamada a cada segundo enquanto o treino decorre) passa `reparticaoDaSessao().distancia` — a mesma repartição por modo já usada ali para as calorias ao vivo, para o número da missão e o das calorias nunca poderem divergir.
 
-**Atualização em DOM, não reconstrução do painel (2ª correção no mesmo dia, 2026-09-15)**: a 1ª versão desta funcionalidade chamava `renderMissionsPanel(sessaoAoVivo)` — reescreve **todo** o `innerHTML` do painel — a cada segundo durante o treino. Bug reportado: *"não é possível aceitar missões enquanto estás a treinar"* — a reconstrução por segundo por vezes apagava o botão "Aceitar" a meio de um toque (entre o início e o fim do gesto no ecrã), e o clique nunca chegava a disparar por o elemento já não existir no DOM nesse instante. **Corrigido** com `updateLiveMissionProgress(sessaoAoVivo)`: os elementos da barra/texto de progresso de cada dificuldade ganham `data-mission-fill`/`data-mission-progress` (com o slot), e esta função só faz `el.style.width = ...`/`el.textContent = ...` neles — nunca toca no resto do HTML (cards, botões "Aceitar"/"Desistir"). `renderMissionsPanel()` (a reconstrução completa) continua a existir e a ser usada nos eventos que realmente mudam a estrutura (aceitar, desistir, concluir, arranque, toggle da lista) — só deixou de correr a cada segundo.
-
-### Lista completa dos tipos do mês, colapsável (2026-09-15)
-
-A pedido via Trello (*"Missões existentes ficam mesmo visíveis mas bloqueadas... uma lista que encolhe para não ocupar muito espaço... botão tipo 'ver lista de missões'"*): por defeito o painel mostra, para cada dificuldade, a sua missão ativa (ou as disponíveis para aceitar, se essa dificuldade não tiver nenhuma) — os outros tipos do mês ficavam invisíveis. Um botão **"Ver lista de missões"** (mesmo estilo do `.training-detail-toggle` já usado no card de sessão) abre/fecha uma lista compacta com **todos os tipos das 3 dificuldades** (11 no total desde que `caminhar_km` existe — ver "Todos os tipos por dificuldade" acima), cada um com um estado: **Em curso** (o ativo dessa dificuldade), **Concluída** (essa dificuldade já foi cumprida este mês, por qualquer tipo), **Bloqueada** (não é o ativo e já há outro tipo em curso NESSA MESMA dificuldade, ou está em cooldown de recusa — desde 2026-09-15 o bloqueio é só dentro da própria dificuldade, uma média ativa não bloqueia a fácil nem a difícil) ou **Disponível** (essa dificuldade livre para aceitar). `renderMissionsListaCompleta(estado)` (`js/missions.js`) gera a lista a partir de `generateMonthlyMissions(estado.mes)` (determinístico, não precisa de vir do estado gravado). O aberto/fechado (`missionsListaAberta`) é uma variável de módulo, não gravada (reabre fechada a cada carregamento da página) — tem de sobreviver aos redesenhos de `renderMissionsPanel()` chamados a cada segundo durante um treino (ver secção acima), senão fechava-se sozinha.
+**Atualização em DOM, não reconstrução do painel (2ª correção no mesmo dia, 2026-09-15)**: a 1ª versão desta funcionalidade chamava `renderMissionsPanel(sessaoAoVivo)` — reescreve **todo** o `innerHTML` do painel — a cada segundo durante o treino. Bug reportado: *"não é possível aceitar missões enquanto estás a treinar"* — a reconstrução por segundo por vezes apagava o botão "Aceitar" a meio de um toque (entre o início e o fim do gesto no ecrã), e o clique nunca chegava a disparar por o elemento já não existir no DOM nesse instante. **Corrigido** com `updateLiveMissionProgress(sessaoAoVivo)`: os elementos da barra/texto de progresso de cada dificuldade ganham `data-mission-fill`/`data-mission-progress` (com o slot), e esta função só faz `el.style.width = ...`/`el.textContent = ...` neles — nunca toca no resto do HTML (cards, botões "Aceitar"/"Desistir"). `renderMissionsPanel()` (a reconstrução completa) continua a existir e a ser usada nos eventos que realmente mudam a estrutura (aceitar, desistir, concluir, arranque) — só deixou de correr a cada segundo. **Nota**: esta correção foi feita ANTES do redesenho "9 missões sempre visíveis" acima (que removeu de vez a lista colapsável que existia nessa altura); o mecanismo `data-mission-fill`/`data-mission-progress` continua válido e é usado da mesma forma nos cartões sempre visíveis de hoje.
 
 ### Sincronização (secção 14.1)
 
@@ -1371,4 +1383,4 @@ A pedido via Trello (*"Missões existentes ficam mesmo visíveis mas bloqueadas.
 ### O que fica por decidir
 
 - **`descobre_concelho` como missão difícil** pode ser impossível num mês para quem vive fundo num só concelho. Sem penalização por falhar (só por desistir), e é opcional aceitar — aceite como está.
-- Sem contador ao vivo do tempo de espera das 24 h: o texto mostra as horas e recalcula-se ao reabrir o separador.
+- Sem contador ao vivo do tempo de espera das 12 h: o texto mostra as horas e recalcula-se ao reabrir o separador.
