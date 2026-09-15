@@ -27,6 +27,14 @@ const MISSION_SLOTS = ["facil", "media", "dificil"];
 const MISSION_SLOT_LABEL = { facil: "Fácil", media: "Média", dificil: "Difícil" };
 const MISSION_REJECT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
+// Toggle da lista completa das 3 missões do mês (fechada/aberta), fora do
+// estado das missões em si - so um "lembrete visual" de leitura, por isso
+// nao e guardado (reabre fechada a cada carregamento da pagina). Variavel de
+// modulo para sobreviver aos redesenhos de renderMissionsPanel() (chamada a
+// cada segundo durante um treino - se fosse reiniciada a cada render, a
+// lista fechava-se sozinha 1x por segundo).
+let missionsListaAberta = false;
+
 // Pools por dificuldade. Cada slot escolhe UM tipo, semeado no mes - a
 // media pode calhar "corre" num mes e "mina" no outro. Mantem-se sempre
 // uma facil de esforco puro (km/hexes), a dificil e que traz os objetivos
@@ -384,6 +392,40 @@ function formatCooldownRestante(ms) {
 
 // --- UI -------------------------------------------------------------------
 
+// Lista compacta e colapsável com as 3 missões do mês (2026-09-15, a pedido
+// via Trello: "Missões existentes ficam mesmo visíveis mas bloqueadas... uma
+// lista que encolhe para não ocupar muito espaço... botão tipo 'ver lista de
+// missões'") - por defeito só se vê a missão ativa (ou as disponíveis para
+// aceitar); este botão dá acesso às 3 sem ocupar espaço permanente. As que
+// não são a ativa aparecem só como "Bloqueada" ou "Concluída" - não têm
+// Aceitar aqui (a regra de só 1 de cada vez continua, ver aceitarMissao()).
+function renderMissionsListaCompleta(estado) {
+  const geradas = generateMonthlyMissions(estado.mes);
+  const linhas = MISSION_SLOTS.map((slot) => {
+    const missao = geradas[slot];
+    const concluida = estado.concluidas.includes(slot);
+    const ativa = !!estado.ativa && estado.ativa.slot === slot;
+    // "Bloqueada" só faz sentido quando ha outra ativa a ocupar o unico
+    // lugar (regra de 1 de cada vez); sem nenhuma ativa, esta continua
+    // "Disponível" (aceita-se normalmente na lista de cima).
+    const bloqueadaPorOutra = !concluida && !ativa && !!estado.ativa;
+    const estadoClasse = concluida ? "mission-mini-done" : ativa ? "mission-mini-active" : bloqueadaPorOutra ? "mission-mini-locked" : "mission-mini-disponivel";
+    const estadoTexto = concluida ? "Concluída" : ativa ? "Em curso" : bloqueadaPorOutra ? "Bloqueada" : "Disponível";
+    return (
+      `<li class="mission-mini ${estadoClasse}">` +
+      `<span class="mission-chip mission-chip-${slot}">${MISSION_SLOT_LABEL[slot]}</span>` +
+      `<span class="mission-mini-text">${missaoTexto(missao)}</span>` +
+      `<span class="mission-mini-status">${estadoTexto}</span>` +
+      "</li>"
+    );
+  }).join("");
+  return (
+    `<button class="btn-missions-lista-toggle training-detail-toggle" type="button" aria-expanded="${missionsListaAberta}">` +
+    `${missionsListaAberta ? "Esconder lista de missões" : "Ver lista de missões"}</button>` +
+    `<ul class="mission-mini-list${missionsListaAberta ? "" : " hidden"}">${linhas}</ul>`
+  );
+}
+
 // Dois pontos de montagem (ecrã inicial e ecrã de treino em curso, index.html
 // secção "Separador 1") - o painel deixou de desaparecer ao iniciar um treino
 // (bug 2026-09-15, "missões desaparecem ao iniciar um treino, não devia"):
@@ -441,7 +483,8 @@ function renderMissionsPanel(sessaoAoVivo) {
   const html =
     `<div class="mission-head"><span class="mission-title">Missões · ${mesLabel}</span>` +
     `<span class="mission-count">${estado.concluidas.length}/${MISSION_SLOTS.length}</span></div>` +
-    corpo;
+    corpo +
+    renderMissionsListaCompleta(estado);
 
   paineis.forEach((painel) => {
     painel.innerHTML = html;
@@ -450,6 +493,13 @@ function renderMissionsPanel(sessaoAoVivo) {
     if (btnDesistir) {
       btnDesistir.addEventListener("click", () => {
         if (confirm("Desistir desta missão? Ficas 24 horas sem poder aceitar outra.")) desistirMissao();
+      });
+    }
+    const btnLista = painel.querySelector(".btn-missions-lista-toggle");
+    if (btnLista) {
+      btnLista.addEventListener("click", () => {
+        missionsListaAberta = !missionsListaAberta;
+        renderMissionsPanel(sessaoAoVivo);
       });
     }
     painel.querySelectorAll("[data-mission-slot]").forEach((btn) => {

@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.22.0",
+    title: "Lista de Missões",
+    changes: [
+      "Novo botão \"Ver lista de missões\" para veres as três missões do mês de uma vez, mesmo as bloqueadas ou já concluídas, sem ocupar espaço quando fechado.",
+    ],
+  },
+  {
     version: "v6.21.0",
     title: "Missões de Caminhada e Progresso ao Vivo",
     changes: [
