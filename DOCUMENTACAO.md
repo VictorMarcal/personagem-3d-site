@@ -1362,7 +1362,9 @@ media:   [correr_km, caminhar_km, descobre_mina]
 dificil: [correr_km, caminhar_km, descobre_concelho]
 ```
 
-`generateMonthlyMissions(monthKey)` devolve `{ facil, media, dificil }`, cada uma um array com as 3 missões do pool dessa dificuldade. `renderMissionSlotBlock(estado, slot, sessaoAoVivo)` (`js/missions.js`) desenha UM sub-painel (`<section class="mission-subpanel">`, título = `MISSION_SLOT_LABEL[slot]`) com as 3 sempre visíveis, cada uma num de 4 estados — **ativa** (progresso + Desistir), **concluída este mês**, **bloqueada** (outro tipo da mesma dificuldade já ativo, ou dificuldade em cooldown — mostra as horas restantes) ou **disponível** (botão Aceitar). Não há lista separada nem estado de UI para abrir/fechar — tudo num único render sempre igual à mesma altura. `tiposDisponiveis(estado, slot)` devolve os 3 tipos de UMA dificuldade; `aceitarMissao(slot, tipo)` recebe os dois para saber qual aceitar.
+`generateMonthlyMissions(monthKey)` devolve `{ facil, media, dificil }`, cada uma um array com as 3 missões do pool dessa dificuldade. `tiposDisponiveis(estado, slot)` devolve os 3 tipos de UMA dificuldade; `aceitarMissao(slot, tipo)` recebe os dois para saber qual aceitar.
+
+**Card "Missões Ativas" (3ª iteração, ainda 2026-09-15, a pedido: *"as missões que foram escolhidas passam para um novo card 'missões ativas' e saem dos cards onde estavam"*)**: `renderMissoesAtivas(estado, sessaoAoVivo)` (`js/missions.js`) junta as missões aceites das 3 dificuldades num único `<section class="mission-subpanel">` no topo (título "Missões Ativas"), cada uma com o cartão completo de sempre (progresso + `Desistir`) — omitido por completo quando nada está aceite. `renderMissionSlotBlock(estado, slot)` (sem o parâmetro `sessaoAoVivo` agora, já não desenha o cartão ativo) filtra o tipo aceite antes de desenhar os cartões da dificuldade — mostra só os 2 tipos restantes (`Bloqueada`) quando há uma ativa, ou os 3 nos outros casos (`Concluída este mês`, `Bloqueada (Xh)` por cooldown, ou `Aceitar`). Nunca há duplicação: uma missão aparece OU no card "Missões Ativas" OU no sub-painel da sua dificuldade, nunca nos dois.
 
 ### Onde é verificada
 

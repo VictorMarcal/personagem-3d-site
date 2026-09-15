@@ -424,24 +424,51 @@ function formatCooldownRestante(ms) {
 
 // --- UI -------------------------------------------------------------------
 
-// Sub-painel de UMA dificuldade: as 3 missões da dificuldade estão SEMPRE
-// TODAS VISÍVEIS (2026-09-15, a pedido - substitui a versão anterior com uma
-// lista escondida atrás de um botão "Ver lista de missões", que gerou
-// confusão). Cada uma das 3 mostra um de 4 estados:
-//   - ativa (a que foi aceite): progresso + Desistir.
-//   - concluída este mês: cartão apagado, sem botão.
+// Card "Missões Ativas" (2026-09-15, a pedido: "as missões que foram
+// escolhidas passam para um novo card... e saem dos cards onde estavam") -
+// junta as missões aceites das 3 dificuldades num só sítio, com progresso e
+// Desistir; deixam de aparecer no sub-painel da sua dificuldade (ver
+// renderMissionSlotBlock). Omitido por completo quando nenhuma está aceite.
+function renderMissoesAtivas(estado, sessaoAoVivo) {
+  const cartoes = MISSION_SLOTS.map((slot) => {
+    const ativa = estado.ativas[slot];
+    if (!ativa) return "";
+    const chip = `<span class="mission-chip mission-chip-${slot}">${MISSION_SLOT_LABEL[slot]}</span>`;
+    const prog = missionProgress(ativa, sessaoAoVivo);
+    const pct = Math.max(0, Math.min(100, (prog.current / prog.target) * 100));
+    return (
+      '<div class="mission-card mission-active">' +
+      `<p class="mission-line">${chip}${missaoRecompensaHtml(ativa.recompensa)}</p>` +
+      `<p class="mission-goal">${missaoTexto(ativa)}</p>` +
+      `<div class="mission-progress-track"><div class="mission-progress-fill" data-mission-fill="${slot}" style="width:${pct}%"></div></div>` +
+      `<p class="mission-progress-text" data-mission-progress="${slot}">${missaoProgressoTexto(ativa, prog)}</p>` +
+      `<button class="btn-mission-desistir mission-btn-ghost" type="button" data-mission-slot="${slot}">Desistir</button>` +
+      "</div>"
+    );
+  }).join("");
+  if (!cartoes) return "";
+  return `<section class="mission-subpanel"><h3 class="mission-subpanel-title">Missões Ativas</h3>${cartoes}</section>`;
+}
+
+// Sub-painel de UMA dificuldade: mostra os tipos ainda POR ESCOLHER dessa
+// dificuldade (2 se já há uma ativa - a 3ª mudou-se para "Missões Ativas",
+// ver acima - ou as 3 nos outros casos). Cada tipo mostrado tem um de 3
+// estados:
+//   - concluída este mês: cartão apagado, sem botão (as 3, já que nenhuma
+//     está "ativa" para ir para o outro card).
 //   - bloqueada: outro tipo desta MESMA dificuldade já está ativo, ou esta
 //     dificuldade está em cooldown de recusa (12h) - sem botão.
 //   - disponível: nenhuma ativa nesta dificuldade, sem cooldown - botão
 //     "Aceitar".
 // As outras duas dificuldades nunca bloqueiam esta - só o que se passa
 // DENTRO da própria dificuldade importa.
-function renderMissionSlotBlock(estado, slot, sessaoAoVivo) {
+function renderMissionSlotBlock(estado, slot) {
   const ativa = estado.ativas[slot];
   const concluida = estado.concluidas.includes(slot);
   const restante = !ativa && !concluida ? missionCooldownRestanteMs(estado, slot) : 0;
 
   const cartoes = tiposDisponiveis(estado, slot)
+    .filter((m) => !(ativa && ativa.tipo === m.tipo))
     .map((m) => {
       const chip = `<span class="mission-chip mission-chip-${slot}">${MISSION_SLOT_LABEL[slot]}</span>`;
 
@@ -451,20 +478,6 @@ function renderMissionSlotBlock(estado, slot, sessaoAoVivo) {
           `<p class="mission-line">${chip}${missaoRecompensaHtml(m.recompensa)}</p>` +
           `<p class="mission-goal">${missaoTexto(m)}</p>` +
           '<p class="mission-progress-text">Concluída este mês</p>' +
-          "</div>"
-        );
-      }
-
-      if (ativa && ativa.tipo === m.tipo) {
-        const prog = missionProgress(ativa, sessaoAoVivo);
-        const pct = Math.max(0, Math.min(100, (prog.current / prog.target) * 100));
-        return (
-          '<div class="mission-card mission-active">' +
-          `<p class="mission-line">${chip}${missaoRecompensaHtml(ativa.recompensa)}</p>` +
-          `<p class="mission-goal">${missaoTexto(ativa)}</p>` +
-          `<div class="mission-progress-track"><div class="mission-progress-fill" data-mission-fill="${slot}" style="width:${pct}%"></div></div>` +
-          `<p class="mission-progress-text" data-mission-progress="${slot}">${missaoProgressoTexto(ativa, prog)}</p>` +
-          `<button class="btn-mission-desistir mission-btn-ghost" type="button" data-mission-slot="${slot}">Desistir</button>` +
           "</div>"
         );
       }
@@ -538,7 +551,8 @@ function renderMissionsPanel(sessaoAoVivo) {
 
   const corpo =
     '<p class="mission-help">Podes ter uma missão ativa por dificuldade (3 no total). Desistir perde o progresso e bloqueia essa dificuldade 12h.</p>' +
-    MISSION_SLOTS.map((slot) => renderMissionSlotBlock(estado, slot, sessaoAoVivo)).join("");
+    renderMissoesAtivas(estado, sessaoAoVivo) +
+    MISSION_SLOTS.map((slot) => renderMissionSlotBlock(estado, slot)).join("");
 
   const html =
     `<div class="mission-head"><span class="mission-title">Missões · ${mesLabel}</span>` +

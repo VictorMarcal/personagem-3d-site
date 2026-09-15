@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.26.1",
+    title: "Card de Missões Ativas",
+    changes: [
+      "As missões que aceitas passam para um novo card \"Missões Ativas\" no topo, e saem do sítio onde estavam.",
+    ],
+  },
+  {
     version: "v6.26.0",
     title: "Missões Sempre à Vista",
     changes: [
