@@ -115,6 +115,9 @@
     if (tab === "eu" && sub === "personagem") {
       if (typeof renderWallet === "function") renderWallet();
       if (typeof renderEquipmentCards === "function") renderEquipmentCards();
+      // Aviso de horda (js/horde.js) - so conta ao vivo com a aba a vista,
+      // mesmo padrao do contador de recursos logo acima.
+      if (typeof startHordaTicker === "function") startHordaTicker();
     }
   }
 

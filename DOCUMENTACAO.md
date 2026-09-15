@@ -37,6 +37,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/achievements.js` | Sistema de conquistas, categorias, conquistas de frequência/combate/liderança (incl. os 12 cartões de medalha mensal) |
 | `js/monthly-medals.js` | Contador de distância mensal, corte/rollover de mês, medalhas Ouro/Prata/Bronze |
 | `js/battle.js` | Lógica de combate por turnos, popup fullscreen de batalha |
+| `js/horde.js` | Hordas de inimigos (secção 23) — spawn, movimento, auto-ataque dos dois lados na cena de Eu › Personagem |
 | `js/training.js` | GPS, tracking de distância, sessões de treino, filtros de ruído, fila local de sessões pendentes para `training_sessions` |
 | `js/profile.js` | Aba de Perfil: histórico de treinos, agregados semana/mês, gráficos SVG |
 | `js/changelog.js` | Card "Versão da Aplicação" na aba Perfil: notas de atualização em linguagem simples (array `CHANGELOG`), traduzidas a partir do histórico técnico de versões |
@@ -1386,3 +1387,39 @@ dificil: [correr_km, caminhar_km, descobre_concelho]
 
 - **`descobre_concelho` como missão difícil** pode ser impossível num mês para quem vive fundo num só concelho. Sem penalização por falhar (só por desistir), e é opcional aceitar — aceite como está.
 - Sem contador ao vivo do tempo de espera das 12 h: o texto mostra as horas e recalcula-se ao reabrir o separador.
+
+## 23. Hordas de inimigos (2026-09-16)
+
+`js/horde.js` — de tempos a tempos, monstros aparecem na cena 3D partilhada da aba **Eu › Personagem** (não na arena da Masmorra) e avançam para atacar a Fortaleza; a personagem defende-se sozinha. Pedido original no Trello (2026-09-14, "Hordas de inimigos a cada 23h"), especificado por completo pelo Victor em 2026-09-16.
+
+### As regras (todas a pedido)
+
+- **Horda 1 = 1 monstro, horda 2 = 2, horda 3 = 3, ...** — a dificuldade sobe por quantidade, não por os monstros ficarem individualmente mais fortes (`HORDE_MONSTER_HP/ATAQUE/DEFESA` são fixos e iguais em todas as hordas — números provisórios, sem afinação nenhuma ainda).
+- Aviso na aba Eu › Personagem com a contagem decrescente até ao próximo ataque (`#horde-warning`, mesmo estilo `.speed-warning` já usado noutros avisos persistentes).
+- Ao chegar a hora, os monstros aparecem em até 3 posições possíveis e avançam em direção à torre.
+- Monstros andam **1 m/s**; atacam **1×/segundo** ao chegar (dano à Vida atual do jogador — ver "Vida partilhada" abaixo).
+- A personagem dispara sozinha **1×/segundo**, num raio de **4 metros** da base da torre.
+- Sem modelos 3D ainda → **placeholder**: a mesma cápsula+esfera do monstro da Masmorra (`js/main.js`), só que roxa em vez de vermelha, para não se confundirem visualmente.
+- **Intervalo de teste**: `HORDE_INTERVAL_MS = 5 min` (`js/horde.js`) — a pedido, para testar várias hordas seguidas sem esperar 23h. É a única constante a mudar para produção (`23 * 60 * 60 * 1000`).
+
+### Pontos de partida: Empties no terreno
+
+Os "até 3 posições possíveis" são Empties chamados `HordaSpawn1`/`HordaSpawn2`/`HordaSpawn3` (aceite por prefixo, mesmo esquema de `TOWER_PLAYER_EMPTY_NAMES`) dentro de `assets/Floor.glb`, que o Victor vai colocar — lidos por `registrarHordaSpawnPoints(model)`, chamada por `loadSceneryFloor()` (`js/main.js`) assim que o terreno carrega, com `model.updateMatrixWorld(true)` antes de ler as posições do mundo (mesmo cuidado de `applyTowerModel`). **Sem eles ainda** (placeholder antes de os pivots existirem): cai num triângulo a `HORDA_SPAWN_FALLBACK_RADIUS_M` (10 m) da base da torre, para a mecânica funcionar desde já. Se houver mais monstros que pontos de partida, repetem-se pontos (`indice % hordaSpawnPositions.length`).
+
+### Vida partilhada com a Masmorra, sem "vida da torre" à parte
+
+Os ataques dos monstros tiram dano à **Vida atual do jogador** — `getCurrentHp`/`setCurrentHp` (`js/equipment.js`), a mesma usada nas lutas da Masmorra e que recupera sozinha com o tempo (Energia). Decisão deliberada: mais simples que inventar uma barra de vida da Fortaleza à parte, e mantém as hordas ligadas ao resto do sistema de combate (dano/crítico calculados pelas mesmas fórmulas — `computeBattleDamage`, `rollCritico`, `computePlayerAtaque/Defesa/Vida`, `computeLetalidadeChance`, todas de `js/battle.js`/`js/equipment.js`, reaproveitadas tal como estão).
+
+### Ao nível do código
+
+- **Movimento e alcance medidos a partir da base da torre** (origem X/Z, `(0,0)` — o mesmo ponto onde `applyTowerModel` centra o modelo), não da posição exata do herói no topo dela — simplificação deliberada, mais previsível do que reler `character.position` a cada frame.
+- `updateHordeAttack(dtSeconds)` é chamada por `animate()` (`js/main.js`), só quando **não** há uma luta da Masmorra em curso (`battleInProgress`) — o auto-ataque da arena já tem a sua própria chamada ali ao lado.
+- `enterBattleView()`/`exitBattleView()` (`js/main.js`) chamam `setHordaMonstrosVisible(false/true)` — os monstros de uma horda em curso ficam escondidos e **congelados** durante uma luta da Masmorra (não avançam nem atacam, retomam exatamente de onde ficaram ao sair).
+- **Estado persistido**: só `{ proximaEm, contagem }` (`STORAGE_KEY_HORDE`, `js/storage-keys.js`) — quando é a próxima horda e quantas já aconteceram (decide quantos monstros traz a seguinte). A `contagem` sobe e a `proximaEm` é recalculada **ao iniciar** a horda, não ao terminar — simplificação deliberada (a diferença é só o tempo que uma horda demora a ser repelida, irrelevante face a 5 min/23h).
+- **A horda em curso (posições/vida dos monstros) não é persistida** — tal como uma luta da Masmorra também não sobrevive a um reload. Um reload a meio de uma horda perde-a; a seguinte (já com a contagem correta) continua agendada certa.
+- Aviso ao vivo: `startHordaTicker()`/`stopHordaTicker()` (`js/horde.js`), chamado ao entrar em Eu › Personagem (`js/nav.js`) — mesmo padrão de `startResourcesTicker`/`stopResourcesTicker` (`js/resources-ui.js`): só conta enquanto o aviso está à vista (`offsetParent`), auto-pára quando deixa de estar ou a página fica escondida (`visibilitychange`).
+
+### O que fica por decidir
+
+- Números de combate do monstro placeholder (vida 20, ataque 4, defesa 0) são um primeiro palpite, sem nenhuma afinação contra o dano/vida reais do jogador — a rever quando houver modelos e stats a sério.
+- Sem recompensa nenhuma por repelir uma horda (só um toast "Horda repelida!") — por decidir se deve dar recursos/pontos, tal como as missões e os mini-bosses dão.

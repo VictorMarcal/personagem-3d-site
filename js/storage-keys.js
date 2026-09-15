@@ -156,3 +156,10 @@ const STORAGE_KEY_MINES = "personagem.minasEncontradas";
 // { mes, ativa: {slot, tipo, alvo, ..., baseline, aceiteEm} | null,
 //   concluidas: [slot...], rejeitadaEm: ts | null }.
 const STORAGE_KEY_MISSIONS = "personagem.missoesMensais";
+
+// Hordas de inimigos (2026-09-16, a pedido via Trello). So se guarda QUANDO
+// e a proxima e QUANTAS ja aconteceram (define quantos monstros a proxima
+// traz) - a horda em curso (posicoes/vida dos monstros) nao e persistida,
+// tal como uma luta na Masmorra tambem nao sobrevive a um reload.
+// { proximaEm: ts, contagem: numero de hordas ja repelidas }.
+const STORAGE_KEY_HORDE = "personagem.horda";

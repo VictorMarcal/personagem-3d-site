@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.27.0",
+    title: "Hordas na Fortaleza",
+    changes: [
+      "Novo: de tempos a tempos aparecem hordas de monstros a atacar a Fortaleza, com aviso a contar o tempo até ao ataque — a personagem defende-se sozinha.",
+      "Fase de testes: por agora as hordas acontecem de 5 em 5 minutos, só para experimentar a mecânica.",
+    ],
+  },
+  {
     version: "v6.26.1",
     title: "Card de Missões Ativas",
     changes: [

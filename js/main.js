@@ -141,6 +141,13 @@ function loadSceneryFloor() {
         }
       });
 
+      // Pontos de partida da horda (js/horde.js, 2026-09-16): Empties
+      // "HordaSpawn1/2/3" postos no terreno pelo Victor - lidos aqui, so
+      // depois de o modelo estar na posicao final (updateMatrixWorld antes
+      // de ler as posicoes do mundo, mesmo padrao de applyTowerModel).
+      model.updateMatrixWorld(true);
+      if (typeof registrarHordaSpawnPoints === "function") registrarHordaSpawnPoints(model);
+
       scene.add(model);
       floorModel = model;
       ground.visible = false;
@@ -767,6 +774,10 @@ function enterBattleView() {
   // da arena, com o heroi de volta a Y=0.
   if (towerModel) towerModel.visible = false;
 
+  // Monstros de uma horda em curso (js/horde.js) ficam escondidos durante a
+  // luta da Masmorra - a mecanica so corre fora dela (ver animate() abaixo).
+  if (typeof setHordaMonstrosVisible === "function") setHordaMonstrosVisible(false);
+
   // Modelo real assim que estiver pronto (loadArenaModel acima), chao
   // placeholder ate la (ou para sempre, se a carga tiver falhado).
   arenaFloor.visible = !arenaModelReady;
@@ -790,6 +801,7 @@ function exitBattleView() {
   arenaFloor.visible = false;
   if (arenaModel) arenaModel.visible = false;
   if (towerModel) towerModel.visible = true;
+  if (typeof setHordaMonstrosVisible === "function") setHordaMonstrosVisible(true);
 
   applyNormalCamera();
 }
@@ -1176,6 +1188,13 @@ function animate() {
     const monsterVisible = typeof battleInProgress !== "undefined" && battleInProgress && isMonsterInFrustum();
     updateHeroFacing(monsterVisible);
     updateHeroAutoAttack(dtSeconds, monsterVisible);
+
+    // Hordas (js/horde.js, 2026-09-16) - so fora de uma luta na Masmorra,
+    // que tem a sua propria logica de auto-ataque acima.
+    if (typeof updateHordeAttack === "function" && !(typeof battleInProgress !== "undefined" && battleInProgress)) {
+      updateHordeAttack(dtSeconds);
+    }
+
     renderer.render(scene, camera);
   }
 }
