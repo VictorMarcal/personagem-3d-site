@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.23.0",
+    title: "Escolhe o Tipo de Missão",
+    changes: [
+      "Em cada dificuldade já aparecem todas as missões possíveis (corrida, caminhada e as outras) em vez de só uma sorteada — escolhes qual aceitar.",
+    ],
+  },
+  {
     version: "v6.22.0",
     title: "Lista de Missões",
     changes: [

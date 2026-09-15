@@ -1,17 +1,20 @@
 // Missoes mensais (secção 22, 2026-09-10, a pedido).
 //
-// Cada mes de calendario tem TRES missoes - uma facil, uma media, uma
-// dificil - e cada uma da RECURSOS ao ser concluida. As tres missoes de um
-// mes sao DETERMINISTAS: saem de um gerador semeado no proprio mes
-// ("2026-09"), tal como as minas saem do osm_id do concelho (secção 21). Nao
-// se guarda a missao, so o ESTADO: qual esta aceite, quais ja foram
-// concluidas e quando foi a ultima recusa.
+// Cada mes de calendario tem TRES dificuldades - facil, media, dificil - e
+// completar uma DA RECURSOS. Desde 2026-09-15, cada dificuldade mostra TODOS
+// os tipos do seu pool (MISSION_POOL) em vez de sortear so um - o jogador
+// escolhe qual aceitar, mas continua a so poder concluir 1 POR DIFICULDADE
+// por mes (3 no total). Os tipos de cada mes sao DETERMINISTAS: saem de um
+// gerador semeado no proprio mes ("2026-09"), tal como as minas saem do
+// osm_id do concelho (secção 21). Nao se guarda a missao, so o ESTADO: qual
+// esta aceite, quais dificuldades ja foram concluidas e quando foi a ultima
+// recusa.
 //
 // Regras (todas a pedido):
-//   - So 1 missao aceite de cada vez.
+//   - So 1 missao aceite de cada vez (qualquer dificuldade/tipo).
 //   - Recusar uma missao trava novas aceitacoes durante 24 h.
 //   - Concluir NAO trava nada - aceita-se logo a seguinte.
-//   - Concluidas as 3 dentro do mes, espera-se pelo mes seguinte.
+//   - Concluidas as 3 dificuldades dentro do mes, espera-se pelo mes seguinte.
 //   - O progresso conta a partir do INSTANTE em que se aceita (baseline), nao
 //     desde o inicio do mes - recusar/falhar nunca "credita" trabalho antigo.
 //
@@ -35,10 +38,14 @@ const MISSION_REJECT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 // lista fechava-se sozinha 1x por segundo).
 let missionsListaAberta = false;
 
-// Pools por dificuldade. Cada slot escolhe UM tipo, semeado no mes - a
-// media pode calhar "corre" num mes e "mina" no outro. Mantem-se sempre
-// uma facil de esforco puro (km/hexes), a dificil e que traz os objetivos
-// de mapa mais raros (concelho novo). "correr_km" e "caminhar_km" sao dois
+// Pools por dificuldade. TODOS os tipos do pool de uma dificuldade aparecem
+// nesse mes, lado a lado, para o jogador escolher (ver generateMonthlyMissions)
+// - antes so se sorteava 1 por dificuldade, e um jogador podia passar meses
+// sem ver a opção de caminhada (bug reportado via Trello 2026-09-15, depois
+// de "caminhar_km" ter sido adicionado ao pool mas nao ter saido no sorteio
+// desse mes: "não vejo opção de missão de caminhada"). Mantem-se sempre uma
+// facil de esforco puro (km/hexes), a dificil e que traz os objetivos de mapa
+// mais raros (concelho novo). "correr_km" e "caminhar_km" sao dois
 // tipos irmaos (mesma logica, cada um so conta a sua fatia de distancia -
 // ver missionProgress) - a pedido via Trello 2026-09-15: "e necessario ter
 // opção de missões para corrida e caminhada... faceis medias ou dificeis",
@@ -87,35 +94,37 @@ function nextMonthLabel(monthKey) {
   return `${MONTH_NAMES_PT[nm - 1]} de ${ny}`;
 }
 
-// As 3 missoes de um mes, deterministas. Devolve { facil, media, dificil },
-// cada uma { slot, tipo, alvo, recurso?, recompensa: { recurso, quantidade } }.
+// As missoes de um mes, deterministas. Devolve { facil, media, dificil }, cada
+// uma um ARRAY com uma missao POR TIPO do pool dessa dificuldade (nao so um
+// sorteado) - { slot, tipo, alvo, recurso?, recompensa: { recurso, quantidade } }.
+// Ate 2026-09-15 sorteava-se so 1 tipo por dificuldade (com logica extra para
+// tentar nao repetir tipo entre dificuldades); mudou a pedido via Trello
+// depois do jogador nao ver a missao de caminhada aparecer nesse mes -
+// "provavelmente porque temos um limite de 3 missoes... vamos passar a ter
+// mais, [uma por tipo]" - mostrar sempre TODOS os tipos evita depender da
+// sorte para um tipo aparecer. A recompensa (recurso+quantidade) e sorteada
+// uma vez por dificuldade, partilhada por todos os tipos dessa dificuldade
+// esse mes (a quantidade so depende da dificuldade, nao do tipo escolhido).
 function generateMonthlyMissions(monthKey) {
   const rand = mulberry32(hashString("missoes:" + monthKey));
   const ids = typeof RESOURCE_IDS !== "undefined" ? RESOURCE_IDS : ["ferro", "madeira", "pele", "pedra", "barro"];
   const missoes = {};
-  const tiposUsados = new Set();
 
   MISSION_SLOTS.forEach((slot) => {
     const pool = MISSION_POOL[slot];
-    let tipo = pool[Math.floor(rand() * pool.length)];
-    // Tenta dar 3 objetivos DIFERENTES no mesmo mes - se este tipo ja saiu
-    // noutro slot e o pool tem alternativa por usar, salta para ela.
-    if (tiposUsados.has(tipo)) {
-      const alt = pool.find((t) => !tiposUsados.has(t));
-      if (alt) tipo = alt;
-    }
-    tiposUsados.add(tipo);
-    const alvoBruto = MISSION_ALVO[tipo][slot];
-    const alvo = tipo === "correr_km" || tipo === "caminhar_km" ? alvoBruto * 1000 : alvoBruto; // km -> metros
     const recompensaRecurso = ids[Math.floor(rand() * ids.length)];
-    const missao = {
-      slot,
-      tipo,
-      alvo,
-      recompensa: { recurso: recompensaRecurso, quantidade: MISSION_RECOMPENSA[slot] },
-    };
-    if (tipo === "descobre_mina") missao.recurso = ids[Math.floor(rand() * ids.length)];
-    missoes[slot] = missao;
+    missoes[slot] = pool.map((tipo) => {
+      const alvoBruto = MISSION_ALVO[tipo][slot];
+      const alvo = tipo === "correr_km" || tipo === "caminhar_km" ? alvoBruto * 1000 : alvoBruto; // km -> metros
+      const missao = {
+        slot,
+        tipo,
+        alvo,
+        recompensa: { recurso: recompensaRecurso, quantidade: MISSION_RECOMPENSA[slot] },
+      };
+      if (tipo === "descobre_mina") missao.recurso = ids[Math.floor(rand() * ids.length)];
+      return missao;
+    });
   });
 
   return missoes;
@@ -247,16 +256,18 @@ function podeAceitarMissao(estado) {
   return !estado.ativa && estado.concluidas.length < MISSION_SLOTS.length && missionCooldownRestanteMs(estado) === 0;
 }
 
-// Slots ainda por concluir este mes, com os detalhes gerados.
+// Todos os tipos das dificuldades ainda por concluir este mes, com os
+// detalhes gerados - achatado num só array (uma dificuldade por concluir
+// pode ter varios tipos, ver generateMonthlyMissions).
 function missoesDisponiveis(estado) {
   const geradas = generateMonthlyMissions(estado.mes);
-  return MISSION_SLOTS.filter((slot) => !estado.concluidas.includes(slot)).map((slot) => geradas[slot]);
+  return MISSION_SLOTS.filter((slot) => !estado.concluidas.includes(slot)).flatMap((slot) => geradas[slot]);
 }
 
-function aceitarMissao(slot) {
+function aceitarMissao(slot, tipo) {
   const estado = getMissionState();
   if (!podeAceitarMissao(estado) || estado.concluidas.includes(slot)) return false;
-  const missao = generateMonthlyMissions(estado.mes)[slot];
+  const missao = (generateMonthlyMissions(estado.mes)[slot] || []).find((m) => m.tipo === tipo);
   if (!missao) return false;
   estado.ativa = {
     slot: missao.slot,
@@ -392,33 +403,36 @@ function formatCooldownRestante(ms) {
 
 // --- UI -------------------------------------------------------------------
 
-// Lista compacta e colapsável com as 3 missões do mês (2026-09-15, a pedido
-// via Trello: "Missões existentes ficam mesmo visíveis mas bloqueadas... uma
-// lista que encolhe para não ocupar muito espaço... botão tipo 'ver lista de
-// missões'") - por defeito só se vê a missão ativa (ou as disponíveis para
-// aceitar); este botão dá acesso às 3 sem ocupar espaço permanente. As que
-// não são a ativa aparecem só como "Bloqueada" ou "Concluída" - não têm
-// Aceitar aqui (a regra de só 1 de cada vez continua, ver aceitarMissao()).
+// Lista compacta e colapsável com TODOS os tipos de missão do mês, dificuldade
+// a dificuldade (2026-09-15, a pedido via Trello: "Missões existentes ficam
+// mesmo visíveis mas bloqueadas... uma lista que encolhe para não ocupar
+// muito espaço... botão tipo 'ver lista de missões'") - por defeito só se vê
+// a missão ativa (ou as disponíveis para aceitar); este botão dá acesso a
+// todos os tipos sem ocupar espaço permanente. Os que não são o ativo
+// aparecem só como "Bloqueado"/"Disponível"/"Concluído" - não têm Aceitar
+// aqui (a regra de só 1 de cada vez continua, ver aceitarMissao()).
 function renderMissionsListaCompleta(estado) {
   const geradas = generateMonthlyMissions(estado.mes);
-  const linhas = MISSION_SLOTS.map((slot) => {
-    const missao = geradas[slot];
-    const concluida = estado.concluidas.includes(slot);
-    const ativa = !!estado.ativa && estado.ativa.slot === slot;
-    // "Bloqueada" só faz sentido quando ha outra ativa a ocupar o unico
-    // lugar (regra de 1 de cada vez); sem nenhuma ativa, esta continua
-    // "Disponível" (aceita-se normalmente na lista de cima).
-    const bloqueadaPorOutra = !concluida && !ativa && !!estado.ativa;
-    const estadoClasse = concluida ? "mission-mini-done" : ativa ? "mission-mini-active" : bloqueadaPorOutra ? "mission-mini-locked" : "mission-mini-disponivel";
-    const estadoTexto = concluida ? "Concluída" : ativa ? "Em curso" : bloqueadaPorOutra ? "Bloqueada" : "Disponível";
-    return (
-      `<li class="mission-mini ${estadoClasse}">` +
-      `<span class="mission-chip mission-chip-${slot}">${MISSION_SLOT_LABEL[slot]}</span>` +
-      `<span class="mission-mini-text">${missaoTexto(missao)}</span>` +
-      `<span class="mission-mini-status">${estadoTexto}</span>` +
-      "</li>"
-    );
-  }).join("");
+  const linhas = MISSION_SLOTS.flatMap((slot) =>
+    geradas[slot].map((missao) => {
+      const concluida = estado.concluidas.includes(slot);
+      const ativa = !!estado.ativa && estado.ativa.slot === slot && estado.ativa.tipo === missao.tipo;
+      // "Bloqueada" só faz sentido quando ha outra ativa a ocupar o unico
+      // lugar (regra global de 1 de cada vez, qualquer dificuldade/tipo);
+      // sem nenhuma ativa, este tipo continua "Disponível" (aceita-se
+      // normalmente na lista de cima).
+      const bloqueadaPorOutra = !concluida && !ativa && !!estado.ativa;
+      const estadoClasse = concluida ? "mission-mini-done" : ativa ? "mission-mini-active" : bloqueadaPorOutra ? "mission-mini-locked" : "mission-mini-disponivel";
+      const estadoTexto = concluida ? "Concluída" : ativa ? "Em curso" : bloqueadaPorOutra ? "Bloqueada" : "Disponível";
+      return (
+        `<li class="mission-mini ${estadoClasse}">` +
+        `<span class="mission-chip mission-chip-${slot}">${MISSION_SLOT_LABEL[slot]}</span>` +
+        `<span class="mission-mini-text">${missaoTexto(missao)}</span>` +
+        `<span class="mission-mini-status">${estadoTexto}</span>` +
+        "</li>"
+      );
+    })
+  ).join("");
   return (
     `<button class="btn-missions-lista-toggle training-detail-toggle" type="button" aria-expanded="${missionsListaAberta}">` +
     `${missionsListaAberta ? "Esconder lista de missões" : "Ver lista de missões"}</button>` +
@@ -473,7 +487,7 @@ function renderMissionsPanel(sessaoAoVivo) {
               '<div class="mission-card">' +
               `<p class="mission-line"><span class="mission-chip mission-chip-${m.slot}">${MISSION_SLOT_LABEL[m.slot]}</span>${missaoRecompensaHtml(m.recompensa)}</p>` +
               `<p class="mission-goal">${missaoTexto(m)}</p>` +
-              `<button class="mission-btn-accept btn-primary" type="button" data-mission-slot="${m.slot}">Aceitar</button>` +
+              `<button class="mission-btn-accept btn-primary" type="button" data-mission-slot="${m.slot}" data-mission-tipo="${m.tipo}">Aceitar</button>` +
               "</div>"
           )
           .join("");
@@ -503,7 +517,7 @@ function renderMissionsPanel(sessaoAoVivo) {
       });
     }
     painel.querySelectorAll("[data-mission-slot]").forEach((btn) => {
-      btn.addEventListener("click", () => aceitarMissao(btn.dataset.missionSlot));
+      btn.addEventListener("click", () => aceitarMissao(btn.dataset.missionSlot, btn.dataset.missionTipo));
     });
   });
 }
