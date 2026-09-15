@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.19.0",
+    title: "Câmara Mais Diagonal na Fortaleza",
+    changes: [
+      "A câmara da aba Personagem passa a ver a Fortaleza de um ângulo mais de lado e mais de cima, para se notar melhor a lateral da torre.",
+    ],
+  },
+  {
     version: "v6.18.2",
     title: "Mais um Ajuste à Fortaleza",
     changes: [
