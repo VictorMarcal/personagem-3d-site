@@ -324,9 +324,13 @@ function formatRecurso(valor) {
 // uma mina encontrada so faz o hexagono dela render mais e de um recurso
 // especifico em vez da taxa base de todos.
 //
-// NAO ESTAO VISIVEIS ate serem encontradas. Ha um aviso sonoro a 500 m.
+// NAO ESTAO VISIVEIS ate serem encontradas. Ha um aviso sonoro a 500 m, mais
+// um "radar" de longo alcance a 2,5 km (2026-09-15, a pedido - "vamos passar
+// a ter um radar que avisa que existe uma mina no raio de 2.5km com um som
+// do tipo tim tim tim").
 const MINES_PER_RESOURCE = 10;
 const MINE_ALERT_RADIUS_M = 500;
+const MINE_RADAR_RADIUS_M = 2500;
 
 const minesByConcelho = new Map();
 
@@ -425,7 +429,9 @@ function minasEncontradasCount() {
 
 // Uma mina e reclamada ao entrar NO HEXAGONO dela - a mesma regra que
 // descobre territorio, por isso nao ha duas nocoes diferentes de "cheguei
-// la". O aviso sonoro a 500 m e so aviso: nao apanha nada.
+// la". Os avisos sonoros a 500 m e a 2,5 km sao so aviso: nao apanham nada -
+// so o segundo (mais proximo) toca se os dois calharem na mesma leitura de
+// GPS, para nao sobrepor sons.
 function verificarMinas(latitude, longitude) {
   const minas = todasAsMinas();
   if (minas.length === 0) return;
@@ -441,6 +447,7 @@ function verificarMinas(latitude, longitude) {
 
   let achouAlguma = false;
   let avisou = false;
+  let avisouRadar = false;
 
   minas.forEach((mina) => {
     if (encontradas.has(mina.id)) return;
@@ -448,6 +455,7 @@ function verificarMinas(latitude, longitude) {
     if (mina.hexId === hexAtual) {
       encontradas.add(mina.id);
       minasAvisadas.delete(mina.id);
+      minasRadarAvisadas.delete(mina.id);
       achouAlguma = true;
       if (typeof showGameToast === "function") {
         showGameToast("Mina de " + RESOURCE_BY_ID[mina.recurso].nome.toLowerCase() + " encontrada!", "medalha");
@@ -467,6 +475,20 @@ function verificarMinas(latitude, longitude) {
     } else {
       minasAvisadas.delete(mina.id);
     }
+
+    // Radar de longo alcance (2,5 km, 2026-09-15) - mesmo mecanismo de
+    // deteção de entrada no raio, mas um conjunto de "avisadas" PROPRIO: a
+    // uma distancia destas ha muito mais tempo/hexagonos ate chegar ao aviso
+    // de 500 m, por isso os dois tocam em momentos bem separados, nao se
+    // confundem.
+    if (metros <= MINE_RADAR_RADIUS_M) {
+      if (!minasRadarAvisadas.has(mina.id)) {
+        minasRadarAvisadas.add(mina.id);
+        avisouRadar = true;
+      }
+    } else {
+      minasRadarAvisadas.delete(mina.id);
+    }
   });
 
   if (achouAlguma) {
@@ -476,10 +498,13 @@ function verificarMinas(latitude, longitude) {
     if (typeof redrawHexMap === "function") redrawHexMap();
   } else if (avisou) {
     playMineNearby();
+  } else if (avisouRadar) {
+    playMineRadar();
   }
 }
 
 const minasAvisadas = new Set();
+const minasRadarAvisadas = new Set();
 
 // --- som --------------------------------------------------------------------
 // Web Audio em vez de um ficheiro: sao dois bips, nao vale um asset no
@@ -526,6 +551,17 @@ function playMineNearby() {
   tocarNotas([
     { hz: 660, inicio: 0, duracao: 0.09 },
     { hz: 660, inicio: 0.16, duracao: 0.09 },
+  ]);
+}
+
+// Radar a 2,5 km (2026-09-15): "tim tim tim" - 3 tiques curtos e agudos,
+// mais claros/curtos que os 2 bips do aviso de perto, para nao se confundir
+// com nenhum dos outros dois sons (nem com o arpejo de "encontrada").
+function playMineRadar() {
+  tocarNotas([
+    { hz: 1046, inicio: 0, duracao: 0.05 },
+    { hz: 1046, inicio: 0.14, duracao: 0.05 },
+    { hz: 1046, inicio: 0.28, duracao: 0.05 },
   ]);
 }
 

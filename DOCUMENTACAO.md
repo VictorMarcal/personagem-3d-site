@@ -1187,7 +1187,9 @@ Os três pares possíveis de três materiais esgotam-se exatamente nas três pe�
 
 `producaoPorHora()` (`js/resources.js`) itera `getDiscoveredHexIds()` (não `todasAsMinas()`), aplica o multiplicador do hexágono aos dois casos, e usa `todasAsMinas()` só para saber que hexágonos descobertos têm mina.
 
-**As minas continuam invisíveis até serem encontradas** (aviso sonoro a 500 m, reclamadas ao entrar no hexágono — a mesma regra que descobre território). O que muda é só o que rende: antes um hexágono sem mina dava 0.
+**As minas continuam invisíveis até serem encontradas** (aviso sonoro a 500 m — mais um "radar" a 2,5 km desde 2026-09-15, ver abaixo —, reclamadas ao entrar no hexágono — a mesma regra que descobre território). O que muda é só o que rende: antes um hexágono sem mina dava 0.
+
+**Radar de longo alcance a 2,5 km (2026-09-15, a pedido — "vamos passar a ter um radar que avisa que existe uma mina no raio de 2.5km com um som do tipo tim tim tim")**: `MINE_RADAR_RADIUS_M = 2500` (`js/resources.js`), o mesmo mecanismo do aviso de 500 m (`MINE_ALERT_RADIUS_M`) mas com um conjunto de "já avisadas" próprio (`minasRadarAvisadas`) — o radar dispara ao entrar no raio de 2,5 km, fica calado enquanto lá dentro, e só volta a disparar depois de sair e voltar a entrar, tal como o aviso de 500 m já fazia. Som distinto (`playMineRadar()`, Web Audio como os outros dois — sem ficheiro de áudio no repositório): 3 tiques curtos e agudos ("tim tim tim", 1046 Hz), diferente dos 2 bips do aviso de perto (660 Hz) e do arpejo a subir de "mina encontrada" (784→988→1319 Hz). Numa mesma leitura de GPS só toca **um** som — se a mina estiver dentro dos dois raios ao mesmo tempo, o aviso de 500 m (mais próximo/urgente) tem prioridade sobre o radar.
 
 **Dois bugs corrigidos no mesmo dia** (a razão do relato "já desbloqueei uma mina e não ganhei nada"):
 

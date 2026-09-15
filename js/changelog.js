@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.24.0",
+    title: "Radar de Minas",
+    changes: [
+      "Novo aviso sonoro (\"tim tim tim\") quando há uma mina num raio de 2,5 km, muito antes do aviso de perto já existente.",
+    ],
+  },
+  {
     version: "v6.23.0",
     title: "Escolhe o Tipo de Missão",
     changes: [
