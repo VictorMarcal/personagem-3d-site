@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.25.1",
+    title: "Aceitar Missões Durante o Treino",
+    changes: [
+      "Corrigido: às vezes não dava para carregar em \"Aceitar\" numa missão a meio de um treino.",
+    ],
+  },
+  {
     version: "v6.25.0",
     title: "3 Missões ao Mesmo Tempo",
     changes: [

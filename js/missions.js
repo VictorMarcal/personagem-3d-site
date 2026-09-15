@@ -501,8 +501,8 @@ function renderMissionSlotBlock(estado, slot, sessaoAoVivo) {
       `<p class="mission-line"><span class="mission-chip mission-chip-${slot}">${MISSION_SLOT_LABEL[slot]}</span>` +
       `${missaoRecompensaHtml(ativa.recompensa)}</p>` +
       `<p class="mission-goal">${missaoTexto(ativa)}</p>` +
-      `<div class="mission-progress-track"><div class="mission-progress-fill" style="width:${pct}%"></div></div>` +
-      `<p class="mission-progress-text">${missaoProgressoTexto(ativa, prog)}</p>` +
+      `<div class="mission-progress-track"><div class="mission-progress-fill" data-mission-fill="${slot}" style="width:${pct}%"></div></div>` +
+      `<p class="mission-progress-text" data-mission-progress="${slot}">${missaoProgressoTexto(ativa, prog)}</p>` +
       `<button class="btn-mission-desistir mission-btn-ghost" type="button" data-mission-slot="${slot}">Desistir</button>` +
       "</div>"
     );
@@ -523,6 +523,31 @@ function renderMissionSlotBlock(estado, slot, sessaoAoVivo) {
         "</div>"
     )
     .join("");
+}
+
+// Atualiza SÓ a barra/texto de progresso das missões de distância ativas,
+// SEM reconstruir mais nada do painel (bug 2026-09-15: "não é possível
+// aceitar missões enquanto estás a treinar" - chamar renderMissionsPanel()
+// (que reescreve todo o innerHTML, botões incluídos) a cada segundo durante
+// o treino por vezes apagava o botão "Aceitar" a meio de um toque, entre o
+// início e o fim do gesto, e o clique nunca chegava a disparar). Só mexe nos
+// elementos marcados com data-mission-fill/data-mission-progress - nunca
+// recria os cards/botões, por isso um toque em curso nunca é interrompido.
+function updateLiveMissionProgress(sessaoAoVivo) {
+  const estado = getMissionState();
+  MISSION_SLOTS.forEach((slot) => {
+    const ativa = estado.ativas[slot];
+    if (!ativa || (ativa.tipo !== "correr_km" && ativa.tipo !== "caminhar_km")) return;
+    const prog = missionProgress(ativa, sessaoAoVivo);
+    const pct = Math.max(0, Math.min(100, (prog.current / prog.target) * 100));
+    const texto = missaoProgressoTexto(ativa, prog);
+    document.querySelectorAll(`[data-mission-fill="${slot}"]`).forEach((el) => {
+      el.style.width = pct + "%";
+    });
+    document.querySelectorAll(`[data-mission-progress="${slot}"]`).forEach((el) => {
+      el.textContent = texto;
+    });
+  });
 }
 
 // Dois pontos de montagem (ecrã inicial e ecrã de treino em curso, index.html

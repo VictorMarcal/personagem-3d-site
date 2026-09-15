@@ -577,8 +577,13 @@ function updateLiveStatsDisplay() {
   // incrementar") - o credito real só é gravado no fim (verificarMissaoAtiva,
   // stopTraining), isto é só para o jogador ver o número mexer-se enquanto
   // treina, com a mesma reparticao usada para as calorias acima.
-  if (typeof renderMissionsPanel === "function") {
-    renderMissionsPanel({ distanciaPorModo: reparticaoAoVivo.distancia });
+  // updateLiveMissionProgress() em vez de renderMissionsPanel() (bug
+  // 2026-09-15: "não é possível aceitar missões enquanto estás a treinar" -
+  // reescrever o painel todo a cada segundo por vezes apagava o botão
+  // "Aceitar" a meio de um toque) - só atualiza o número/barra, nunca recria
+  // os cards/botões.
+  if (typeof updateLiveMissionProgress === "function") {
+    updateLiveMissionProgress({ distanciaPorModo: reparticaoAoVivo.distancia });
   }
 
   updateGpsDiagDisplay();
