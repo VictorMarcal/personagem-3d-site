@@ -565,11 +565,18 @@ function playMineRadar() {
   ]);
 }
 
-// Encontrada: arpejo a subir, para nao se confundir com o aviso.
+// Encontrada: fanfarra de vitoria (2026-09-16, a pedido - "deve soar algo
+// mais a vitoria/conquista"). Antes era só um arpejo a subir (3 notas, sem
+// acorde final) - discreto demais para um achado raro. Agora: 4 notas a
+// subir (dó-mi-sol-dó, um acorde maior classico) seguidas de um acorde final
+// sustentado (dó+mi tocados ao mesmo tempo, ver os dois "inicio" iguais) -
+// o mesmo desenho de um "ta-da!" de jogo.
 function playMineFound() {
   tocarNotas([
-    { hz: 784, inicio: 0, duracao: 0.1 },
-    { hz: 988, inicio: 0.1, duracao: 0.1 },
-    { hz: 1319, inicio: 0.2, duracao: 0.2 },
+    { hz: 523.25, inicio: 0, duracao: 0.09 }, // Dó5
+    { hz: 659.25, inicio: 0.09, duracao: 0.09 }, // Mi5
+    { hz: 783.99, inicio: 0.18, duracao: 0.09 }, // Sol5
+    { hz: 1046.5, inicio: 0.27, duracao: 0.3 }, // Dó6
+    { hz: 1318.51, inicio: 0.27, duracao: 0.3 }, // Mi6 - acorde com a nota anterior
   ]);
 }
