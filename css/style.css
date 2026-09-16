@@ -1777,6 +1777,72 @@ main {
 .horde-report-win { color: var(--sage-700); }
 .horde-report-loss { color: var(--warn-ink); }
 
+/* Painel de afinação de câmara (js/camera-debug.js, 2026-09-16) - so dev,
+   nunca visivel para jogadores (?debugcamera na URL). Sobreposto ao canvas
+   3D, mesmo espirito visual do resto da app mas compacto/monospace por ser
+   uma ferramenta tecnica, nao UI de jogo. */
+#camera-debug-panel {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 220px;
+  max-width: calc(100% - 16px);
+  background: rgba(46, 43, 37, 0.92);
+  color: var(--surface-2, #fff);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 12px;
+  z-index: 20;
+}
+.camera-debug-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.camera-debug-close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.camera-debug-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.camera-debug-tab {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 6px;
+  color: inherit;
+  padding: 4px 0;
+  cursor: pointer;
+  font-size: 12px;
+}
+.camera-debug-tab.active { background: var(--sage-500); }
+.camera-debug-field {
+  display: grid;
+  grid-template-columns: 62px 1fr 40px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.camera-debug-field input[type="range"] { width: 100%; }
+.camera-debug-readout {
+  white-space: pre-wrap;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  padding: 6px;
+  margin: 6px 0;
+  font-family: monospace;
+  font-size: 11px;
+}
+.camera-debug-copy { width: 100%; }
+
 .leaderboard-divider {
   text-align: center;
   color: var(--muted-2);
