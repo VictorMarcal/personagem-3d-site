@@ -489,11 +489,14 @@ function setHordaMonstrosVisible(visivel) {
 
 // --- aviso na aba Eu > Personagem --------------------------------------------
 
+// hh:mm:ss (2026-09-16, a pedido - antes era so mm:ss, ilegivel agora que
+// HORDE_INTERVAL_MS e 23h em vez de minutos).
 function formatHordaCountdown(ms) {
   const totalSegundos = Math.ceil(ms / 1000);
-  const minutos = Math.floor(totalSegundos / 60);
+  const horas = Math.floor(totalSegundos / 3600);
+  const minutos = Math.floor((totalSegundos % 3600) / 60);
   const segundos = totalSegundos % 60;
-  return `${minutos}:${String(segundos).padStart(2, "0")}`;
+  return `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`;
 }
 
 function renderHordaWarning() {

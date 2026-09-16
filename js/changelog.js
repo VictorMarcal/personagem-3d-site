@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.30.1",
+    title: "Contagem da Horda em Horas",
+    changes: [
+      "O aviso de tempo até à próxima horda mostra agora horas:minutos:segundos, em vez de só minutos:segundos.",
+    ],
+  },
+  {
     version: "v6.30.0",
     title: "Hordas em Produção",
     changes: [
