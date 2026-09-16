@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.30.0",
+    title: "Hordas em Produção",
+    changes: [
+      "As hordas saem da fase de testes: o ataque à Fortaleza passa a acontecer de 23 em 23 horas, em vez de 1 em 1 minuto.",
+      "A contagem de hordas é reposta para todos — a próxima horda de cada jogador volta a ser a primeira (1 monstro).",
+    ],
+  },
+  {
     version: "v6.29.3",
     title: "Câmara de Horda Afinada",
     changes: [

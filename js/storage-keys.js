@@ -165,7 +165,13 @@ const STORAGE_KEY_MISSIONS = "personagem.missoesMensais";
 // traz) - a horda em curso (posicoes/vida dos monstros) nao e persistida,
 // tal como uma luta na Masmorra tambem nao sobrevive a um reload.
 // { proximaEm: ts, contagem: numero de hordas ja repelidas }.
-const STORAGE_KEY_HORDE = "personagem.horda";
+// Chave renomeada de "personagem.horda" para "personagem.horda2"
+// (2026-09-16, a pedido - "reset das hordas, passar para lvl 1 e periodo
+// de ataque de 23h") ao sair da fase de testes (1 min) para produção
+// (23h) - toda a gente perde a contagem acumulada nos testes e volta a
+// ver a horda 1 (1 monstro), sem precisar de acesso a nenhuma base de
+// dados (isto e so local, nunca foi sincronizado).
+const STORAGE_KEY_HORDE = "personagem.horda2";
 
 // Relatorios de horda (2026-09-16, a pedido - "secção de relatórios
 // batalhas"). Lista das ultimas HORDE_REPORTS_MAX hordas (mais recente

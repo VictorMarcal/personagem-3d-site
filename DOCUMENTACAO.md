@@ -1407,7 +1407,7 @@ dificil: [correr_km, caminhar_km, descobre_concelho]
 - A personagem dispara sozinha à cadência/alcance de **Velocidade de Ataque/Alcance** (secção 7 — 1 ataque/s e 4m de base ao nível 1 da Arma/Escudo, sobem com o nível do equipamento).
 - **Se a Vida chegar a 0, a Fortaleza é saqueada e a horda termina de imediato como derrota** (2026-09-16): cada monstro ainda vivo NESSE MOMENTO rouba `HORDE_ROUBO_POR_RECURSO` (10) unidades de **cada um dos 5 recursos**, uma única vez (`hordaRouboJaAconteceu`), e a luta acaba ali mesmo — não espera que o jogador mate os monstros restantes.
 - Sem modelos 3D ainda → **placeholder**: a mesma cápsula+esfera do monstro da Masmorra (`js/main.js`), só que roxa em vez de vermelha, para não se confundirem visualmente.
-- **Intervalo de teste**: `HORDE_INTERVAL_MS = 1 min` (`js/horde.js`, era 5 min) — a pedido, para testar várias hordas seguidas sem esperar 23h. É a única constante a mudar para produção (`23 * 60 * 60 * 1000`).
+- **Produção**: `HORDE_INTERVAL_MS = 23h` (`js/horde.js`) — saiu da fase de testes (foi 5 min, depois 1 min). Ao sair de testes (2026-09-16), `STORAGE_KEY_HORDE` foi renomeada (`js/storage-keys.js`, "personagem.horda" → "personagem.horda2") para dar reset a quem tinha hordas acumuladas dos testes — toda a gente volta a ver a horda 1 (1 monstro), sem precisar de nenhuma base de dados (é um valor só local).
 
 ### Pontos de partida e câmara: Empties no terreno (`assets/Floor.glb`)
 

@@ -36,9 +36,11 @@
 //     o terreno todo a vista), e volta a normal (applyNormalCamera) ao
 //     terminar.
 //
-// TESTE (a pedido): HORDE_INTERVAL_MS esta em 1 minuto para se poder testar
-// varias hordas seguidas sem esperar - a UNICA linha a mudar quando isto for
-// para produção é essa (23h = 23 * 60 * 60 * 1000).
+// PRODUÇÃO (2026-09-16, a pedido - "reset das hordas, passar para o
+// período de ataque de 23h"): HORDE_INTERVAL_MS sai da fase de testes
+// (1 min) e passa a 23h, valor final. STORAGE_KEY_HORDE foi renomeada
+// (js/storage-keys.js) para dar reset a quem já tinha hordas acumuladas
+// da fase de testes - toda a gente volta a ver a horda 1 (1 monstro).
 //
 // Depende de: js/main.js (scene, camera, character, bow, head, canvas,
 // shootArrow, showFloatingCombatText, battleInProgress via js/battle.js,
@@ -50,7 +52,7 @@
 // (renderResourcesPanel, renderWallet), js/storage-keys.js (STORAGE_KEY_HORDE,
 // STORAGE_KEY_HORDE_REPORTS). Carrega depois de todos eles.
 
-const HORDE_INTERVAL_MS = 1 * 60 * 1000; // TESTE - produção final: 23 * 60 * 60 * 1000
+const HORDE_INTERVAL_MS = 23 * 60 * 60 * 1000;
 const HORDE_WALK_SPEED_MPS = 1;
 const HORDE_ATTACK_INTERVAL_MS = 1000;
 const HORDE_ATTACK_RANGE_M = 1.2; // distancia da base da torre a que se considera "chegou"
