@@ -68,8 +68,14 @@
 /* ---- 4. Ícones ---------------------------------------------------------- */
 
 .icon,
-.icon-svg { display: inline-flex; flex: 0 0 auto; }
-.icon-svg { display: block; }
+.icon-svg,
+.icon-img { display: inline-flex; flex: 0 0 auto; }
+.icon-svg,
+.icon-img { display: block; }
+/* Ícones ilustrados dos recursos (js/icons.js, 2026-09-16) - object-fit
+   garante que ficam nítidos/quadrados mesmo que o <img> não seja
+   perfeitamente 1:1 no tamanho pedido. */
+.icon-img { object-fit: contain; }
 
 /* O ponto de cor dos recursos deu lugar ao ícone (js/resources-ui.js) */
 .resource-dot { display: none; }

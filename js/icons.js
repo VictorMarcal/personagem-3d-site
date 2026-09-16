@@ -8,10 +8,24 @@
    e herdam a cor por currentColor — ou seja, mudam com o estado (ativo /
    inativo / desativado) sem uma segunda cópia do ícone.
 
+   Ícones ilustrados dos recursos (2026-09-16, o Victor desenhou-os) — PNG
+   32x32, fundo transparente, em assets/Icons/Recursos/<id>.png. Ao
+   contrário dos SVG acima (traço, sem cor própria), estes já vêm a cores e
+   substituem por completo os SVG de linha que existiam para
+   ferro/madeira/pele/pedra/barro (ver ICON_IMAGE_NAMES abaixo) - não há
+   fallback SVG para eles, se um ficheiro faltar aparece só o `alt=""`.
+
    Uso em HTML:   <span class="icon" data-icon="arco"></span>
                   (hidrata-se no load; ver hydrateIcons() no fim)
    Uso em JS:     painel.innerHTML = icon("ferro", 17) + "Ferro";
    ========================================================================== */
+
+// Nomes com ícone ilustrado (imagem) em vez de SVG de linha - ver comentário
+// acima. ICON_IMAGE_V sobe sempre que um destes ficheiros for substituído
+// (mesmo espírito do ASSET_V dos modelos 3D, js/main.js).
+const ICON_IMAGE_NAMES = new Set(["ferro", "madeira", "pele", "pedra", "barro"]);
+const ICON_IMAGE_BASE_PATH = "assets/Icons/Recursos/";
+const ICON_IMAGE_V = "1";
 
 const ICON_PATHS = {
   // --- equipamento ---------------------------------------------------------
@@ -20,13 +34,6 @@ const ICON_PATHS = {
   // peitoral (ombros + tronco). NÃO um escudo com um risco: ao lado do
   // escudo, a 17px, dois escudos leem-se como um objeto riscado.
   armadura: '<path d="M9 4l3 2 3-2 4 2-1 5h-2v9H8v-9H6L5 6z"/>',
-
-  // --- recursos (ids iguais aos de js/resources.js) ------------------------
-  ferro: '<path d="M4 15l5-7h6l5 7-4 5H8z"/>',
-  madeira: '<path d="M5 6h14v12H5z"/><path d="M9 6v12M15 6v12"/>',
-  pele: '<path d="M6 5c3 2 9 2 12 0 1 4-1 6-1 8s2 4 0 6c-3-2-7-2-10 0-2-2 0-4 0-6s-2-4-1-8z"/>',
-  pedra: '<path d="M4 12l4-6h8l4 6-6 6H10z"/><path d="M8 6l4 6 4-6"/>',
-  barro: '<path d="M6 8h12l-1 11H7z"/><path d="M9 8V5h6v3"/>',
 
   // --- barra de separadores ------------------------------------------------
   treinar: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9.5 2h5"/>',
@@ -46,25 +53,29 @@ const ICON_PATHS = {
 
 // Cores por família. Uma cor por objeto, sempre a mesma em toda a app —
 // para o jogador reconhecer o recurso pela cor antes de ler o nome.
+// Os recursos (ferro/madeira/pele/pedra/barro) saíram daqui em 2026-09-16 -
+// os ícones ilustrados já vêm a cores, não precisam de stroke tingido.
 const ICON_COLORS = {
   arco: "#b2622d",
   escudo: "#4a6d90",
   armadura: "#56633f",
-  ferro: "#6e6d7d",
-  madeira: "#8a6f52",
-  pele: "#b3776b",
-  pedra: "#767f70",
-  barro: "#a3833f",
 };
 
 /**
- * Devolve o SVG como string.
- * @param {string} name   chave de ICON_PATHS
+ * Devolve o ícone como string - <img> para os nomes em ICON_IMAGE_NAMES,
+ * SVG de linha para todos os outros.
+ * @param {string} name   chave de ICON_PATHS ou ICON_IMAGE_NAMES
  * @param {number} size   lado em px (default 20)
- * @param {string} [color] cor do traço; omitir usa a cor da família e, se
- *                         não houver, currentColor (herda do texto)
+ * @param {string} [color] cor do traço (só se aplica ao SVG); omitir usa a
+ *                         cor da família e, se não houver, currentColor
  */
 function icon(name, size = 20, color) {
+  if (ICON_IMAGE_NAMES.has(name)) {
+    return (
+      '<img class="icon-img" src="' + ICON_IMAGE_BASE_PATH + name + ".png?v=" + ICON_IMAGE_V + '"' +
+      ' width="' + size + '" height="' + size + '" alt="" aria-hidden="true">'
+    );
+  }
   const d = ICON_PATHS[name];
   if (!d) return "";
   const stroke = color || ICON_COLORS[name] || "currentColor";

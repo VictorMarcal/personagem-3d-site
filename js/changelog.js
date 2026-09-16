@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.35.0",
+    title: "Ícones Novos dos Recursos",
+    changes: [
+      "Ferro, Madeira, Pele, Pedra e Barro passam a ter ícones ilustrados a cores, em vez do desenho simples de linha de antes.",
+    ],
+  },
+  {
     version: "v6.34.1",
     title: "Teto às Calorias de Pausa",
     changes: [

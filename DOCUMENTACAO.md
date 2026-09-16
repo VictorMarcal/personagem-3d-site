@@ -1200,6 +1200,8 @@ Substitui por completo as estrelas colecionáveis (secção 19, removida) e as m
 
 Os três pares possíveis de três materiais esgotam-se exatamente nas três peças: **nenhum material é privilegiado e cada um é pedido por duas peças**. E todas as combinações explicam-se sozinhas — arco de madeira com pontas de ferro, escudo de madeira coberto a pele, armadura de pele com rebites de ferro.
 
+**Ícones ilustrados (2026-09-16)**: `icon(name, size)` (`js/icons.js`) desenhava todos os ícones da app como SVG de linha inline (traço, sem preenchimento, cor herdada) — os 5 recursos são a primeira exceção: o Victor desenhou-os como imagens a cores (`assets/Icons/Recursos/<id>.png`, 32×32, fundo transparente) e `icon()` passa a devolver um `<img>` para esses 5 nomes (`ICON_IMAGE_NAMES`), mantendo o SVG de linha para todo o resto (equipamento, separadores, Fortaleza, etc.). Sem fallback — se um ficheiro faltar, só sai o `alt=""`. `ICON_IMAGE_V` funciona como o `ASSET_V` dos modelos 3D (`js/main.js`): sobe sempre que um `.png` for substituído, para o cache do browser não segurar a versão antiga.
+
 ### Todos os hexágonos produzem; as minas produzem mais (2026-09-09)
 
 **Mudança a pedido (era "só as minas produzem" desde 2026-09-07):**
