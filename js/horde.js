@@ -6,8 +6,12 @@
 // cena. So corre fora de uma luta na Masmorra (`battleInProgress`).
 //
 // Regras (todas a pedido do Victor):
-//   - Horda 1 = 1 monstro, horda 2 = 2, horda 3 = 3, ... (nunca mais
-//     monstros que pontos de partida existirem - repete pontos se precisar).
+//   - Horda 1 = 1 monstro, horda 2 = 2, horda 3 = 3, ... sem limite (o
+//     mesmo pivot pode calhar a mais de um monstro da mesma horda).
+//   - Cada monstro nasce num dos ate 12 pivots do Floor.glb escolhido AO
+//     ACASO (2026-09-16, a pedido - ver hordaSpawnPosition()), e nao nasce
+//     todos ao mesmo tempo: cada um espera HORDE_SPAWN_STAGGER_MS (0.5s)
+//     a mais que o anterior antes de aparecer em cena.
 //   - Monstros andam HORDE_WALK_SPEED_MPS (1 m/s) em direcao a base da
 //     torre.
 //   - Ao chegar, atacam 1x por segundo - tiram dano a Vida atual do
@@ -77,15 +81,21 @@ const HORDE_ROUBO_POR_RECURSO = 10;
 
 // --- pontos de partida -------------------------------------------------------
 //
-// Empties chamados "HordaSpawn1"/"HordaSpawn2"/"HordaSpawn3" (ou variantes -
-// aceita por prefixo, mesmo esquema de TOWER_PLAYER_EMPTY_NAMES em
-// js/main.js) dentro de assets/Floor.glb - o Victor vai coloca-los. Lidos
+// Empties chamados "HordaSpawn1".."HordaSpawn12" (ou variantes - aceita por
+// prefixo, mesmo esquema de TOWER_PLAYER_EMPTY_NAMES em js/main.js) dentro
+// de assets/Floor.glb - o Floor vai ter 12 (o Victor vai coloca-los). Lidos
 // por registrarHordaSpawnPoints(), chamada por loadSceneryFloor() (js/main.js)
-// assim que o terreno carrega. Sem eles (placeholder ainda sem pivots),
-// cai num triangulo a HORDA_SPAWN_FALLBACK_RADIUS_M da torre, para a
-// mecanica funcionar mesmo antes de os pivots existirem.
+// assim que o terreno carrega. Sem eles (placeholder ainda sem pivots), cai
+// num circulo de HORDA_SPAWN_FALLBACK_COUNT posicoes a
+// HORDA_SPAWN_FALLBACK_RADIUS_M da torre, para a mecanica funcionar mesmo
+// antes de os pivots existirem.
+//
+// Cada monstro nasce num pivot ESCOLHIDO AO ACASO (2026-09-16, a pedido) -
+// nao ha ordem fixa nem repartição igual entre os pivots, dois monstros da
+// mesma horda podem calhar no mesmo ponto.
 const HORDA_SPAWN_EMPTY_NAMES = ["HordaSpawn", "SpawnHorda", "MonsterSpawn", "HordePos"];
 const HORDA_SPAWN_FALLBACK_RADIUS_M = 10;
+const HORDA_SPAWN_FALLBACK_COUNT = 12;
 let hordaSpawnPositions = [];
 
 function registrarHordaSpawnPoints(model) {
@@ -102,7 +112,7 @@ function registrarHordaSpawnPoints(model) {
 }
 
 function hordaSpawnPositionFallback(indice) {
-  const angulo = (indice / 3) * Math.PI * 2;
+  const angulo = (indice / HORDA_SPAWN_FALLBACK_COUNT) * Math.PI * 2;
   return new THREE.Vector3(
     Math.cos(angulo) * HORDA_SPAWN_FALLBACK_RADIUS_M,
     0,
@@ -110,9 +120,14 @@ function hordaSpawnPositionFallback(indice) {
   );
 }
 
-function hordaSpawnPosition(indice) {
-  if (hordaSpawnPositions.length > 0) return hordaSpawnPositions[indice % hordaSpawnPositions.length].clone();
-  return hordaSpawnPositionFallback(indice % 3);
+// Sem argumento de propósito - a escolha e sempre aleatoria (ver comentário
+// acima), nao ha "indice do monstro" a mapear para um pivot fixo.
+function hordaSpawnPosition() {
+  if (hordaSpawnPositions.length > 0) {
+    const indice = Math.floor(Math.random() * hordaSpawnPositions.length);
+    return hordaSpawnPositions[indice].clone();
+  }
+  return hordaSpawnPositionFallback(Math.floor(Math.random() * HORDA_SPAWN_FALLBACK_COUNT));
 }
 
 // --- estado persistido (proxima horda, quantas ja aconteceram) --------------
@@ -145,7 +160,13 @@ function hordaRestanteMs() {
 
 // --- monstros em cena --------------------------------------------------------
 
-let hordaMonstros = []; // { group, head, hp }
+// Escalonamento do nascimento (2026-09-16, a pedido) - os monstros de uma
+// horda nao aparecem todos ao mesmo tempo, cada um nasce
+// HORDE_SPAWN_STAGGER_MS depois do anterior (0, 0.5s, 1s, 1.5s, ...). Ver
+// "nascido"/"delayNascimentoMs" em iniciarHorda()/updateHordeAttack().
+const HORDE_SPAWN_STAGGER_MS = 500;
+
+let hordaMonstros = []; // { group, head, hp, nascido, delayNascimentoMs }
 let hordaEmCurso = false;
 let heroHordaAttackCooldownMs = 0;
 let hordaRouboJaAconteceu = false; // uma vez por horda, ver atacarTorreComHorda()
@@ -184,9 +205,17 @@ function iniciarHorda() {
   hordaMonstros = [];
   for (let i = 0; i < numero; i++) {
     const { group, head } = criarHordaMonstroPlaceholder();
-    group.position.copy(hordaSpawnPosition(i));
+    group.position.copy(hordaSpawnPosition());
+    group.visible = false; // so aparece quando "nasce", ver updateHordeAttack()
     scene.add(group);
-    hordaMonstros.push({ group, head, hp: HORDE_MONSTER_HP, attackCooldownMs: 0 });
+    hordaMonstros.push({
+      group,
+      head,
+      hp: HORDE_MONSTER_HP,
+      attackCooldownMs: 0,
+      nascido: false,
+      delayNascimentoMs: i * HORDE_SPAWN_STAGGER_MS,
+    });
   }
 
   // A contagem/agenda da PROXIMA horda fica logo marcada ao iniciar esta,
@@ -364,13 +393,15 @@ async function dispararContraHordaMonstro(alvo) {
 
 // Alvo: monstro vivo mais proximo da base da torre (0,0) dentro do alcance -
 // simplificação deliberada: mede-se a partir da base da torre, não da
-// posição exata do heroi no topo dela (ver nota em updateHordeAttack).
+// posição exata do heroi no topo dela (ver nota em updateHordeAttack). Um
+// monstro que ainda nao "nasceu" (delay de escalonamento, ver
+// HORDE_SPAWN_STAGGER_MS) nao e um alvo valido - ainda nao esta em cena.
 function alvoHordaMaisProximo() {
   let alvo = null;
   let menorDist = Infinity;
   const alcance = heroHordaAttackRangeM();
   hordaMonstros.forEach((m) => {
-    if (m.hp <= 0) return;
+    if (m.hp <= 0 || !m.nascido) return;
     const dist = Math.hypot(m.group.position.x, m.group.position.z);
     if (dist <= alcance && dist < menorDist) {
       menorDist = dist;
@@ -397,7 +428,14 @@ function updateHordeAttack(dtSeconds) {
 
   hordaMonstros.forEach((m) => {
     if (m.hp <= 0) return;
-    algumVivo = true;
+    algumVivo = true; // conta para nao terminar a horda antes de todos nascerem
+
+    if (!m.nascido) {
+      m.delayNascimentoMs -= dtSeconds * 1000;
+      if (m.delayNascimentoMs > 0) return; // ainda nao chegou a vez dele
+      m.nascido = true;
+      m.group.visible = true;
+    }
 
     const pos = m.group.position;
     const dist = Math.hypot(pos.x, pos.z);
@@ -438,7 +476,10 @@ function updateHordeAttack(dtSeconds) {
 // tambem muda, camara incluida) e voltam a aparecer ao sair.
 function setHordaMonstrosVisible(visivel) {
   hordaMonstros.forEach((m) => {
-    m.group.visible = visivel;
+    // Um monstro que ainda nao "nasceu" (escalonamento, ver
+    // HORDE_SPAWN_STAGGER_MS) fica sempre escondido, mesmo quando o resto
+    // da horda volta a ficar visivel ao sair da Masmorra.
+    m.group.visible = visivel && m.nascido;
   });
 }
 

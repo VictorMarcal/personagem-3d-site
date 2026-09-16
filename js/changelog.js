@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.28.3",
+    title: "Monstros Nascem Espalhados",
+    changes: [
+      "Cada monstro de uma horda nasce agora num pivot escolhido ao acaso entre os 12 pontos de partida (em vez de sempre nos mesmos, por ordem).",
+      "Os monstros também deixam de aparecer todos ao mesmo tempo: cada um nasce meio segundo depois do anterior.",
+    ],
+  },
+  {
     version: "v6.28.2",
     title: "Câmara de Cima nas Hordas",
     changes: [
