@@ -21,10 +21,13 @@ const STORAGE_KEYS_EQUIPMENT = {
   pontosDisponiveis: "personagem.pontosDisponiveis",
   ultimoNivelPremiado: "personagem.ultimoNivelPremiado",
   // Status investidos com pontos (2026-08-04, substituem os niveis diretos
-  // de Vida/Ataque/Defesa): Energia->Vida+Regeneracao, Forca->Ataque+Letalidade,
-  // Resistencia->Defesa+Destreza (secção 6/7 da documentação). Comecam em 0
+  // de Vida/Ataque/Defesa): Energia->Vida+Regeneracao, Forca->Ataque,
+  // Resistencia->Defesa (secção 6/7 da documentação). Comecam em 0
   // (nunca investido), ao contrario dos niveis antigos que comecavam em 1 -
   // aqui 0 pontos = 0 bonus extra, sem valor de base embutido.
+  // Velocidade de Ataque/Alcance (2026-09-16, substituem Letalidade/Destreza)
+  // deixaram de vir de um status investido - vem diretamente do nivel da
+  // Arma/Escudo (computeAttackSpeed/computeAttackRangeM, js/equipment.js).
   nivelEnergia: "personagem.nivelEnergia",
   nivelForca: "personagem.nivelForca",
   nivelResistencia: "personagem.nivelResistencia",
@@ -163,3 +166,9 @@ const STORAGE_KEY_MISSIONS = "personagem.missoesMensais";
 // tal como uma luta na Masmorra tambem nao sobrevive a um reload.
 // { proximaEm: ts, contagem: numero de hordas ja repelidas }.
 const STORAGE_KEY_HORDE = "personagem.horda";
+
+// Relatorios de horda (2026-09-16, a pedido - "secção de relatórios
+// batalhas"). Lista das ultimas HORDE_REPORTS_MAX hordas (mais recente
+// primeiro): [{ data: ts, numero, resultado: "vitoria"|"derrota",
+// recursosRoubadosPorRecurso }].
+const STORAGE_KEY_HORDE_REPORTS = "personagem.hordaRelatorios";

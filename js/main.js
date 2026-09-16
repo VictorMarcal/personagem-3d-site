@@ -1110,12 +1110,20 @@ function updateHeroFacing(monsterVisible) {
 
 // O heroi so ataca PARADO (2026-08-11, a pedido - mexer o joystick
 // cancela/adia o proximo disparo, tem de se largar o joystick para
-// voltar a atacar). HERO_ATTACK_INTERVAL_MS: cadencia dos disparos
-// automaticos: heroAttackCooldownMs desce a cada frame (dtSeconds) so
-// enquanto parado com o monstro a vista, reposto ao maximo assim que
-// dispara ou assim que volta a mexer-se. performHeroAttack (js/battle.js)
-// trata do dano/animacao - so chamada quando a cadencia permite.
-const HERO_ATTACK_INTERVAL_MS = 700;
+// voltar a atacar). Cadencia dos disparos automaticos: heroAttackCooldownMs
+// desce a cada frame (dtSeconds) so enquanto parado com o monstro a vista,
+// reposto ao maximo assim que dispara ou assim que volta a mexer-se.
+// performHeroAttack (js/battle.js) trata do dano/animacao - so chamada
+// quando a cadencia permite.
+//
+// Desde 2026-09-16 (a pedido, substitui Letalidade): a cadencia vem da
+// Velocidade de Ataque (computeAttackSpeed, js/equipment.js), alimentada
+// pelo nivel da Arma - 1 ataque/s ao nivel 1, +0.05/s por nivel acima. Antes
+// era uma constante fixa (700ms = ~1.43/s, sem ligacao a equipamento nenhum).
+function heroAttackIntervalMs() {
+  const velocidade = typeof computeAttackSpeed === "function" ? computeAttackSpeed(getWeaponLevel()) : 1;
+  return 1000 / Math.max(0.01, velocidade);
+}
 let heroAttackCooldownMs = 0;
 
 function updateHeroAutoAttack(dtSeconds, monsterVisible) {
@@ -1129,7 +1137,7 @@ function updateHeroAutoAttack(dtSeconds, monsterVisible) {
 
   heroAttackCooldownMs -= dtSeconds * 1000;
   if (heroAttackCooldownMs > 0) return;
-  heroAttackCooldownMs = HERO_ATTACK_INTERVAL_MS;
+  heroAttackCooldownMs = heroAttackIntervalMs();
   if (typeof performHeroAttack === "function") performHeroAttack();
 }
 

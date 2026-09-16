@@ -13,8 +13,8 @@ const battlePanelEl = document.getElementById("battle-panel");
 const battleLogHeadlineEl = document.getElementById("battle-log-headline");
 const battleLogHistoryEl = document.getElementById("battle-log-history");
 const battleResultEl = document.getElementById("battle-result");
-const battleStatDestrezaEl = document.getElementById("battle-stat-destreza");
-const battleStatLetalidadeEl = document.getElementById("battle-stat-letalidade");
+const battleStatAlcanceEl = document.getElementById("battle-stat-alcance");
+const battleStatVelocidadeAtaqueEl = document.getElementById("battle-stat-velocidade-ataque");
 const btnBattleBack = document.getElementById("btn-battle-back");
 const battleJoystickEl = document.getElementById("battle-joystick");
 
@@ -82,21 +82,19 @@ function computeBattleDamage(attackerAtaque, defenderDefesa) {
   return Math.round(baseDamage * variance);
 }
 
-// Destreza/Letalidade (secção 6/7 e 9 da documentação) - so o JOGADOR as
-// tem por agora, os monstros nao foram atualizados (fora de escopo).
 // rollDodge: chance do DEFENSOR esquivar por completo um ataque, testada
-// antes de computeBattleDamage - uma esquiva nunca chega a chamar a
-// formula de dano, fica sempre em 0. Se nao esquivar, verifica-se depois
-// se e um critico (chance de Letalidade do atacante): nesse caso o dano
-// ignora a Defesa por completo e nao tem variacao aleatoria - e sempre
-// exatamente Ataque x LETALIDADE_MULTIPLICADOR.
+// antes de computeBattleDamage - uma esquiva nunca chega a chamar a formula
+// de dano, fica sempre em 0. NUNCA CHAMADA por agora (os modos de ataque do
+// monstro ainda nao foram definidos - fora de escopo, ver secção 9).
 function rollDodge(dodgeChance) {
   return Math.random() < dodgeChance;
 }
 
-function rollCritico(letalidadeChance) {
-  return Math.random() < letalidadeChance;
-}
+// Letalidade/critico REMOVIDOS (2026-09-16, a pedido - "em vez de letalidade
+// passa a velocidade de ataque"): rollCritico() e o multiplicador de dano
+// que ignorava a Defesa deixaram de existir. O bonus da Força ao atacar
+// agora aparece só via cadência (Velocidade de Ataque, computeAttackSpeed em
+// js/equipment.js), não via hits ocasionais mais fortes.
 
 function updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp) {
   const playerPct = Math.max(0, Math.min(100, (playerHp / playerMaxHp) * 100));
@@ -115,7 +113,6 @@ function updateBattleBars(playerHp, playerMaxHp, monsterHp, monsterMaxHp) {
 // (updateHeroAutoAttack), disparado de fora da função startBattle.
 let currentCreature = null;
 let currentPlayerAtaque = 0;
-let currentPlayerLetalidade = 0;
 let currentMonsterDefesa = 0;
 let currentPlayerHp = 0;
 let currentPlayerMaxHp = 0;
@@ -126,13 +123,12 @@ let heroAttackInFlight = false;
 // Disparo automatico do heroi (2026-08-11, a pedido - "heroi ataca apenas
 // quando esta parado"): chamada por js/main.js updateHeroAutoAttack so
 // quando o joystick esta parado, o monstro esta no frustrum da camara, e a
-// cadencia (HERO_ATTACK_INTERVAL_MS, js/main.js) o permite - esta função
+// cadencia (heroAttackIntervalMs(), js/main.js) o permite - esta função
 // so trata do dano/animação/log, nunca decide QUANDO disparar.
 //
-// Sem esquiva do lado do monstro (rollDodge nao chamado) - os monstros
-// continuam sem Destreza propria (fora de escopo, secção 9), e sem
+// Sem esquiva do lado do monstro (rollDodge nao chamado) e sem
 // contra-ataque nenhum (modos de comportamento/ataque do monstro ainda
-// por definir). Ao chegar a 0 de Vida, o monstro so para de poder ser
+// por definir, fora de escopo, secção 9). Ao chegar a 0 de Vida, o monstro so para de poder ser
 // atacado (guarda no topo) - ainda NAO ha vitoria/recompensas/persistencia
 // (markCreatureDefeated/checkAndUnlockAchievements), fica para quando o
 // combate for definido por completo.
@@ -142,17 +138,10 @@ async function performHeroAttack() {
 
   await shootArrow(bow, monsterBody);
 
-  if (rollCritico(currentPlayerLetalidade)) {
-    const critDmg = Math.round(currentPlayerAtaque * getLetalidadeMultiplicador());
-    currentMonsterHp = Math.max(0, currentMonsterHp - critDmg);
-    showFloatingCombatText(monsterHead, -critDmg, "critico");
-    setBattleLog(`Crítico! Flecha certeira em ${currentCreature.name}: -${critDmg} Vida`, "critico");
-  } else {
-    const dmgToMonster = computeBattleDamage(currentPlayerAtaque, currentMonsterDefesa);
-    currentMonsterHp = Math.max(0, currentMonsterHp - dmgToMonster);
-    showFloatingCombatText(monsterHead, -dmgToMonster, "damage");
-    setBattleLog(`Acertaste uma flecha em ${currentCreature.name}: -${dmgToMonster} Vida`);
-  }
+  const dmgToMonster = computeBattleDamage(currentPlayerAtaque, currentMonsterDefesa);
+  currentMonsterHp = Math.max(0, currentMonsterHp - dmgToMonster);
+  showFloatingCombatText(monsterHead, -dmgToMonster, "damage");
+  setBattleLog(`Acertaste uma flecha em ${currentCreature.name}: -${dmgToMonster} Vida`);
 
   updateBattleBars(currentPlayerHp, currentPlayerMaxHp, currentMonsterHp, currentMonsterMaxHp);
 
@@ -202,7 +191,6 @@ async function startBattle(creature) {
   // currentCreature.
   currentCreature = creature;
   currentPlayerAtaque = computePlayerAtaque(getEffectiveInvestableStatLevel("forca"));
-  currentPlayerLetalidade = computeLetalidadeChance(getEffectiveInvestableStatLevel("forca"));
   currentMonsterDefesa = computeCreatureStatValue("defesa", creature);
   currentPlayerMaxHp = computePlayerVida(getEffectiveInvestableStatLevel("energia"));
   currentMonsterMaxHp = computeCreatureStatValue("vida", creature);
@@ -220,8 +208,8 @@ async function startBattle(creature) {
   // de entrada (antes so aparecia no fim de uma luta ganha/perdida).
   btnBattleBack.classList.remove("hidden");
 
-  battleStatDestrezaEl.textContent = `${(computeDestrezaChance(getEffectiveInvestableStatLevel("resistencia")) * 100).toFixed(1)}%`;
-  battleStatLetalidadeEl.textContent = `${(computeLetalidadeChance(getEffectiveInvestableStatLevel("forca")) * 100).toFixed(1)}%`;
+  battleStatAlcanceEl.textContent = `${computeAttackRangeM(getShieldLevel()).toFixed(2)} m`;
+  battleStatVelocidadeAtaqueEl.textContent = `${computeAttackSpeed(getWeaponLevel()).toFixed(2)}/s`;
 
   battleLogHistory = [];
   battleLogHeadlineEl.textContent = "";

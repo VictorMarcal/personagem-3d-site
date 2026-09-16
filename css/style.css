@@ -1767,6 +1767,16 @@ main {
   white-space: nowrap;
 }
 
+/* Relatórios de horda (js/horde.js, 2026-09-16) - reaproveita .leaderboard-row
+   para as linhas, só o resultado (Vitória/Derrota) precisa de cor própria. */
+.horde-report-result {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.horde-report-win { color: var(--sage-700); }
+.horde-report-loss { color: var(--warn-ink); }
+
 .leaderboard-divider {
   text-align: center;
   color: var(--muted-2);

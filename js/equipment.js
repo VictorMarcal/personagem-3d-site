@@ -10,8 +10,8 @@
 //   Ataque     = PLAYER_BASE_ATAQUE + arma.ataque(Lv)     + round(Força^FORCA_EXP)
 //   Defesa     = PLAYER_BASE_DEFESA + escudo.defesa(Lv)   + round(Resistência^RESISTENCIA_EXP)
 //   Regeneração = REGEN_BASE      + (Energia     + armadura.bonusEnergia(Lv))^REGEN_EXP       (bónus vem da Armadura)
-//   Letalidade% = LETALIDADE_BASE + (Força       + arma.bonusForca(Lv))^LETALIDADE_EXP        (bónus vem da Arma)
-//   Destreza%   = DESTREZA_BASE   + (Resistência + escudo.bonusResistencia(Lv))^DESTREZA_EXP  (bónus vem do Escudo)
+//   Vel. Ataque = ATTACK_SPEED_BASE + ATTACK_SPEED_POR_NIVEL_ARMA × (nível da Arma − 1)        (substituiu Letalidade, 2026-09-16)
+//   Alcance (m) = ATTACK_RANGE_BASE_M + ATTACK_RANGE_POR_NIVEL_ESCUDO × (nível do Escudo − 1)  (substituiu Destreza, 2026-09-16)
 // computeStatValue (fórmula recursiva antiga) mantém-se só para os
 // MONSTROS (js/monsters.js) - não mudaram, ver nota na documentação.
 // STORAGE_KEYS_EQUIPMENT esta definida em js/storage-keys.js
@@ -25,8 +25,8 @@ const INVESTABLE_STAT_STORAGE_KEY_BY_TYPE = {
 const statVidaValueEl = document.getElementById("stat-vida-value");
 const statAtaqueValueEl = document.getElementById("stat-ataque-value");
 const statDefesaValueEl = document.getElementById("stat-defesa-value");
-const statDestrezaValueEl = document.getElementById("stat-destreza-value");
-const statLetalidadeValueEl = document.getElementById("stat-letalidade-value");
+const statAlcanceValueEl = document.getElementById("stat-alcance-value");
+const statVelocidadeAtaqueValueEl = document.getElementById("stat-velocidade-ataque-value");
 const statRegeneracaoValueEl = document.getElementById("stat-regeneracao-value");
 const hudUnspentPointsValueEl = document.getElementById("hud-unspent-points-value");
 const hudLevelEnergiaEl = document.getElementById("hud-level-energia");
@@ -274,19 +274,19 @@ function computePlayerDefesa(resistenciaLevel) {
   return Math.round(getPlayerBaseDefesa() + shieldDefesa + Math.pow(resistenciaLevel, getResistenciaExponent()));
 }
 
-// Destreza/Letalidade/Regeneracao (sem Foco - cada uma alimentada pelo
-// nivel EFETIVO do status que a governa, ja com o bonus secundario da
-// peca de equipamento correspondente incluido - ver
-// getEffectiveInvestableStatLevel acima, quem chama e que passa o valor
-// certo). Destreza/Letalidade: formula "base + nivel^expoente", resultado
-// em pontos percentuais - dividido por 100 para dar a fracao (0-1) usada
-// nas rolagens de combate (js/battle.js).
-function computeDestrezaChance(resistenciaLevel) {
-  return (getDestrezaBase() + Math.pow(resistenciaLevel, getDestrezaExponent())) / 100;
+// Velocidade de Ataque / Alcance (2026-09-16, substituem Letalidade/Destreza
+// a pedido - "em vez de letalidade passa a velocidade de ataque... em vez
+// de destreza passa a ter Alcance"). Ao contrário das antigas (alimentadas
+// pelo nível EFETIVO do status investido), estas duas são alimentadas
+// DIRETAMENTE pelo nível da peça de equipamento - nada a ver com
+// Força/Resistência. Fórmula linear simples: base + incremento × (nível−1),
+// para o nível 1 dar sempre exatamente a base pedida.
+function computeAttackSpeed(nivelArma) {
+  return getAttackSpeedBase() + getAttackSpeedPorNivelArma() * (nivelArma - 1);
 }
 
-function computeLetalidadeChance(forcaLevel) {
-  return (getLetalidadeBase() + Math.pow(forcaLevel, getLetalidadeExponent())) / 100;
+function computeAttackRangeM(nivelEscudo) {
+  return getAttackRangeBaseM() + getAttackRangePorNivelEscudo() * (nivelEscudo - 1);
 }
 
 // Regeneracao: mesma forma, mas o resultado fica em pontos de vida por
@@ -369,8 +369,8 @@ function renderStatsHud() {
   statVidaValueEl.textContent = `${Math.round(getCurrentHp(maxHp))}/${maxHp}`;
   statAtaqueValueEl.textContent = computePlayerAtaque(forcaLevel);
   statDefesaValueEl.textContent = computePlayerDefesa(resistenciaLevel);
-  statDestrezaValueEl.textContent = `${(computeDestrezaChance(resistenciaLevel) * 100).toFixed(1)}%`;
-  statLetalidadeValueEl.textContent = `${(computeLetalidadeChance(forcaLevel) * 100).toFixed(1)}%`;
+  statAlcanceValueEl.textContent = `${computeAttackRangeM(getShieldLevel()).toFixed(2)} m`;
+  statVelocidadeAtaqueValueEl.textContent = `${computeAttackSpeed(getWeaponLevel()).toFixed(2)}/s`;
   statRegeneracaoValueEl.textContent = computeRegeneracaoPerSecond(energiaLevel).toFixed(1);
   hudUnspentPointsValueEl.textContent = getUnspentPoints();
 

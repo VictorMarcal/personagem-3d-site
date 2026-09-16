@@ -7,6 +7,17 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.28.0",
+    title: "Relatórios de Batalha e Novos Atributos",
+    changes: [
+      "Novo: card \"Relatórios de Batalhas\" em Troféus, com o resultado das últimas hordas (vitória ou derrota, e quantos recursos foram roubados).",
+      "Recebes um aviso quando um depósito de recursos fica cheio.",
+      "Som de encontrar uma mina agora soa mais a vitória.",
+      "Letalidade foi substituída por Velocidade de Ataque, que sobe com o nível da Arma.",
+      "Destreza foi substituída por Alcance, que sobe com o nível do Escudo.",
+    ],
+  },
+  {
     version: "v6.27.2",
     title: "Hordas Mais Frequentes (Teste)",
     changes: [

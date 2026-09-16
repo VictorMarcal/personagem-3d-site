@@ -70,20 +70,26 @@ const ENERGIA_EXPONENT = 1.8;
 const FORCA_EXPONENT = 1.5;
 const RESISTENCIA_EXPONENT = 1.2;
 
-// Destreza/Letalidade/Regeneracao: cada uma alimentada pelo nivel investido
-// no status correspondente (Resistencia/Forca/Energia) + o bonus secundario
-// da peca de equipamento que a governa (Escudo/Arma/Armadura), na forma
-// "base + (nivel + bonus)^expoente". Resultado em pontos percentuais,
-// exceto Regeneracao (vida/segundo).
-const DESTREZA_BASE = 2;
-const DESTREZA_EXPONENT = 0.56;
-const LETALIDADE_BASE = 1;
-const LETALIDADE_EXPONENT = 0.639;
-// Multiplicador de dano num critico - ignora Defesa por completo e nao tem
-// variacao aleatoria (ao contrario do dano normal).
-const LETALIDADE_MULTIPLICADOR = 1.5;
+// Regeneracao: alimentada pelo nivel investido em Energia + o bonus
+// secundario da Armadura, na forma "base + (nivel + bonus)^expoente".
+// Resultado em vida/segundo.
 const REGENERACAO_BASE = 0.2;
 const REGENERACAO_EXPONENT = 0.8;
+
+// Velocidade de Ataque (substituiu Letalidade, 2026-09-16 a pedido: "em vez
+// de letalidade passa a velocidade de ataque e começa com 1 ataque por
+// segundo e por cada nivel incrementado na arma ganha 0.05") - ataques por
+// segundo, alimentada DIRETAMENTE pelo nivel da Arma (nao pela Força).
+const ATTACK_SPEED_BASE = 1;
+const ATTACK_SPEED_POR_NIVEL_ARMA = 0.05;
+
+// Alcance (substituiu Destreza, 2026-09-16 a pedido: "em vez de destreza
+// passa a ter Alcance que começa com 4 e incrementa 0.04 por cada nivel do
+// escudo") - metros, alimentado DIRETAMENTE pelo nivel do Escudo (nao pela
+// Resistência). Usado pela horda (js/horde.js) para saber a que distância a
+// personagem começa a disparar.
+const ATTACK_RANGE_BASE_M = 4;
+const ATTACK_RANGE_POR_NIVEL_ESCUDO = 0.04;
 
 const LEVEL_UP_POINTS = 1;
 
@@ -157,11 +163,10 @@ function getPlayerBaseDefesa() { return PLAYER_BASE_DEFESA; }
 function getEnergiaExponent() { return ENERGIA_EXPONENT; }
 function getForcaExponent() { return FORCA_EXPONENT; }
 function getResistenciaExponent() { return RESISTENCIA_EXPONENT; }
-function getDestrezaBase() { return DESTREZA_BASE; }
-function getDestrezaExponent() { return DESTREZA_EXPONENT; }
-function getLetalidadeBase() { return LETALIDADE_BASE; }
-function getLetalidadeExponent() { return LETALIDADE_EXPONENT; }
-function getLetalidadeMultiplicador() { return LETALIDADE_MULTIPLICADOR; }
+function getAttackSpeedBase() { return ATTACK_SPEED_BASE; }
+function getAttackSpeedPorNivelArma() { return ATTACK_SPEED_POR_NIVEL_ARMA; }
+function getAttackRangeBaseM() { return ATTACK_RANGE_BASE_M; }
+function getAttackRangePorNivelEscudo() { return ATTACK_RANGE_POR_NIVEL_ESCUDO; }
 function getRegeneracaoBase() { return REGENERACAO_BASE; }
 function getRegeneracaoExponent() { return REGENERACAO_EXPONENT; }
 

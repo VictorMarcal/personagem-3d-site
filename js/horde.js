@@ -13,8 +13,9 @@
 //   - Ao chegar, atacam 1x por segundo - tiram dano a Vida atual do
 //     jogador (a MESMA Vida partilhada com a Masmorra, getCurrentHp/
 //     setCurrentHp em js/equipment.js - nao ha uma "vida da torre" à parte).
-//   - A personagem dispara sozinha 1x por segundo a quem estiver a
-//     HERO_HORDE_ATTACK_RANGE_M (4m) ou menos da base da torre.
+//   - A personagem dispara sozinha à cadência/alcance de Velocidade de
+//     Ataque/Alcance (1 ataque/s e 4m à Arma/Escudo nível 1 - ver
+//     heroHordaAttackIntervalMs/heroHordaAttackRangeM abaixo).
 //   - Se a Vida da personagem chegar a 0, a Fortaleza é saqueada: cada
 //     monstro que ainda estiver vivo NESSE MOMENTO rouba
 //     HORDE_ROUBO_POR_RECURSO (10) unidades de CADA um dos 5 recursos. So
@@ -30,19 +31,30 @@
 //
 // Depende de: js/main.js (scene, camera, character, bow, head, canvas,
 // shootArrow, showFloatingCombatText, battleInProgress via js/battle.js),
-// js/battle.js (rollCritico, computeBattleDamage), js/equipment.js
-// (computePlayerAtaque/Defesa/Vida, computeLetalidadeChance,
-// getEffectiveInvestableStatLevel, getCurrentHp/setCurrentHp, renderStatsHud,
-// showGameToast), js/resources.js (RESOURCE_IDS, acumularProducao,
-// saveResources), js/resources-ui.js (renderResourcesPanel, renderWallet),
-// js/storage-keys.js (STORAGE_KEY_HORDE). Carrega depois de todos eles.
+// js/battle.js (computeBattleDamage), js/equipment.js
+// (computePlayerAtaque/Defesa/Vida, computeAttackSpeed/computeAttackRangeM,
+// getWeaponLevel/getShieldLevel, getEffectiveInvestableStatLevel,
+// getCurrentHp/setCurrentHp, renderStatsHud, showGameToast), js/resources.js
+// (RESOURCE_IDS, acumularProducao, saveResources), js/resources-ui.js
+// (renderResourcesPanel, renderWallet), js/storage-keys.js (STORAGE_KEY_HORDE,
+// STORAGE_KEY_HORDE_REPORTS). Carrega depois de todos eles.
 
 const HORDE_INTERVAL_MS = 1 * 60 * 1000; // TESTE - produção final: 23 * 60 * 60 * 1000
 const HORDE_WALK_SPEED_MPS = 1;
 const HORDE_ATTACK_INTERVAL_MS = 1000;
 const HORDE_ATTACK_RANGE_M = 1.2; // distancia da base da torre a que se considera "chegou"
-const HERO_HORDE_ATTACK_INTERVAL_MS = 1000;
-const HERO_HORDE_ATTACK_RANGE_M = 4;
+
+// Cadência e alcance do disparo automático da personagem: desde 2026-09-16
+// (a pedido, substituem Letalidade/Destreza) vêm de Velocidade de
+// Ataque/Alcance (computeAttackSpeed/computeAttackRangeM, js/equipment.js),
+// alimentadas pelo nível da Arma/Escudo - não são mais constantes fixas.
+function heroHordaAttackIntervalMs() {
+  const velocidade = computeAttackSpeed(getWeaponLevel());
+  return 1000 / Math.max(0.01, velocidade);
+}
+function heroHordaAttackRangeM() {
+  return computeAttackRangeM(getShieldLevel());
+}
 
 // Numeros provisorios (sem afinação nenhuma ainda - so para a mecanica
 // funcionar): vida/ataque/defesa fixos do monstro placeholder, iguais em
@@ -130,6 +142,7 @@ let hordaMonstros = []; // { group, head, hp }
 let hordaEmCurso = false;
 let heroHordaAttackCooldownMs = 0;
 let hordaRouboJaAconteceu = false; // uma vez por horda, ver atacarTorreComHorda()
+let hordaRouboQuantidade = 0; // por recurso, fixado no momento do saque, para o relatorio
 
 // Mesmo desenho placeholder do monstro da Masmorra (js/main.js) - capsula +
 // esfera, sem depender de nenhum modelo GLTF. Cor diferente (roxo em vez de
@@ -156,6 +169,7 @@ function criarHordaMonstroPlaceholder() {
 function iniciarHorda() {
   hordaEmCurso = true;
   hordaRouboJaAconteceu = false;
+  hordaRouboQuantidade = 0;
 
   const estado = getHordaState();
   const numero = estado.contagem + 1;
@@ -184,6 +198,14 @@ function terminarHorda() {
   hordaMonstros.forEach((m) => scene.remove(m.group));
   hordaMonstros = [];
   hordaEmCurso = false;
+
+  registarHordaRelatorio({
+    data: Date.now(),
+    numero: getHordaState().contagem,
+    resultado: hordaRouboJaAconteceu ? "derrota" : "vitoria",
+    recursosRoubadosPorRecurso: hordaRouboJaAconteceu ? hordaRouboQuantidade : 0,
+  });
+
   if (typeof showGameToast === "function") showGameToast("Horda repelida!", "medalha");
   renderHordaWarning();
 }
@@ -221,6 +243,7 @@ function roubarRecursosDaFortaleza() {
 
   const ids = typeof RESOURCE_IDS !== "undefined" ? RESOURCE_IDS : ["ferro", "madeira", "pele", "pedra", "barro"];
   const roubado = HORDE_ROUBO_POR_RECURSO * vivos;
+  hordaRouboQuantidade = roubado; // para o relatorio, ver terminarHorda()
   const stock = acumularProducao();
   ids.forEach((id) => {
     stock[id] = Math.max(0, (Number(stock[id]) || 0) - roubado);
@@ -234,25 +257,82 @@ function roubarRecursosDaFortaleza() {
   }
 }
 
+// --- relatórios de batalha (secção Eu › Troféus) -----------------------------
+//
+// A pedido ("precisamos de uma secção de relatórios batalhas onde constam
+// os relatórios das hordas - se vencemos, se perdemos e em caso de perca,
+// quantos recursos foram roubados"). "Vitória" = repeliu a horda sem a Vida
+// alguma vez chegar a 0; "Derrota" = chegou a 0 pelo menos uma vez (mesmo
+// que os monstros tenham todos acabado por morrer a seguir) - o mesmo
+// critério do saque (hordaRouboJaAconteceu). Guarda só as últimas
+// HORDE_REPORTS_MAX, mais recente primeiro.
+const HORDE_REPORTS_MAX = 20;
+
+function getHordaRelatorios() {
+  try {
+    const bruto = JSON.parse(localStorage.getItem(STORAGE_KEY_HORDE_REPORTS) || "[]");
+    if (Array.isArray(bruto)) return bruto;
+  } catch (e) {
+    /* cai para vazio */
+  }
+  return [];
+}
+
+function registarHordaRelatorio(relatorio) {
+  const lista = [relatorio, ...getHordaRelatorios()].slice(0, HORDE_REPORTS_MAX);
+  localStorage.setItem(STORAGE_KEY_HORDE_REPORTS, JSON.stringify(lista));
+  renderHordaRelatorios();
+}
+
+function formatHordaRelatorioData(ts) {
+  return new Date(ts).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+// Preenche #horde-reports-list (index.html, separador Eu › Troféus). Escreve
+// sempre no DOM, visível ou não - mesmo padrão de renderMissionsPanel
+// (js/missions.js): quando o jogador abrir a aba já lá está o mais recente.
+function renderHordaRelatorios() {
+  const el = document.getElementById("horde-reports-list");
+  if (!el) return;
+
+  const relatorios = getHordaRelatorios();
+  if (relatorios.length === 0) {
+    el.innerHTML = '<p class="mission-empty">Ainda sem hordas repelidas.</p>';
+    return;
+  }
+
+  el.innerHTML = relatorios
+    .map((r) => {
+      const quando = formatHordaRelatorioData(r.data);
+      if (r.resultado === "vitoria") {
+        return (
+          '<div class="leaderboard-row">' +
+          `<span class="leaderboard-name">Horda ${r.numero} · ${quando}</span>` +
+          '<span class="horde-report-result horde-report-win">Vitória</span>' +
+          "</div>"
+        );
+      }
+      return (
+        '<div class="leaderboard-row">' +
+        `<span class="leaderboard-name">Horda ${r.numero} · ${quando}</span>` +
+        `<span class="horde-report-result horde-report-loss">Derrota · -${r.recursosRoubadosPorRecurso} de cada recurso</span>` +
+        "</div>"
+      );
+    })
+    .join("");
+}
+
 // --- ataque automatico da personagem aos monstros ----------------------------
 
 async function dispararContraHordaMonstro(alvo) {
   await shootArrow(bow, alvo.head);
   if (alvo.hp <= 0) return; // ja morreu entretanto (defensivo)
 
-  const forcaLevel = getEffectiveInvestableStatLevel("forca");
-  const ataque = computePlayerAtaque(forcaLevel);
-  let dano;
-  let critico = false;
-  if (rollCritico(computeLetalidadeChance(forcaLevel))) {
-    dano = Math.round(ataque * getLetalidadeMultiplicador());
-    critico = true;
-  } else {
-    dano = computeBattleDamage(ataque, HORDE_MONSTER_DEFESA);
-  }
+  const ataque = computePlayerAtaque(getEffectiveInvestableStatLevel("forca"));
+  const dano = computeBattleDamage(ataque, HORDE_MONSTER_DEFESA);
 
   alvo.hp = Math.max(0, alvo.hp - dano);
-  showFloatingCombatText(alvo.head, -dano, critico ? "critico" : "damage");
+  showFloatingCombatText(alvo.head, -dano, "damage");
   if (alvo.hp <= 0) scene.remove(alvo.group);
 }
 
@@ -262,10 +342,11 @@ async function dispararContraHordaMonstro(alvo) {
 function alvoHordaMaisProximo() {
   let alvo = null;
   let menorDist = Infinity;
+  const alcance = heroHordaAttackRangeM();
   hordaMonstros.forEach((m) => {
     if (m.hp <= 0) return;
     const dist = Math.hypot(m.group.position.x, m.group.position.z);
-    if (dist <= HERO_HORDE_ATTACK_RANGE_M && dist < menorDist) {
+    if (dist <= alcance && dist < menorDist) {
       menorDist = dist;
       alvo = m;
     }
@@ -314,7 +395,7 @@ function updateHordeAttack(dtSeconds) {
   if (heroHordaAttackCooldownMs <= 0) {
     const alvo = alvoHordaMaisProximo();
     if (alvo) {
-      heroHordaAttackCooldownMs = HERO_HORDE_ATTACK_INTERVAL_MS;
+      heroHordaAttackCooldownMs = heroHordaAttackIntervalMs();
       dispararContraHordaMonstro(alvo);
     }
   }
@@ -379,3 +460,8 @@ function stopHordaTicker() {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") stopHordaTicker();
 });
+
+// Relatórios: escreve o que já houver assim que o script carrega, para
+// aparecer certo mesmo que o jogador abra Eu › Troféus sem nenhuma horda
+// ter acontecido nesta sessão.
+renderHordaRelatorios();
