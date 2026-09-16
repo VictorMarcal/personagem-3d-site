@@ -422,6 +422,14 @@ Na bicicleta não colapsa assim, porque o MET vem de uma tabela por faixas em ve
 
 *(A regra oscilou algumas vezes em 2026-08-15: totais → ativas → totais. Fica registado o destino e o argumento, não o caminho.)*
 
+#### Teto ao tempo em pausa que rende calorias (2026-09-16)
+
+**Bug reportado** ("acho estranho a VidaNova já ter aqueles pontos todos e estar à minha frente no mensal"): uma sessão ficou aberta/em segundo plano **23h36** (só 213 m e 193s de movimento real lá dentro) — o gap inteiro de GPS entrou como tempo em pausa, sem nenhum limite. `1 MET × 76 kg × 23,61h ≈ 1794 kcal` de "calorias de repouso" de uma sessão trivial, sozinha mais do que o mês inteiro de outro jogador (1808,84 kcal totais dessa sessão, contra 890 kcal do mês inteiro do Skllrx nessa altura). Investigado via Supabase (somas de `training_sessions.calories_kcal` batiam certo com o leaderboard — não era duplicação nem fraude, era mesmo a fórmula sem teto).
+
+**Corrigido**: `MAX_RESTING_PAUSE_SECONDS = 3600` (1h, `js/training.js`) — só a fatia de tempo em pausa usada NA FÓRMULA de calorias fica capada a essa 1h; `paused_seconds` continua a guardar e a mostrar o valor real no histórico ("Tempo em pausa: 23h36"), só a recompensa é que tem teto. Uma hora cobre com folga qualquer pausa a sério dentro de um treino real (fôlego, semáforo, atar o sapato, até uma paragem para almoçar numa caminhada longa); só pausas anormais (app esquecida aberta) deixam de somar calorias além dessa 1ª hora. Aplicado nos dois sítios que usam a fórmula: `currentRestingKcal()` (mostrador ao vivo) e `stopTraining()` (valor gravado) — para o número ao vivo nunca "descer" no resumo final.
+
+**Correção manual da sessão afetada** (Supabase, 2026-09-16): `training_sessions.id=143` (VidaNova) recalculada com a fórmula capada (1808,84 → 90,54 kcal), e os agregados derivados recalculados a partir da soma real das sessões — `player_progress.lifetime_calories_kcal`/`best_session_calories_kcal` e `leaderboard.lifetime_calories_kcal`/`monthly_calories_kcal`. Não foram tocados `unspent_points`/`last_awarded_level`/equipamento — a jogadora só tinha 3 dias de conta, sem pontos gastos ainda a desfazer.
+
 **Efeito lateral que vale mais que a própria mudança**: a **velocidade média** passa a ser sobre o tempo ativo. Num treino de teste com 5 min a andar e 10 min parado, saiu **4,4 km/h** onde antes saía 1,6 km/h. E como é dessa velocidade que sai o MET, as calorias deixam de ser diluídas pelo tempo parado — o mesmo problema da secção 4.6, agora tapado também pelo lado do tempo.
 
 Na base de dados: **`calories_kcal` é o valor de XP, ou seja o TOTAL** — assim tudo o que já o lia (leaderboard, gráficos do Perfil, recorde de sessão, conquistas) continua a referir-se ao número certo sem mudar uma linha. `calories_active_kcal` e `paused_seconds` são novas e informativas.

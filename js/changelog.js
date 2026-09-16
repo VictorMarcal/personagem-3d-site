@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.34.1",
+    title: "Teto às Calorias de Pausa",
+    changes: [
+      "Corrigido: deixar o treino aberto/em segundo plano durante muito tempo já não rende calorias sem limite — a pausa só soma até 1 hora, o resto continua a aparecer no histórico mas não conta para XP.",
+    ],
+  },
+  {
     version: "v6.34.0",
     title: "Medalhas de Missões e 9 por Mês",
     changes: [

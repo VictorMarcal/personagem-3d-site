@@ -624,9 +624,12 @@ function stopLiveStatsTicker() {
 }
 
 // Calorias em repouso acumuladas nas pausas ate agora (1 MET) - a parcela
-// que separa as "ativas" das "totais" (secção 4.7).
+// que separa as "ativas" das "totais" (secção 4.7). Capado a
+// MAX_RESTING_PAUSE_SECONDS tal como em stopTraining, para o mostrador ao
+// vivo nunca mostrar um numero que depois "desce" no resumo final.
 function currentRestingKcal() {
-  return 1.0 * getPesoKg() * (currentPausedMs() / 3600000);
+  const pausedSeconds = Math.min(currentPausedMs() / 1000, MAX_RESTING_PAUSE_SECONDS);
+  return 1.0 * getPesoKg() * (pausedSeconds / 3600);
 }
 
 // activeKcal e opcional: quando quem chama ja o calculou, reaproveita-se em
@@ -1089,6 +1092,14 @@ function beginTrainingSession() {
 // deslocamento nenhum.
 const MIN_TRAINING_DURATION_SECONDS = 10;
 
+// Teto ao tempo em pausa que conta para calorias de repouso (secção 4,
+// "Calorias durante as pausas" em stopTraining) - 2026-09-16, bug
+// reportado ("achar estranho a VidaNova já ter aqueles pontos todos"): uma
+// sessão deixada aberta 23h36 (app em segundo plano) creditou ~1794 kcal
+// de "repouso" sozinha. 1h cobre com folga qualquer pausa a sério dentro
+// de um treino real.
+const MAX_RESTING_PAUSE_SECONDS = 60 * 60;
+
 // --- Pausa do treino (2026-08-15, secção 4.7) -------------------------------
 //
 // O tempo em pausa NAO conta para a duracao da sessao. Isto nao e cosmetica:
@@ -1259,7 +1270,18 @@ function stopTraining() {
   // relogio do Bernardo chama "Total Kilocalories" - a unica referencia
   // externa que temos para validar.
   const sessionPausedSeconds = Math.round((pausedTotalMs + autoPausedMs) / 1000);
-  const sessionRestingCalories = 1.0 * getPesoKg() * (sessionPausedSeconds / 3600);
+  // Teto ao tempo em pausa que RENDE calorias (2026-09-16, bug reportado: a
+  // app ficou aberta/em segundo plano 23h36 - o gap inteiro de GPS virou
+  // "1 MET x 23,6h" de calorias de repouso, mais que o mes inteiro doutro
+  // jogador). So a fatia usada NESTA formula fica capada -
+  // sessionPausedSeconds (guardado tal e qual, mostrado no historico como
+  // "Tempo em pausa") continua a refletir a pausa real, sem cortar
+  // informacao. MAX_RESTING_PAUSE_SECONDS = 1h cobre com folga qualquer
+  // pausa a serio dentro de um treino (fôlego, semaforo, atar o sapato, ate
+  // uma paragem para almoçar numa caminhada longa); so pausas anormais
+  // (app esquecida) deixam de somar calorias alem dessa 1a hora.
+  const pausedSecondsParaCalorias = Math.min(sessionPausedSeconds, MAX_RESTING_PAUSE_SECONDS);
+  const sessionRestingCalories = 1.0 * getPesoKg() * (pausedSecondsParaCalorias / 3600);
   const sessionTotalCalories = sessionCalories + sessionRestingCalories;
 
   const discardReasons = [];
