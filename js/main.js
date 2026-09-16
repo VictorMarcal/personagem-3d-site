@@ -33,7 +33,10 @@ camera.lookAt(0, 1, 0);
 // (settleHeroOnTower/applyTowerModel e exitBattleView), nunca no arranque
 // sincrono.
 const NORMAL_CAMERA_POSITION = { x: 0, y: 1.5, z: 4 };
-const NORMAL_CAMERA_FOV = 45;
+// 45 -> 30 (2026-09-16, a pedido - "as camaras estao muito afastada"): a
+// posicao de CameraIdlePosition (Floor.glb) nao muda, so o FOV, para a
+// personagem/torre aparecerem maiores no ecra sem aproximar a camara.
+const NORMAL_CAMERA_FOV = 30;
 
 // Enquadramento da vista normal COM torre, tudo em funcao de TOWER_TOP_Y (a
 // altura do Empty da personagem) para se adaptar a torres mais altas:
@@ -102,7 +105,9 @@ function applyNormalCamera() {
 // Pedido do Victor com uma imagem de referencia (2026-09-16); os valores
 // fixos abaixo sao so o fallback enquanto floorCameraAtaquePos nao existe.
 const HORDA_CAMERA_POSITION = { x: 0, y: 16, z: 8 };
-const HORDA_CAMERA_FOV = 52;
+// 52 -> 40 (2026-09-16, a pedido - "as camaras estao muito afastada"):
+// menos grande angular, terreno todo continua a caber mas menos "distante".
+const HORDA_CAMERA_FOV = 40;
 
 function applyHordaCamera() {
   camera.fov = HORDA_CAMERA_FOV;

@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.29.1",
+    title: "Câmaras Menos Afastadas",
+    changes: [
+      "As câmaras da aba Eu › Personagem (normal e durante uma horda) já não parecem tão distantes — a personagem e a torre aparecem maiores no ecrã.",
+    ],
+  },
+  {
     version: "v6.29.0",
     title: "Terreno e Câmaras Definitivos da Fortaleza",
     changes: [
