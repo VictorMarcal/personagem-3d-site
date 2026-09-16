@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.31.0",
+    title: "Anel de Alcance",
+    changes: [
+      "Novo: um anel no chão à volta da Fortaleza mostra visualmente o Alcance atual da personagem — cresce quando o nível do Escudo sobe.",
+    ],
+  },
+  {
     version: "v6.30.1",
     title: "Contagem da Horda em Horas",
     changes: [

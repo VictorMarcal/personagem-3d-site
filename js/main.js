@@ -178,6 +178,40 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
+// Anel no chao a mostrar o Alcance atual do heroi (2026-09-16, a pedido -
+// "efeito visual para mostrar o range de ataque"). Centrado na base da
+// torre (origem do mundo - o mesmo ponto usado pela horda para medir
+// distancias, ver alvoHordaMaisProximo() em js/horde.js), raio =
+// computeAttackRangeM(getShieldLevel()) (js/equipment.js). So faz sentido
+// na cena Eu > Personagem, nao na Masmorra - enterBattleView()/
+// exitBattleView() escondem-no/voltam a mostra-lo, tal como os monstros de
+// uma horda (setHordaMonstrosVisible).
+const ATTACK_RANGE_RING_COLOR = 0x5ec8ff;
+const ATTACK_RANGE_RING_THICKNESS_M = 0.08;
+const attackRangeRing = new THREE.Mesh(
+  new THREE.RingGeometry(3.92, 4, 64),
+  new THREE.MeshBasicMaterial({
+    color: ATTACK_RANGE_RING_COLOR,
+    transparent: true,
+    opacity: 0.55,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  })
+);
+attackRangeRing.rotation.x = -Math.PI / 2;
+attackRangeRing.position.y = 0.03; // acima do chao, evita z-fighting
+scene.add(attackRangeRing);
+
+// Chamada por renderStatsHud() (js/equipment.js) sempre que o Alcance pode
+// ter mudado (subir nivel do Escudo) - RingGeometry nao tem um "raio" que
+// se possa so atualizar, por isso recria-se a geometria.
+function updateAttackRangeRing() {
+  if (typeof computeAttackRangeM !== "function" || typeof getShieldLevel !== "function") return;
+  const raio = computeAttackRangeM(getShieldLevel());
+  attackRangeRing.geometry.dispose();
+  attackRangeRing.geometry = new THREE.RingGeometry(Math.max(0.01, raio - ATTACK_RANGE_RING_THICKNESS_M), raio, 64);
+}
+
 // Terreno 3D real (2026-09-09, a pedido - "assets/Floor.glb", cenario puro
 // da aba Eu > Personagem, secção 9). Carregado como vem do editor (sem
 // reescalar), so pousado com a base em Y=0. Substitui o plano `ground`
@@ -237,6 +271,16 @@ function loadSceneryFloor() {
       scene.add(model);
       floorModel = model;
       ground.visible = false;
+
+      // O anel do Alcance (attackRangeRing acima) assumia chao plano em
+      // Y=0 - com o terreno real o chao junto a torre pode estar mais alto
+      // (a base em Y=0 e so o ponto mais baixo do modelo todo). Raycast de
+      // cima para baixo na origem (onde a torre fica sempre) para pousar o
+      // anel a serio em cima do terreno, nao enterrado nele.
+      const raycaster = new THREE.Raycaster();
+      raycaster.set(new THREE.Vector3(0, 200, 0), new THREE.Vector3(0, -1, 0));
+      const hits = raycaster.intersectObject(model, true);
+      if (hits.length > 0) attackRangeRing.position.y = hits[0].point.y + 0.03;
     },
     undefined,
     (err) => console.warn("Falha ao carregar assets/Floor.glb, mantem-se o plano.", err)
@@ -863,6 +907,7 @@ function enterBattleView() {
   // Monstros de uma horda em curso (js/horde.js) ficam escondidos durante a
   // luta da Masmorra - a mecanica so corre fora dela (ver animate() abaixo).
   if (typeof setHordaMonstrosVisible === "function") setHordaMonstrosVisible(false);
+  attackRangeRing.visible = false;
 
   // Modelo real assim que estiver pronto (loadArenaModel acima), chao
   // placeholder ate la (ou para sempre, se a carga tiver falhado).
@@ -888,6 +933,7 @@ function exitBattleView() {
   if (arenaModel) arenaModel.visible = false;
   if (towerModel) towerModel.visible = true;
   if (typeof setHordaMonstrosVisible === "function") setHordaMonstrosVisible(true);
+  attackRangeRing.visible = true;
 
   applyPersonagemCamera();
 }

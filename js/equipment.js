@@ -371,6 +371,7 @@ function renderStatsHud() {
   statDefesaValueEl.textContent = computePlayerDefesa(resistenciaLevel);
   statAlcanceValueEl.textContent = `${computeAttackRangeM(getShieldLevel()).toFixed(2)} m`;
   statVelocidadeAtaqueValueEl.textContent = `${computeAttackSpeed(getWeaponLevel()).toFixed(2)}/s`;
+  if (typeof updateAttackRangeRing === "function") updateAttackRangeRing();
   statRegeneracaoValueEl.textContent = computeRegeneracaoPerSecond(energiaLevel).toFixed(1);
   hudUnspentPointsValueEl.textContent = getUnspentPoints();
 
