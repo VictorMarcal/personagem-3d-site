@@ -1782,17 +1782,24 @@ main {
    3D, mesmo espirito visual do resto da app mas compacto/monospace por ser
    uma ferramenta tecnica, nao UI de jogo. */
 #camera-debug-panel {
-  position: absolute;
-  top: 8px;
+  /* fixed (nao absolute) - 2026-09-16, bug reportado: com "absolute" o
+     painel deslocava-se com o scroll normal da pagina (fica dentro de
+     #viewer) e em telemoveis mais baixos o cabecalho com os separadores
+     Idle/Horda acabava por sair do ecra sem hipotese de lhe voltar a tocar.
+     "fixed" prende-o ao ecra do telemovel/janela, nunca ao documento. */
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top, 0px));
   right: 8px;
   width: 220px;
   max-width: calc(100% - 16px);
+  max-height: calc(100vh - 16px - env(safe-area-inset-top, 0px));
+  overflow-y: auto;
   background: rgba(46, 43, 37, 0.92);
   color: var(--surface-2, #fff);
   border-radius: 10px;
   padding: 10px;
   font-size: 12px;
-  z-index: 20;
+  z-index: 995;
 }
 .camera-debug-header {
   display: flex;
