@@ -277,8 +277,9 @@ button[disabled] {
   opacity: 0.55;
 }
 
-/* A Masmorra fica à vista mas travada até o combate abrir — melhor que
-   escondê-la: a barra de sub-abas não muda de forma quando ela chegar. */
+/* Nota de sub-aba travada, generica - reutilizavel para o proximo
+   sub-separador "em breve" (ex: Arena/PvP). A Masmorra usava isto ate
+   sair da navegação (2026-09-16), quando deu lugar a Fortaleza em Reino. */
 .subpane-locked-note {
   margin: 0 16px 14px;
   padding: 12px 14px;

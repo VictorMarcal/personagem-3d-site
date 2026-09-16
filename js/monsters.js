@@ -170,6 +170,12 @@ function scrollNextTargetIntoView() {
 // Lista vertical com um card por criatura (todos os mini-bosses/bosses
 // gerados, sem janela/limite de itens visiveis).
 function renderMonsters() {
+  // A Masmorra (onde esta lista aparecia) saiu da navegacao (2026-09-16, a
+  // pedido - deu lugar a Fortaleza em Reino) - sem #monsters-list no DOM,
+  // isto e so um no-op defensivo. O resto do ficheiro fica intacto (codigo
+  // morto por agora, nao apagado).
+  if (!monstersListEl) return;
+
   const creatures = generateCreatures();
   const nextIndex = findNextToDefeatIndex(creatures);
 

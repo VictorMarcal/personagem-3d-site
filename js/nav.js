@@ -11,7 +11,8 @@
 
    Estrutura:
      Treinar   — um ecrã, uma ação. Sem sub-abas.
-     Reino     — Mapa · Economia · Masmorra   (tudo o que é "lá fora")
+     Reino     — Mapa · Economia · Fortaleza   (tudo o que é "lá fora";
+                 Masmorra saiu daqui em 2026-09-16, deu lugar a Fortaleza)
      Eu        — Personagem · Troféus · Números   (tudo o que é "meu")
 
    Regra dura: as sub-abas são sempre TRÊS e nunca mudam de ordem. Foi a
@@ -125,7 +126,7 @@
     const tab = grupo.dataset.subtabs;
     grupo.querySelectorAll(".nav-tab").forEach((btn) => {
       btn.addEventListener("click", () => {
-        if (btn.disabled) return; // Masmorra: à vista, mas travada
+        if (btn.disabled) return; // guarda generica para sub-abas futuras travadas (ex: Arena/PvP)
         showSubtab(tab, btn.dataset.subtab);
       });
     });

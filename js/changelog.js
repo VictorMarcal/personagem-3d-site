@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.32.0",
+    title: "Adeus Masmorra, Olá Fortaleza",
+    changes: [
+      "A Masmorra saiu do separador Reino — no lugar dela está agora Fortaleza, com o nível e o limite de armazenamento (antes dentro de Economia).",
+    ],
+  },
+  {
     version: "v6.31.0",
     title: "Anel de Alcance",
     changes: [
