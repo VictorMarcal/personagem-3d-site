@@ -1057,6 +1057,8 @@ A pedido: *"floresta corresponde à mina de madeira, montanha de x cor à mina d
 
 O campo `icone` de `RESOURCE_BY_ID` só é lido no mapa — confirmado sem outros consumidores no código — por isso mudá-lo não afeta o painel da Economia nem mais nenhum sítio.
 
+**Passa a desenhar a imagem ilustrada, não o emoji (2026-09-17)**: assim que o Victor trouxe os ícones ilustrados dos recursos (secção 21, `assets/Icons/Recursos/<id>.png`) para a Economia/Fortaleza/Equipamento, pediu para o mapa passar a usar as mesmas imagens nas minas, em vez do emoji da tabela acima — "não te esqueças de dar update ao icons no mapa" ao substituir o ficheiro da madeira foi o que trouxe isto à superfície: o emoji nunca ia refletir um `.png` novo. `drawHexGrid()` (`js/hexes.js`) desenhava os emoji com `ctx.fillText()`; canvas não tem um equivalente direto para imagens, por isso os 5 `.png` (mesmos `ICON_IMAGE_NAMES`/`ICON_IMAGE_BASE_PATH`/`ICON_IMAGE_V` de `js/icons.js`) são pré-carregados uma única vez em `mineIconImages` (`new Image()`, carrega antes de `js/hexes.js`) e desenhados com `ctx.drawImage()` a cada redesenho do canvas. A tabela de emoji acima **fica como fallback** — só usada enquanto uma imagem ainda não carregou (o primeiro desenho do mapa numa sessão) ou se um dia faltar algum ficheiro; nunca fica sem ícone nenhum. O halo escuro (duas passagens com sombra + uma limpa, para o ícone não desaparecer em fundos claros) aplica-se aos dois casos.
+
 #### Concelho, não distrito
 
 O que se **desbloqueia é o concelho**. O distrito é grande demais para ser objetivo:

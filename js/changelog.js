@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.36.0",
+    title: "Ícones dos Recursos Também no Mapa",
+    changes: [
+      "As minas encontradas no mapa passam a mostrar os mesmos ícones ilustrados usados na Economia, em vez do desenho simples de antes.",
+      "Ícone da Madeira atualizado.",
+    ],
+  },
+  {
     version: "v6.35.0",
     title: "Ícones Novos dos Recursos",
     changes: [

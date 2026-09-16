@@ -235,6 +235,32 @@ function rebuildTerritoryOutline() {
   territoryOutline = ids.length ? h3.cellsToMultiPolygon(ids).flat() : [];
 }
 
+// Icones das minas no mapa (2026-09-17, a pedido - "nao te esqueças de dar
+// update ao icons no mapa") - as mesmas imagens ilustradas de js/icons.js
+// (ICON_IMAGE_NAMES/ICON_IMAGE_BASE_PATH/ICON_IMAGE_V, carrega antes deste
+// ficheiro), pre-carregadas UMA VEZ e reaproveitadas em cada desenho do
+// canvas (drawHexGrid corre a cada pan/zoom do Leaflet) - ctx.drawImage()
+// precisa de um Image() ja carregado, ao contrario do ctx.fillText() de um
+// emoji, que nao precisa de mais nada. Atualizar um destes .png (o Victor
+// so tem de substituir o ficheiro) aparece aqui automaticamente, sem tocar
+// em código - e exatamente o que faltava antes desta mudança.
+// Lado do icone desenhado no mapa, em px de ecra - antes disto era so o
+// tamanho da fonte do emoji (19px); mantido parecido para o footprint no
+// mapa nao mudar de repente.
+const MINE_ICON_SIZE_PX = 22;
+const mineIconImages = {};
+if (typeof ICON_IMAGE_NAMES !== "undefined") {
+  ICON_IMAGE_NAMES.forEach((id) => {
+    const img = new Image();
+    img.src = ICON_IMAGE_BASE_PATH + id + ".png?v=" + ICON_IMAGE_V;
+    // So uma mina ja encontrada e visivel nesse momento beneficia de um
+    // redesenho extra ao carregar - sem isto, a 1a mina ficava com o
+    // emoji de recurso (fallback abaixo) ate ao proximo pan/zoom.
+    img.onload = () => { if (typeof redrawHexMap === "function") redrawHexMap(); };
+    mineIconImages[id] = img;
+  });
+}
+
 function drawHexGrid() {
   if (!hexMap || !hexCanvas) return;
   const size = hexMap.getSize();
@@ -275,6 +301,7 @@ function drawHexGrid() {
   if (typeof todasAsMinas === "function") {
     const encontradas = getMinasEncontradas();
     const visitas = typeof getHexVisits === "function" ? getHexVisits() : {};
+    // So usados no fallback ao emoji, ver dentro do forEach abaixo.
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = "19px system-ui, -apple-system, sans-serif";
@@ -296,15 +323,28 @@ function drawHexGrid() {
         ctx.stroke();
       }
 
+      // Icone ilustrado (mineIconImages, ver acima) se ja tiver carregado;
+      // fallback ao emoji de RESOURCE_BY_ID[...].icone enquanto isso nao
+      // acontece (so no 1o desenho do mapa numa sessao) ou se um dia faltar
+      // algum ficheiro - nunca fica sem icone nenhum.
+      //
       // Halo escuro em duas passagens e uma limpa por cima: o fundo
-      // desfocado varia de escuro a claro e um emoji sem contraste proprio
-      // desaparece nos claros.
+      // desfocado varia de escuro a claro e um icone sem contraste proprio
+      // desaparece nos claros. Aplica-se aos dois casos (drawImage tambem
+      // respeita shadowColor/shadowBlur, nao so fillText).
+      const img = mineIconImages[mina.recurso];
       ctx.shadowColor = "rgba(0,0,0,0.9)";
-      ctx.shadowBlur = 6;
-      ctx.fillText(RESOURCE_BY_ID[mina.recurso].icone, p.x, p.y);
-      ctx.fillText(RESOURCE_BY_ID[mina.recurso].icone, p.x, p.y);
-      ctx.shadowBlur = 0;
-      ctx.fillText(RESOURCE_BY_ID[mina.recurso].icone, p.x, p.y);
+      if (img && img.complete && img.naturalWidth > 0) {
+        ctx.shadowBlur = 6;
+        ctx.drawImage(img, p.x - MINE_ICON_SIZE_PX / 2, p.y - MINE_ICON_SIZE_PX / 2, MINE_ICON_SIZE_PX, MINE_ICON_SIZE_PX);
+        ctx.shadowBlur = 0;
+      } else {
+        ctx.shadowBlur = 6;
+        ctx.fillText(RESOURCE_BY_ID[mina.recurso].icone, p.x, p.y);
+        ctx.fillText(RESOURCE_BY_ID[mina.recurso].icone, p.x, p.y);
+        ctx.shadowBlur = 0;
+        ctx.fillText(RESOURCE_BY_ID[mina.recurso].icone, p.x, p.y);
+      }
     });
   }
 
