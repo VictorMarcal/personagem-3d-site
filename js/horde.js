@@ -27,14 +27,18 @@
 //   - Sem modelos 3D reais ainda: placeholder (capsula+esfera, o mesmo
 //     desenho do monstro da Masmorra em js/main.js, so que a cores
 //     diferentes para nao confundir os dois).
+//   - Camara muda para uma vista de cima (applyHordaCamera, js/main.js)
+//     enquanto a horda dura (2026-09-16, a pedido, imagem de referencia com
+//     o terreno todo a vista), e volta a normal (applyNormalCamera) ao
+//     terminar.
 //
 // TESTE (a pedido): HORDE_INTERVAL_MS esta em 1 minuto para se poder testar
 // varias hordas seguidas sem esperar - a UNICA linha a mudar quando isto for
 // para produção é essa (23h = 23 * 60 * 60 * 1000).
 //
 // Depende de: js/main.js (scene, camera, character, bow, head, canvas,
-// shootArrow, showFloatingCombatText, battleInProgress via js/battle.js),
-// js/battle.js (computeBattleDamage), js/equipment.js
+// shootArrow, showFloatingCombatText, battleInProgress via js/battle.js,
+// applyHordaCamera/applyNormalCamera), js/battle.js (computeBattleDamage), js/equipment.js
 // (computePlayerAtaque/Defesa/Vida, computeAttackSpeed/computeAttackRangeM,
 // getWeaponLevel/getShieldLevel, getEffectiveInvestableStatLevel,
 // getCurrentHp/setCurrentHp, renderStatsHud, showGameToast), js/resources.js
@@ -195,6 +199,14 @@ function iniciarHorda() {
     showGameToast(`Horda a atacar a Fortaleza! (${numero} monstro${numero > 1 ? "s" : ""})`, "aviso");
   }
   renderHordaWarning();
+
+  // Vista de cima (js/main.js) enquanto a horda dura, para se ver o terreno
+  // todo a volta da torre - so troca se a cena Eu > Personagem estiver
+  // mesmo em uso (nao durante uma luta na Masmorra, que ja tem a sua
+  // propria camara e ignora isto ao entrar/sair - ver applyPersonagemCamera).
+  if (typeof battleInProgress === "undefined" || !battleInProgress) {
+    if (typeof applyHordaCamera === "function") applyHordaCamera();
+  }
 }
 
 function terminarHorda() {
@@ -217,6 +229,11 @@ function terminarHorda() {
     }
   }
   renderHordaWarning();
+
+  // updateHordeAttack() (chamada que leva a terminarHorda()) so corre fora
+  // de uma luta na Masmorra, por isso aqui e sempre seguro voltar a vista
+  // normal (ver o mesmo "if" em iniciarHorda() acima).
+  if (typeof applyNormalCamera === "function") applyNormalCamera();
 }
 
 // --- ataque dos monstros a torre ---------------------------------------------

@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.28.2",
+    title: "Câmara de Cima nas Hordas",
+    changes: [
+      "Durante um ataque à Fortaleza, a câmara sobe e afasta-se para se ver o terreno todo à volta da torre, em vez de ficar presa perto da personagem.",
+    ],
+  },
+  {
     version: "v6.28.1",
     title: "Derrota Termina a Horda",
     changes: [

@@ -67,6 +67,34 @@ function applyNormalCamera() {
   camera.lookAt(0, character.position.y * CAM_TARGET_FACTOR, 0);
 }
 
+// Vista de cima durante uma horda (js/horde.js) - fixa, mais alta e mais
+// recuada que a vista normal, para se ver o terreno todo a volta da torre
+// (onde os monstros aparecem/marcham) em vez de so a personagem em primeiro
+// plano. Pedido do Victor com uma imagem de referencia (2026-09-16): angulo
+// bem mais de topo que a camara normal, terreno inteiro a vista - valores
+// de partida, por afinar depois a olho.
+const HORDA_CAMERA_POSITION = { x: 0, y: 16, z: 8 };
+const HORDA_CAMERA_FOV = 52;
+
+function applyHordaCamera() {
+  camera.fov = HORDA_CAMERA_FOV;
+  camera.updateProjectionMatrix();
+  camera.position.set(HORDA_CAMERA_POSITION.x, HORDA_CAMERA_POSITION.y, HORDA_CAMERA_POSITION.z);
+  camera.lookAt(0, 0, 0);
+}
+
+// Escolhe a vista de topo da horda quando uma esta em curso, senao a normal
+// - ha mais de um ponto de retorno para a camara da cena Eu > Personagem
+// (fim de luta na Masmorra, modelos a carregar pela primeira vez), e todos
+// precisam de respeitar uma horda que continue em curso nesse momento.
+function applyPersonagemCamera() {
+  if (typeof hordaEmCurso !== "undefined" && hordaEmCurso) {
+    applyHordaCamera();
+  } else {
+    applyNormalCamera();
+  }
+}
+
 // --- Custo de desenho (2026-09-07, "a app drena demasiada bateria") --------
 //
 // devicePixelRatio sem teto era o maior desperdicio: num telemovel com DPR 3
@@ -208,7 +236,7 @@ function settleHeroOnTower() {
   if (!heroModelReady || !towerModel) return;
   if (typeof battleInProgress !== "undefined" && battleInProgress) return;
   character.position.copy(TOWER_PLAYER_POS);
-  applyNormalCamera();
+  applyPersonagemCamera();
 }
 
 // Poe o modelo `model` como a torre atual: tira o anterior da cena,
@@ -803,7 +831,7 @@ function exitBattleView() {
   if (towerModel) towerModel.visible = true;
   if (typeof setHordaMonstrosVisible === "function") setHordaMonstrosVisible(true);
 
-  applyNormalCamera();
+  applyPersonagemCamera();
 }
 
 // "Lunge" de ataque (2026-08-07, a pedido) - quem ataca avanca parte do
