@@ -24,7 +24,7 @@ const camera = new THREE.PerspectiveCamera(
 camera.position.set(0, 1.5, 4);
 camera.lookAt(0, 1, 0);
 
-// Vista normal da aba Eu > Personagem (o detalhe do angulo/FOV, e a camara
+// Vista normal da aba Reino > Fortaleza (o detalhe do angulo/FOV, e a camara
 // da luta, estao documentados mais abaixo junto a BATTLE_CAMERA_POSITION).
 // z fixo; a altura e o alvo sobem com o heroi quando ele passa para o topo
 // da torre (TOWER_TOP_Y = altura do Empty da personagem) - com
@@ -120,7 +120,7 @@ function applyHordaCamera() {
 }
 
 // Escolhe a vista de topo da horda quando uma esta em curso, senao a normal
-// - ha mais de um ponto de retorno para a camara da cena Eu > Personagem
+// - ha mais de um ponto de retorno para a camara da cena Reino > Fortaleza
 // (fim de luta na Masmorra, modelos a carregar pela primeira vez), e todos
 // precisam de respeitar uma horda que continue em curso nesse momento.
 function applyPersonagemCamera() {
@@ -183,7 +183,7 @@ scene.add(ground);
 // torre (origem do mundo - o mesmo ponto usado pela horda para medir
 // distancias, ver alvoHordaMaisProximo() em js/horde.js), raio =
 // computeAttackRangeM(getShieldLevel()) (js/equipment.js). So faz sentido
-// na cena Eu > Personagem, nao na Masmorra - enterBattleView()/
+// na cena Reino > Fortaleza, nao na Masmorra - enterBattleView()/
 // exitBattleView() escondem-no/voltam a mostra-lo, tal como os monstros de
 // uma horda (setHordaMonstrosVisible).
 const ATTACK_RANGE_RING_COLOR = 0x5ec8ff;
@@ -213,7 +213,7 @@ function updateAttackRangeRing() {
 }
 
 // Terreno 3D real (2026-09-09, a pedido - "assets/Floor.glb", cenario puro
-// da aba Eu > Personagem, secção 9). Carregado como vem do editor (sem
+// da aba Reino > Fortaleza, secção 9). Carregado como vem do editor (sem
 // reescalar), so pousado com a base em Y=0. Substitui o plano `ground`
 // acima assim que fica pronto; se falhar, o plano fica.
 let floorModel = null;
@@ -900,7 +900,7 @@ function enterBattleView() {
   monster.rotation.y = 0;
   monster.visible = true;
 
-  // A torre e o cenario da aba Eu > Personagem; a luta e ao nivel do chao
+  // A torre e o cenario da aba Reino > Fortaleza; a luta e ao nivel do chao
   // da arena, com o heroi de volta a Y=0.
   if (towerModel) towerModel.visible = false;
 

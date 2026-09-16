@@ -121,12 +121,13 @@ function renderResourcesPanel() {
 }
 
 
-// --- carteira em Eu › Personagem -------------------------------------------
+// --- carteira em Reino › Fortaleza ------------------------------------------
 //
 // O stock passa a aparecer TAMBEM onde e gasto, em cima do equipamento. Era
-// o corte no ciclo: andar gera recursos (Reino), os recursos so servem para
-// melhorar equipamento (Eu), e as duas coisas viviam em separadores
-// diferentes sem se mencionarem.
+// o corte no ciclo: andar gera recursos (Reino), e os recursos so servem
+// para melhorar equipamento - hoje no mesmo separador (Reino › Fortaleza,
+// 2026-09-16 - antes era Eu › Personagem, um separador diferente sem se
+// mencionarem).
 
 function renderWallet() {
   const el = document.getElementById("equipment-wallet");

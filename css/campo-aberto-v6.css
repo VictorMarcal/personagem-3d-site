@@ -82,9 +82,10 @@
 
 /* ---- 5. Navegação ------------------------------------------------------- */
 
-/* Sub-abas: sempre TRÊS e sempre na mesma ordem. Foi a ordem variável
-   (Campo, Masmorra oculta, Arena oculta, Missões) que tornou o "Mundo"
-   ilegível — uma barra que muda de forma pelas costas do jogador. */
+/* Sub-abas: sempre na mesma ordem (Reino continua a ser sempre TRÊS; Eu
+   passou a ser DUAS em 2026-09-16, a pedido - Personagem saiu para Reino ›
+   Fortaleza). `flex:1` em .nav-tab abaixo não assume nenhum número fixo de
+   botões, por isso a exceção não pediu nenhuma alteração aqui. */
 .subtabs {
   display: flex;
   gap: 6px;
@@ -322,19 +323,20 @@ button[disabled] {
 }
 .reino-stat-value { font: 400 22px var(--font-heading); }
 
-/* ---- 10. Palco 3D em Eu › Personagem ---------------------------------- */
+/* ---- 10. Palco 3D em Reino › Fortaleza --------------------------------- */
 
 /* O palco (#viewer-stage) deixou de estar duplicado: vive só dentro da
-   sub-aba Eu › Personagem (.subpane[data-subpane-name="personagem"]). A
-   regra do style.css que o mostrava — #view-jogo[data-pane="personagem"|
-   "mundo"] — já não bate com nada: os panes passaram a chamar-se treinar/
-   reino/eu. Sem este override, #view-jogo:not([data-pane="personagem"])
+   sub-aba Reino › Fortaleza (.subpane[data-subpane-name="fortaleza"] -
+   mudou-se de Eu › Personagem em 2026-09-16, a pedido). A regra do
+   style.css que o mostrava — #view-jogo[data-pane="personagem"|"mundo"] —
+   já não bate com nada: os panes chamam-se treinar/reino/eu. Sem este
+   override, #view-jogo:not([data-pane="personagem"])
    :not([data-pane="mundo"]) #viewer-stage{display:none} do style.css
    escondia o modelo 3D para sempre. A visibilidade passa a ser só a do
    .subpane que o contém (.subpane:not(.active){display:none} trata do
    resto); a luta em ecrã inteiro continua a vir do :has(.battle-fullscreen)
    do style.css. */
-#view-jogo[data-pane="eu"] .subpane[data-subpane-name="personagem"].active #viewer-stage {
+#view-jogo[data-pane="reino"] .subpane[data-subpane-name="fortaleza"].active #viewer-stage {
   display: block;
 }
 

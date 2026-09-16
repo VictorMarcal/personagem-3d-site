@@ -1,6 +1,6 @@
 // Hordas de inimigos (2026-09-16, a pedido via Trello - "Hordas de inimigos
 // a cada 23h"). De tempos a tempos, monstros aparecem perto da Fortaleza (na
-// cena 3D partilhada da aba Eu > Personagem, NAO na arena da Masmorra) e
+// cena 3D partilhada da aba Reino > Fortaleza, NAO na arena da Masmorra) e
 // avançam para a atacar; a personagem defende-se sozinha, com a mesma logica
 // de auto-ataque/dano da Masmorra (js/battle.js), so que aplicada a esta
 // cena. So corre fora de uma luta na Masmorra (`battleInProgress`).
@@ -234,7 +234,7 @@ function iniciarHorda() {
   renderHordaWarning();
 
   // Vista de cima (js/main.js) enquanto a horda dura, para se ver o terreno
-  // todo a volta da torre - so troca se a cena Eu > Personagem estiver
+  // todo a volta da torre - so troca se a cena Reino > Fortaleza estiver
   // mesmo em uso (nao durante uma luta na Masmorra, que ja tem a sua
   // propria camara e ignora isto ao entrar/sair - ver applyPersonagemCamera).
   if (typeof battleInProgress === "undefined" || !battleInProgress) {
@@ -487,7 +487,7 @@ function setHordaMonstrosVisible(visivel) {
   });
 }
 
-// --- aviso na aba Eu > Personagem --------------------------------------------
+// --- aviso na aba Reino > Fortaleza ------------------------------------------
 
 // hh:mm:ss (2026-09-16, a pedido - antes era so mm:ss, ilegivel agora que
 // HORDE_INTERVAL_MS e 23h em vez de minutos).

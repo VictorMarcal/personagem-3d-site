@@ -5,7 +5,7 @@
 // nao esta presente.
 //
 // Deixa mexer ao vivo na posição/FOV/alvo ("olhar para") das duas câmaras da
-// aba Eu > Personagem (idle e horda), partindo sempre da posição atual
+// aba Reino > Fortaleza (idle e horda), partindo sempre da posição atual
 // (CameraIdlePosition/CameraAtackPosition do Floor.glb, ou o fallback do
 // código se o terreno ainda não tiver esses Empties - ver js/main.js). O
 // campo de leitura no fundo do painel mostra os valores finais em texto,

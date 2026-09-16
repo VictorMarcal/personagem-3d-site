@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.33.0",
+    title: "Personagem Muda-se para a Fortaleza",
+    changes: [
+      "A secção Personagem inteira (visualizador 3D, XP, stats, equipamento) saiu de Eu e juntou-se ao card da Fortaleza em Reino.",
+      "Eu fica só com Troféus e Números.",
+    ],
+  },
+  {
     version: "v6.32.0",
     title: "Adeus Masmorra, Olá Fortaleza",
     changes: [

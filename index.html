@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="css/style.css?v=20260916b">
   <!-- Patch v6: contraste, cor semântica, superfícies, ícones, sub-abas.
        DEPOIS do style.css de propósito — só sobrepõe o que muda. -->
-  <link rel="stylesheet" href="css/campo-aberto-v6.css?v=20260916a">
+  <link rel="stylesheet" href="css/campo-aberto-v6.css?v=20260916b">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -92,7 +92,7 @@
     <div class="site-title-group">
       <h1 id="site-title">Personagem 3D</h1>
       <span id="site-title-level" class="site-title-level">Nível 1</span>
-      <span id="site-version" class="site-version-hero">v6.32.0</span>
+      <span id="site-version" class="site-version-hero">v6.33.0</span>
     </div>
     <!-- Navegacao antiga: continua no DOM porque js/profile.js e js/battle.js
          dependem destes dois botoes. Fica invisivel (.legacy-nav no CSS) - a
@@ -108,11 +108,15 @@
     <!-- Sub-abas do "Eu" — FORA do #view-jogo de propósito: "Números" delega
          no #view-perfil (js/profile.js), que esconde o #view-jogo inteiro.
          Se esta barra vivesse lá dentro, desaparecia ao entrar em Números e
-         não havia como voltar a Personagem/Troféus. js/nav.js mostra-a só
-         quando o separador "Eu" está ativo. -->
+         não havia como voltar a Troféus. js/nav.js mostra-a só quando o
+         separador "Eu" está ativo.
+         "Personagem" saiu daqui (2026-09-16, a pedido) - a secção inteira
+         (visualizador 3D, stats, equipamento) mudou-se para Reino ›
+         Fortaleza, e passou a chamar-se assim. Eu fica só com 2 sub-abas
+         (quebra a regra antiga das "sempre 3" - decisão explícita do
+         Victor ao pedir a mudança). -->
     <div id="eu-subtabs" class="nav-tabs subtabs hidden" data-subtabs="eu" role="tablist">
-      <button class="nav-tab active" type="button" data-subtab="personagem">Personagem</button>
-      <button class="nav-tab" type="button" data-subtab="trofeus">Troféus</button>
+      <button class="nav-tab active" type="button" data-subtab="trofeus">Troféus</button>
       <button class="nav-tab" type="button" data-subtab="numeros">Números</button>
     </div>
 
@@ -120,7 +124,7 @@
 
     <!-- ======================================================================
          Separador 1: TREINAR — um ecrã, uma ação.
-         O palco 3D saiu daqui (vive só em Eu › Personagem): custava o
+         O palco 3D saiu daqui (vive só em Reino › Fortaleza): custava o
          primeiro ecrã inteiro no separador que existe para começar um treino.
          ====================================================================== -->
     <div class="pane active" data-pane-name="treinar">
@@ -238,10 +242,11 @@
 
     <!-- ======================================================================
          Separador 2: REINO — tudo o que é "lá fora".
-         Mapa · Economia · Masmorra. Sempre três, sempre nesta ordem.
-         O armazém saiu do cartão do mapa e passou para a Economia, ao lado
-         da produção que ele limita: era um cartão a fazer três trabalhos
-         (explorar, produzir, construir).
+         Mapa · Economia · Fortaleza (era Masmorra até 2026-09-16).
+         O armazém saiu do cartão do mapa e passou para a Economia, e depois
+         (2026-09-16) para o seu próprio sub-separador Fortaleza, que também
+         herdou a secção Personagem inteira (visualizador 3D, stats,
+         equipamento) - ver comentário mais abaixo, junto à subpane.
          ====================================================================== -->
     <div class="pane" data-pane-name="reino">
       <div class="nav-tabs subtabs" data-subtabs="reino" role="tablist">
@@ -272,27 +277,16 @@
         <section class="card">
           <!-- Preenchido por renderResourcesPanel() em js/resources-ui.js -->
           <div id="resources-panel" class="resources-panel"></div>
-          <p class="hex-map-hint">Os recursos gastam-se em <strong>Eu › Personagem</strong>, para melhorar equipamento.</p>
+          <p class="hex-map-hint">Os recursos gastam-se em <strong>Reino › Fortaleza</strong>, para melhorar equipamento.</p>
         </section>
       </div>
 
+      <!-- Fortaleza (2026-09-16, a pedido - "a secção Personagem passa a
+           chamar-se Fortaleza e esta passa para a zona do Reino"): a antiga
+           secção Eu › Personagem inteira (visualizador 3D, XP, stats,
+           equipamento) mudou-se para aqui, junto ao card do nível/limite do
+           armazém que já cá estava. -->
       <div class="subpane" data-subpane-name="fortaleza">
-        <section class="card">
-          <!-- Preenchido por renderResourcesPanel() em js/resources-ui.js
-               (mesma função que preenche #resources-panel em Economia -
-               so mudou de sub-separador, a lógica é a mesma). -->
-          <div id="warehouse-panel" class="warehouse-panel"></div>
-        </section>
-      </div>
-    </div>
-
-    <!-- ======================================================================
-         Separador 3: EU — tudo o que é "meu".
-         Personagem · Troféus · Números.
-         ====================================================================== -->
-    <div class="pane" data-pane-name="eu">
-
-      <div class="subpane active" data-subpane-name="personagem">
         <div id="viewer-stage">
           <div id="viewer">
             <canvas id="viewer-canvas"></canvas>
@@ -409,20 +403,35 @@
           </div>
         </div>
 
+        <section class="card">
+          <!-- Preenchido por renderResourcesPanel() em js/resources-ui.js
+               (mesma função que preenche #resources-panel em Economia -
+               so mudou de sub-separador, a lógica é a mesma). -->
+          <div id="warehouse-panel" class="warehouse-panel"></div>
+        </section>
+
         <!-- Equipamento: um card por peça, no molde do card da Fortaleza
-             (Reino › Economia) — o botão "Melhorar" e o custo estão à vista,
-             sem popup. O stock aparece por cima: era o corte no ciclo —
-             andar rende recursos (Reino), os recursos só servem para
-             melhorar equipamento (Eu). js/equipment.js preenche
-             #equipment-cards. -->
+             acima — o botão "Melhorar" e o custo estão à vista, sem popup.
+             O stock aparece por cima: era o corte no ciclo — andar rende
+             recursos (Reino), os recursos só servem para melhorar
+             equipamento (agora no mesmo separador). js/equipment.js
+             preenche #equipment-cards. -->
         <section class="card" id="equipment-card">
           <h2 class="card-title">Equipamento</h2>
           <div id="equipment-wallet" class="wallet"></div>
           <div id="equipment-cards"></div>
         </section>
       </div>
+    </div>
 
-      <div class="subpane" data-subpane-name="trofeus">
+    <!-- ======================================================================
+         Separador 3: EU — tudo o que é "meu".
+         Troféus · Números (Personagem saiu daqui 2026-09-16, ver Reino ›
+         Fortaleza).
+         ====================================================================== -->
+    <div class="pane" data-pane-name="eu">
+
+      <div class="subpane active" data-subpane-name="trofeus">
         <section id="achievements-card" class="card">
           <h2 class="card-title">Conquistas</h2>
           <div id="achievements-summary" class="achievements-grid"></div>
@@ -584,25 +593,25 @@
   <script src="js/auth.js?v=20260914b"></script>
   <script src="js/progress-sync.js?v=20260915a"></script>
   <script src="js/leaderboard.js?v=20260810d"></script>
-  <script src="js/main.js?v=20260916h"></script>
-  <script src="js/camera-debug.js?v=20260916a"></script>
+  <script src="js/main.js?v=20260916i"></script>
+  <script src="js/camera-debug.js?v=20260916b"></script>
   <script src="js/game-config.js?v=20260916a"></script>
   <script src="js/equipment.js?v=20260916b"></script>
   <script src="js/experience.js?v=20260814a"></script>
   <script src="js/monsters.js?v=20260916a"></script>
   <script src="js/monthly-medals.js?v=20260810d"></script>
   <script src="js/battle.js?v=20260916a"></script>
-  <script src="js/horde.js?v=20260916j"></script>
+  <script src="js/horde.js?v=20260916k"></script>
   <script src="js/resources.js?v=20260916a"></script>
   <script src="js/hexes.js?v=20260914c"></script>
-  <script src="js/resources-ui.js?v=20260916a"></script>
+  <script src="js/resources-ui.js?v=20260916b"></script>
   <script src="js/training.js?v=20260915c"></script>
   <script src="js/weight.js?v=20260912b"></script>
   <script src="js/profile.js?v=20260914a"></script>
-  <script src="js/changelog.js?v=20260916o"></script>
+  <script src="js/changelog.js?v=20260916p"></script>
   <script src="js/achievements.js?v=20260911b"></script>
   <script src="js/missions.js?v=20260915h"></script>
   <script src="js/orientation.js?v=20260806p"></script>
-  <script src="js/nav.js?v=20260916b"></script>
+  <script src="js/nav.js?v=20260916c"></script>
 </body>
 </html>

@@ -12,12 +12,18 @@
    Estrutura:
      Treinar   — um ecrã, uma ação. Sem sub-abas.
      Reino     — Mapa · Economia · Fortaleza   (tudo o que é "lá fora";
-                 Masmorra saiu daqui em 2026-09-16, deu lugar a Fortaleza)
-     Eu        — Personagem · Troféus · Números   (tudo o que é "meu")
+                 Masmorra saiu daqui em 2026-09-16. Fortaleza herdou o
+                 lugar dela E a secção Personagem inteira, que saiu de Eu)
+     Eu        — Troféus · Números   (tudo o que é "meu"; Personagem saiu
+                 daqui em 2026-09-16, a pedido explícito - ver Fortaleza
+                 acima. Fica com 2 sub-abas, não 3.)
 
-   Regra dura: as sub-abas são sempre TRÊS e nunca mudam de ordem. Foi a
-   ordem variável (Campo, Masmorra oculta, Arena oculta, Missões) que tornou
-   o "Mundo" ilegível.
+   Regra dura (agora só para Reino): as sub-abas são sempre TRÊS e nunca
+   mudam de ordem. Foi a ordem variável (Campo, Masmorra oculta, Arena
+   oculta, Missões) que tornou o "Mundo" ilegível. Eu deixou de seguir esta
+   regra por pedido explícito (2026-09-16) - showSubtab()/subAtiva não
+   assumem nenhum número fixo de sub-abas, por isso a exceção não pediu
+   nenhuma alteração de fundo.
 
    Como antes, NÃO substitui a navegação antiga: continua a clicar nos botões
    #btn-nav-jogo / #btn-nav-perfil (invisíveis) para que js/profile.js e
@@ -48,7 +54,7 @@
   // aberta: voltar a "Reino" volta ao Mapa se nunca se mexeu, senão à última
   // vista. Sem isto, cada ida ao separador recomeça do zero e o jogador
   // reaprende o caminho todas as vezes.
-  const subAtiva = { reino: "mapa", eu: "personagem" };
+  const subAtiva = { reino: "mapa", eu: "trofeus" };
   try {
     const guardado = JSON.parse(localStorage.getItem(SUBTAB_KEY) || "{}");
     if (guardado.reino) subAtiva.reino = guardado.reino;
@@ -104,16 +110,16 @@
     }
 
     // O #viewer só tem dimensões quando está visível — sem isto o canvas
-    // ficava com o tamanho que tinha ao ser escondido. O palco 3D agora vive
-    // só em Eu › Personagem (deixou de estar duplicado no Campo).
-    if (tab === "eu" && sub === "personagem" && typeof onResize === "function") {
+    // ficava com o tamanho que tinha ao ser escondido. O palco 3D vive em
+    // Reino › Fortaleza (2026-09-16, mudou-se de Eu › Personagem).
+    if (tab === "reino" && sub === "fortaleza" && typeof onResize === "function") {
       requestAnimationFrame(() => onResize());
     }
 
     // A carteira de recursos e os cards de equipamento aparecem juntos: é o
     // que liga "andar rende" a "melhorar custa". Redesenhados ao abrir a aba
     // para o custo/estado do botão "Melhorar" refletirem o stock atual.
-    if (tab === "eu" && sub === "personagem") {
+    if (tab === "reino" && sub === "fortaleza") {
       if (typeof renderWallet === "function") renderWallet();
       if (typeof renderEquipmentCards === "function") renderEquipmentCards();
       // Aviso de horda (js/horde.js) - so conta ao vivo com a aba a vista,
