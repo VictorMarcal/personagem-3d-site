@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.27.2",
+    title: "Hordas Mais Frequentes (Teste)",
+    changes: [
+      "Fase de testes: as hordas passam a acontecer de 1 em 1 minuto, em vez de 5 em 5.",
+    ],
+  },
+  {
     version: "v6.27.1",
     title: "Fortaleza Pode Ser Saqueada",
     changes: [

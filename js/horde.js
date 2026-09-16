@@ -24,7 +24,7 @@
 //     desenho do monstro da Masmorra em js/main.js, so que a cores
 //     diferentes para nao confundir os dois).
 //
-// TESTE (a pedido): HORDE_INTERVAL_MS esta em 5 minutos para se poder testar
+// TESTE (a pedido): HORDE_INTERVAL_MS esta em 1 minuto para se poder testar
 // varias hordas seguidas sem esperar - a UNICA linha a mudar quando isto for
 // para produção é essa (23h = 23 * 60 * 60 * 1000).
 //
@@ -37,7 +37,7 @@
 // saveResources), js/resources-ui.js (renderResourcesPanel, renderWallet),
 // js/storage-keys.js (STORAGE_KEY_HORDE). Carrega depois de todos eles.
 
-const HORDE_INTERVAL_MS = 5 * 60 * 1000; // TESTE - produção final: 23 * 60 * 60 * 1000
+const HORDE_INTERVAL_MS = 1 * 60 * 1000; // TESTE - produção final: 23 * 60 * 60 * 1000
 const HORDE_WALK_SPEED_MPS = 1;
 const HORDE_ATTACK_INTERVAL_MS = 1000;
 const HORDE_ATTACK_RANGE_M = 1.2; // distancia da base da torre a que se considera "chegou"
@@ -171,7 +171,7 @@ function iniciarHorda() {
   // A contagem/agenda da PROXIMA horda fica logo marcada ao iniciar esta,
   // não so ao terminar - simplificação deliberada (ver comentário acima do
   // estado persistido); a diferença é so o tempo que esta horda demora a
-  // ser repelida (segundos), irrelevante face ao intervalo de 5 min/23h.
+  // ser repelida (segundos), irrelevante face ao intervalo de 1 min/23h.
   saveHordaState({ contagem: numero, proximaEm: Date.now() + HORDE_INTERVAL_MS });
 
   if (typeof showGameToast === "function") {

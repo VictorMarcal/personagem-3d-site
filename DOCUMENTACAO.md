@@ -1401,7 +1401,7 @@ dificil: [correr_km, caminhar_km, descobre_concelho]
 - A personagem dispara sozinha **1×/segundo**, num raio de **4 metros** da base da torre.
 - **Se a Vida chegar a 0, a Fortaleza é saqueada** (2ª parte do pedido, mesmo dia): cada monstro ainda vivo NESSE MOMENTO rouba `HORDE_ROUBO_POR_RECURSO` (10) unidades de **cada um dos 5 recursos**. Só acontece **uma vez por horda** — não volta a roubar a cada ataque seguinte enquanto a Vida ficar a 0 (`hordaRouboJaAconteceu`, reposto a `false` no início de cada horda).
 - Sem modelos 3D ainda → **placeholder**: a mesma cápsula+esfera do monstro da Masmorra (`js/main.js`), só que roxa em vez de vermelha, para não se confundirem visualmente.
-- **Intervalo de teste**: `HORDE_INTERVAL_MS = 5 min` (`js/horde.js`) — a pedido, para testar várias hordas seguidas sem esperar 23h. É a única constante a mudar para produção (`23 * 60 * 60 * 1000`).
+- **Intervalo de teste**: `HORDE_INTERVAL_MS = 1 min` (`js/horde.js`, era 5 min) — a pedido, para testar várias hordas seguidas sem esperar 23h. É a única constante a mudar para produção (`23 * 60 * 60 * 1000`).
 
 ### Pontos de partida: Empties no terreno
 
@@ -1418,7 +1418,7 @@ Os ataques dos monstros tiram dano à **Vida atual do jogador** — `getCurrentH
 - **Movimento e alcance medidos a partir da base da torre** (origem X/Z, `(0,0)` — o mesmo ponto onde `applyTowerModel` centra o modelo), não da posição exata do herói no topo dela — simplificação deliberada, mais previsível do que reler `character.position` a cada frame.
 - `updateHordeAttack(dtSeconds)` é chamada por `animate()` (`js/main.js`), só quando **não** há uma luta da Masmorra em curso (`battleInProgress`) — o auto-ataque da arena já tem a sua própria chamada ali ao lado.
 - `enterBattleView()`/`exitBattleView()` (`js/main.js`) chamam `setHordaMonstrosVisible(false/true)` — os monstros de uma horda em curso ficam escondidos e **congelados** durante uma luta da Masmorra (não avançam nem atacam, retomam exatamente de onde ficaram ao sair).
-- **Estado persistido**: só `{ proximaEm, contagem }` (`STORAGE_KEY_HORDE`, `js/storage-keys.js`) — quando é a próxima horda e quantas já aconteceram (decide quantos monstros traz a seguinte). A `contagem` sobe e a `proximaEm` é recalculada **ao iniciar** a horda, não ao terminar — simplificação deliberada (a diferença é só o tempo que uma horda demora a ser repelida, irrelevante face a 5 min/23h).
+- **Estado persistido**: só `{ proximaEm, contagem }` (`STORAGE_KEY_HORDE`, `js/storage-keys.js`) — quando é a próxima horda e quantas já aconteceram (decide quantos monstros traz a seguinte). A `contagem` sobe e a `proximaEm` é recalculada **ao iniciar** a horda, não ao terminar — simplificação deliberada (a diferença é só o tempo que uma horda demora a ser repelida, irrelevante face a 1 min/23h).
 - **A horda em curso (posições/vida dos monstros) não é persistida** — tal como uma luta da Masmorra também não sobrevive a um reload. Um reload a meio de uma horda perde-a; a seguinte (já com a contagem correta) continua agendada certa.
 - Aviso ao vivo: `startHordaTicker()`/`stopHordaTicker()` (`js/horde.js`), chamado ao entrar em Eu › Personagem (`js/nav.js`) — mesmo padrão de `startResourcesTicker`/`stopResourcesTicker` (`js/resources-ui.js`): só conta enquanto o aviso está à vista (`offsetParent`), auto-pára quando deixa de estar ou a página fica escondida (`visibilitychange`).
 
