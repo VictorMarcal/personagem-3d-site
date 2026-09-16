@@ -1767,8 +1767,40 @@ main {
   white-space: nowrap;
 }
 
-/* Relatórios de horda (js/horde.js, 2026-09-16) - reaproveita .leaderboard-row
-   para as linhas, só o resultado (Vitória/Derrota) precisa de cor própria. */
+/* Relatórios de horda (js/horde.js, 2026-09-16). Cada linha passou a ter
+   várias informações (monstros derrotados, recursos perdidos por tipo em
+   caso de derrota - a pedido, "os relatorios devem dizer o numero total de
+   monstros e o numero de mostros derrotados... quantidade de recursos
+   perdidos individualmente"), por isso deixou de reaproveitar
+   .leaderboard-row (uma só linha) e ganhou o seu próprio bloco. A lista em
+   si (#horde-reports-list) fica com altura fixa e scroll próprio - "é uma
+   espécie de scroll mostrando os 3 relatórios mais recentes" - em vez de um
+   botão "Ver todas" à parte: os mais recentes já vêm primeiro (mais
+   recente primeiro, ver registarHordaRelatorio), scroll dentro da própria
+   caixa revela os mais antigos sem precisar de outro ecrã. */
+#horde-reports-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+.horde-report-row {
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  margin-bottom: 6px;
+}
+.horde-report-row:last-child { margin-bottom: 0; }
+.horde-report-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.horde-report-detail {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.horde-report-loot { margin-top: 6px; }
 .horde-report-result {
   font-size: 12px;
   font-weight: 700;

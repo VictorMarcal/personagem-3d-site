@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.37.0",
+    title: "Relatórios de Batalha Mais Completos",
+    changes: [
+      "Cada relatório de horda mostra agora quantos monstros havia e quantos foram derrotados.",
+      "Em caso de derrota, mostra a quantidade perdida de cada recurso individualmente, não só um número genérico.",
+      "A lista de relatórios ganhou scroll próprio, mostrando os mais recentes sem precisar de outro ecrã.",
+    ],
+  },
+  {
     version: "v6.36.0",
     title: "Ícones dos Recursos Também no Mapa",
     changes: [
