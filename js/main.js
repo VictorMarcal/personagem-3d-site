@@ -165,6 +165,20 @@ scene.add(hemiLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.position.set(0, 3.5, 6);
 dirLight.castShadow = true;
+// A camara de sombra desta luz nao tinha frustum nenhum definido - o THREE
+// usa por omissao uma caixa ortografica de so -5..5 (10x10), muito mais
+// pequena que o terreno/torre (chao placeholder ja e 20x20). Fora dessa
+// caixa nada projeta sombra; dentro dela, o mapSize de omissao (512) e
+// bias de omissao (0) davam "shadow acne" visivel - daí o retangulo mais
+// escuro no cenario, com contorno nitido nos limites da caixa (2026-09-17,
+// reportado no Trello - "sombra mais escura em forma de retangulo").
+dirLight.shadow.camera.left = -15;
+dirLight.shadow.camera.right = 15;
+dirLight.shadow.camera.top = 15;
+dirLight.shadow.camera.bottom = -15;
+dirLight.shadow.camera.far = 60;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.bias = -0.0015;
 scene.add(dirLight);
 
 // Chao placeholder: um plano liso, visivel ate assets/Floor.glb carregar

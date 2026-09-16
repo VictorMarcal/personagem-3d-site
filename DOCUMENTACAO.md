@@ -1452,6 +1452,10 @@ O Victor marcou no `Floor.glb` (2026-09-16):
 
 Todos lidos por `registrarHordaSpawnPoints()`/`registrarHordaCameraPoints()`, chamadas por `loadSceneryFloor()` assim que o terreno carrega, sempre com `model.updateMatrixWorld(true)` antes de ler posições de mundo (mesmo cuidado de `applyTowerModel`) — a leitura da âncora da torre acontece ANTES de deslocar o modelo (é ela que decide o deslocamento), a dos pontos de partida/câmara DEPOIS (para saírem já na posição final).
 
+### Sombra da luz principal (`dirLight`, `js/main.js`)
+
+`dirLight` (`THREE.DirectionalLight`) tinha `castShadow = true` mas nenhuma câmara de sombra configurada — o THREE usa por omissão uma caixa ortográfica de só -5..5 (10x10 unidades), bem mais pequena que o terreno/torre (o chão placeholder sozinho já é 20x20). Fora dessa caixa nada projetava sombra; dentro dela, o `mapSize` (512) e `bias` (0) de omissão davam "shadow acne" visível — daí um retângulo mais escuro e com contorno nítido no chão do cenário (2026-09-17, reportado no Trello). Corrigido com `shadow.camera` explícito (-15..15, `far=60`), `mapSize` 2048×2048 e `bias=-0.0015`.
+
 ### Câmara de topo durante uma horda
 
 Enquanto uma horda decorre, a câmara muda para `CameraAtackPosition` (mais alta/recuada, vê-se o terreno todo) em vez da vista normal — `applyHordaCamera()`/`applyNormalCamera()`, chamadas em `iniciarHorda()`/`terminarHorda()`. `applyPersonagemCamera()` escolhe qual aplicar sempre que a câmara volta a ser posta na cena Reino › Fortaleza por outro motivo (fim de luta na Masmorra, modelos a carregar pela primeira vez), para uma horda em curso não perder a vista de topo ao entrar/sair da Masmorra.

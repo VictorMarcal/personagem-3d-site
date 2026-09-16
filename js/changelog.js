@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.38.0",
+    title: "Sombra Mais Correta no Cenário",
+    changes: [
+      "Corrigido um retângulo mais escuro que aparecia no chão do cenário, causado pela sombra da luz principal.",
+    ],
+  },
+  {
     version: "v6.37.0",
     title: "Relatórios de Batalha Mais Completos",
     changes: [
