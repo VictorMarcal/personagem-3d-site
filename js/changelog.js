@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.29.0",
+    title: "Terreno e Câmaras Definitivos da Fortaleza",
+    changes: [
+      "O cenário à volta da Fortaleza (árvores, terreno) já usa a arte definitiva em vez do placeholder.",
+      "As câmaras da aba Eu › Personagem (normal e durante uma horda) passam a seguir o enquadramento definido no próprio cenário.",
+      "Os 12 pontos de partida das hordas também já vêm do cenário definitivo.",
+    ],
+  },
+  {
     version: "v6.28.3",
     title: "Monstros Nascem Espalhados",
     changes: [

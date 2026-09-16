@@ -81,10 +81,12 @@ const HORDE_ROUBO_POR_RECURSO = 10;
 
 // --- pontos de partida -------------------------------------------------------
 //
-// Empties chamados "HordaSpawn1".."HordaSpawn12" (ou variantes - aceita por
-// prefixo, mesmo esquema de TOWER_PLAYER_EMPTY_NAMES em js/main.js) dentro
-// de assets/Floor.glb - o Floor vai ter 12 (o Victor vai coloca-los). Lidos
-// por registrarHordaSpawnPoints(), chamada por loadSceneryFloor() (js/main.js)
+// Empties chamados "EnemySpawn1".."EnemySpawn12" (nomes reais no Floor.glb
+// entregue pelo Victor em 2026-09-16 - numeracao nao e sequencial, ha 12 no
+// total; outros prefixos aceites por segurança/versoes antigas, mesmo
+// esquema de TOWER_PLAYER_EMPTY_NAMES em js/main.js) dentro de
+// assets/Floor.glb. Lidos por registrarHordaSpawnPoints(), chamada por
+// loadSceneryFloor() (js/main.js)
 // assim que o terreno carrega. Sem eles (placeholder ainda sem pivots), cai
 // num circulo de HORDA_SPAWN_FALLBACK_COUNT posicoes a
 // HORDA_SPAWN_FALLBACK_RADIUS_M da torre, para a mecanica funcionar mesmo
@@ -93,7 +95,7 @@ const HORDE_ROUBO_POR_RECURSO = 10;
 // Cada monstro nasce num pivot ESCOLHIDO AO ACASO (2026-09-16, a pedido) -
 // nao ha ordem fixa nem repartição igual entre os pivots, dois monstros da
 // mesma horda podem calhar no mesmo ponto.
-const HORDA_SPAWN_EMPTY_NAMES = ["HordaSpawn", "SpawnHorda", "MonsterSpawn", "HordePos"];
+const HORDA_SPAWN_EMPTY_NAMES = ["EnemySpawn", "HordaSpawn", "SpawnHorda", "MonsterSpawn", "HordePos"];
 const HORDA_SPAWN_FALLBACK_RADIUS_M = 10;
 const HORDA_SPAWN_FALLBACK_COUNT = 12;
 let hordaSpawnPositions = [];

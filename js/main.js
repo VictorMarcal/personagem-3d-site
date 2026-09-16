@@ -10,7 +10,7 @@ scene.background = new THREE.Color(0x101014);
 // (~10 min no GitHub Pages, mais a cache do proprio browser). Sobe este
 // numero sempre que trocares um .glb e a versao nova passa logo, sem
 // refresh forcado. `asset()` monta o url.
-const ASSET_V = "4";
+const ASSET_V = "5";
 function asset(path) {
   return path + (path.indexOf("?") === -1 ? "?v=" : "&v=") + ASSET_V;
 }
@@ -47,9 +47,38 @@ const CAM_UP_FACTOR = 1.0;
 const CAM_BACK_FACTOR = 3.2;
 const CAM_TARGET_FACTOR = 0.85;
 
+// Posicoes de camara marcadas pelo Victor no proprio Floor.glb (2026-09-16,
+// Empties "CameraIdlePosition"/"CameraAtackPosition" - "Atack" e como veio
+// do ficheiro, aceita-se tambem "Attack" por seguranca) - lidas por
+// registrarHordaCameraPoints(), chamada por loadSceneryFloor() assim que o
+// terreno carrega. Sem elas (Floor antigo, ou ainda a carregar), cai nas
+// formulas/constantes ja existentes abaixo, como sempre foi.
+const FLOOR_CAMERA_IDLE_EMPTY_NAMES = ["CameraIdlePosition", "CameraIdle"];
+const FLOOR_CAMERA_ATAQUE_EMPTY_NAMES = ["CameraAtackPosition", "CameraAttackPosition", "CameraAtaque"];
+let floorCameraIdlePos = null;
+let floorCameraAtaquePos = null;
+
+function registrarHordaCameraPoints(model) {
+  model.traverse((obj) => {
+    if (!obj.name) return;
+    if (!floorCameraIdlePos && FLOOR_CAMERA_IDLE_EMPTY_NAMES.some((nome) => obj.name.startsWith(nome))) {
+      floorCameraIdlePos = obj.getWorldPosition(new THREE.Vector3());
+    }
+    if (!floorCameraAtaquePos && FLOOR_CAMERA_ATAQUE_EMPTY_NAMES.some((nome) => obj.name.startsWith(nome))) {
+      floorCameraAtaquePos = obj.getWorldPosition(new THREE.Vector3());
+    }
+  });
+}
+
 function applyNormalCamera() {
   camera.fov = NORMAL_CAMERA_FOV;
   camera.updateProjectionMatrix();
+
+  if (floorCameraIdlePos) {
+    camera.position.copy(floorCameraIdlePos);
+    camera.lookAt(0, character.position.y * CAM_TARGET_FACTOR, 0);
+    return;
+  }
 
   if (TOWER_TOP_Y <= 0) {
     // Sem torre: o enquadramento de sempre (heroi na origem).
@@ -67,19 +96,22 @@ function applyNormalCamera() {
   camera.lookAt(0, character.position.y * CAM_TARGET_FACTOR, 0);
 }
 
-// Vista de cima durante uma horda (js/horde.js) - fixa, mais alta e mais
-// recuada que a vista normal, para se ver o terreno todo a volta da torre
-// (onde os monstros aparecem/marcham) em vez de so a personagem em primeiro
-// plano. Pedido do Victor com uma imagem de referencia (2026-09-16): angulo
-// bem mais de topo que a camara normal, terreno inteiro a vista - valores
-// de partida, por afinar depois a olho.
+// Vista de cima durante uma horda (js/horde.js) - mais alta e mais recuada
+// que a vista normal, para se ver o terreno todo a volta da torre (onde os
+// monstros aparecem/marcham) em vez de so a personagem em primeiro plano.
+// Pedido do Victor com uma imagem de referencia (2026-09-16); os valores
+// fixos abaixo sao so o fallback enquanto floorCameraAtaquePos nao existe.
 const HORDA_CAMERA_POSITION = { x: 0, y: 16, z: 8 };
 const HORDA_CAMERA_FOV = 52;
 
 function applyHordaCamera() {
   camera.fov = HORDA_CAMERA_FOV;
   camera.updateProjectionMatrix();
-  camera.position.set(HORDA_CAMERA_POSITION.x, HORDA_CAMERA_POSITION.y, HORDA_CAMERA_POSITION.z);
+  if (floorCameraAtaquePos) {
+    camera.position.copy(floorCameraAtaquePos);
+  } else {
+    camera.position.set(HORDA_CAMERA_POSITION.x, HORDA_CAMERA_POSITION.y, HORDA_CAMERA_POSITION.z);
+  }
   camera.lookAt(0, 0, 0);
 }
 
@@ -144,9 +176,17 @@ scene.add(ground);
 
 // Terreno 3D real (2026-09-09, a pedido - "assets/Floor.glb", cenario puro
 // da aba Eu > Personagem, secção 9). Carregado como vem do editor (sem
-// reescalar), so pousado com a base em Y=0 e centrado em X/Z. Substitui o
-// plano `ground` acima assim que fica pronto; se falhar, o plano fica.
+// reescalar), so pousado com a base em Y=0. Substitui o plano `ground`
+// acima assim que fica pronto; se falhar, o plano fica.
 let floorModel = null;
+
+// Ancora da torre no terreno (Empty "TowerPosition", 2026-09-16, marcado
+// pelo Victor no Floor.glb) - em vez de centrar o terreno pela sua caixa
+// envolvente, centra-se por este ponto: a torre em si (Tower1.glb etc,
+// applyTowerModel) fica SEMPRE na origem do mundo, entao e o TERRENO que se
+// desloca para a origem coincidir com o sitio que o Victor marcou. Sem o
+// Empty (Floor antigo), cai no centro da caixa envolvente, como antes.
+const TOWER_POSITION_EMPTY_NAMES = ["TowerPosition", "TowerPos"];
 
 function loadSceneryFloor() {
   new THREE.GLTFLoader().load(
@@ -157,9 +197,21 @@ function loadSceneryFloor() {
       const size = box.getSize(new THREE.Vector3());
       if (size.x <= 0 || size.z <= 0) return; // modelo vazio, mantem o plano
 
-      const centre = box.getCenter(new THREE.Vector3());
-      model.position.x -= centre.x;
-      model.position.z -= centre.z;
+      // Posicoes de mundo ANTES de deslocar o modelo (ainda na pose de
+      // exportacao) - e quando ancoraTorre.position/getWorldPosition da o
+      // sitio certo para calcular o deslocamento a aplicar a seguir.
+      model.updateMatrixWorld(true);
+      let ancoraTorre = null;
+      model.traverse((obj) => {
+        if (ancoraTorre || !obj.name) return;
+        if (TOWER_POSITION_EMPTY_NAMES.some((nome) => obj.name.startsWith(nome))) ancoraTorre = obj;
+      });
+      const deslocamentoXZ = ancoraTorre
+        ? ancoraTorre.getWorldPosition(new THREE.Vector3())
+        : box.getCenter(new THREE.Vector3());
+
+      model.position.x -= deslocamentoXZ.x;
+      model.position.z -= deslocamentoXZ.z;
       model.position.y -= box.min.y; // base assente em Y=0
 
       model.traverse((obj) => {
@@ -169,12 +221,14 @@ function loadSceneryFloor() {
         }
       });
 
-      // Pontos de partida da horda (js/horde.js, 2026-09-16): Empties
-      // "HordaSpawn1/2/3" postos no terreno pelo Victor - lidos aqui, so
-      // depois de o modelo estar na posicao final (updateMatrixWorld antes
-      // de ler as posicoes do mundo, mesmo padrao de applyTowerModel).
+      // Pontos de partida da horda ("EnemySpawn1".."EnemySpawn12") e de
+      // camara ("CameraIdlePosition"/"CameraAtackPosition") - lidos so
+      // AGORA, depois de o modelo estar na posicao final (updateMatrixWorld
+      // de novo, para as posicoes de mundo saírem ja corretas).
       model.updateMatrixWorld(true);
       if (typeof registrarHordaSpawnPoints === "function") registrarHordaSpawnPoints(model);
+      registrarHordaCameraPoints(model);
+      applyPersonagemCamera(); // as posicoes de camara podem ter chegado so agora
 
       scene.add(model);
       floorModel = model;
