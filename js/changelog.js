@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.34.0",
+    title: "Medalhas de Missões e 9 por Mês",
+    changes: [
+      "Novo: 24 conquistas de missões — primeira missão de cada dificuldade, marcos de 5/10/25/50/100 (por dificuldade e no total) e \"Mês Perfeito\" por completar as 9 do mês.",
+      "Concluir uma missão já não bloqueia as outras 2 da mesma dificuldade — agora dá para completar os 3 tipos de cada dificuldade no mesmo mês (9 no total, em vez de 3).",
+    ],
+  },
+  {
     version: "v6.33.0",
     title: "Personagem Muda-se para a Fortaleza",
     changes: [

@@ -750,7 +750,7 @@ A variação aleatória aplica-se **depois** do piso mínimo, não antes. Foi te
 
 ## 10. Conquistas
 
-Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem de desbloqueio; depois as mais próximas de completar), sempre num grid plano. Botão "Ver todas" abre popup fullscreen, organizado por **categorias** (`CATEGORY_BY_TYPE`/`CATEGORY_ORDER` em `js/achievements.js`, mesmo padrão de títulos de grupo já usado no histórico da aba Perfil): **Distância**, **Calorias**, **Frequência**, **Combate**, **Exploração**, **Progresso**, **Liderança**, **Ritmo**. ~99 conquistas no total (2026-08-10; +13 de Exploração e −8 de Bicicleta em 2026-09-10).
+Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem de desbloqueio; depois as mais próximas de completar), sempre num grid plano. Botão "Ver todas" abre popup fullscreen, organizado por **categorias** (`CATEGORY_BY_TYPE`/`CATEGORY_ORDER` em `js/achievements.js`, mesmo padrão de títulos de grupo já usado no histórico da aba Perfil): **Distância**, **Calorias**, **Frequência**, **Combate**, **Exploração**, **Missões**, **Progresso**, **Liderança**, **Ritmo**. ~123 conquistas no total (2026-08-10; +13 de Exploração e −8 de Bicicleta em 2026-09-10; +24 de Missões em 2026-09-16).
 
 **Arquitetura**: `checkAndUnlockAchievements()` continua 100% síncrona, só lê `localStorage`. Para os tipos que dependem do Supabase, um valor derivado fica cacheado localmente (ex: `melhorSequenciaDias`), atualizado por uma função assíncrona chamada nos sítios onde esses dados já são pedidos por outro motivo (login, ou quando o leaderboard/Perfil já buscam o mesmo dado) — sem chamadas de rede dedicadas extra, exceto uma única busca de `training_sessions` no login.
 
@@ -790,6 +790,11 @@ Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem 
 - `mineCount` — minas encontradas (`minasEncontradasCount`): `minas_1/10/25/50`
 - `allResourceMines` — pelo menos uma mina de cada recurso (`minas_todos_recursos`, "Prospetor Completo") — binária, resolve o recurso de cada mina encontrada via `todasAsMinas()`
 - `hexMaxMultiplier` — levar um hexágono ao multiplicador máximo (`MULT_MAX = 2,0`, secção 21) por revisitas (`hex_mult_max`, "Terreno Conhecido") — binária
+
+**Conquistas de Missões (2026-09-16, a pedido — "medalhas para missões concluídas"), categoria "Missões" (nova), `generateMissionAchievements()` em `js/achievements.js` (24 no total):** ao contrário das outras categorias, usam contadores **VITALÍCIOS próprios** (`STORAGE_KEY_MISSIONS_LIFETIME` — `{ total, facil, media, dificil, mesesCompletos }`, nunca reposto), separados de propósito do `concluidas` de `js/missions.js` (secção 22), que é mensal e reposto todos os meses. `registarMissaoConcluidaVitalicio(slot, totalConcluidasEsteMes)` é chamada por `verificarMissaoAtiva()` sempre que uma missão é concluída, e chama `checkAndUnlockAchievements()` a seguir. Os 3 slots/labels de dificuldade estão **duplicados** dentro de `js/achievements.js` (`MISSION_ACHIEVEMENT_SLOTS`/`_LABEL`) em vez de reutilizar `MISSION_SLOTS`/`MISSION_SLOT_LABEL` de `js/missions.js` — `js/achievements.js` carrega ANTES de `js/missions.js`, e `renderAchievementsSummary()` corre já no fim de `js/achievements.js`, antes de `js/missions.js` sequer existir; depender das constantes de missions.js aqui rebentaria logo no arranque.
+- `missionCountDifficulty` — marcos de **1/5/10/25/50/100** por dificuldade (`mission_first_facil/media/dificil` para o 1º, `mission_facil_5/10/25/50/100` e equivalentes para média/difícil) — 18 conquistas (3 dificuldades × 6 marcos)
+- `missionCountTotal` — marcos de **5/10/25/50/100** missões concluídas no total, qualquer dificuldade (`mission_total_5/10/25/50/100`) — 5 conquistas
+- `missionMonthComplete` — **"Mês Perfeito"** (`mission_month_perfect`), binária: concluir as 9 missões de um mês (3 dificuldades × 3 tipos) no mesmo mês. `mesesCompletos` incrementa quando `estado.concluidas.length` atinge exatamente `MISSION_MONTH_COMPLETE_TOTAL` (9, número fixo, não derivado de `js/missions.js` pela mesma razão de ordem de carregamento acima)
 
 Cada conquista tem ícone (emoji como placeholder), nome e um destaque visual verde quando desbloqueada (sem barra de progresso — foi removida a pedido).
 
@@ -1309,10 +1314,10 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 
 - Cada mês de calendário tem **9 missões**: 3 dificuldades (**fácil**, **média**, **difícil**) × 3 tipos cada — ver "Redesenho final".
 - Concluir uma dá **recursos** (um recurso, quantidade fixa por dificuldade).
-- **Até 1 missão aceite POR DIFICULDADE — as 3 podem estar ativas ao mesmo tempo** (mudou 2026-09-15, a pedido: *"deve ser possível ativar 3 missões (uma fácil, uma média, uma difícil)"*; até aqui só podia haver 1 no total, de qualquer dificuldade). As 3 dificuldades são completamente independentes entre si.
+- **Até 1 missão ATIVA POR DIFICULDADE — as 3 podem estar ativas ao mesmo tempo** (mudou 2026-09-15, a pedido: *"deve ser possível ativar 3 missões (uma fácil, uma média, uma difícil)"*; até aqui só podia haver 1 no total, de qualquer dificuldade). As 3 dificuldades são completamente independentes entre si.
 - **Desistir perde o progresso da missão** e trava novas aceitações **nessa dificuldade** durante **12 h** (`MISSION_REJECT_COOLDOWN_MS`) — não afeta as outras duas.
 - **Concluir não trava nada** — aceita-se logo a seguinte dessa dificuldade.
-- Concluída uma dificuldade, só no mês seguinte volta a ter missão nova nela; as outras continuam por sua conta.
+- **Cada TIPO só pode ser concluído uma vez por mês** — os 3 tipos de uma dificuldade podem TODOS ser concluídos no mesmo mês (2026-09-16, a pedido — "quero mesmo 9 por mês"; ver "9 conclusões por mês" abaixo). Só no mês seguinte um tipo já concluído volta a estar disponível.
 - O progresso conta a partir do **instante em que se aceita**, nunca desde o início do mês — recusar/falhar nunca credita trabalho antigo. Os tipos de descoberta usam um *baseline* (delta face a um snapshot); `correr_km`/`caminhar_km` usam um **acumulador** (só a distância corrida/caminhada somada no fim de cada treino, mais um mostrador ao vivo durante o treino — ver "Progresso ao vivo" abaixo).
 - **Todas cumulativas, nunca "de seguida"** — nem `correr_km` (soma o que se correu em qualquer número de treinos) nem `descobre_hex` exigem uma sessão só. Isto não estava explícito na UI (bug reportado via Trello, 2026-09-14: *"não há indicação de que correr 15km são acumulativos ou seguidos"*).
   - **1ª tentativa**: um texto de ajuda por cima das missões por aceitar. **Insuficiente** (validado com "Com bug" no Trello) — só aparece no ecrã "por aceitar"; quem já tinha a missão aceite (o caso mais comum, já a meio de a cumprir) nunca chegava a ver esse aviso.
@@ -1329,9 +1334,11 @@ As missões de um mês saem de `mulberry32(hashString("missoes:" + "2026-09"))` 
     media: ... | null,
     dificil: ... | null,
   },
-  concluidas: ["facil", ...],
+  concluidas: ["facil:correr_km", ...],
   rejeitadaEm: { facil: <ts>|null, media: <ts>|null, dificil: <ts>|null } }
 ```
+
+**`concluidas` passou a guardar `"slot:tipo"` em vez de só `"slot"` (2026-09-16, ver "9 conclusões por mês" abaixo)** — `tipoJaConcluido(estado, slot, tipo)` (`js/missions.js`) aceita as duas formas: uma entrada `"facil:correr_km"` só bloqueia esse tipo; uma entrada antiga `"facil"` (sem `:`) continua a bloquear a dificuldade inteira, para não "desconcluir" retroativamente quem já tinha uma dificuldade fechada esse mês sob a regra antiga.
 
 **Formato por dificuldade desde 2026-09-15** (antes era uma só `ativa`/`rejeitadaEm` GLOBAL, quando só podia haver 1 missão aceite no total — ver acima). `migrarEstadoMissoes(estado)` (`js/missions.js`) converte o formato antigo para o novo na leitura (idempotente — um estado já novo passa incólume); chamada por `getMissionStateRaw()` e por `mergeMissoes()` (secção "Sincronização" abaixo), nunca escreve no `localStorage` sozinha. O cooldown de recusa antigo era global e sem registo de qual dificuldade tinha sido recusada — perde-se na migração (efeito único e mínimo) em vez de aplicar as 3 de uma vez.
 
@@ -1392,6 +1399,16 @@ dificil: [correr_km, caminhar_km, descobre_concelho]
 ### Sincronização (secção 14.1)
 
 `mergeMissoes(local, server)`: normaliza os dois lados primeiro (`migrarEstadoMissoes` — podem chegar no formato antigo se o servidor ainda não tiver sido escrito com o novo). Depois: meses diferentes → fica o mais recente; mesmo mês → união das `concluidas`, e **por cada dificuldade** independentemente: a `ativa` de qualquer lado que a tenha (largada se essa dificuldade já constar das concluídas; se ambos têm o mesmo tipo ativo nessa dificuldade, fica o maior `progressoM`), `rejeitadaEm` dessa dificuldade mais recente. Objeto vazio (`{}`, contas antigas / default da coluna) → `hydrateLocalStorageFromProgress` remove a chave e o próximo `getMissionState()` gera o estado limpo do mês.
+
+### 9 conclusões por mês, não 3 (2026-09-16)
+
+**A pedido ("quero mesmo 9 por mês")**: até aqui, concluir UM tipo de uma dificuldade bloqueava os OUTROS 2 tipos dessa mesma dificuldade até ao mês seguinte (mesmo já sendo possível ter as 3 dificuldades ativas ao mesmo tempo desde 2026-09-15 — a exclusão era só entre tipos da MESMA dificuldade). Agora cada um dos 9 tipos (3 dificuldades × 3 tipos) tem o seu próprio registo de conclusão — um jogador dedicado pode concluir as 9 missões do mês, não só 3.
+
+- `podeAceitarMissao(estado, slot, tipo)` passa a receber também o `tipo` — aceita-se se essa dificuldade não tem outra ativa, ESSE tipo específico não foi concluído este mês, e não há cooldown de recusa nessa dificuldade.
+- `tipoJaConcluido(estado, slot, tipo)` centraliza a verificação (ver formato de `concluidas` acima).
+- `renderMissionSlotBlock()` passa a decidir "Concluída este mês" por TIPO, não pela dificuldade inteira — os outros 2 tipos de uma dificuldade continuam com botão "Aceitar" depois de um deles ser concluído.
+- Contador do cabeçalho (`X/9`, era `X/3`) — `MISSION_TOTAL_TIPOS` soma o tamanho dos 3 pools (`MISSION_POOL`), não `MISSION_SLOTS.length`.
+- **Novas conquistas de missões** (ver secção 10) — contadores VITALÍCIOS próprios (`STORAGE_KEY_MISSIONS_LIFETIME`, nunca reposto, ao contrário de `concluidas` que é mensal): primeira missão de cada dificuldade, marcos de 5/10/25/50/100 por dificuldade e no total, e "Mês Perfeito" (as 9 do mês concluídas). `registarMissaoConcluidaVitalicio(slot, totalConcluidasEsteMes)` (`js/achievements.js`) é chamada por `verificarMissaoAtiva()` sempre que uma missão é concluída.
 
 ### O que fica por decidir
 

@@ -13,14 +13,20 @@
 // concluidas e quando foi a ultima recusa de CADA dificuldade.
 //
 // Regras (todas a pedido):
-//   - Ate 1 missao aceite POR DIFICULDADE (3 no total, uma facil, uma media,
+//   - Ate 1 missao ATIVA POR DIFICULDADE (3 no total, uma facil, uma media,
 //     uma dificil) - dificuldades diferentes nao se bloqueiam entre si.
 //   - Desistir de uma missao PERDE o progresso dela (progressoM volta a 0 -
 //     a proxima que se aceite nessa dificuldade comeca do zero) e trava
 //     novas aceitacoes NESSA dificuldade durante 12h - nao afeta as outras
 //     duas.
-//   - Concluir NAO trava nada - aceita-se logo a seguinte dessa dificuldade.
-//   - Concluida uma dificuldade, so no mes seguinte volta a ter missao.
+//   - Concluir NAO trava nada - aceita-se logo a seguinte dessa dificuldade
+//     (2026-09-16, a pedido - "quero mesmo 9 por mes": ate entao, concluir
+//     UM tipo de uma dificuldade bloqueava OS OUTROS 2 tipos dessa mesma
+//     dificuldade ate ao mes seguinte; agora cada TIPO tem o seu proprio
+//     registo de conclusao, por isso os 3 tipos de cada dificuldade podem
+//     ser concluidos no mesmo mes - 9 missoes no total, nao 3).
+//   - Cada TIPO so pode ser concluido uma vez por mes - so no mes seguinte
+//     volta a estar disponivel (ver tipoJaConcluido()).
 //   - O progresso conta a partir do INSTANTE em que se aceita (baseline), nao
 //     desde o inicio do mes - recusar/falhar nunca "credita" trabalho antigo.
 //
@@ -29,7 +35,9 @@
 // saveResources, getResources), js/experience.js (getLifetimeDistanceM),
 // js/hexes.js (getDiscoveredHexCount, unlockedConcelhos), js/profile.js
 // (formatMonthKey, MONTH_NAMES_PT), js/equipment.js (showGameToast),
-// js/icons.js (icon), js/progress-sync.js (queueProgressSync). Carrega
+// js/icons.js (icon), js/progress-sync.js (queueProgressSync),
+// js/achievements.js (registarMissaoConcluidaVitalicio, 2026-09-16).
+// Carrega
 // depois de todos eles.
 
 const MISSION_SLOTS = ["facil", "media", "dificil"];
@@ -52,6 +60,10 @@ const MISSION_POOL = {
   media: ["correr_km", "caminhar_km", "descobre_mina"],
   dificil: ["correr_km", "caminhar_km", "descobre_concelho"],
 };
+
+// 3 dificuldades x 3 tipos cada = 9 missões concluíveis por mês (2026-09-16,
+// a pedido - "quero mesmo 9 por mês", antes eram só 3).
+const MISSION_TOTAL_TIPOS = MISSION_SLOTS.reduce((soma, slot) => soma + MISSION_POOL[slot].length, 0);
 
 // Alvos por tipo e dificuldade. NUMEROS PROVISORIOS, mesma nota da secção 21:
 // derivados do ritmo dos dois jogadores no primeiro mes (~30-40 hexes/semana,
@@ -271,12 +283,20 @@ function missionCooldownRestanteMs(estado, slot) {
   return Math.max(0, MISSION_REJECT_COOLDOWN_MS - (Date.now() - Number(ts)));
 }
 
-// Uma dificuldade aceita missao nova se: nao tem uma ja ativa, nao foi
-// concluida este mes, e nao esta em cooldown de recusa - independente do
-// estado das OUTRAS duas dificuldades (2026-09-15 - deixou de ser "so 1 no
-// total" para "ate 1 por dificuldade").
-function podeAceitarMissao(estado, slot) {
-  return !estado.ativas[slot] && !estado.concluidas.includes(slot) && missionCooldownRestanteMs(estado, slot) === 0;
+// Um TIPO especifico ja foi concluido este mes se o seu "slot:tipo" estiver
+// em concluidas - OU se so o "slot" (formato antigo, anterior a 2026-09-16,
+// quando concluir 1 tipo bloqueava a dificuldade toda) la estiver, para nao
+// "desconcluir" retroativamente quem ja tinha uma dificuldade fechada esse
+// mes sob a regra antiga.
+function tipoJaConcluido(estado, slot, tipo) {
+  return estado.concluidas.includes(slot) || estado.concluidas.includes(slot + ":" + tipo);
+}
+
+// Um TIPO aceita-se se: a dificuldade nao tem outro tipo ja ativo, esse
+// TIPO especifico nao foi concluido este mes, e a dificuldade nao esta em
+// cooldown de recusa - independente do estado das OUTRAS duas dificuldades.
+function podeAceitarMissao(estado, slot, tipo) {
+  return !estado.ativas[slot] && !tipoJaConcluido(estado, slot, tipo) && missionCooldownRestanteMs(estado, slot) === 0;
 }
 
 // Todos os tipos de UMA dificuldade este mes, com os detalhes gerados.
@@ -286,7 +306,7 @@ function tiposDisponiveis(estado, slot) {
 
 function aceitarMissao(slot, tipo) {
   const estado = getMissionState();
-  if (!podeAceitarMissao(estado, slot)) return false;
+  if (!podeAceitarMissao(estado, slot, tipo)) return false;
   const missao = tiposDisponiveis(estado, slot).find((m) => m.tipo === tipo);
   if (!missao) return false;
   estado.ativas[slot] = {
@@ -356,9 +376,13 @@ function verificarMissaoAtiva(sessao) {
     const prog = missionProgress(ativa);
     if (!prog.done) return;
 
-    estado.concluidas.push(slot);
+    estado.concluidas.push(slot + ":" + ativa.tipo);
     estado.ativas[slot] = null;
     mudou = true;
+
+    if (typeof registarMissaoConcluidaVitalicio === "function") {
+      registarMissaoConcluidaVitalicio(slot, estado.concluidas.length);
+    }
 
     concederRecompensaMissao(ativa.recompensa);
     if (typeof showGameToast === "function") {
@@ -454,23 +478,24 @@ function renderMissoesAtivas(estado, sessaoAoVivo) {
 // dificuldade (2 se já há uma ativa - a 3ª mudou-se para "Missões Ativas",
 // ver acima - ou as 3 nos outros casos). Cada tipo mostrado tem um de 3
 // estados:
-//   - concluída este mês: cartão apagado, sem botão (as 3, já que nenhuma
-//     está "ativa" para ir para o outro card).
-//   - bloqueada: outro tipo desta MESMA dificuldade já está ativo, ou esta
+//   - concluído este mês: cartão apagado, sem botão (só ESSE tipo -
+//     2026-09-16, concluir um tipo já não bloqueia os outros 2 da mesma
+//     dificuldade, ver tipoJaConcluido()).
+//   - bloqueado: outro tipo desta MESMA dificuldade já está ativo, ou esta
 //     dificuldade está em cooldown de recusa (12h) - sem botão.
-//   - disponível: nenhuma ativa nesta dificuldade, sem cooldown - botão
-//     "Aceitar".
+//   - disponível: nenhuma ativa nesta dificuldade, sem cooldown, e este
+//     tipo ainda não foi concluído este mês - botão "Aceitar".
 // As outras duas dificuldades nunca bloqueiam esta - só o que se passa
 // DENTRO da própria dificuldade importa.
 function renderMissionSlotBlock(estado, slot) {
   const ativa = estado.ativas[slot];
-  const concluida = estado.concluidas.includes(slot);
-  const restante = !ativa && !concluida ? missionCooldownRestanteMs(estado, slot) : 0;
+  const restante = ativa ? 0 : missionCooldownRestanteMs(estado, slot);
 
   const cartoes = tiposDisponiveis(estado, slot)
     .filter((m) => !(ativa && ativa.tipo === m.tipo))
     .map((m) => {
       const chip = `<span class="mission-chip mission-chip-${slot}">${MISSION_SLOT_LABEL[slot]}</span>`;
+      const concluida = tipoJaConcluido(estado, slot, m.tipo);
 
       if (concluida) {
         return (
@@ -550,13 +575,13 @@ function renderMissionsPanel(sessaoAoVivo) {
   const mesLabel = missionMonthLabel(estado.mes);
 
   const corpo =
-    '<p class="mission-help">Podes ter uma missão ativa por dificuldade (3 no total). Desistir perde o progresso e bloqueia essa dificuldade 12h.</p>' +
+    '<p class="mission-help">Podes ter uma missão ativa por dificuldade (3 no total) e concluir os 3 tipos de cada dificuldade por mês (9 no total). Desistir perde o progresso e bloqueia essa dificuldade 12h.</p>' +
     renderMissoesAtivas(estado, sessaoAoVivo) +
     MISSION_SLOTS.map((slot) => renderMissionSlotBlock(estado, slot)).join("");
 
   const html =
     `<div class="mission-head"><span class="mission-title">Missões · ${mesLabel}</span>` +
-    `<span class="mission-count">${estado.concluidas.length}/${MISSION_SLOTS.length}</span></div>` +
+    `<span class="mission-count">${estado.concluidas.length}/${MISSION_TOTAL_TIPOS}</span></div>` +
     corpo;
 
   paineis.forEach((painel) => {

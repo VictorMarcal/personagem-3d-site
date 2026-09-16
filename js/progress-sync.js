@@ -278,7 +278,11 @@ function mergeMissoes(local, server) {
     if (ativa && localAtiva && serverAtiva && localAtiva.tipo === serverAtiva.tipo) {
       ativa = { ...ativa, progressoM: Math.max(Number(localAtiva.progressoM) || 0, Number(serverAtiva.progressoM) || 0) };
     }
-    if (ativa && concluidas.includes(slot)) ativa = null;
+    // concluidas guarda "slot:tipo" desde 2026-09-16 (permite concluir os 3
+    // tipos de uma dificuldade no mesmo mes - js/missions.js tipoJaConcluido);
+    // verifica as duas formas (o "slot" sozinho e formato antigo, ainda
+    // possivel numa entrada ja sincronizada antes dessa mudanca).
+    if (ativa && (concluidas.includes(slot) || concluidas.includes(slot + ":" + ativa.tipo))) ativa = null;
     ativas[slot] = ativa;
     rejeitadaEm[slot] =
       Math.max(Number((local.rejeitadaEm || {})[slot]) || 0, Number((server.rejeitadaEm || {})[slot]) || 0) || null;

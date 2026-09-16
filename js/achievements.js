@@ -41,8 +41,11 @@ const CATEGORY_BY_TYPE = {
   mineCount: "Exploração",
   allResourceMines: "Exploração",
   hexMaxMultiplier: "Exploração",
+  missionCountTotal: "Missões",
+  missionCountDifficulty: "Missões",
+  missionMonthComplete: "Missões",
 };
-const CATEGORY_ORDER = ["Distância", "Calorias", "Frequência", "Combate", "Exploração", "Progresso", "Liderança", "Ritmo"];
+const CATEGORY_ORDER = ["Distância", "Calorias", "Frequência", "Combate", "Exploração", "Missões", "Progresso", "Liderança", "Ritmo"];
 
 const STATIC_ACHIEVEMENTS = [
   { id: "dist_lifetime_50km", name: "50 km vitalícios", icon: "🌍", type: "lifetimeDistance", threshold: 50000 },
@@ -147,6 +150,76 @@ const EXPLORATION_ACHIEVEMENTS = [
   { id: "minas_todos_recursos", name: "Prospetor Completo", icon: "💎", type: "allResourceMines" },
   { id: "hex_mult_max", name: "Terreno Conhecido", icon: "🔁", type: "hexMaxMultiplier" },
 ];
+
+// Conquistas de missões mensais (2026-09-16, a pedido - "medalhas para
+// missões concluídas"). Contadores VITALÍCIOS próprios
+// (STORAGE_KEY_MISSIONS_LIFETIME, js/storage-keys.js), diferentes do
+// `concluidas` de js/missions.js (esse é mensal, reposto todos os meses) -
+// registarMissaoConcluidaVitalicio() abaixo é chamada por
+// verificarMissaoAtiva() (js/missions.js) sempre que uma missão é
+// concluída. Slots/labels duplicados aqui de propósito (existem também em
+// js/missions.js como MISSION_SLOTS/MISSION_SLOT_LABEL) para este ficheiro
+// não depender de missions.js, que carrega DEPOIS dele -
+// renderAchievementsSummary() corre já no fim deste ficheiro, antes de
+// missions.js sequer existir.
+const MISSION_ACHIEVEMENT_SLOTS = ["facil", "media", "dificil"];
+const MISSION_ACHIEVEMENT_SLOT_LABEL = { facil: "Fácil", media: "Média", dificil: "Difícil" };
+const MISSION_ACHIEVEMENT_SLOT_LABEL_PLURAL = { facil: "Fáceis", media: "Médias", dificil: "Difíceis" };
+const MISSION_ACHIEVEMENT_SLOT_ICON = { facil: "📗", media: "📘", dificil: "📕" };
+const MISSION_COUNT_THRESHOLDS = [1, 5, 10, 25, 50, 100];
+// 3 dificuldades x 3 tipos cada = 9 (MISSION_POOL de js/missions.js) -
+// numero fixo, nao derivado de proposito (ver nota acima sobre nao
+// depender de missions.js).
+const MISSION_MONTH_COMPLETE_TOTAL = 9;
+
+function getMissionsLifetimeCounters() {
+  try {
+    const bruto = JSON.parse(localStorage.getItem(STORAGE_KEY_MISSIONS_LIFETIME) || "null");
+    if (bruto && typeof bruto === "object") {
+      return { total: 0, facil: 0, media: 0, dificil: 0, mesesCompletos: 0, ...bruto };
+    }
+  } catch (e) {
+    /* cai para vazio */
+  }
+  return { total: 0, facil: 0, media: 0, dificil: 0, mesesCompletos: 0 };
+}
+
+// Chamada por verificarMissaoAtiva() (js/missions.js) sempre que uma missão
+// é concluída. totalConcluidasEsteMes é estado.concluidas.length NESSE
+// momento, para detetar o mês "perfeito" (as 9 concluídas).
+function registarMissaoConcluidaVitalicio(slot, totalConcluidasEsteMes) {
+  const contadores = getMissionsLifetimeCounters();
+  contadores.total += 1;
+  contadores[slot] = (contadores[slot] || 0) + 1;
+  if (totalConcluidasEsteMes === MISSION_MONTH_COMPLETE_TOTAL) contadores.mesesCompletos += 1;
+  localStorage.setItem(STORAGE_KEY_MISSIONS_LIFETIME, JSON.stringify(contadores));
+  queueProgressSync();
+  checkAndUnlockAchievements();
+}
+
+function generateMissionAchievements() {
+  const achievements = [];
+  MISSION_ACHIEVEMENT_SLOTS.forEach((slot) => {
+    MISSION_COUNT_THRESHOLDS.forEach((threshold) => {
+      achievements.push({
+        id: threshold === 1 ? `mission_first_${slot}` : `mission_${slot}_${threshold}`,
+        name:
+          threshold === 1
+            ? `Primeira Missão ${MISSION_ACHIEVEMENT_SLOT_LABEL[slot]}`
+            : `${threshold} Missões ${MISSION_ACHIEVEMENT_SLOT_LABEL_PLURAL[slot]}`,
+        icon: MISSION_ACHIEVEMENT_SLOT_ICON[slot],
+        type: "missionCountDifficulty",
+        slot,
+        threshold,
+      });
+    });
+  });
+  [5, 10, 25, 50, 100].forEach((threshold) => {
+    achievements.push({ id: `mission_total_${threshold}`, name: `${threshold} Missões Concluídas`, icon: "📜", type: "missionCountTotal", threshold });
+  });
+  achievements.push({ id: "mission_month_perfect", name: "Mês Perfeito", icon: "🏆", type: "missionMonthComplete" });
+  return achievements;
+}
 
 // Conquistas de distância de sessão e de ritmo separadas por modo de
 // treino (Caminhar/Correr) - ver secção 10 da documentação. Distância
@@ -318,6 +391,7 @@ function getAllAchievements(unlockedMap = getUnlockedAchievements()) {
     MODE_EXPLORER_ACHIEVEMENT,
     ...DISTINCT_MONTHS_ACHIEVEMENTS,
     ...EXPLORATION_ACHIEVEMENTS,
+    ...generateMissionAchievements(),
   ];
 }
 
@@ -577,6 +651,18 @@ function getAchievementProgress(achievement) {
       }
       const alvo = typeof RESOURCE_IDS !== "undefined" ? RESOURCE_IDS.length : 5;
       return { current: tipos.size, target: alvo, met: tipos.size >= alvo };
+    }
+    case "missionCountTotal": {
+      const total = getMissionsLifetimeCounters().total;
+      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
+    }
+    case "missionCountDifficulty": {
+      const total = getMissionsLifetimeCounters()[achievement.slot] || 0;
+      return { current: Math.min(total, achievement.threshold), target: achievement.threshold, met: total >= achievement.threshold };
+    }
+    case "missionMonthComplete": {
+      const meses = getMissionsLifetimeCounters().mesesCompletos;
+      return { current: meses > 0 ? 1 : 0, target: 1, met: meses > 0 };
     }
     case "hexMaxMultiplier": {
       let atingiu = false;
@@ -838,6 +924,14 @@ function getAchievementDescription(achievement) {
       return "Encontra pelo menos uma mina de cada recurso: ferro, madeira, pele, pedra e barro.";
     case "hexMaxMultiplier":
       return "Leva um hexágono ao multiplicador máximo (2,0), voltando lá em sessões suficientes.";
+    case "missionCountTotal":
+      return `Conclui ${achievement.threshold} missões mensais no total (qualquer dificuldade).`;
+    case "missionCountDifficulty":
+      return achievement.threshold === 1
+        ? `Conclui a tua primeira missão mensal de dificuldade ${MISSION_ACHIEVEMENT_SLOT_LABEL[achievement.slot]}.`
+        : `Conclui ${achievement.threshold} missões mensais de dificuldade ${MISSION_ACHIEVEMENT_SLOT_LABEL[achievement.slot]}.`;
+    case "missionMonthComplete":
+      return "Conclui as 9 missões do mês (3 fáceis, 3 médias, 3 difíceis) no mesmo mês.";
     default:
       return "";
   }

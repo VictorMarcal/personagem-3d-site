@@ -154,11 +154,24 @@ const STORAGE_KEY_WAREHOUSE_LEVEL = "personagem.nivelArmazem";
 // que ja foram encontradas.
 const STORAGE_KEY_MINES = "personagem.minasEncontradas";
 
-// Missoes mensais (secção 22, 2026-09-10). As 3 missoes de cada mes sao
-// deterministas a partir do mes (nao guardadas); aqui guarda-se so o ESTADO:
-// { mes, ativa: {slot, tipo, alvo, ..., baseline, aceiteEm} | null,
-//   concluidas: [slot...], rejeitadaEm: ts | null }.
+// Missoes mensais (secção 22, 2026-09-10). As 9 missoes de cada mes (3
+// dificuldades x 3 tipos) sao deterministas a partir do mes (nao guardadas);
+// aqui guarda-se so o ESTADO: { mes, ativas: {facil,media,dificil},
+// concluidas: ["facil:correr_km", ...], rejeitadaEm: {facil,media,dificil} }.
+// `concluidas` passou a guardar "slot:tipo" (2026-09-16, a pedido - permite
+// concluir os 3 tipos de cada dificuldade no mesmo mes, nao so 1) - ver
+// tipoJaConcluido() em js/missions.js.
 const STORAGE_KEY_MISSIONS = "personagem.missoesMensais";
+
+// Contadores VITALICIOS de missoes concluidas (2026-09-16, a pedido -
+// medalhas por completar missoes). Ao contrario de STORAGE_KEY_MISSIONS
+// acima (mensal, reposto todos os meses), isto nunca e reposto.
+// { total, facil, media, dificil, mesesCompletos }. mesesCompletos conta
+// quantos meses ja se completaram as 9 missoes desse mes ("Mês Perfeito").
+// Ver js/achievements.js (getMissionsLifetimeCounters/
+// registarMissaoConcluidaVitalicio, chamada por verificarMissaoAtiva em
+// js/missions.js).
+const STORAGE_KEY_MISSIONS_LIFETIME = "personagem.missoesConcluidasVitalicio";
 
 // Hordas de inimigos (2026-09-16, a pedido via Trello). So se guarda QUANDO
 // e a proxima e QUANTAS ja aconteceram (define quantos monstros a proxima
