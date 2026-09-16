@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.28.1",
+    title: "Derrota Termina a Horda",
+    changes: [
+      "Se a tua Vida chegar a 0 durante uma horda, o ataque termina logo como derrota, em vez de continuar até matares todos os monstros.",
+    ],
+  },
+  {
     version: "v6.28.0",
     title: "Relatórios de Batalha e Novos Atributos",
     changes: [

@@ -21,6 +21,9 @@
 //     HORDE_ROUBO_POR_RECURSO (10) unidades de CADA um dos 5 recursos. So
 //     acontece uma vez por horda (ver hordaRouboJaAconteceu) - não volta a
 //     roubar a cada ataque seguinte enquanto a Vida continuar a 0.
+//   - Vida a 0 termina a horda de IMEDIATO como derrota (2026-09-16, a
+//     pedido via Trello), mesmo que ainda restem monstros vivos - não
+//     espera que o jogador os mate todos depois de já ter perdido.
 //   - Sem modelos 3D reais ainda: placeholder (capsula+esfera, o mesmo
 //     desenho do monstro da Masmorra em js/main.js, so que a cores
 //     diferentes para nao confundir os dois).
@@ -206,7 +209,13 @@ function terminarHorda() {
     recursosRoubadosPorRecurso: hordaRouboJaAconteceu ? hordaRouboQuantidade : 0,
   });
 
-  if (typeof showGameToast === "function") showGameToast("Horda repelida!", "medalha");
+  if (typeof showGameToast === "function") {
+    if (hordaRouboJaAconteceu) {
+      showGameToast("A Fortaleza caiu! A horda venceu.", "aviso");
+    } else {
+      showGameToast("Horda repelida!", "medalha");
+    }
+  }
   renderHordaWarning();
 }
 
@@ -400,7 +409,11 @@ function updateHordeAttack(dtSeconds) {
     }
   }
 
-  if (!algumVivo) terminarHorda();
+  // Vida a 0 termina a horda de imediato como derrota, mesmo com monstros
+  // ainda vivos (a pedido via Trello, 2026-09-16) - antes disto o saque
+  // acontecia mas a luta continuava ate matar todos os monstros, o que podia
+  // acabar por mostrar "Horda repelida!" depois de uma derrota.
+  if (hordaRouboJaAconteceu || !algumVivo) terminarHorda();
 }
 
 // Chamado por enterBattleView()/exitBattleView() (js/main.js) - os monstros
