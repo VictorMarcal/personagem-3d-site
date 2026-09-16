@@ -13,6 +13,29 @@
 // progressao da construcao, nao a ordem de RESOURCES (que comeca no ferro).
 const WAREHOUSE_COST_ORDER = ["madeira", "pele", "pedra", "barro", "ferro"];
 
+// Notificação de depósito cheio (2026-09-16, a pedido - "jogador deve
+// receber notificação quando um dos depósitos está cheio"). O aviso
+// "Fortaleza cheia" já existia dentro do painel (só visível com a Economia
+// aberta) - isto acrescenta um toast, uma vez por "enchimento" (não a cada
+// segundo enquanto ficar cheio, o painel é redesenhado 1x/s pelo ticker).
+// Volta a poder avisar depois de descer abaixo do teto (gasto/melhoria).
+// Só em memória - não precisa de sobreviver a um reload para ser útil.
+let recursosCheiosAvisados = new Set();
+
+function avisarRecursosCheios(stock, tecto) {
+  RESOURCE_IDS.forEach((id) => {
+    const cheio = stock[id] >= tecto - 0.5;
+    if (cheio && !recursosCheiosAvisados.has(id)) {
+      recursosCheiosAvisados.add(id);
+      if (typeof showGameToast === "function" && typeof RESOURCE_BY_ID !== "undefined") {
+        showGameToast(`${RESOURCE_BY_ID[id].nome} cheio na Fortaleza — produção parada.`, "aviso");
+      }
+    } else if (!cheio && recursosCheiosAvisados.has(id)) {
+      recursosCheiosAvisados.delete(id);
+    }
+  });
+}
+
 function renderResourcesPanel() {
   const painel = document.getElementById("resources-panel");
   const armazem = document.getElementById("warehouse-panel");
@@ -24,6 +47,8 @@ function renderResourcesPanel() {
   const porHora = producaoPorHora();
   const nivel = getWarehouseLevel();
   const tecto = warehouseCap(nivel);
+
+  avisarRecursosCheios(stock, tecto);
 
   painel.innerHTML =
     '<p class="resources-title">Produção por hora</p>' +
