@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.27.1",
+    title: "Fortaleza Pode Ser Saqueada",
+    changes: [
+      "Se a tua Vida chegar a 0 durante um ataque, cada monstro que ainda estiver vivo rouba recursos da Fortaleza.",
+    ],
+  },
+  {
     version: "v6.27.0",
     title: "Hordas na Fortaleza",
     changes: [

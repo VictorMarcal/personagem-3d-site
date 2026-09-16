@@ -1399,6 +1399,7 @@ dificil: [correr_km, caminhar_km, descobre_concelho]
 - Ao chegar a hora, os monstros aparecem em até 3 posições possíveis e avançam em direção à torre.
 - Monstros andam **1 m/s**; atacam **1×/segundo** ao chegar (dano à Vida atual do jogador — ver "Vida partilhada" abaixo).
 - A personagem dispara sozinha **1×/segundo**, num raio de **4 metros** da base da torre.
+- **Se a Vida chegar a 0, a Fortaleza é saqueada** (2ª parte do pedido, mesmo dia): cada monstro ainda vivo NESSE MOMENTO rouba `HORDE_ROUBO_POR_RECURSO` (10) unidades de **cada um dos 5 recursos**. Só acontece **uma vez por horda** — não volta a roubar a cada ataque seguinte enquanto a Vida ficar a 0 (`hordaRouboJaAconteceu`, reposto a `false` no início de cada horda).
 - Sem modelos 3D ainda → **placeholder**: a mesma cápsula+esfera do monstro da Masmorra (`js/main.js`), só que roxa em vez de vermelha, para não se confundirem visualmente.
 - **Intervalo de teste**: `HORDE_INTERVAL_MS = 5 min` (`js/horde.js`) — a pedido, para testar várias hordas seguidas sem esperar 23h. É a única constante a mudar para produção (`23 * 60 * 60 * 1000`).
 
@@ -1408,7 +1409,9 @@ Os "até 3 posições possíveis" são Empties chamados `HordaSpawn1`/`HordaSpaw
 
 ### Vida partilhada com a Masmorra, sem "vida da torre" à parte
 
-Os ataques dos monstros tiram dano à **Vida atual do jogador** — `getCurrentHp`/`setCurrentHp` (`js/equipment.js`), a mesma usada nas lutas da Masmorra e que recupera sozinha com o tempo (Energia). Decisão deliberada: mais simples que inventar uma barra de vida da Fortaleza à parte, e mantém as hordas ligadas ao resto do sistema de combate (dano/crítico calculados pelas mesmas fórmulas — `computeBattleDamage`, `rollCritico`, `computePlayerAtaque/Defesa/Vida`, `computeLetalidadeChance`, todas de `js/battle.js`/`js/equipment.js`, reaproveitadas tal como estão).
+Os ataques dos monstros tiram dano à **Vida atual do jogador** — `getCurrentHp`/`setCurrentHp` (`js/equipment.js`), a mesma usada nas lutas da Masmorra e que recupera sozinha com o tempo (Energia). Decisão deliberada: mais simples que inventar uma barra de vida da Fortaleza à parte, e mantém as hordas ligadas ao resto do sistema de combate (dano/crítico calculados pelas mesmas fórmulas — `computeBattleDamage`, `rollCritico`, `computePlayerAtaque/Defesa/Vida`, `computeLetalidadeChance`, todas de `js/battle.js`/`js/equipment.js`, reaproveitadas tal como estão). É também esta ligação que dá sentido ao saque: **a única consequência de a Vida chegar a 0** é a Fortaleza perder recursos — não há ecrã de derrota nem a horda para (os monstros continuam a atacar/a ser atacados na mesma; a Vida volta a recuperar sozinha com o tempo, como sempre).
+
+`roubarRecursosDaFortaleza()` (`js/horde.js`) segue o mesmo padrão de `concederRecompensaMissao` (`js/missions.js`): `acumularProducao()` fixa um checkpoint da produção até agora, subtrai (nunca abaixo de 0) e grava com `saveResources`, depois redesenha `renderResourcesPanel`/`renderWallet` e mostra um toast ("A Fortaleza foi saqueada! -N de cada recurso.").
 
 ### Ao nível do código
 

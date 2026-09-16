@@ -15,6 +15,11 @@
 //     setCurrentHp em js/equipment.js - nao ha uma "vida da torre" à parte).
 //   - A personagem dispara sozinha 1x por segundo a quem estiver a
 //     HERO_HORDE_ATTACK_RANGE_M (4m) ou menos da base da torre.
+//   - Se a Vida da personagem chegar a 0, a Fortaleza é saqueada: cada
+//     monstro que ainda estiver vivo NESSE MOMENTO rouba
+//     HORDE_ROUBO_POR_RECURSO (10) unidades de CADA um dos 5 recursos. So
+//     acontece uma vez por horda (ver hordaRouboJaAconteceu) - não volta a
+//     roubar a cada ataque seguinte enquanto a Vida continuar a 0.
 //   - Sem modelos 3D reais ainda: placeholder (capsula+esfera, o mesmo
 //     desenho do monstro da Masmorra em js/main.js, so que a cores
 //     diferentes para nao confundir os dois).
@@ -28,8 +33,9 @@
 // js/battle.js (rollCritico, computeBattleDamage), js/equipment.js
 // (computePlayerAtaque/Defesa/Vida, computeLetalidadeChance,
 // getEffectiveInvestableStatLevel, getCurrentHp/setCurrentHp, renderStatsHud,
-// showGameToast), js/storage-keys.js (STORAGE_KEY_HORDE). Carrega depois de
-// todos eles.
+// showGameToast), js/resources.js (RESOURCE_IDS, acumularProducao,
+// saveResources), js/resources-ui.js (renderResourcesPanel, renderWallet),
+// js/storage-keys.js (STORAGE_KEY_HORDE). Carrega depois de todos eles.
 
 const HORDE_INTERVAL_MS = 5 * 60 * 1000; // TESTE - produção final: 23 * 60 * 60 * 1000
 const HORDE_WALK_SPEED_MPS = 1;
@@ -45,6 +51,10 @@ const HERO_HORDE_ATTACK_RANGE_M = 4;
 const HORDE_MONSTER_HP = 20;
 const HORDE_MONSTER_ATAQUE = 4;
 const HORDE_MONSTER_DEFESA = 0;
+
+// Saque a pedido: se a Vida chegar a 0, cada monstro ainda vivo rouba isto
+// de CADA um dos 5 recursos.
+const HORDE_ROUBO_POR_RECURSO = 10;
 
 // --- pontos de partida -------------------------------------------------------
 //
@@ -119,6 +129,7 @@ function hordaRestanteMs() {
 let hordaMonstros = []; // { group, head, hp }
 let hordaEmCurso = false;
 let heroHordaAttackCooldownMs = 0;
+let hordaRouboJaAconteceu = false; // uma vez por horda, ver atacarTorreComHorda()
 
 // Mesmo desenho placeholder do monstro da Masmorra (js/main.js) - capsula +
 // esfera, sem depender de nenhum modelo GLTF. Cor diferente (roxo em vez de
@@ -144,6 +155,7 @@ function criarHordaMonstroPlaceholder() {
 
 function iniciarHorda() {
   hordaEmCurso = true;
+  hordaRouboJaAconteceu = false;
 
   const estado = getHordaState();
   const numero = estado.contagem + 1;
@@ -186,11 +198,40 @@ function atacarTorreComHorda() {
   const dano = computeBattleDamage(HORDE_MONSTER_ATAQUE, defesa);
 
   const hpAtual = getCurrentHp(maxHp);
-  setCurrentHp(Math.max(0, hpAtual - dano));
+  const novaHp = Math.max(0, hpAtual - dano);
+  setCurrentHp(novaHp);
   if (typeof showFloatingCombatText === "function" && typeof head !== "undefined") {
     showFloatingCombatText(head, -dano, "damage");
   }
   if (typeof renderStatsHud === "function") renderStatsHud();
+
+  // Vida chegou a 0: a Fortaleza é saqueada, uma vez por horda (a pedido).
+  if (novaHp <= 0 && !hordaRouboJaAconteceu) {
+    hordaRouboJaAconteceu = true;
+    roubarRecursosDaFortaleza();
+  }
+}
+
+// Cada monstro ainda vivo NESTE MOMENTO rouba HORDE_ROUBO_POR_RECURSO de
+// cada um dos 5 recursos - a pedido ("cada monstro que sobrevive rouba 10 de
+// cada recurso"). Nunca vai abaixo de 0 por recurso.
+function roubarRecursosDaFortaleza() {
+  const vivos = hordaMonstros.filter((m) => m.hp > 0).length;
+  if (vivos <= 0 || typeof acumularProducao !== "function" || typeof saveResources !== "function") return;
+
+  const ids = typeof RESOURCE_IDS !== "undefined" ? RESOURCE_IDS : ["ferro", "madeira", "pele", "pedra", "barro"];
+  const roubado = HORDE_ROUBO_POR_RECURSO * vivos;
+  const stock = acumularProducao();
+  ids.forEach((id) => {
+    stock[id] = Math.max(0, (Number(stock[id]) || 0) - roubado);
+  });
+  saveResources(stock);
+
+  if (typeof renderResourcesPanel === "function") renderResourcesPanel();
+  if (typeof renderWallet === "function") renderWallet();
+  if (typeof showGameToast === "function") {
+    showGameToast(`A Fortaleza foi saqueada! -${roubado} de cada recurso.`, "aviso");
+  }
 }
 
 // --- ataque automatico da personagem aos monstros ----------------------------
