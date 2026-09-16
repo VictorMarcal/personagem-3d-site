@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.29.3",
+    title: "Câmara de Horda Afinada",
+    changes: [
+      "FOV da câmara de ataque (horda) ajustado para 30°.",
+    ],
+  },
+  {
     version: "v6.29.2",
     title: "Câmara de Horda Afinada",
     changes: [

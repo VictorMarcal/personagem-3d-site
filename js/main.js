@@ -105,8 +105,8 @@ function applyNormalCamera() {
 // Pedido do Victor com uma imagem de referencia (2026-09-16); os valores
 // fixos abaixo sao so o fallback enquanto floorCameraAtaquePos nao existe.
 const HORDA_CAMERA_POSITION = { x: 0, y: 16, z: 8 };
-// 52 -> 40 -> 60 (2026-09-16, a pedido - valor final afinado pelo Victor).
-const HORDA_CAMERA_FOV = 60;
+// 52 -> 40 -> 60 -> 30 (2026-09-16, a pedido - valor final afinado pelo Victor).
+const HORDA_CAMERA_FOV = 30;
 
 function applyHordaCamera() {
   camera.fov = HORDA_CAMERA_FOV;
