@@ -624,8 +624,13 @@ main {
   background: #10151c;
   overflow: hidden;
 
-  --hexmap-blur: 8px;
+  /* Blur reduzido e contraste acrescentado ao territorio descoberto
+     (2026-09-17, a pedido - "mais contraste as cores, reduz um bocado o
+     blur"): 8px ficava com a foto demasiado desfocada, e sem contrast() as
+     cores do territorio ja pisado ficavam apagadas/lavadas. */
+  --hexmap-blur: 5px;
   --hexmap-dark: 0.45;
+  --hexmap-contrast: 1.25;
 }
 
 /* Por explorar: cinzento, escuro, desfocado. */
@@ -636,7 +641,7 @@ main {
 /* Ja descoberto: a mesma foto, a cores, com o mesmo desfoque - recortada
    (updateClips, js/hexes.js) aos hexagonos ja pisados. */
 .leaflet-hexclear-pane {
-  filter: blur(var(--hexmap-blur));
+  filter: blur(var(--hexmap-blur)) contrast(var(--hexmap-contrast));
 }
 
 /* Canvas por cima das duas camadas de foto - icones das minas encontradas e
