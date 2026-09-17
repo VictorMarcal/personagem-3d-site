@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.39.0",
+    title: "Uma Conta, Um Dispositivo de Cada Vez",
+    changes: [
+      "Se entrares numa conta que já está ligada noutro telemóvel, é-te perguntado se queres continuar (o outro é desligado) ou cancelar.",
+    ],
+  },
+  {
     version: "v6.38.0",
     title: "Sombra Mais Correta no Cenário",
     changes: [
