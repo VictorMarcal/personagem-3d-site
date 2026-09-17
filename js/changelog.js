@@ -7,6 +7,11 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.39.4",
+    title: "Mapa Ainda Mais Colorido",
+    changes: ["Saturação das cores do território já descoberto ajustada de novo, mais forte."],
+  },
+  {
     version: "v6.39.3",
     title: "Mapa Ainda Mais Colorido",
     changes: ["Saturação das cores do território já descoberto ajustada de novo, mais forte."],
