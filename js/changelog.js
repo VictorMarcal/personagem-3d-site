@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.39.0",
+    title: "Um Treino de Cada Vez",
+    changes: [
+      "Se já tiveres um treino em curso noutro telemóvel, não é possível começar outro em simultâneo aqui.",
+    ],
+  },
+  {
     version: "v6.38.0",
     title: "Sombra Mais Correta no Cenário",
     changes: [

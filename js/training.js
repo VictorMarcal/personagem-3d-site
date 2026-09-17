@@ -323,6 +323,7 @@ let lastPosition = null;
 let lastCountedPosition = null;
 let watchId = null;
 let saveIntervalId = null;
+let serverLockIntervalId = null;
 let sessionStartTime = null; // usado para conquistas de ritmo (ex: 5km em menos de 25 min)
 
 // Calorias da sessao em curso (soma dos segmentos, formula MET acima) - e
@@ -978,6 +979,11 @@ function beginWatch() {
     updateXPDisplay(sessionCaloriesKcal);
     refreshTabLock(STORAGE_KEY_TRAINING_TAB_LOCK);
   }, SAVE_INTERVAL_MS);
+  // Sinal de vida do bloqueio de treino no SERVIDOR (ver claimServerTrainingLock
+  // acima) - intervalo proprio, mais lento que o do lock local, para nao gastar
+  // um pedido de rede a cada 5s ao longo do treino inteiro.
+  refreshServerTrainingLock();
+  serverLockIntervalId = setInterval(refreshServerTrainingLock, TRAINING_LOCK_REFRESH_MS);
   startLiveStatsTicker();
   // Baixa o ritmo de desenho da cena 3D enquanto o treino dura (js/main.js):
   // e uma hora de ecra ligado em que ninguem esta a olhar para o heroi.
@@ -1027,7 +1033,94 @@ function showTrainingCountdown() {
   }, 1000);
 }
 
-function startTraining() {
+// --- Bloqueio de treino entre DISPOSITIVOS (2026-09-17, a pedido) ----------
+//
+// claimTabLock/STORAGE_KEY_TRAINING_TAB_LOCK (js/tab-lock.js) so cobre duas
+// ABAS do MESMO aparelho (localStorage, nao sai do aparelho). Isto e o
+// equivalente para dois TELEMOVEIS diferentes na mesma conta: uma flag em
+// player_progress (training_lock_owner/training_lock_heartbeat_at),
+// verificada no INICIO do treino - sem Realtime, sem popup de "outro
+// dispositivo" a meio do jogo (isso foi tentado e revertido, ver histórico
+// do card no Trello) - só um bloqueio simples ao COMEÇAR.
+//
+// TAB_ID (ja existente, js/tab-lock.js) chega como identificador do dono:
+// no mesmo aparelho so uma aba de cada vez consegue estar a treinar (o
+// lock local acima ja garante isso), por isso o TAB_ID sozinho identifica
+// sem ambiguidade "este treino, neste aparelho", sem precisar de nenhum ID
+// novo.
+const TRAINING_LOCK_REFRESH_MS = 30000;
+// 3x o intervalo de renovacao (mesmo espirito de TAB_LOCK_STALE_MS vs o
+// intervalo do lock local) - mais folgado porque depende da rede, nao so
+// do proprio browser (temporizadores atrasados em segundo plano, GPS a
+// acordar o telemovel, etc.).
+const TRAINING_LOCK_STALE_MS = 90000;
+
+// So bloqueia (devolve false) se houver OUTRO aparelho com sinal de vida
+// recente. Falha de rede a verificar NAO bloqueia - mais vale deixar
+// treinar do que travar o jogo por causa disto (mesmo principio usado em
+// toda a parte de arranque pos-login, js/auth.js).
+async function claimServerTrainingLock() {
+  if (!currentUserId) return true; // login ainda a carregar, nao ha conta para verificar
+  try {
+    const { data, error } = await supabaseClient
+      .from("player_progress")
+      .select("training_lock_owner, training_lock_heartbeat_at")
+      .eq("user_id", currentUserId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Falha ao verificar bloqueio de treino noutro dispositivo, a continuar mesmo assim.", error);
+      return true;
+    }
+
+    const owner = data && data.training_lock_owner;
+    const heartbeatAt = data && data.training_lock_heartbeat_at ? new Date(data.training_lock_heartbeat_at).getTime() : 0;
+    const outroDispositivoAtivo = owner && owner !== TAB_ID && Date.now() - heartbeatAt < TRAINING_LOCK_STALE_MS;
+    if (outroDispositivoAtivo) return false;
+
+    await supabaseClient
+      .from("player_progress")
+      .update({ training_lock_owner: TAB_ID, training_lock_heartbeat_at: new Date().toISOString() })
+      .eq("user_id", currentUserId);
+    return true;
+  } catch (err) {
+    console.warn("Falha ao verificar bloqueio de treino noutro dispositivo, a continuar mesmo assim.", err);
+    return true;
+  }
+}
+
+// Chamado a cada TRAINING_LOCK_REFRESH_MS enquanto o treino decorre, e uma
+// vez de imediato dentro de beginWatch() (cobre o caso de retomar um treino
+// apos um refresh, que chama beginWatch diretamente sem passar por
+// claimServerTrainingLock). Sem verificar nada antes de escrever - mesmo
+// espirito sem-guarda de refreshTabLock (js/tab-lock.js).
+function refreshServerTrainingLock() {
+  if (!currentUserId) return;
+  supabaseClient
+    .from("player_progress")
+    .update({ training_lock_owner: TAB_ID, training_lock_heartbeat_at: new Date().toISOString() })
+    .eq("user_id", currentUserId)
+    .then(({ error }) => {
+      if (error) console.warn("Falha ao renovar o bloqueio de treino no servidor.", error);
+    });
+}
+
+// So liberta se o dono ainda for este aparelho - mesma guarda de
+// releaseTabLock, nunca apaga por engano o bloqueio de outro dispositivo
+// que entretanto o tenha reclamado.
+function releaseServerTrainingLock() {
+  if (!currentUserId) return;
+  supabaseClient
+    .from("player_progress")
+    .update({ training_lock_owner: null, training_lock_heartbeat_at: null })
+    .eq("user_id", currentUserId)
+    .eq("training_lock_owner", TAB_ID)
+    .then(({ error }) => {
+      if (error) console.warn("Falha ao libertar o bloqueio de treino no servidor.", error);
+    });
+}
+
+async function startTraining() {
   // O aviso sonoro das minas (secção 21) tem de ser desbloqueado a partir de
   // um gesto: no iOS um AudioContext criado fora de um toque fica suspenso e
   // nunca toca. Este botao e esse gesto.
@@ -1046,6 +1139,12 @@ function startTraining() {
   // segunda aba que tente comecar durante esses 5s.
   if (!claimTabLock(STORAGE_KEY_TRAINING_TAB_LOCK)) {
     alert("Já tens um treino ativo noutro separador ou janela. Fecha-o antes de começar um novo aqui.");
+    return;
+  }
+
+  if (!(await claimServerTrainingLock())) {
+    releaseTabLock(STORAGE_KEY_TRAINING_TAB_LOCK);
+    alert("Já tens um treino ativo noutro dispositivo. Termina-o antes de começar um novo aqui.");
     return;
   }
 
@@ -1217,6 +1316,11 @@ function stopTraining() {
     clearInterval(saveIntervalId);
     saveIntervalId = null;
   }
+  if (serverLockIntervalId !== null) {
+    clearInterval(serverLockIntervalId);
+    serverLockIntervalId = null;
+  }
+  releaseServerTrainingLock();
   stopLiveStatsTicker();
   releaseWakeLock();
 
