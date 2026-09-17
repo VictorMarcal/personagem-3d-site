@@ -1713,15 +1713,6 @@ main {
 
 .auth-box .btn-primary { width: 100%; }
 
-/* Par Cancelar/Continuar do #device-conflict-modal (2026-09-17) - unico
-   modal desta familia com dois botoes lado a lado, os outros so tem um. */
-.modal-actions {
-  display: flex;
-  gap: 10px;
-  width: 100%;
-}
-.modal-actions button { flex: 1; width: auto; }
-
 #name-picker-input { max-width: none; text-align: center; }
 
 /* ---------- Leaderboard ----------------------------------------------------- */

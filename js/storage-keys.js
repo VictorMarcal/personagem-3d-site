@@ -191,11 +191,3 @@ const STORAGE_KEY_HORDE = "personagem.horda2";
 // primeiro): [{ data: ts, numero, resultado: "vitoria"|"derrota",
 // recursosRoubadosPorRecurso }].
 const STORAGE_KEY_HORDE_REPORTS = "personagem.hordaRelatorios";
-
-// ID proprio deste dispositivo/browser (secção 26, 2026-09-17, a pedido -
-// bloqueio de login em mais que um dispositivo em simultaneo). Ao contrario
-// do TAB_ID de js/tab-lock.js (por aba, sessionStorage), este vive em
-// localStorage - tem de sobreviver a fechar o browser, identifica o
-// TELEMOVEL, nao a aba. Ver claimActiveDevice()/resolveDeviceConflict() em
-// js/auth.js.
-const STORAGE_KEY_DEVICE_ID = "personagem.deviceId";

@@ -157,120 +157,6 @@ btnEmailAuthForgot.addEventListener("click", async () => {
   );
 });
 
-// --- Sessao unica por dispositivo (secção 26, 2026-09-17, a pedido) --------
-//
-// device-conflict-modal (index.html). Cada dispositivo tem um ID proprio,
-// gerado uma vez e guardado em STORAGE_KEY_DEVICE_ID (localStorage - ao
-// contrario do TAB_ID de js/tab-lock.js, que e por ABA em sessionStorage,
-// este tem de sobreviver a fechar o browser, identifica o TELEMOVEL, nao a
-// aba). profiles.active_device_id (Supabase) guarda qual e o dispositivo
-// com a sessao "oficial": ao fazer login, se for outro diferente do que la
-// estava, mostra-se o popup Cancelar/Continuar (especificação exata do
-// Victor, comentário no card #26 do Trello). "Continuar" reclama a sessao
-// (UPDATE profiles); o dispositivo anterior fica a "ouvir" via Supabase
-// Realtime (subscribeToDeviceConflicts abaixo) e desliga-se sozinho, sem
-// precisar de um refresh manual.
-const DEVICE_ID = (function getOrCreateDeviceId() {
-  let id = localStorage.getItem(STORAGE_KEY_DEVICE_ID);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(STORAGE_KEY_DEVICE_ID, id);
-  }
-  return id;
-})();
-
-const deviceConflictModalEl = document.getElementById("device-conflict-modal");
-const btnDeviceConflictCancel = document.getElementById("btn-device-conflict-cancel");
-const btnDeviceConflictContinue = document.getElementById("btn-device-conflict-continue");
-const deviceConflictStatusEl = document.getElementById("device-conflict-status");
-
-// So uma subscricao por sessao de pagina - nunca deveria ser chamada duas
-// vezes, mas evita subscricoes duplicadas se algum fluxo futuro voltar a
-// chamar claimActiveDevice() depois da primeira vez.
-let deviceConflictChannel = null;
-
-function subscribeToDeviceConflicts(userId) {
-  if (deviceConflictChannel) return;
-  deviceConflictChannel = supabaseClient
-    .channel("device-conflict-" + userId)
-    .on(
-      "postgres_changes",
-      { event: "UPDATE", schema: "public", table: "profiles", filter: "id=eq." + userId },
-      (payload) => {
-        const activeId = payload.new && payload.new.active_device_id;
-        // Outro dispositivo reclamou a sessao (Continuar num 2º telemovel) -
-        // desliga-se sozinho, em tempo real, sem precisar de recarregar a
-        // pagina a mao.
-        if (activeId && activeId !== DEVICE_ID) {
-          supabaseClient.auth.signOut().finally(() => window.location.reload());
-        }
-      }
-    )
-    .subscribe();
-}
-
-async function claimActiveDevice(userId) {
-  await supabaseClient
-    .from("profiles")
-    .update({ active_device_id: DEVICE_ID, active_session_started_at: new Date().toISOString() })
-    .eq("id", userId);
-  subscribeToDeviceConflicts(userId);
-}
-
-// So resolve quando este dispositivo pode mesmo continuar o login (sem
-// conflito, ou o jogador escolheu "Continuar"). Um "Cancelar" termina a
-// sessao e recarrega a pagina para o ecra de login - nunca resolve a
-// promise, o arranque normal (bootstrapAfterLogin) fica por fazer de
-// propósito.
-function resolveDeviceConflict(userId) {
-  return new Promise(async (resolve) => {
-    const { data, error } = await supabaseClient
-      .from("profiles")
-      .select("active_device_id")
-      .eq("id", userId)
-      .maybeSingle();
-
-    // Falha a verificar (rede) ou nunca houve outro dispositivo - segue em
-    // frente, mais vale deixar entrar do que bloquear o jogo por causa disto.
-    if (error || !data || !data.active_device_id || data.active_device_id === DEVICE_ID) {
-      await claimActiveDevice(userId);
-      resolve();
-      return;
-    }
-
-    deviceConflictStatusEl.textContent = "";
-    deviceConflictModalEl.classList.remove("hidden");
-
-    function cleanup() {
-      btnDeviceConflictContinue.removeEventListener("click", onContinue);
-      btnDeviceConflictCancel.removeEventListener("click", onCancel);
-      btnDeviceConflictContinue.disabled = false;
-      btnDeviceConflictCancel.disabled = false;
-    }
-
-    async function onContinue() {
-      btnDeviceConflictContinue.disabled = true;
-      btnDeviceConflictCancel.disabled = true;
-      await claimActiveDevice(userId);
-      deviceConflictModalEl.classList.add("hidden");
-      cleanup();
-      resolve();
-    }
-
-    async function onCancel() {
-      btnDeviceConflictContinue.disabled = true;
-      btnDeviceConflictCancel.disabled = true;
-      await supabaseClient.auth.signOut();
-      deviceConflictModalEl.classList.add("hidden");
-      cleanup();
-      window.location.reload();
-    }
-
-    btnDeviceConflictContinue.addEventListener("click", onContinue);
-    btnDeviceConflictCancel.addEventListener("click", onCancel);
-  });
-}
-
 // --- Repor palavra-passe (link recebido por email) -------------------------
 //
 // Clicar no link do email de recuperacao volta ao site JA com uma sessao de
@@ -317,15 +203,9 @@ btnPasswordResetConfirm.addEventListener("click", async () => {
   // "a meio" de escolher a palavra-passe.
   if (!bootstrapped && data.user) {
     bootstrapped = true;
-    // Sem popup de conflito aqui de proposito: quem repõe a palavra-passe
-    // ja provou acesso ao email da conta, reclama o dispositivo direto.
-    claimActiveDevice(data.user.id)
-      .catch((err) => console.error("Falha ao reclamar dispositivo após repor a palavra-passe:", err))
-      .then(() =>
-        bootstrapAfterLogin(data.user).catch((err) => {
-          console.error("Falha ao preparar sessão após repor a palavra-passe:", err);
-        })
-      );
+    bootstrapAfterLogin(data.user).catch((err) => {
+      console.error("Falha ao preparar sessão após repor a palavra-passe:", err);
+    });
   }
 });
 
@@ -577,14 +457,10 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     return;
   }
   if (!session) return;
+  hideAuthModal();
   if (bootstrapped) return;
   bootstrapped = true;
-  resolveDeviceConflict(session.user.id)
-    .then(() => {
-      hideAuthModal();
-      return bootstrapAfterLogin(session.user);
-    })
-    .catch((err) => {
-      console.error("Falha ao preparar sessão após login:", err);
-    });
+  bootstrapAfterLogin(session.user).catch((err) => {
+    console.error("Falha ao preparar sessão após login:", err);
+  });
 });
