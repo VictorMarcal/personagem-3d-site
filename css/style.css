@@ -624,11 +624,11 @@ main {
   background: #10151c;
   overflow: hidden;
 
-  /* Blur reduzido e contraste acrescentado ao territorio descoberto
-     (2026-09-17, a pedido - "mais contraste as cores, reduz um bocado o
-     blur"): 8px ficava com a foto demasiado desfocada, e sem contrast() as
-     cores do territorio ja pisado ficavam apagadas/lavadas. */
-  --hexmap-blur: 5px;
+  /* Contraste acrescentado ao territorio descoberto (2026-09-17, a pedido -
+     "mais contraste as cores"): sem contrast() as cores do territorio ja
+     pisado ficavam apagadas/lavadas. O blur tinha sido reduzido de 8px para
+     5px no mesmo pedido, mas voltou ao valor original a pedido pouco depois. */
+  --hexmap-blur: 8px;
   --hexmap-dark: 0.45;
   --hexmap-contrast: 1.25;
   /* 2026-09-17, a pedido - "mais saturação" (a seguir ao contraste acima),
