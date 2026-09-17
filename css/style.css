@@ -631,8 +631,9 @@ main {
   --hexmap-blur: 5px;
   --hexmap-dark: 0.45;
   --hexmap-contrast: 1.25;
-  /* 2026-09-17, a pedido - "mais saturação" (a seguir ao contraste acima). */
-  --hexmap-saturate: 1.6;
+  /* 2026-09-17, a pedido - "mais saturação" (a seguir ao contraste acima),
+     depois ajustada para 2. */
+  --hexmap-saturate: 2;
 }
 
 /* Por explorar: cinzento, escuro, desfocado. */
