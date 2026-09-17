@@ -631,6 +631,8 @@ main {
   --hexmap-blur: 5px;
   --hexmap-dark: 0.45;
   --hexmap-contrast: 1.25;
+  /* 2026-09-17, a pedido - "mais saturação" (a seguir ao contraste acima). */
+  --hexmap-saturate: 1.6;
 }
 
 /* Por explorar: cinzento, escuro, desfocado. */
@@ -641,7 +643,7 @@ main {
 /* Ja descoberto: a mesma foto, a cores, com o mesmo desfoque - recortada
    (updateClips, js/hexes.js) aos hexagonos ja pisados. */
 .leaflet-hexclear-pane {
-  filter: blur(var(--hexmap-blur)) contrast(var(--hexmap-contrast));
+  filter: blur(var(--hexmap-blur)) contrast(var(--hexmap-contrast)) saturate(var(--hexmap-saturate));
 }
 
 /* Canvas por cima das duas camadas de foto - icones das minas encontradas e
