@@ -298,6 +298,14 @@ function drawHexGrid() {
   // Ao contrario dos hexagonos acima, estes nao dependem da resolucao
   // desenhada - uma mina e um ponto, nao um hexagono, por isso faz sentido
   // em qualquer zoom.
+  //
+  // TEMPORARIO (2026-09-18, a pedido - "mostra-me no mapa onde estao,
+  // depois voltamos a esconder"): SHOW_ALL_MINES_DEBUG desliga o filtro de
+  // "so encontradas" para o Victor conseguir ver a disposicao real das
+  // minas de Braga e avaliar se vale a pena haver mais. Reverter para
+  // `false` (ou apagar a flag e voltar ao `if (!encontradas.has(...))`) faz
+  // o mapa voltar ao normal - nada foi gravado, e so o filtro de desenho.
+  const SHOW_ALL_MINES_DEBUG = true;
   if (typeof todasAsMinas === "function") {
     const encontradas = getMinasEncontradas();
     const visitas = typeof getHexVisits === "function" ? getHexVisits() : {};
@@ -307,7 +315,7 @@ function drawHexGrid() {
     ctx.font = "19px system-ui, -apple-system, sans-serif";
 
     todasAsMinas().forEach((mina) => {
-      if (!encontradas.has(mina.id)) return;
+      if (!SHOW_ALL_MINES_DEBUG && !encontradas.has(mina.id)) return;
       if (!bounds.contains([mina.lat, mina.lng])) return;
       const p = project([mina.lat, mina.lng]);
 
