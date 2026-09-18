@@ -396,7 +396,7 @@ Ao terminar, um popup com sete valores. Separa sempre **ativo** de **total** —
 | Distância | distância creditada |
 | Velocidade média | distância ÷ **tempo ativo** |
 | Calorias ativas | esforço do tempo ativo |
-| Calorias totais | ativas + 1 MET sobre o tempo em pausa |
+| Calorias totais | = calorias ativas (tempo em pausa deixou de render calorias, 2026-09-18 — ver subsecção abaixo) |
 | XP ganho | igual às calorias **totais** |
 
 **"Tempo em pausa" inclui o que a app detetou como parado**, não só o que se carregou à mão. Parado é parado, quer tenha sido o jogador a dizer, quer tenha sido a app a perceber (secção 4.1). Acumulado por incrementos, não por transições de estado: assim uma falha de sinal a meio de uma paragem também conta, e não há um estado aberto para fechar em cada saída possível da função.
@@ -434,6 +434,20 @@ Na bicicleta não colapsa assim, porque o MET vem de uma tabela por faixas em ve
 **Efeito lateral que vale mais que a própria mudança**: a **velocidade média** passa a ser sobre o tempo ativo. Num treino de teste com 5 min a andar e 10 min parado, saiu **4,4 km/h** onde antes saía 1,6 km/h. E como é dessa velocidade que sai o MET, as calorias deixam de ser diluídas pelo tempo parado — o mesmo problema da secção 4.6, agora tapado também pelo lado do tempo.
 
 Na base de dados: **`calories_kcal` é o valor de XP, ou seja o TOTAL** — assim tudo o que já o lia (leaderboard, gráficos do Perfil, recorde de sessão, conquistas) continua a referir-se ao número certo sem mudar uma linha. `calories_active_kcal` e `paused_seconds` são novas e informativas.
+
+#### Tempo em pausa deixa de render calorias (2026-09-18) — substitui o teto acima
+
+**Novo bug parecido, mesmo género do de 2026-09-16** (card #27 do Trello, *"Iniciei um treino ontem e deixei a correr a noite toda"*): mesmo com o teto de 1h em vigor, uma sessão esquecida (1:12 ativo, 7:38:11 em pausa) ainda rendia 82 kcal de "repouso" sem esforço nenhum, só por o teto conceder sempre até 1h independentemente de a parte ativa ter sido mínima.
+
+**Decisão** (a pedido, depois de pesar a alternativa de auto-terminar sessões inativas ou só descartar sessões em que a pausa excede o ativo — ver histórico do card): em vez de continuar a apertar o teto, **o tempo em pausa deixa de entrar na fórmula de calorias por completo**. Isto **reverte** a decisão de 2026-08-15 registada acima ("XP = gasto total, e porquê", bater certo com o "Total Kilocalories" de um relógio a sério) — aceite conscientemente como o preço de nunca mais haver nenhuma forma de uma sessão esquecida gerar calorias de graça, custe o que custar a uma pausa legítima a meio de um treino real (essa pausa passa a valer 0 kcal, em vez do 1 MET que valia antes).
+
+**O que mudou** (`js/training.js`):
+- `sessionTotalCalories` passa a ser exatamente `sessionCalories` (só a parte ativa) — removida a soma com `sessionRestingCalories`.
+- `MAX_RESTING_PAUSE_SECONDS` e `currentRestingKcal()` removidos por completo (código morto, já não há nada para capar).
+- **`paused_seconds` continua a ser gravado e mostrado tal e qual** ("Tempo em pausa" no resumo e no histórico) — só deixou de valer XP, a informação em si não desaparece.
+- `calories_active_kcal` e `calories_kcal` (= XP) ficam com o mesmo valor a partir de agora — antes só coincidiam quando não havia pausa nenhuma.
+
+**Sessões anteriores a 2026-09-18** (incluindo a corrigida manualmente em 2026-09-16) mantêm o `calories_kcal` já gravado na altura — isto não é uma correção retroativa, só muda o cálculo de sessões novas.
 
 **Os mesmos campos aparecem ao vivo** no painel acima do botão (`.live-grid`), e com **a mesma fórmula do fim** (`computeSessionCaloriesFromTotals`), não a soma ao vivo por segmento: as duas dão valores diferentes (a soma por segmento é capada, secção 4.4) e o número saltava ao terminar o treino — 19 kcal no painel, 38 no resumo, no mesmo treino.
 

@@ -568,10 +568,15 @@ function updateLiveStatsDisplay() {
     reparticaoAoVivo.distancia,
     reparticaoAoVivo.tempo
   );
-  const restingKcal = currentRestingKcal();
+  // Tempo em pausa deixou de contar para as calorias (2026-09-18, a pedido -
+  // "tempo inativo não entra na fórmula de cálculo", card #27 do Trello:
+  // uma sessão esquecida a noite toda ainda rendia calorias de "repouso").
+  // Continua visivel (live-paused-time acima, paused_seconds gravado) - so
+  // deixou de valer XP. "Total" e "Ativo" ficam iguais por definicao agora,
+  // mantidos como dois campos separados para nao mexer no HTML/CSS.
   set("live-active-kcal", `${Math.round(activeKcal)} kcal`);
-  set("live-total-kcal", `${Math.round(activeKcal + restingKcal)} kcal`);
-  updateDistanceDisplay(activeKcal + restingKcal);
+  set("live-total-kcal", `${Math.round(activeKcal)} kcal`);
+  updateDistanceDisplay(activeKcal);
 
   // Mostra o progresso da missão de distância a subir AO VIVO durante o
   // treino (bug 2026-09-15: "estou a correr e a missão não está a
@@ -624,20 +629,12 @@ function stopLiveStatsTicker() {
   }
 }
 
-// Calorias em repouso acumuladas nas pausas ate agora (1 MET) - a parcela
-// que separa as "ativas" das "totais" (secção 4.7). Capado a
-// MAX_RESTING_PAUSE_SECONDS tal como em stopTraining, para o mostrador ao
-// vivo nunca mostrar um numero que depois "desce" no resumo final.
-function currentRestingKcal() {
-  const pausedSeconds = Math.min(currentPausedMs() / 1000, MAX_RESTING_PAUSE_SECONDS);
-  return 1.0 * getPesoKg() * (pausedSeconds / 3600);
-}
-
 // activeKcal e opcional: quando quem chama ja o calculou, reaproveita-se em
 // vez de o recalcular (updateLiveStatsDisplay corre a cada segundo).
 function updateDistanceDisplay(activeKcal) {
   distanceEl.textContent = formatDistanceKm(totalDistanceM);
-  // XP = gasto total (secção 4.7). Quem chama ja o traz somado.
+  // XP = so a parte ATIVA (2026-09-18 - tempo em pausa deixou de contar
+  // para calorias, ver updateLiveStatsDisplay acima).
   const kcal = activeKcal !== undefined
     ? activeKcal
     : computeSessionCaloriesFromTotals(
@@ -647,7 +644,7 @@ function updateDistanceDisplay(activeKcal) {
         sessionMovingSeconds,
         reparticaoDaSessao().distancia,
         reparticaoDaSessao().tempo
-      ) + currentRestingKcal();
+      );
   // O tile ja tem o rotulo "XP" - o valor e so o numero. O jogador nao
   // precisa de saber que XP sao calorias por baixo (v6).
   caloriesEl.textContent = Math.round(kcal).toLocaleString("pt-BR");
@@ -1191,14 +1188,6 @@ function beginTrainingSession() {
 // deslocamento nenhum.
 const MIN_TRAINING_DURATION_SECONDS = 10;
 
-// Teto ao tempo em pausa que conta para calorias de repouso (secção 4,
-// "Calorias durante as pausas" em stopTraining) - 2026-09-16, bug
-// reportado ("achar estranho a VidaNova já ter aqueles pontos todos"): uma
-// sessão deixada aberta 23h36 (app em segundo plano) creditou ~1794 kcal
-// de "repouso" sozinha. 1h cobre com folga qualquer pausa a sério dentro
-// de um treino real.
-const MAX_RESTING_PAUSE_SECONDS = 60 * 60;
-
 // --- Pausa do treino (2026-08-15, secção 4.7) -------------------------------
 //
 // O tempo em pausa NAO conta para a duracao da sessao. Isto nao e cosmetica:
@@ -1356,37 +1345,17 @@ function stopTraining() {
     sessionTimeByMode
   );
 
-  // Calorias durante as pausas: 1 MET, o metabolismo em repouso.
-  //
-  // XP = GASTO TOTAL: o esforco do tempo ativo mais 1 MET (repouso) sobre
-  // o tempo em pausa.
-  //
-  // Decidido depois de perceber que a separacao anterior nao era
-  // esforco-contra-repouso, era so "que relogio estava a andar": a equacao
-  // do ACSM tem um +3,5 que se traduz em 1 MET x horas, por isso as
-  // calorias "ativas" JA incluiam o repouso do tempo ativo. Contar o
-  // repouso de um lado e nao do outro era arbitrario.
-  //
-  // Para caminhar/correr o total colapsa em algo muito simples:
-  //   peso x (0,476 x km + horas TOTAIS)
-  // ou seja esforco pela distancia + 1 MET pelo tempo que o treino durou,
-  // sem ser preciso decidir que relogio estava a contar. E tambem o que o
-  // relogio do Bernardo chama "Total Kilocalories" - a unica referencia
-  // externa que temos para validar.
+  // Tempo em pausa (manual + automatica) - so para REGISTO/mostrador
+  // ("Tempo em pausa" no resumo e no historico, paused_seconds gravado).
+  // Ate 2026-09-18 tambem rendia calorias (1 MET x tempo de pausa, capado a
+  // MAX_RESTING_PAUSE_SECONDS desde o bug de 2026-09-16 - uma sessao
+  // esquecida 23h36 em segundo plano chegou a creditar ~1794 kcal so de
+  // "repouso"). Removido de vez a pedido ("tempo inativo não entra na
+  // fórmula de cálculo", card #27 do Trello - mesmo com o teto, uma sessao
+  // esquecida a noite toda ainda rendia ~1h de calorias de repouso sem
+  // esforco nenhum). XP passa a ser so a parte ATIVA.
   const sessionPausedSeconds = Math.round((pausedTotalMs + autoPausedMs) / 1000);
-  // Teto ao tempo em pausa que RENDE calorias (2026-09-16, bug reportado: a
-  // app ficou aberta/em segundo plano 23h36 - o gap inteiro de GPS virou
-  // "1 MET x 23,6h" de calorias de repouso, mais que o mes inteiro doutro
-  // jogador). So a fatia usada NESTA formula fica capada -
-  // sessionPausedSeconds (guardado tal e qual, mostrado no historico como
-  // "Tempo em pausa") continua a refletir a pausa real, sem cortar
-  // informacao. MAX_RESTING_PAUSE_SECONDS = 1h cobre com folga qualquer
-  // pausa a serio dentro de um treino (fôlego, semaforo, atar o sapato, ate
-  // uma paragem para almoçar numa caminhada longa); so pausas anormais
-  // (app esquecida) deixam de somar calorias alem dessa 1a hora.
-  const pausedSecondsParaCalorias = Math.min(sessionPausedSeconds, MAX_RESTING_PAUSE_SECONDS);
-  const sessionRestingCalories = 1.0 * getPesoKg() * (pausedSecondsParaCalorias / 3600);
-  const sessionTotalCalories = sessionCalories + sessionRestingCalories;
+  const sessionTotalCalories = sessionCalories;
 
   const discardReasons = [];
   if (sessionDistanceM <= 0) discardReasons.push("sem distância percorrida");

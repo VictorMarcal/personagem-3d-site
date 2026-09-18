@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.40.0",
+    title: "Calorias Só do Esforço Real",
+    changes: [
+      "O tempo em pausa deixou de contar para as calorias/XP de um treino - só o tempo ativo conta.",
+      "O tempo em pausa continua visível no resumo e no histórico, só deixou de valer pontos.",
+    ],
+  },
+  {
     version: "v6.39.5",
     title: "Blur do Mapa Como Antes",
     changes: ["Desfoque do mapa voltou ao valor original."],
