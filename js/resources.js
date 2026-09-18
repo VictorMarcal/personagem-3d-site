@@ -319,19 +319,59 @@ function formatRecurso(valor) {
 
 // --- minas ------------------------------------------------------------------
 //
-// Existem 10 MINAS de cada recurso em cada concelho - 50 ao todo. Desde
-// 2026-09-09 TODOS os hexagonos descobertos rendem (ver producaoPorHora);
-// uma mina encontrada so faz o hexagono dela render mais e de um recurso
-// especifico em vez da taxa base de todos.
+// O numero de minas de cada recurso, por concelho, cresce com a AREA do
+// concelho (2026-09-18, a pedido - "quero uma formula que tenha como minas
+// minimas 10 de cada, mas dependendo do tamanho do concelho, esse numero
+// aumenta"). Antes era um numero fixo (10 de cada, 50 ao todo) em qualquer
+// concelho - um jogador num concelho minusculo como Sao Joao da Madeira
+// (7.9 km2) tinha a mesma quantidade de minas que alguem em Odemira
+// (1720.6 km2, o maior do pais), 218x maior em area.
+//
+// Formula (minasPorRecursoParaConcelho abaixo), logaritmica na area,
+// ancorada no MENOR concelho do pais (que fica exatamente no minimo):
+//   minas = max(MINES_PER_RESOURCE_MIN,
+//               round(MINES_PER_RESOURCE_MIN * (1 + log10(area / MINA_AREA_REFERENCIA_KM2))))
+// Testado com os extremos reais: Sao Joao da Madeira -> 10 (ancora, pela
+// definicao da formula), Braga (183.2 km2) -> 24, Odemira (1720.6 km2) ->
+// 33 - cresce so ~3.3x do menor ao maior concelho do pais. Descartada a
+// raiz quadrada (chegava a 14.5x, ~145 minas em Odemira - "é muito", a
+// pedido) e a escala linear com a area (>170x, insustentavel).
+//
+// Desde 2026-09-09 TODOS os hexagonos descobertos rendem (ver
+// producaoPorHora); uma mina encontrada so faz o hexagono dela render mais
+// e de um recurso especifico em vez da taxa base de todos.
 //
 // NAO ESTAO VISIVEIS ate serem encontradas. Ha um radar de 1 km (2026-09-18 -
 // substitui os dois raios antigos, 500 m + 2,5 km, por um so): som "tim tim
 // tim", vibracao pulsante (Android/Chrome so - Vibration API nunca existiu
 // no iOS/Safari) e popup "Existe uma mina no raio de 1km".
-const MINES_PER_RESOURCE = 10;
+const MINES_PER_RESOURCE_MIN = 10;
 const MINE_RADAR_RADIUS_M = 1000;
 
 const minesByConcelho = new Map();
+
+// Remove acentos e baixa para minusculas - para casar o "name" que vem do
+// Nominatim (resolveRegionAt, js/hexes.js) com as chaves de
+// CONCELHO_AREA_KM2 (js/concelho-areas.js), sem depender de acentuacao
+// exatamente igual.
+function normalizeConcelhoName(nome) {
+  return String(nome || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+// Nome sem correspondencia na tabela (concelho novo/renomeado, ou um dos 2
+// nomes duplicados a nivel nacional que ficaram de fora - ver nota em
+// js/concelho-areas.js) cai no minimo - nunca menos minas que isso, so
+// deixa de crescer com a area.
+function minasPorRecursoParaConcelho(concelho) {
+  const area = CONCELHO_AREA_KM2[normalizeConcelhoName(concelho.name)];
+  if (!area || area <= 0) return MINES_PER_RESOURCE_MIN;
+  const fator = 1 + Math.log10(area / MINA_AREA_REFERENCIA_KM2);
+  return Math.max(MINES_PER_RESOURCE_MIN, Math.round(MINES_PER_RESOURCE_MIN * fator));
+}
 
 // Deterministas a partir do osm_id do concelho: as mesmas minas em qualquer
 // telemovel, sem nada gravado. So se guarda QUAIS ja foram encontradas.
@@ -349,15 +389,16 @@ function buildMinesFor(concelho) {
   );
 
   const rand = mulberry32(hashString("minas:" + concelho.osmId));
-  const alvo = RESOURCES.length * MINES_PER_RESOURCE;
+  const minasPorRecurso = minasPorRecursoParaConcelho(concelho);
+  const alvo = RESOURCES.length * minasPorRecurso;
 
-  // Uma saca com 10 de cada, baralhada: garante o numero exato por recurso
-  // (nao um sorteio que podia dar 3 de ferro e 17 de pedra) e, como os
-  // pontos saem em ordem aleatoria, cada recurso fica espalhado pelo
-  // concelho em vez de agrupado num canto.
+  // Uma saca com N de cada (minasPorRecurso), baralhada: garante o numero
+  // exato por recurso (nao um sorteio que podia dar 3 de ferro e 17 de
+  // pedra) e, como os pontos saem em ordem aleatoria, cada recurso fica
+  // espalhado pelo concelho em vez de agrupado num canto.
   const saca = [];
   RESOURCES.forEach((r) => {
-    for (let i = 0; i < MINES_PER_RESOURCE; i += 1) saca.push(r.id);
+    for (let i = 0; i < minasPorRecurso; i += 1) saca.push(r.id);
   });
   for (let i = saca.length - 1; i > 0; i -= 1) {
     const j = Math.floor(rand() * (i + 1));

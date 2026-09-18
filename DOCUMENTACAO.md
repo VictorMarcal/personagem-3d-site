@@ -51,6 +51,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `assets/Bow.glb` | Modelo 3D do arco (secção 9), fallback de `refreshWeaponModel()` enquanto não houver `assets/Bows/BowN.glb` (modelo novo a cada 5 níveis, v6.7.0 — secção 7) |
 | `js/weight.js` | Historico de peso, grafico de evolucao, popup de boas-vindas e lembrete de 15 dias — ver secção 20 |
 | `js/resources.js` | Economia de recursos do mapa: producao, multiplicadores, Fortaleza — ver secção 21 |
+| `js/concelho-areas.js` | Área (km²) dos 306 concelhos de Portugal com nome único — usada para escalar o número de minas por concelho, secção 21 |
 | `js/resources-ui.js` | Painel de recursos e Fortaleza — ver secção 21 |
 | `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de satélite desfocado da aba Mapa — ver secção 18 |
 | `js/missions.js` | Missões mensais (3 por mês, recompensa em recursos), painel no separador Treinar — ver secção 22 |
@@ -1211,7 +1212,7 @@ Substitui por completo as estrelas colecionáveis (secção 19, removida) e as m
 | **Escudo** | Madeira + Pele |
 | **Armadura** | Pele + Ferro |
 | **Fortaleza** | Pedra + Barro |
-| **Minas** | 10 de cada recurso por concelho — 50 ao todo |
+| **Minas** | 10 de cada recurso no menor concelho do país, crescendo com a área (2026-09-18) — ver fórmula abaixo |
 | **Produção** (2026-09-09) | cada hexágono descoberto: **0,1/h de cada recurso**; hexágono com mina encontrada: **0,5/h do recurso da mina**. Tudo × multiplicador |
 | **Multiplicador** | 1,0 a 2,0 · +0,1 por sessão · −0,05/dia após 2 dias |
 
@@ -1238,6 +1239,18 @@ O radar dispara ao entrar no raio, fica calado enquanto lá dentro (`minasRadarA
 - **Popup no ecrã** (`showGameToast`, variante `"aviso"`): *"Existe uma mina no raio de 1km"*.
 
 **Bug corrigido (2026-09-18): o som das minas podia morrer a meio de um treino longo e nunca mais voltar.** Reportado como *"já estive próximo de muitas e nunca ouvi o radar a tocar"*, com um treino sempre ativo durante esses episódios — não era a deteção (essa corre normalmente, dentro de `onPositionUpdate`, em toda leitura de GPS). O `AudioContext` (Web Audio, sem ficheiro de áudio nenhum) só era desbloqueado **uma vez**, no gesto de "Iniciar Treino" (`unlockMineAudio()`) — mas o próprio browser pode suspendê-lo sozinho a meio da sessão (ecrã bloqueado, aba em segundo plano, o normal num treino ao ar livre longo). Uma vez suspenso, `tocarNotas()` ficava calada pelo **resto da sessão inteira**, sem nenhum erro visível. Corrigido em `verificarMinas()`: tenta `mineAudioCtx.resume()` em toda leitura de GPS se o estado estiver `"suspended"` — como isso acontece várias vezes por minuto durante um treino, o som normalmente já está pronto a tempo do aviso seguinte, mesmo que perca o próprio momento em que a suspensão aconteceu.
+
+**Número de minas por concelho cresce com a área (2026-09-18, a pedido)**: antes era um número fixo — 10 de cada recurso, 50 ao todo, em QUALQUER concelho. Um jogador em São João da Madeira (7,9 km², o menor concelho do país) tinha exatamente as mesmas 50 minas espalhadas por um concelho 218× maior que Odemira (1720,6 km², o maior concelho de Portugal continental) tivesse.
+
+`minasPorRecursoParaConcelho()` (`js/resources.js`) substitui o número fixo por uma fórmula logarítmica na área, ancorada no **menor concelho do país** (que fica garantidamente com o mínimo):
+
+```
+minas_por_recurso = max(10, round(10 × (1 + log10(área_km2 / 7,9))))
+```
+
+`js/concelho-areas.js` guarda a área (km²) dos 306 concelhos com nome único a nível nacional (fonte: tabela oficial INE/DGT replicada na Wikipedia) — os outros 2 dos 308 (`Lagoa` e `Calheta`, cada um duplicado entre o continente/Algarve e uma região autónoma) ficam de fora do mapa, só com uma entrada cada (a mais provável de ter jogadores); um concelho sem correspondência na tabela cai no mínimo de 10, nunca menos. A chave de procura é o nome normalizado (`normalizeConcelhoName()` — minúsculas, sem acentos), para não depender de bater certo com a acentuação exata que o Nominatim devolve.
+
+**Testado com os extremos reais**: São João da Madeira (a própria âncora) → 10; Braga (183,2 km²) → 24; Odemira (1720,6 km², o maior do país) → 33 — cresce só ~3,3× do menor ao maior concelho de Portugal continental. Duas alternativas foram consideradas e descartadas na discussão que levou a esta fórmula: escala linear com a área (94 minas em Odemira, considerado insustentável) e raiz quadrada (31 minas em Odemira, ~14,5× de amplitude — *"ui é muito"*, a pedido).
 
 **Dois bugs corrigidos no mesmo dia** (a razão do relato "já desbloqueei uma mina e não ganhei nada"):
 

@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.42.0",
+    title: "Minas Escalam com o Concelho",
+    changes: [
+      "Concelhos maiores passam a ter mais minas de cada recurso (antes eram sempre 10, em qualquer concelho).",
+      "Concelhos pequenos mantêm as 10 de sempre - só os grandes ganham mais.",
+    ],
+  },
+  {
     version: "v6.41.0",
     title: "Radar de Minas Renovado",
     changes: [
