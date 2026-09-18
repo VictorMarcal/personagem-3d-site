@@ -969,20 +969,34 @@ Começou só com Google (até 2026-09-11), depois ganhou Apple e email/palavra-p
 
 ### 15.1 Badges de notificação (2026-09-18, a pedido)
 
-A pedido: *"deve existir um numero no canto superior direito a indicar que houve alguma conquista/notificação/relatorio... os numeros desaparecem assim que todas as notificações forem vistas"*. Duas fontes por agora — conquistas e relatórios de batalha de horda, ambos mostrados dentro de "Eu" › "Troféus" — com arquitetura pronta para mais fontes futuras (o separador "Reino" não tem nenhuma ainda, por isso nunca mostra badge).
+A pedido: *"deve existir um numero no canto superior direito a indicar que houve alguma conquista/notificação/relatorio... os numeros desaparecem assim que todas as notificações forem vistas"*. Cinco fontes, uma por cada notificação:
 
-**"Visto até" é só um timestamp, não uma lista de ids** — `STORAGE_KEY_ACHIEVEMENTS_SEEN_AT`/`STORAGE_KEY_HORDE_REPORTS_SEEN_AT` (`js/storage-keys.js`), cada um guardando quando o jogador viu essa secção pela última vez. Um item conta como "não visto" se o seu `unlockedAt`/`data` for posterior a esse timestamp:
+| Fonte | Onde fica à vista | Marcado como visto ao entrar em |
+|---|---|---|
+| Conquistas | "Eu" › "Troféus" (`#achievements-summary`) | "Eu" › "Troféus" |
+| Relatórios de horda | "Eu" › "Troféus" (`#horde-reports-card`) | "Eu" › "Troféus" |
+| Áreas desbloqueadas | "Reino" › "Mapa" (`#hex-district` + o mapa) | "Reino" › "Mapa" |
+| Minas encontradas | "Reino" › "Economia" (`#resources-panel`, linha "Minas encontradas") | "Reino" › "Economia" |
+| Depósitos cheios | "Reino" › "Economia" (aviso "Fortaleza cheia") | "Reino" › "Economia" |
+
+**"Visto até" é só um timestamp, não uma lista de ids**, para as duas primeiras fontes — `STORAGE_KEY_ACHIEVEMENTS_SEEN_AT`/`STORAGE_KEY_HORDE_REPORTS_SEEN_AT` (`js/storage-keys.js`). Um item conta como "não visto" se o seu `unlockedAt`/`data` (já existente nos dados sincronizados) for posterior a esse timestamp:
 - `contarConquistasNaoVistas()` (`js/achievements.js`) — compara `unlocked_achievements[id]` contra `getAchievementsSeenAt()`.
 - `contarHordaRelatoriosNaoVistos()` (`js/horde.js`) — compara `relatorio.data` contra `getHordaRelatoriosSeenAt()`.
 
-**Marcado como visto ao entrar em "Eu" › "Troféus"** (`showSubtab("eu", "trofeus")`, `js/nav.js`) — é lá que as duas coisas ficam à vista (`#achievements-summary` e `#horde-reports-card`), por isso os dois são marcados juntos, não em sítios separados.
+**As três fontes do "Reino" não têm timestamp próprio nos dados sincronizados** (concelhos desbloqueados, minas encontradas e stock de recursos são só listas/números, sem "quando") — por isso guardam, só localmente (nunca sincronizado), um mapa `{id: quando notei pela primeira vez}`:
+- `STORAGE_KEY_CONCELHOS_NOTADOS_EM` — preenchido por `notarConcelhosNovos()` dentro de `computeUnlockedRegions()` (`js/hexes.js`), na primeira vez que cada concelho aparece em `unlockedConcelhos`.
+- `STORAGE_KEY_MINAS_NOTADAS_EM` — preenchido por `notarMinaEncontrada()` dentro de `verificarMinas()` (`js/resources.js`), no momento em que cada mina é encontrada.
+- `STORAGE_KEY_RECURSOS_CHEIOS_EM` — preenchido/limpo por `avisarRecursosCheios()` (`js/resources-ui.js`) a cada transição para dentro/fora de "cheio" — um recurso que esvazia e volta a encher conta como notificação nova outra vez, mesmo espírito de `recursosCheiosAvisados` (o toast em memória que já existia, agora com um registo persistente ao lado). `contarAreasNaoVistas()`/`contarMinasNaoVistas()`/`contarDepositosCheiosNaoVistos()` comparam esses mapas contra `STORAGE_KEY_REINO_MAPA_SEEN_AT`/`STORAGE_KEY_REINO_ECONOMIA_SEEN_AT` (este último **partilhado** entre minas e depósitos — os dois ficam no painel de Economia, marcados como vistos juntos, mesmo padrão de Troféus/Relatórios).
+
+**Marcado como visto ao entrar na sub-aba correspondente** (`showSubtab()`, `js/nav.js`) — "Eu"›"Troféus" marca conquistas+horda; "Reino"›"Mapa" marca áreas; "Reino"›"Economia" marca minas+depósitos juntos.
 
 **`renderNavBadges()`/`setNavBadge()`** (`js/nav.js`) desenham os números:
-- Separador "Eu" (`.tab-btn[data-tab="eu"]`): soma das duas fontes.
-- Sub-aba "Troféus" (`#eu-subtabs .nav-tab[data-subtab="trofeus"]`): só conquistas.
-- `#horde-reports-badge`, junto ao título "Relatórios de Batalhas": só relatórios de horda.
+- Separador "Eu" (`.tab-btn[data-tab="eu"]`): soma conquistas + relatórios de horda.
+- Sub-aba "Troféus": só conquistas. `#horde-reports-badge`, junto ao título "Relatórios de Batalhas": só relatórios de horda.
+- Separador "Reino" (`.tab-btn[data-tab="reino"]`): soma áreas + minas + depósitos.
+- Sub-aba "Mapa": só áreas. Sub-aba "Economia": minas + depósitos somados.
 
-Chamado em três momentos: no arranque de `nav.js` (logo após `showTab(initial)` — necessário à parte porque o separador de arranque, "Treinar", não tem sub-abas, então `showSubtab` nunca corre nesse caso e não bastava só o hook dentro dela); no fim de `refreshAllUi()` (`js/game-config.js`, pós-login — garante o número certo já com os dados reais do Supabase, não só o que estava em cache local antes de hidratar); e sempre que uma conquista é desbloqueada (`unlockAchievement`) ou uma horda termina (`registarHordaRelatorio`), para o número aparecer ao vivo mesmo que o jogador já esteja dentro da app.
+Chamado em três momentos: no arranque de `nav.js` (logo após `showTab(initial)` — necessário à parte porque o separador de arranque, "Treinar", não tem sub-abas, então `showSubtab` nunca corre nesse caso e não bastava só o hook dentro dela); no fim de `refreshAllUi()` (`js/game-config.js`, pós-login — garante o número certo já com os dados reais do Supabase, não só o que estava em cache local antes de hidratar); e sempre que o evento correspondente acontece em direto — conquista desbloqueada (`unlockAchievement`), horda termina (`registarHordaRelatorio`), mina encontrada (`verificarMinas`) ou concelho novo (`computeUnlockedRegions`) — para o número aparecer mesmo que o jogador já esteja dentro da app. **Exceção: "Depósitos cheios" não é recalculado no arranque** — só quando o painel de Economia é desenhado (`renderResourcesPanel()`, chamado pelo ticker da Economia ou por ações de jogo como terminar um treino/horda), por isso pode mostrar o valor da última vez que o painel foi visto até a próxima render acontecer; aceite como suficiente, corrige-se sozinho cedo durante o jogo normal.
 
 **Local, nunca sincronizado** (mesmo espírito de `ui.separadorAtivo`) — visitar a mesma conta noutro dispositivo mostra os badges outra vez, aceite como o comportamento mais simples.
 

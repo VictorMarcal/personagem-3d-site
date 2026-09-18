@@ -204,3 +204,27 @@ const STORAGE_KEY_HORDE_REPORTS = "personagem.hordaRelatorios";
 // como o comportamento mais simples.
 const STORAGE_KEY_ACHIEVEMENTS_SEEN_AT = "personagem.conquistasVistasEm";
 const STORAGE_KEY_HORDE_REPORTS_SEEN_AT = "personagem.hordaRelatoriosVistosEm";
+
+// Badges do separador "Reino" (2026-09-18, a pedido - "vai existir para
+// Areas desbloqueadas, para Minas encontradas, para Depositos cheios").
+// Mesmo "visto ate um timestamp" das duas de cima, mas concelhos/minas/
+// recursos nao tem timestamp proprio nos dados ja sincronizados
+// (unlockedConcelhos/minas_encontradas/stock sao so listas/numeros) - por
+// isso guarda-se aqui, so localmente, um mapa {id: quando-notei-pela-
+// primeira-vez} para cada um. Nunca sincronizado, nao faz falta - e so
+// para decidir o que e "novo" neste aparelho.
+const STORAGE_KEY_REINO_MAPA_SEEN_AT = "personagem.mapaVistoEm";
+const STORAGE_KEY_REINO_ECONOMIA_SEEN_AT = "personagem.economiaVistaEm";
+// {osmId: timestamp} - preenchido em computeUnlockedRegions() (js/hexes.js)
+// na primeira vez que cada concelho aparece em unlockedConcelhos.
+const STORAGE_KEY_CONCELHOS_NOTADOS_EM = "personagem.concelhosNotadosEm";
+// {minaId: timestamp} - preenchido em verificarMinas() (js/resources.js) no
+// momento em que cada mina e encontrada (paralelo ao STORAGE_KEY_MINES real,
+// que so guarda os ids, sem quando).
+const STORAGE_KEY_MINAS_NOTADAS_EM = "personagem.minasNotadasEm";
+// {recursoId: timestamp} - o momento em que cada recurso TRANSITOU para
+// cheio (avisarRecursosCheios(), js/resources-ui.js). Removido quando volta
+// a nao estar cheio - um novo enchimento conta como notificacao nova outra
+// vez, mesmo padrao de recursosCheiosAvisados (o toast em memoria) so que
+// persistente.
+const STORAGE_KEY_RECURSOS_CHEIOS_EM = "personagem.recursosCheiosEm";

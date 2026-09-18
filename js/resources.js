@@ -501,6 +501,48 @@ function minasEncontradasCount() {
   return getMinasEncontradas().size;
 }
 
+// Badge de notificação (secção 15.1, 2026-09-18, a pedido - "Minas
+// encontradas"). getMinasEncontradas() (acima) so guarda OS IDS, ja
+// sincronizados com o Supabase (player_progress.minas_encontradas) - sem
+// data de quando cada uma foi encontrada. Isto guarda essa data à parte,
+// só localmente (STORAGE_KEY_MINAS_NOTADAS_EM), preenchida uma única vez
+// por mina no momento em que verificarMinas() a encontra.
+function notarMinaEncontrada(minaId) {
+  let notas;
+  try {
+    notas = JSON.parse(localStorage.getItem(STORAGE_KEY_MINAS_NOTADAS_EM) || "{}");
+  } catch (e) {
+    notas = {};
+  }
+  if (notas[minaId] === undefined) {
+    notas[minaId] = Date.now();
+    localStorage.setItem(STORAGE_KEY_MINAS_NOTADAS_EM, JSON.stringify(notas));
+  }
+}
+
+// Partilhado com contarDepositosCheiosNaoVistos() (js/resources-ui.js) -
+// minas e depositos aparecem ambos no painel de Economia, marcados como
+// vistos juntos (marcarEconomiaComoVista(), chamada uma so vez por
+// js/nav.js ao entrar em Reino > Economia).
+function getReinoEconomiaSeenAt() {
+  return Number(localStorage.getItem(STORAGE_KEY_REINO_ECONOMIA_SEEN_AT)) || 0;
+}
+
+function marcarEconomiaComoVista() {
+  localStorage.setItem(STORAGE_KEY_REINO_ECONOMIA_SEEN_AT, String(Date.now()));
+}
+
+function contarMinasNaoVistas() {
+  const seenAt = getReinoEconomiaSeenAt();
+  let notas;
+  try {
+    notas = JSON.parse(localStorage.getItem(STORAGE_KEY_MINAS_NOTADAS_EM) || "{}");
+  } catch (e) {
+    return 0;
+  }
+  return Object.values(notas).filter((ts) => Number(ts) > seenAt).length;
+}
+
 // Uma mina e reclamada ao entrar NO HEXAGONO dela - a mesma regra que
 // descobre territorio, por isso nao ha duas nocoes diferentes de "cheguei
 // la". Os avisos sonoros a 500 m e a 2,5 km sao so aviso: nao apanham nada -
@@ -541,6 +583,7 @@ function verificarMinas(latitude, longitude) {
       encontradas.add(mina.id);
       minasRadarAvisadas.delete(mina.id);
       achouAlguma = true;
+      notarMinaEncontrada(mina.id);
       if (typeof showGameToast === "function") {
         showGameToast("Mina de " + RESOURCE_BY_ID[mina.recurso].nome.toLowerCase() + " encontrada!", "medalha");
       }
@@ -566,6 +609,7 @@ function verificarMinas(latitude, longitude) {
     playMineFound();
     if (typeof renderResourcesPanel === "function") renderResourcesPanel();
     if (typeof redrawHexMap === "function") redrawHexMap();
+    if (typeof renderNavBadges === "function") renderNavBadges();
   } else if (avisouRadar) {
     playMineRadar();
     vibrarRadar();

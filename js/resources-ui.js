@@ -23,6 +23,14 @@ const WAREHOUSE_COST_ORDER = ["madeira", "pele", "pedra", "barro", "ferro"];
 let recursosCheiosAvisados = new Set();
 
 function avisarRecursosCheios(stock, tecto) {
+  let notas;
+  try {
+    notas = JSON.parse(localStorage.getItem(STORAGE_KEY_RECURSOS_CHEIOS_EM) || "{}");
+  } catch (e) {
+    notas = {};
+  }
+  let notasMudaram = false;
+
   RESOURCE_IDS.forEach((id) => {
     const cheio = stock[id] >= tecto - 0.5;
     if (cheio && !recursosCheiosAvisados.has(id)) {
@@ -33,7 +41,36 @@ function avisarRecursosCheios(stock, tecto) {
     } else if (!cheio && recursosCheiosAvisados.has(id)) {
       recursosCheiosAvisados.delete(id);
     }
+
+    // Badge de notificação (secção 15.1, 2026-09-18, a pedido - "Depósitos
+    // cheios"), persistente ao contrário de recursosCheiosAvisados acima
+    // (só em memória) - guarda o momento em que cada recurso TRANSITOU
+    // para cheio, e apaga-o quando deixa de estar, para um novo
+    // enchimento voltar a contar como notificação nova.
+    if (cheio && notas[id] === undefined) {
+      notas[id] = Date.now();
+      notasMudaram = true;
+    } else if (!cheio && notas[id] !== undefined) {
+      delete notas[id];
+      notasMudaram = true;
+    }
   });
+
+  if (notasMudaram) {
+    localStorage.setItem(STORAGE_KEY_RECURSOS_CHEIOS_EM, JSON.stringify(notas));
+    if (typeof renderNavBadges === "function") renderNavBadges();
+  }
+}
+
+function contarDepositosCheiosNaoVistos() {
+  const seenAt = typeof getReinoEconomiaSeenAt === "function" ? getReinoEconomiaSeenAt() : 0;
+  let notas;
+  try {
+    notas = JSON.parse(localStorage.getItem(STORAGE_KEY_RECURSOS_CHEIOS_EM) || "{}");
+  } catch (e) {
+    return 0;
+  }
+  return Object.values(notas).filter((ts) => Number(ts) > seenAt).length;
 }
 
 function renderResourcesPanel() {

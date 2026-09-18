@@ -135,6 +135,16 @@
       if (typeof marcarConquistasComoVistas === "function") marcarConquistasComoVistas();
       if (typeof marcarHordaRelatoriosComoVistos === "function") marcarHordaRelatoriosComoVistos();
     }
+    // "Áreas desbloqueadas" fica à vista no Mapa (#hex-district + o próprio
+    // mapa); "Minas encontradas" e "Depósitos cheios" ficam os dois no
+    // painel de Economia (#resources-panel) - marcados juntos, mesmo
+    // espírito do Troféus acima.
+    if (tab === "reino" && sub === "mapa") {
+      if (typeof marcarAreasComoVistas === "function") marcarAreasComoVistas();
+    }
+    if (tab === "reino" && sub === "economia") {
+      if (typeof marcarEconomiaComoVista === "function") marcarEconomiaComoVista();
+    }
     renderNavBadges();
   }
 
@@ -142,10 +152,9 @@
   //
   // "deve existir um numero... a indicar que houve alguma conquista/
   // notificação/relatorio... desaparecem assim que todas as notificações
-  // forem vistas". Duas fontes por agora (conquistas e relatórios de horda,
-  // ambas mostradas dentro de "Eu" › "Troféus") - arquitetura pronta para
-  // mais fontes no futuro, sem precisar de mexer no separador "Reino"
-  // enquanto não houver nada lá a notificar.
+  // forem vistas". Cinco fontes: "Eu" soma conquistas + relatórios de horda
+  // (ambos em "Eu" › "Troféus"); "Reino" soma áreas desbloqueadas (Mapa) +
+  // minas encontradas + depósitos cheios (os dois em Economia).
   function setNavBadge(el, count) {
     if (!el) return;
     let badge = el.querySelector(":scope > .nav-badge");
@@ -174,6 +183,15 @@
       relatoriosBadgeEl.textContent = relatorios > 0 ? (relatorios > 99 ? "99+" : String(relatorios)) : "";
       relatoriosBadgeEl.classList.toggle("hidden", relatorios === 0);
     }
+
+    const areas = typeof contarAreasNaoVistas === "function" ? contarAreasNaoVistas() : 0;
+    const minas = typeof contarMinasNaoVistas === "function" ? contarMinasNaoVistas() : 0;
+    const depositos = typeof contarDepositosCheiosNaoVistos === "function" ? contarDepositosCheiosNaoVistos() : 0;
+
+    const reinoTab = tabButtons.find((btn) => btn.dataset.tab === "reino");
+    setNavBadge(reinoTab, areas + minas + depositos);
+    setNavBadge(document.querySelector('[data-subtabs="reino"] .nav-tab[data-subtab="mapa"]'), areas);
+    setNavBadge(document.querySelector('[data-subtabs="reino"] .nav-tab[data-subtab="economia"]'), minas + depositos);
   }
 
   document.querySelectorAll("[data-subtabs]").forEach((grupo) => {

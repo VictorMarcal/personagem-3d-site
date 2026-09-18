@@ -532,6 +532,51 @@ async function identifyRegions() {
 function computeUnlockedRegions(cache) {
   if (typeof h3 === "undefined" || !cache || !cache.concelhos) return;
   unlockedConcelhos = cache.concelhos.filter((c) => countHexesInside(c.geojson) >= MIN_HEXES_FOR_REGION);
+  notarConcelhosNovos(unlockedConcelhos);
+}
+
+// Badge de notificação (secção 15.1, 2026-09-18, a pedido - "Áreas
+// desbloqueadas"). Regista, uma única vez por concelho (a escrita só
+// acontece na primeira vez que o id aparece no mapa), o momento em que
+// cada concelho foi visto pela primeira vez como desbloqueado - é contra
+// isto que contarAreasNaoVistas() compara.
+function notarConcelhosNovos(lista) {
+  let notas;
+  try {
+    notas = JSON.parse(localStorage.getItem(STORAGE_KEY_CONCELHOS_NOTADOS_EM) || "{}");
+  } catch (e) {
+    notas = {};
+  }
+  let mudou = false;
+  lista.forEach((c) => {
+    if (notas[c.osmId] === undefined) {
+      notas[c.osmId] = Date.now();
+      mudou = true;
+    }
+  });
+  if (mudou) {
+    localStorage.setItem(STORAGE_KEY_CONCELHOS_NOTADOS_EM, JSON.stringify(notas));
+    if (typeof renderNavBadges === "function") renderNavBadges();
+  }
+}
+
+function getReinoMapaSeenAt() {
+  return Number(localStorage.getItem(STORAGE_KEY_REINO_MAPA_SEEN_AT)) || 0;
+}
+
+function marcarAreasComoVistas() {
+  localStorage.setItem(STORAGE_KEY_REINO_MAPA_SEEN_AT, String(Date.now()));
+}
+
+function contarAreasNaoVistas() {
+  const seenAt = getReinoMapaSeenAt();
+  let notas;
+  try {
+    notas = JSON.parse(localStorage.getItem(STORAGE_KEY_CONCELHOS_NOTADOS_EM) || "{}");
+  } catch (e) {
+    return 0;
+  }
+  return Object.values(notas).filter((ts) => Number(ts) > seenAt).length;
 }
 
 // Concelho/distrito deixaram de se desenhar no mapa (a pedido) - fica so o

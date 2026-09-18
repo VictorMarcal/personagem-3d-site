@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.44.0",
+    title: "Novidades Também no Reino",
+    changes: [
+      "O separador 'Reino' mostra agora um número quando há áreas novas desbloqueadas, minas encontradas ou depósitos cheios por ver.",
+      "'Mapa' mostra áreas novas; 'Economia' mostra minas e depósitos.",
+    ],
+  },
+  {
     version: "v6.43.0",
     title: "Números de Novidades",
     changes: [
