@@ -207,6 +207,11 @@ function refreshAllUi() {
   renderMonsters();
   renderAchievementsSummary();
   renderTodaysTrainings();
+  // Badges de notificação (js/nav.js, 2026-09-18) - a chamada no arranque de
+  // nav.js corre ANTES do progresso vir do Supabase (conquistas/relatórios
+  // podem ainda não estar hidratados de localStorage); esta é a que garante
+  // o número certo "quando eu entrar na app", já com os dados reais.
+  if (typeof renderNavBadges === "function") renderNavBadges();
 }
 
 // --- Repor personagem -----------------------------------------------------

@@ -149,6 +149,7 @@ a:hover { color: var(--accent-600); }
 }
 
 .nav-tab {
+  position: relative;
   flex: 1;
   border: none;
   border-radius: 999px;
@@ -197,6 +198,7 @@ main {
 }
 
 .tab-btn {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -220,6 +222,48 @@ main {
 .tab-btn.active {
   color: var(--accent-700);
   font-weight: 700;
+}
+
+/* Badges de notificação (2026-09-18, a pedido - "número no canto superior
+   direito a indicar que houve alguma conquista/notificação/relatorio"),
+   sobre .tab-btn/.nav-tab (ver renderNavBadges()/setNavBadge(), js/nav.js).
+   Cor solida (--warn-ink), nao o --warn-bg pastel do resto do site - a esta
+   escala pequena precisa de mais contraste para se ler à distância de um
+   relance. box-shadow em vez de border: separa do fundo do botão sem
+   precisar de saber a cor exata desse fundo (ativo vs inativo). */
+.nav-badge {
+  position: absolute;
+  top: -4px;
+  right: 6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--warn-ink);
+  color: var(--bg);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+/* Mesma cor/paleta, mas inline - para um badge junto a um título de card
+   (ex: "Relatórios de Batalhas"), não sobre um botão de navegação. */
+.nav-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--warn-ink);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 8px;
+  vertical-align: middle;
 }
 
 /* ---------- Paineis ------------------------------------------------------ */

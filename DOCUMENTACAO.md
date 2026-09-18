@@ -967,6 +967,27 @@ Começou só com Google (até 2026-09-11), depois ganhou Apple e email/palavra-p
 - **Card "Versão da Aplicação"** (2026-08-06, a pedido — entre o histórico e a Zona de Perigo, `js/changelog.js`, array `CHANGELOG`): notas de atualização em linguagem simples, ao estilo do que outros jogos mostram quando lançam uma versão nova — não é o `git log`/`DOCUMENTACAO.md` técnico, é uma tradução para o que importa a quem joga. Cada entrada agrupa uma versão **menor** (`x.Y`) e os patches dela (`x.Y.z`) numa só - "`"Nome do update"` `vX.Y.Z`" seguido de pontos com o que mudou, mais recente primeiro. Conteúdo estático (sem build step no site, sem ligação ao Supabase) — ao lançar uma versão nova, acrescenta-se uma entrada nova ao array em vez de gerar isto a partir dos commits automaticamente
 - **"Zona de Perigo"** (secção final da aba): botão de repor personagem e distância, igual ao do Debug mas disponível a qualquer jogador (secção 11)
 
+### 15.1 Badges de notificação (2026-09-18, a pedido)
+
+A pedido: *"deve existir um numero no canto superior direito a indicar que houve alguma conquista/notificação/relatorio... os numeros desaparecem assim que todas as notificações forem vistas"*. Duas fontes por agora — conquistas e relatórios de batalha de horda, ambos mostrados dentro de "Eu" › "Troféus" — com arquitetura pronta para mais fontes futuras (o separador "Reino" não tem nenhuma ainda, por isso nunca mostra badge).
+
+**"Visto até" é só um timestamp, não uma lista de ids** — `STORAGE_KEY_ACHIEVEMENTS_SEEN_AT`/`STORAGE_KEY_HORDE_REPORTS_SEEN_AT` (`js/storage-keys.js`), cada um guardando quando o jogador viu essa secção pela última vez. Um item conta como "não visto" se o seu `unlockedAt`/`data` for posterior a esse timestamp:
+- `contarConquistasNaoVistas()` (`js/achievements.js`) — compara `unlocked_achievements[id]` contra `getAchievementsSeenAt()`.
+- `contarHordaRelatoriosNaoVistos()` (`js/horde.js`) — compara `relatorio.data` contra `getHordaRelatoriosSeenAt()`.
+
+**Marcado como visto ao entrar em "Eu" › "Troféus"** (`showSubtab("eu", "trofeus")`, `js/nav.js`) — é lá que as duas coisas ficam à vista (`#achievements-summary` e `#horde-reports-card`), por isso os dois são marcados juntos, não em sítios separados.
+
+**`renderNavBadges()`/`setNavBadge()`** (`js/nav.js`) desenham os números:
+- Separador "Eu" (`.tab-btn[data-tab="eu"]`): soma das duas fontes.
+- Sub-aba "Troféus" (`#eu-subtabs .nav-tab[data-subtab="trofeus"]`): só conquistas.
+- `#horde-reports-badge`, junto ao título "Relatórios de Batalhas": só relatórios de horda.
+
+Chamado em três momentos: no arranque de `nav.js` (logo após `showTab(initial)` — necessário à parte porque o separador de arranque, "Treinar", não tem sub-abas, então `showSubtab` nunca corre nesse caso e não bastava só o hook dentro dela); no fim de `refreshAllUi()` (`js/game-config.js`, pós-login — garante o número certo já com os dados reais do Supabase, não só o que estava em cache local antes de hidratar); e sempre que uma conquista é desbloqueada (`unlockAchievement`) ou uma horda termina (`registarHordaRelatorio`), para o número aparecer ao vivo mesmo que o jogador já esteja dentro da app.
+
+**Local, nunca sincronizado** (mesmo espírito de `ui.separadorAtivo`) — visitar a mesma conta noutro dispositivo mostra os badges outra vez, aceite como o comportamento mais simples.
+
+**Visual**: `.nav-badge` (círculo absoluto, `--warn-ink` sólido + `--bg`, contorno com a cor do fundo do botão) sobre os separadores/sub-abas; `.nav-badge-inline` (mesma paleta, estático) junto a um título de card. Cor sólida `--warn-ink`, não o `--warn-bg` pastel do resto do site — a esta escala pequena precisa de mais contraste para se ler à distância de um relance.
+
 ## 16. Limitações conhecidas / possíveis próximos passos
 
 - Combate é **totalmente automático** (sem escolhas do jogador durante a luta)

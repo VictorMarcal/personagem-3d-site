@@ -360,6 +360,30 @@ function registarHordaRelatorio(relatorio) {
   const lista = [relatorio, ...getHordaRelatorios()].slice(0, HORDE_REPORTS_MAX);
   localStorage.setItem(STORAGE_KEY_HORDE_REPORTS, JSON.stringify(lista));
   renderHordaRelatorios();
+  // Badge no separador "Eu"/card "Relatórios de Batalhas" (2026-09-18, a
+  // pedido) - atualiza logo, mesmo que o jogador ja esteja dentro da app
+  // quando a horda termina.
+  if (typeof renderNavBadges === "function") renderNavBadges();
+}
+
+// --- Badge de notificacao (2026-09-18, a pedido) ----------------------------
+//
+// Mesmo espirito de contarConquistasNaoVistas() (js/achievements.js): "visto
+// ate" e so um timestamp (STORAGE_KEY_HORDE_REPORTS_SEEN_AT), um relatorio
+// conta como "nao visto" se `data` for posterior a esse timestamp. Marcado
+// ao entrar na sub-aba Troféus (js/nav.js showSubtab) - é lá que o card
+// "Relatórios de Batalhas" fica à vista.
+function getHordaRelatoriosSeenAt() {
+  return Number(localStorage.getItem(STORAGE_KEY_HORDE_REPORTS_SEEN_AT)) || 0;
+}
+
+function marcarHordaRelatoriosComoVistos() {
+  localStorage.setItem(STORAGE_KEY_HORDE_REPORTS_SEEN_AT, String(Date.now()));
+}
+
+function contarHordaRelatoriosNaoVistos() {
+  const seenAt = getHordaRelatoriosSeenAt();
+  return getHordaRelatorios().filter((r) => Number(r.data) > seenAt).length;
 }
 
 function formatHordaRelatorioData(ts) {

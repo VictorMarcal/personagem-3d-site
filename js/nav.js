@@ -126,6 +126,54 @@
       // mesmo padrao do contador de recursos logo acima.
       if (typeof startHordaTicker === "function") startHordaTicker();
     }
+
+    // Badges de notificação (secção 15, 2026-09-18, a pedido): entrar em
+    // "Eu" › "Troféus" é onde as conquistas (#achievements-summary) E os
+    // relatórios de horda (#horde-reports-card) ficam à vista - marca os
+    // dois como vistos aqui, não em sítios separados.
+    if (tab === "eu" && sub === "trofeus") {
+      if (typeof marcarConquistasComoVistas === "function") marcarConquistasComoVistas();
+      if (typeof marcarHordaRelatoriosComoVistos === "function") marcarHordaRelatoriosComoVistos();
+    }
+    renderNavBadges();
+  }
+
+  // --- Badges de notificação (2026-09-18, a pedido) -------------------------
+  //
+  // "deve existir um numero... a indicar que houve alguma conquista/
+  // notificação/relatorio... desaparecem assim que todas as notificações
+  // forem vistas". Duas fontes por agora (conquistas e relatórios de horda,
+  // ambas mostradas dentro de "Eu" › "Troféus") - arquitetura pronta para
+  // mais fontes no futuro, sem precisar de mexer no separador "Reino"
+  // enquanto não houver nada lá a notificar.
+  function setNavBadge(el, count) {
+    if (!el) return;
+    let badge = el.querySelector(":scope > .nav-badge");
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "nav-badge";
+        el.appendChild(badge);
+      }
+      badge.textContent = count > 99 ? "99+" : String(count);
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+
+  function renderNavBadges() {
+    const conquistas = typeof contarConquistasNaoVistas === "function" ? contarConquistasNaoVistas() : 0;
+    const relatorios = typeof contarHordaRelatoriosNaoVistos === "function" ? contarHordaRelatoriosNaoVistos() : 0;
+
+    const euTab = tabButtons.find((btn) => btn.dataset.tab === "eu");
+    setNavBadge(euTab, conquistas + relatorios);
+    setNavBadge(document.querySelector('#eu-subtabs .nav-tab[data-subtab="trofeus"]'), conquistas);
+
+    const relatoriosBadgeEl = document.getElementById("horde-reports-badge");
+    if (relatoriosBadgeEl) {
+      relatoriosBadgeEl.textContent = relatorios > 0 ? (relatorios > 99 ? "99+" : String(relatorios)) : "";
+      relatoriosBadgeEl.classList.toggle("hidden", relatorios === 0);
+    }
   }
 
   document.querySelectorAll("[data-subtabs]").forEach((grupo) => {
@@ -207,6 +255,12 @@
     /* ignorar */
   }
   showTab(initial);
+  // showSubtab() (que atualiza os badges) só corre para separadores COM
+  // sub-abas - "Treinar" (o separador de arranque) não tem nenhuma, por
+  // isso showTab(initial) sozinho podia nunca chamar renderNavBadges() na
+  // primeira vez. Chamada extra aqui garante os números logo ao abrir a
+  // app, seja qual for o separador de arranque.
+  renderNavBadges();
 })();
 
 /* ==========================================================================

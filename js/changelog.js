@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.43.0",
+    title: "Números de Novidades",
+    changes: [
+      "Os separadores 'Reino' e 'Eu' mostram agora um número quando há conquistas ou relatórios de batalha novos por ver.",
+      "O número desaparece assim que abres a secção onde essa novidade aparece.",
+    ],
+  },
+  {
     version: "v6.42.1",
     title: "Corrige Posição das Minas Já Encontradas",
     changes: [

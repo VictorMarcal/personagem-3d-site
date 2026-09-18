@@ -556,7 +556,33 @@ function unlockAchievement(id, unlockedAt) {
     } else {
       showGameToast(`🏅 Conquista: ${getAchievementName(id)}`, "conquista");
     }
+
+    // Badge no separador "Eu"/sub-aba "Troféus" (secção 15, 2026-09-18) -
+    // atualiza logo, mesmo que o jogador ja esteja dentro da app quando
+    // isto acontece (ex: conquista desbloqueada ao terminar um treino).
+    if (typeof renderNavBadges === "function") renderNavBadges();
   }
+}
+
+// --- Badge de notificacao (2026-09-18, a pedido) ----------------------------
+//
+// "Visto ate" e um TIMESTAMP so (STORAGE_KEY_ACHIEVEMENTS_SEEN_AT,
+// js/storage-keys.js) - nao uma lista de ids. Uma conquista conta como "nao
+// vista" se foi desbloqueada DEPOIS desse timestamp. Marcado ao entrar na
+// sub-aba Troféus (js/nav.js showSubtab) - é lá que as conquistas ficam à
+// vista (grelha de resumo, #achievements-summary).
+function getAchievementsSeenAt() {
+  return Number(localStorage.getItem(STORAGE_KEY_ACHIEVEMENTS_SEEN_AT)) || 0;
+}
+
+function marcarConquistasComoVistas() {
+  localStorage.setItem(STORAGE_KEY_ACHIEVEMENTS_SEEN_AT, String(Date.now()));
+}
+
+function contarConquistasNaoVistas() {
+  const seenAt = getAchievementsSeenAt();
+  const unlocked = getUnlockedAchievements();
+  return Object.values(unlocked).filter((ts) => Number(ts) > seenAt).length;
 }
 
 // Progresso atual de uma conquista (para a barra), quer ja esteja

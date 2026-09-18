@@ -191,3 +191,16 @@ const STORAGE_KEY_HORDE = "personagem.horda2";
 // primeiro): [{ data: ts, numero, resultado: "vitoria"|"derrota",
 // recursosRoubadosPorRecurso }].
 const STORAGE_KEY_HORDE_REPORTS = "personagem.hordaRelatorios";
+
+// Badges de notificacao nos separadores/sub-abas (2026-09-18, a pedido -
+// "deve existir um numero... a indicar que houve alguma conquista/
+// notificação/relatorio... os numeros desaparecem assim que todas as
+// notificações forem vistas"). Guardam so um TIMESTAMP (ms) - "visto ate
+// aqui" - nao uma lista de ids: contarConquistasNaoVistas()/
+// contarHordaRelatoriosNaoVistos() (js/achievements.js/js/horde.js)
+// comparam contra o `unlockedAt`/`data` de cada item. So local (preferencia
+// por dispositivo, como ui.separadorAtivo em js/nav.js) - nunca sincronizado,
+// visitar a mesma conta noutro aparelho mostra os badges outra vez, aceite
+// como o comportamento mais simples.
+const STORAGE_KEY_ACHIEVEMENTS_SEEN_AT = "personagem.conquistasVistasEm";
+const STORAGE_KEY_HORDE_REPORTS_SEEN_AT = "personagem.hordaRelatoriosVistosEm";
