@@ -324,13 +324,12 @@ function formatRecurso(valor) {
 // uma mina encontrada so faz o hexagono dela render mais e de um recurso
 // especifico em vez da taxa base de todos.
 //
-// NAO ESTAO VISIVEIS ate serem encontradas. Ha um aviso sonoro a 500 m, mais
-// um "radar" de longo alcance a 2,5 km (2026-09-15, a pedido - "vamos passar
-// a ter um radar que avisa que existe uma mina no raio de 2.5km com um som
-// do tipo tim tim tim").
+// NAO ESTAO VISIVEIS ate serem encontradas. Ha um radar de 1 km (2026-09-18 -
+// substitui os dois raios antigos, 500 m + 2,5 km, por um so): som "tim tim
+// tim", vibracao pulsante (Android/Chrome so - Vibration API nunca existiu
+// no iOS/Safari) e popup "Existe uma mina no raio de 1km".
 const MINES_PER_RESOURCE = 10;
-const MINE_ALERT_RADIUS_M = 500;
-const MINE_RADAR_RADIUS_M = 2500;
+const MINE_RADAR_RADIUS_M = 1000;
 
 const minesByConcelho = new Map();
 
@@ -458,7 +457,6 @@ function verificarMinas(latitude, longitude) {
   }
 
   let achouAlguma = false;
-  let avisou = false;
   let avisouRadar = false;
 
   minas.forEach((mina) => {
@@ -466,7 +464,6 @@ function verificarMinas(latitude, longitude) {
 
     if (mina.hexId === hexAtual) {
       encontradas.add(mina.id);
-      minasAvisadas.delete(mina.id);
       minasRadarAvisadas.delete(mina.id);
       achouAlguma = true;
       if (typeof showGameToast === "function") {
@@ -476,24 +473,10 @@ function verificarMinas(latitude, longitude) {
     }
 
     const metros = haversineDistance(latitude, longitude, mina.lat, mina.lng);
-    if (metros <= MINE_ALERT_RADIUS_M) {
-      // O conjunto das ja avisadas evita apitar de leitura em leitura
-      // enquanto se anda perto sem la chegar. So volta a avisar depois de
-      // sair do raio.
-      if (!minasAvisadas.has(mina.id)) {
-        minasAvisadas.add(mina.id);
-        avisou = true;
-      }
-    } else {
-      minasAvisadas.delete(mina.id);
-    }
-
-    // Radar de longo alcance (2,5 km, 2026-09-15) - mesmo mecanismo de
-    // deteção de entrada no raio, mas um conjunto de "avisadas" PROPRIO: a
-    // uma distancia destas ha muito mais tempo/hexagonos ate chegar ao aviso
-    // de 500 m, por isso os dois tocam em momentos bem separados, nao se
-    // confundem.
     if (metros <= MINE_RADAR_RADIUS_M) {
+      // O conjunto das ja avisadas evita repetir o aviso a cada leitura
+      // enquanto se anda dentro do raio sem chegar la. So volta a avisar
+      // depois de sair do raio e voltar a entrar.
       if (!minasRadarAvisadas.has(mina.id)) {
         minasRadarAvisadas.add(mina.id);
         avisouRadar = true;
@@ -508,15 +491,29 @@ function verificarMinas(latitude, longitude) {
     playMineFound();
     if (typeof renderResourcesPanel === "function") renderResourcesPanel();
     if (typeof redrawHexMap === "function") redrawHexMap();
-  } else if (avisou) {
-    playMineNearby();
   } else if (avisouRadar) {
     playMineRadar();
+    vibrarRadar();
+    if (typeof showGameToast === "function") {
+      showGameToast("Existe uma mina no raio de 1km", "aviso");
+    }
   }
 }
 
-const minasAvisadas = new Set();
 const minasRadarAvisadas = new Set();
+
+// Vibracao pulsante ao entrar no raio do radar (2026-09-18, a pedido) - so
+// funciona em Android/Chrome: a Vibration API nunca foi implementada no
+// iOS/Safari, chamar isto la e um no-op silencioso, sem erro nenhum.
+function vibrarRadar() {
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+  try {
+    // Pulsante (vibra-pausa-vibra-pausa-vibra), nao um zumbido continuo.
+    navigator.vibrate([120, 80, 120, 80, 120]);
+  } catch (e) {
+    // sem vibracao a mecanica continua a funcionar, so nao avisa por ai
+  }
+}
 
 // --- som --------------------------------------------------------------------
 // Web Audio em vez de um ficheiro: sao dois bips, nao vale um asset no
@@ -558,17 +555,9 @@ function tocarNotas(notas) {
   });
 }
 
-// Aviso a 500 m: dois bips iguais, discretos.
-function playMineNearby() {
-  tocarNotas([
-    { hz: 660, inicio: 0, duracao: 0.09 },
-    { hz: 660, inicio: 0.16, duracao: 0.09 },
-  ]);
-}
-
-// Radar a 2,5 km (2026-09-15): "tim tim tim" - 3 tiques curtos e agudos,
-// mais claros/curtos que os 2 bips do aviso de perto, para nao se confundir
-// com nenhum dos outros dois sons (nem com o arpejo de "encontrada").
+// Radar a 1 km (2026-09-18 - unico raio, substitui os antigos 500 m + 2,5
+// km): "tim tim tim" - 3 tiques curtos e agudos, distintos do arpejo de
+// "encontrada". Acompanhado de vibracao (vibrarRadar()) e popup.
 function playMineRadar() {
   tocarNotas([
     { hz: 1046, inicio: 0, duracao: 0.05 },

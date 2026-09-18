@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.41.0",
+    title: "Radar de Minas Renovado",
+    changes: [
+      "Um só radar agora, com 1km de raio (antes eram dois avisos, a 500m e a 2,5km).",
+      "O radar agora também faz o telemóvel vibrar, além do som e do aviso no ecrã.",
+    ],
+  },
+  {
     version: "v6.40.1",
     title: "Som das Minas Não Fica Mudo",
     changes: [
