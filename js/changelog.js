@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.40.1",
+    title: "Som das Minas Não Fica Mudo",
+    changes: [
+      "Corrigido: o aviso de mina perto e o radar podiam ficar em silêncio a meio de um treino longo (ex: com o ecrã bloqueado) e nunca mais voltar a tocar nessa sessão.",
+    ],
+  },
+  {
     version: "v6.40.0",
     title: "Calorias Só do Esforço Real",
     changes: [

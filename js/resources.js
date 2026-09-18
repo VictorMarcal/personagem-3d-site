@@ -437,6 +437,18 @@ function verificarMinas(latitude, longitude) {
   if (minas.length === 0) return;
   if (typeof haversineDistance !== "function") return;
 
+  // O AudioContext pode ser suspenso pelo proprio browser a meio do treino
+  // (ecra bloqueado, aba em segundo plano - o normal num treino ao ar livre
+  // longo) e so era desbloqueado UMA VEZ, no gesto de "Iniciar Treino"
+  // (unlockMineAudio). Uma vez suspenso, tocarNotas() ficava calado pelo
+  // resto da sessao inteira, sem erro nenhum visivel - bug reportado
+  // (2026-09-18, "ja estive perto de muitas [minas] e nunca ouvi o radar a
+  // tocar"), tinha treino sempre ativo, so o som e que morria a meio.
+  // Tenta resumir em TODA leitura de GPS (varias vezes por minuto): resume()
+  // e assincrono, pode nao estar pronto a tempo do proprio aviso desta
+  // leitura, mas normalmente ja esta pronto a tempo do seguinte.
+  if (mineAudioCtx && mineAudioCtx.state === "suspended") mineAudioCtx.resume().catch(() => {});
+
   const encontradas = getMinasEncontradas();
   let hexAtual = null;
   try {
