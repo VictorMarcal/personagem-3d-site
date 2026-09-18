@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.42.1",
+    title: "Corrige Posição das Minas Já Encontradas",
+    changes: [
+      "Corrigido: a mudança anterior (minas a escalar com o concelho) tinha deslocado a posição de minas já encontradas em alguns concelhos, mostrando o ícone fora do território já descoberto.",
+    ],
+  },
+  {
     version: "v6.42.0",
     title: "Minas Escalam com o Concelho",
     changes: [

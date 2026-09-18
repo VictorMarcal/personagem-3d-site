@@ -373,32 +373,21 @@ function minasPorRecursoParaConcelho(concelho) {
   return Math.max(MINES_PER_RESOURCE_MIN, Math.round(MINES_PER_RESOURCE_MIN * fator));
 }
 
-// Deterministas a partir do osm_id do concelho: as mesmas minas em qualquer
-// telemovel, sem nada gravado. So se guarda QUAIS ja foram encontradas.
-function buildMinesFor(concelho) {
-  const gj = concelho.geojson;
-  const polys = gj.type === "Polygon" ? [gj.coordinates] : gj.coordinates;
-  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-  polys.forEach((poly) =>
-    poly[0].forEach(([lng, lat]) => {
-      if (lat < minLat) minLat = lat;
-      if (lat > maxLat) maxLat = lat;
-      if (lng < minLng) minLng = lng;
-      if (lng > maxLng) maxLng = lng;
-    })
-  );
+// Gera UM LOTE de "quantidadePorRecurso" minas de cada recurso e acrescenta-o
+// a `minas` (ids continuam a partir do fim da lista), consumindo `rand` e
+// `hexesUsados` PARTILHADOS entre lotes - nunca reinicia o gerador nem
+// esquece os hexagonos ja ocupados por um lote anterior.
+function gerarLoteDeMinas(minas, hexesUsados, rand, gj, bbox, concelhoNome, osmId, quantidadePorRecurso) {
+  const { minLat, maxLat, minLng, maxLng } = bbox;
+  const alvo = RESOURCES.length * quantidadePorRecurso;
 
-  const rand = mulberry32(hashString("minas:" + concelho.osmId));
-  const minasPorRecurso = minasPorRecursoParaConcelho(concelho);
-  const alvo = RESOURCES.length * minasPorRecurso;
-
-  // Uma saca com N de cada (minasPorRecurso), baralhada: garante o numero
-  // exato por recurso (nao um sorteio que podia dar 3 de ferro e 17 de
-  // pedra) e, como os pontos saem em ordem aleatoria, cada recurso fica
-  // espalhado pelo concelho em vez de agrupado num canto.
+  // Uma saca com N de cada, baralhada: garante o numero exato por recurso
+  // (nao um sorteio que podia dar 3 de ferro e 17 de pedra) e, como os
+  // pontos saem em ordem aleatoria, cada recurso fica espalhado pelo
+  // concelho em vez de agrupado num canto.
   const saca = [];
   RESOURCES.forEach((r) => {
-    for (let i = 0; i < minasPorRecurso; i += 1) saca.push(r.id);
+    for (let i = 0; i < quantidadePorRecurso; i += 1) saca.push(r.id);
   });
   for (let i = saca.length - 1; i > 0; i -= 1) {
     const j = Math.floor(rand() * (i + 1));
@@ -407,11 +396,9 @@ function buildMinesFor(concelho) {
     saca[j] = troca;
   }
 
-  const minas = [];
-  const hexesUsados = new Set();
   const maxTentativas = alvo * 400;
-
-  for (let t = 0; minas.length < alvo && t < maxTentativas; t += 1) {
+  let colocadas = 0;
+  for (let t = 0; colocadas < alvo && t < maxTentativas; t += 1) {
     const lat = minLat + rand() * (maxLat - minLat);
     const lng = minLng + rand() * (maxLng - minLng);
     if (!pointInGeoJson(lat, lng, gj)) continue;
@@ -429,14 +416,61 @@ function buildMinesFor(concelho) {
 
     const [hLat, hLng] = h3.cellToLatLng(hexId);
     minas.push({
-      id: concelho.osmId + ":" + minas.length,
+      id: osmId + ":" + minas.length,
       hexId,
       lat: hLat,
       lng: hLng,
-      recurso: saca[minas.length],
-      concelho: concelho.name,
+      recurso: saca[colocadas],
+      concelho: concelhoNome,
     });
+    colocadas += 1;
   }
+}
+
+// Deterministas a partir do osm_id do concelho: as mesmas minas em qualquer
+// telemovel, sem nada gravado. So se guarda QUAIS ja foram encontradas.
+//
+// GERADO EM DOIS LOTES (2026-09-18, bug corrigido no mesmo dia da mudanca
+// que o introduziu): o 1o lote gera sempre exatamente
+// MINES_PER_RESOURCE_MIN (10) de cada recurso, com a MESMA sequencia de
+// rand() que ja existia antes da area entrar na formula - preserva ao byte
+// as posicoes/recursos/ids de TODAS as minas ja gravadas como "encontradas"
+// nas contas dos jogadores. So depois, num 2o lote que CONTINUA a mesma
+// sequencia de rand() (nunca a reinicia) e o mesmo hexesUsados (nunca
+// repete um hexagono ja ocupado pelo 1o lote), e que entram as minas extra
+// dos concelhos maiores, com ids a seguir ao fim do 1o lote (50+).
+// Bug real: gerar tudo num so lote de tamanho variavel (o saca ficava maior,
+// o shuffle consumia um numero diferente de rand() antes de comecar a
+// amostrar pontos) desalinhava a sequencia inteira - toda a colocacao
+// (nao so a extra) mudava sempre que a area de um concelho alterava
+// minasPorRecursoParaConcelho(), incluindo minas ja marcadas como
+// encontradas antes do deploy, que passavam a apontar para um sitio
+// diferente (por vezes fora do territorio ja descoberto do jogador).
+function buildMinesFor(concelho) {
+  const gj = concelho.geojson;
+  const polys = gj.type === "Polygon" ? [gj.coordinates] : gj.coordinates;
+  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+  polys.forEach((poly) =>
+    poly[0].forEach(([lng, lat]) => {
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    })
+  );
+  const bbox = { minLat, maxLat, minLng, maxLng };
+
+  const rand = mulberry32(hashString("minas:" + concelho.osmId));
+  const minas = [];
+  const hexesUsados = new Set();
+
+  gerarLoteDeMinas(minas, hexesUsados, rand, gj, bbox, concelho.name, concelho.osmId, MINES_PER_RESOURCE_MIN);
+
+  const extra = minasPorRecursoParaConcelho(concelho) - MINES_PER_RESOURCE_MIN;
+  if (extra > 0) {
+    gerarLoteDeMinas(minas, hexesUsados, rand, gj, bbox, concelho.name, concelho.osmId, extra);
+  }
+
   return minas;
 }
 
