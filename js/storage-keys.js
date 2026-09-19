@@ -140,11 +140,10 @@ const STORAGE_KEY_DISTRICTS = "personagem.distritosDescobertos";
 const STORAGE_KEY_COLLECTED_STARS = "personagem.estrelasApanhadas";
 
 // Economia de recursos (secção 21, 2026-09-07). Substitui as moedas por km.
-// hexVisitas: por hexagono, { m: multiplicador, d: dia da ultima visita }.
+// (hexVisitas - multiplicadores por hexagono - saiu em 2026-09-19.)
 // recursos: stock atual de cada um. producaoDesde: instante da ultima
 // recolha, para o acumulado ser calculado ao vivo em vez de gravado a cada
 // hora (a app nao esta aberta a maior parte do tempo).
-const STORAGE_KEY_HEX_VISITS = "personagem.hexVisitas";
 const STORAGE_KEY_RESOURCES = "personagem.recursos";
 const STORAGE_KEY_RESOURCES_SINCE = "personagem.recursosDesde";
 const STORAGE_KEY_WAREHOUSE_LEVEL = "personagem.nivelArmazem";
