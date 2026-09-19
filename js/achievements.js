@@ -40,7 +40,6 @@ const CATEGORY_BY_TYPE = {
   concelhoCount: "Exploração",
   mineCount: "Exploração",
   allResourceMines: "Exploração",
-  hexMaxMultiplier: "Exploração",
   missionCountTotal: "Missões",
   missionCountDifficulty: "Missões",
   missionMonthComplete: "Missões",
@@ -131,7 +130,8 @@ const DISTINCT_MONTHS_ACHIEVEMENTS = [
 // relativos a conquistas no mapa"). Leem o mesmo estado que a secção 18/21 ja
 // mantem e sincroniza: hexagonos descobertos (discovered_hexes), concelhos
 // desbloqueados (derivados dos hexes + cache de regioes), minas encontradas
-// (minas_encontradas) e multiplicadores de revisita (hex_visitas). Sao
+// (minas_encontradas). "Terreno Conhecido" (multiplicador maximo de revisita) saiu
+// em 2026-09-19 com os multiplicadores. Sao
 // avaliadas por getAchievementProgress como qualquer outra e desbloqueadas
 // no fim de um treino (checkAndUnlockAchievements) - que e sempre quando
 // alguma destas coisas muda.
@@ -143,12 +143,11 @@ const EXPLORATION_ACHIEVEMENTS = [
   { id: "concelhos_1", name: "Fora de Casa", icon: "🚩", type: "concelhoCount", threshold: 1 },
   { id: "concelhos_3", name: "Três Concelhos", icon: "🏘️", type: "concelhoCount", threshold: 3 },
   { id: "concelhos_10", name: "Senhor da Região", icon: "🏛️", type: "concelhoCount", threshold: 10 },
-  { id: "minas_1", name: "Primeira Mina", icon: "⛏️", type: "mineCount", threshold: 1 },
-  { id: "minas_10", name: "Dez Minas", icon: "⛏️", type: "mineCount", threshold: 10 },
-  { id: "minas_25", name: "Vinte e Cinco Minas", icon: "⛏️", type: "mineCount", threshold: 25 },
-  { id: "minas_50", name: "Cinquenta Minas", icon: "⛏️", type: "mineCount", threshold: 50 },
+  { id: "minas_1", name: "Primeiro Depósito", icon: "⛏️", type: "mineCount", threshold: 1 },
+  { id: "minas_10", name: "Dez Depósitos", icon: "⛏️", type: "mineCount", threshold: 10 },
+  { id: "minas_25", name: "Vinte e Cinco Depósitos", icon: "⛏️", type: "mineCount", threshold: 25 },
+  { id: "minas_50", name: "Cinquenta Depósitos", icon: "⛏️", type: "mineCount", threshold: 50 },
   { id: "minas_todos_recursos", name: "Prospetor Completo", icon: "💎", type: "allResourceMines" },
-  { id: "hex_mult_max", name: "Terreno Conhecido", icon: "🔁", type: "hexMaxMultiplier" },
 ];
 
 // Conquistas de missões mensais (2026-09-16, a pedido - "medalhas para
@@ -690,15 +689,6 @@ function getAchievementProgress(achievement) {
       const meses = getMissionsLifetimeCounters().mesesCompletos;
       return { current: meses > 0 ? 1 : 0, target: 1, met: meses > 0 };
     }
-    case "hexMaxMultiplier": {
-      let atingiu = false;
-      if (typeof getHexVisits === "function" && typeof multiplicadorDoHex === "function") {
-        const visitas = getHexVisits();
-        const teto = typeof MULT_MAX !== "undefined" ? MULT_MAX : 2;
-        atingiu = Object.keys(visitas).some((h) => multiplicadorDoHex(h, visitas) >= teto - 0.001);
-      }
-      return { current: atingiu ? 1 : 0, target: 1, met: atingiu };
-    }
     case "pace":
     case "fullMonthTrained":
     case "activeWeekend":
@@ -945,11 +935,9 @@ function getAchievementDescription(achievement) {
     case "concelhoCount":
       return `Desbloqueia ${achievement.threshold} concelho${achievement.threshold > 1 ? "s" : ""} (cada um precisa de ${MIN_HEXES_FOR_REGION} hexágonos descobertos lá dentro).`;
     case "mineCount":
-      return `Encontra ${achievement.threshold} mina${achievement.threshold > 1 ? "s" : ""} no mapa.`;
+      return achievement.threshold > 1 ? `Encontra ${achievement.threshold} depósitos no mapa.` : "Encontra 1 depósito no mapa.";
     case "allResourceMines":
-      return "Encontra pelo menos uma mina de cada recurso: ferro, madeira, pele, pedra e barro.";
-    case "hexMaxMultiplier":
-      return "Leva um hexágono ao multiplicador máximo (2,0), voltando lá em sessões suficientes.";
+      return "Encontra pelo menos um depósito de cada recurso: ferro, madeira, pele, pedra e barro.";
     case "missionCountTotal":
       return `Conclui ${achievement.threshold} missões mensais no total (qualquer dificuldade).`;
     case "missionCountDifficulty":

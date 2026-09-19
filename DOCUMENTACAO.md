@@ -50,7 +50,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `assets/Shield.glb` | Modelo 3D do escudo (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Bow.glb` | Modelo 3D do arco (secção 9), fallback de `refreshWeaponModel()` enquanto não houver `assets/Bows/BowN.glb` (modelo novo a cada 5 níveis, v6.7.0 — secção 7) |
 | `js/weight.js` | Historico de peso, grafico de evolucao, popup de boas-vindas e lembrete de 15 dias — ver secção 20 |
-| `js/resources.js` | Economia de recursos do mapa: producao, multiplicadores, Fortaleza — ver secção 21 |
+| `js/resources.js` | Economia de recursos do mapa: depósitos (produção por nível), Fortaleza — ver secção 21 |
 | `js/concelho-areas.js` | Área (km²) dos 306 concelhos de Portugal com nome único — usada para escalar o número de minas por concelho, secção 21 |
 | `js/resources-ui.js` | Painel de recursos e Fortaleza — ver secção 21 |
 | `js/hexes.js` | Descoberta de território por hexágonos H3 + mapa de satélite desfocado da aba Mapa — ver secção 18 |
@@ -813,7 +813,7 @@ Card "Conquistas": mostra as 5 mais recentes (desbloqueadas primeiro, por ordem 
 - `concelhoCount` — concelhos desbloqueados (`unlockedConcelhos.length`, só populado depois de `computeUnlockedRegions`): `concelhos_1/3/10` ("Fora de Casa"/"Três Concelhos"/"Senhor da Região")
 - `mineCount` — minas encontradas (`minasEncontradasCount`): `minas_1/10/25/50`
 - `allResourceMines` — pelo menos uma mina de cada recurso (`minas_todos_recursos`, "Prospetor Completo") — binária, resolve o recurso de cada mina encontrada via `todasAsMinas()`
-- `hexMaxMultiplier` — levar um hexágono ao multiplicador máximo (`MULT_MAX = 2,0`, secção 21) por revisitas (`hex_mult_max`, "Terreno Conhecido") — binária
+- ~~`hexMaxMultiplier`~~ — "Terreno Conhecido" (multiplicador máximo por revisitas) **removida em 2026-09-19** com os multiplicadores (nenhum jogador a tinha desbloqueado)
 
 **Conquistas de Missões (2026-09-16, a pedido — "medalhas para missões concluídas"), categoria "Missões" (nova), `generateMissionAchievements()` em `js/achievements.js` (24 no total):** ao contrário das outras categorias, usam contadores **VITALÍCIOS próprios** (`STORAGE_KEY_MISSIONS_LIFETIME` — `{ total, facil, media, dificil, mesesCompletos }`, nunca reposto), separados de propósito do `concluidas` de `js/missions.js` (secção 22), que é mensal e reposto todos os meses. `registarMissaoConcluidaVitalicio(slot, totalConcluidasEsteMes)` é chamada por `verificarMissaoAtiva()` sempre que uma missão é concluída, e chama `checkAndUnlockAchievements()` a seguir. Os 3 slots/labels de dificuldade estão **duplicados** dentro de `js/achievements.js` (`MISSION_ACHIEVEMENT_SLOTS`/`_LABEL`) em vez de reutilizar `MISSION_SLOTS`/`MISSION_SLOT_LABEL` de `js/missions.js` — `js/achievements.js` carrega ANTES de `js/missions.js`, e `renderAchievementsSummary()` corre já no fim de `js/achievements.js`, antes de `js/missions.js` sequer existir; depender das constantes de missions.js aqui rebentaria logo no arranque.
 - `missionCountDifficulty` — marcos de **1/5/10/25/50/100** por dificuldade (`mission_first_facil/media/dificil` para o 1º, `mission_facil_5/10/25/50/100` e equivalentes para média/difícil) — 18 conquistas (3 dificuldades × 6 marcos)
@@ -1248,8 +1248,7 @@ Substitui por completo as estrelas colecionáveis (secção 19, removida) e as m
 | **Armadura** | Pele + Ferro |
 | **Fortaleza** | Pedra + Barro |
 | **Minas** | 10 de cada recurso no menor concelho do país, crescendo com a área (2026-09-18) — ver fórmula abaixo |
-| **Produção** (2026-09-09) | cada hexágono descoberto: **0,1/h de cada recurso**; hexágono com mina encontrada: **0,5/h do recurso da mina**. Tudo × multiplicador |
-| **Multiplicador** | 1,0 a 2,0 · +0,1 por sessão · −0,05/dia após 2 dias |
+| **Produção** (2026-09-19) | só os **depósitos** encontrados produzem: nível 1 = **0,3/h**, nível 2 = **0,6/h**, nível 3 = **0,9/h** do recurso do depósito. Hexágono sem depósito = 0. **Sem multiplicadores** |
 
 Os três pares possíveis de três materiais esgotam-se exatamente nas três peças: **nenhum material é privilegiado e cada um é pedido por duas peças**. E todas as combinações explicam-se sozinhas — arco de madeira com pontas de ferro, escudo de madeira coberto a pele, armadura de pele com rebites de ferro.
 
@@ -1262,9 +1261,19 @@ Os três pares possíveis de três materiais esgotam-se exatamente nas três pe�
 - **Hexágono descoberto sem mina** → `HEX_BASE_PER_HOUR = 0,1`/h de **cada** recurso
 - **Hexágono descoberto com a mina já encontrada** → `MINE_HEX_PER_HOUR = 0,5`/h **só** do recurso dessa mina
 
-`producaoPorHora()` (`js/resources.js`) itera `getDiscoveredHexIds()` (não `todasAsMinas()`), aplica o multiplicador do hexágono aos dois casos, e usa `todasAsMinas()` só para saber que hexágonos descobertos têm mina.
+*(Substituído em 2026-09-19 — ver "Depósitos com nível" abaixo.)* `producaoPorHora()` iterava `getDiscoveredHexIds()` e aplicava o multiplicador do hexágono; agora itera só os depósitos encontrados.
 
 **As minas continuam invisíveis até serem encontradas** (radar a 1 km, ver abaixo — reclamadas ao entrar no hexágono — a mesma regra que descobre território). O que muda é só o que rende: antes um hexágono sem mina dava 0.
+
+### Depósitos com nível; hexágonos vazios deixam de render (2026-09-19, a pedido)
+
+Redesenho da economia: *"agora que existem mais minas e são mais fáceis de encontrar no próprio concelho, hexágonos que não têm nada, não dão recursos. As minas passam a chamar-se depósitos e têm níveis (1: 0,3/h · 2: 0,6/h · 3: 0,9/h). Não existem multiplicadores. Cada depósito tem um número no centro do ícone que indica o nível."*
+
+- **Só os depósitos encontrados produzem** (`producaoPorHora()`, `js/resources.js`): `DEPOSITO_POR_HORA_POR_NIVEL (0,3) × nível`, do recurso desse depósito. Um hexágono descoberto sem depósito rende **0** (antes: 0,1/h de cada recurso). Tudo é derivado ao vivo do checkpoint `recursos_desde`, por isso a mudança vale já para o tempo que corre a partir do deploy — **não foi apagado nada** de nenhum jogador (o "reset" pedido ficou restrito a remover os ganhos dos hexágonos vazios; hexágonos descobertos, depósitos encontrados, stock e nível da Fortaleza mantêm-se).
+- **Nível fixo à nascença, sem upgrades** (`nivelDoDeposito(id)`): 60 % nível 1, 30 % nível 2, 10 % nível 3, sorteado por um hash **só do id** do depósito (`"nivel:" + "osmId:índice"`) — determinista e igual em todos os telemóveis. **Nunca** consome o `rand()` de `buildMinesFor`: esse gerador decide as posições dos depósitos já gravados como encontrados, e consumir-lhe mais um valor repetia o bug de 2026-09-18. Verificado: 120 depósitos em Braga → 68/42/10 por nível, geração repetida idêntica.
+- **Multiplicadores removidos por completo**: `MULT_*`, `multiplicadorDoHex`, `registarVisitasDaSessao` (e o registo de hexágonos por sessão em `js/training.js`), o arco no mapa, `getHexVisits`/`saveHexVisits`, o merge/sincronização de `hex_visitas` (`js/progress-sync.js`; a coluna fica no Supabase sem uso, com dados antigos por apagar quando fizer sentido) e a conquista "Terreno Conhecido".
+- **"Mina" → "depósito" nos textos ao jogador** (toasts, radar, painel de Economia, nomes/descrições das conquistas de exploração). Os identificadores internos (`todasAsMinas`, `minas_encontradas`...) mantêm o nome antigo — renomeá-los tocava em dados sincronizados. **Atenção à homonímia**: "depósito cheio" (notificação/aviso "Fortaleza cheia") continua a significar o **armazém** da Fortaleza, não estes depósitos.
+- **Dependência nova**: como a produção só sai de depósitos, precisa de saber onde estão — `todasAsMinas()` depende dos concelhos carregados (cache de regiões). Num dispositivo novo (cache vazia) a produção fica a 0 até o mapa identificar os concelhos; `depositosPorResolver()` conta os depósitos encontrados ainda sem concelho e `bootstrapAfterLogin` (`js/auth.js`) **não fixa o checkpoint** enquanto for > 0, para não apagar essas horas. Limitação conhecida: pagar/melhorar antes de isso resolver ainda fixa um checkpoint subestimado.
 
 **Radar a 1 km (2026-09-15, revisto em 2026-09-18)**: começou como dois avisos separados — 500 m (`MINE_ALERT_RADIUS_M`, dois bips a 660 Hz) e um "radar" de longo alcance a 2,5 km (`MINE_RADAR_RADIUS_M`, "tim tim tim" a 1046 Hz), a pedido — *"vamos passar a ter um radar que avisa que existe uma mina no raio de 2.5km com um som do tipo tim tim tim"*. **Simplificado a pedido em 2026-09-18 para um único raio de 1 km** (`MINE_RADAR_RADIUS_M = 1000`) — `MINE_ALERT_RADIUS_M`/`playMineNearby()` removidos por completo, deixou de haver dois avisos a distinguir.
 
@@ -1300,10 +1309,12 @@ Os recursos saem de uma saca com 10 de cada, baralhada — garante o número exa
 
 **Duas minas nunca partilham hexágono**: seriam apanhadas de uma vez e uma delas ficaria invisível por baixo da outra.
 
-No mapa, uma mina encontrada mostra o ícone do recurso com um **arco da cor do recurso** à volta — é o multiplicador do hexágono dela, e sem isso não havia forma de ver quais das minas já rendem mais.
+No mapa, um depósito encontrado mostra o ícone do recurso com o **nível (1-3) no centro** (2026-09-19; antes havia um arco à volta com o multiplicador do hexágono, removido com os multiplicadores).
 
 *Verificado no browser: 50 minas, 10 de cada recurso, 50 hexágonos distintos, todas dentro da fronteira, determinista entre gerações. Aviso aos 450/300 m, recolha ao entrar no hexágono, e sem apitar repetido enquanto se anda perto. (2026-09-09: 5 hexágonos sem mina → 0,5/h de cada recurso; o relógio de produção arranca na primeira leitura; a produção acumula ao longo de 2 h como esperado.)*
-### O multiplicador e a tolerância de 2 dias
+### (Histórico) O multiplicador e a tolerância de 2 dias — REMOVIDO em 2026-09-19
+
+*Secção mantida só como registo: os multiplicadores por hexágono deixaram de existir (ver "Depósitos com nível").*
 
 `+0,1` por **sessão** de treino em que se passa no hexágono — não por leitura de GPS. Sem isso, andava-se para trás e para a frente numa fronteira e enchia-se o multiplicador numa tarde.
 

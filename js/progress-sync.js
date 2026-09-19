@@ -47,7 +47,6 @@ function readLocalProgressSnapshot() {
     recursos_desde: Number(localStorage.getItem(STORAGE_KEY_RESOURCES_SINCE)) || null,
     nivel_fortaleza: typeof getWarehouseLevel === "function" ? getWarehouseLevel() : 1,
     minas_encontradas: typeof getMinasEncontradas === "function" ? [...getMinasEncontradas()] : [],
-    hex_visitas: typeof getHexVisits === "function" ? getHexVisits() : {},
     // Missoes mensais (secção 22). getMissionStateRaw NAO faz o rollover de
     // mes (isso escreveria no localStorage a meio do snapshot) - so le.
     missoes_mensais: typeof getMissionStateRaw === "function" ? getMissionStateRaw() : {},
@@ -290,20 +289,8 @@ function mergeMissoes(local, server) {
   return { mes: local.mes, concluidas, ativas, rejeitadaEm };
 }
 
-// Multiplicadores por hexagono (hexId -> {m, d}): por hexagono, fica o
-// registo com a visita mais recente (d, dia ISO); empate -> multiplicador
-// mais alto. Uniao das chaves - uma visita num dispositivo nao desaparece.
-function mergeHexVisitas(local, server) {
-  const merged = { ...(server || {}) };
-  Object.entries(local || {}).forEach(([hexId, reg]) => {
-    const atual = merged[hexId];
-    if (!atual) { merged[hexId] = reg; return; }
-    const maisRecente = String(reg.d) > String(atual.d);
-    const mesmoDiaMaiorMult = reg.d === atual.d && (Number(reg.m) || 0) > (Number(atual.m) || 0);
-    if (maisRecente || mesmoDiaMaiorMult) merged[hexId] = reg;
-  });
-  return merged;
-}
+// (2026-09-19) mergeHexVisitas removido junto com os multiplicadores por
+// hexagono - a coluna player_progress.hex_visitas fica no Supabase sem uso.
 
 // Reconcilia o estado local com o do servidor e devolve o resultado, ja
 // escrito no localStorage. Corre em TODOS os arranques.
@@ -341,7 +328,6 @@ function reconcileProgressWithServer(serverProgress) {
   merged.minas_encontradas = [
     ...new Set([...(local.minas_encontradas || []), ...(serverProgress.minas_encontradas || [])]),
   ];
-  merged.hex_visitas = mergeHexVisitas(local.hex_visitas, serverProgress.hex_visitas);
   merged.missoes_mensais = mergeMissoes(local.missoes_mensais, serverProgress.missoes_mensais);
 
   hydrateLocalStorageFromProgress(merged);
@@ -395,7 +381,6 @@ function hydrateLocalStorageFromProgress(progress) {
   }
   localStorage.setItem(STORAGE_KEY_WAREHOUSE_LEVEL, String(progress.nivel_fortaleza || 1));
   localStorage.setItem(STORAGE_KEY_MINES, JSON.stringify(progress.minas_encontradas || []));
-  localStorage.setItem(STORAGE_KEY_HEX_VISITS, JSON.stringify(progress.hex_visitas || {}));
 
   // Missoes mensais (secção 22). Objeto vazio => remove a chave, para o
   // proximo getMissionState() gerar o estado limpo do mes corrente.

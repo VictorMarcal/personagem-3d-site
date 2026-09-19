@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.45.0",
+    title: "Depósitos com Nível",
+    changes: [
+      "As minas passam a chamar-se depósitos e têm nível 1, 2 ou 3 (0,3, 0,6 ou 0,9 recursos por hora), mostrado no centro do ícone.",
+      "Só os depósitos produzem: hexágonos descobertos sem depósito já não rendem recursos.",
+      "Os multiplicadores de revisita acabaram (e a conquista Terreno Conhecido também).",
+    ],
+  },
+  {
     version: "v6.44.0",
     title: "Novidades Também no Reino",
     changes: [

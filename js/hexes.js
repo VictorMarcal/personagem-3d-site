@@ -300,7 +300,6 @@ function drawHexGrid() {
   // em qualquer zoom.
   if (typeof todasAsMinas === "function") {
     const encontradas = getMinasEncontradas();
-    const visitas = typeof getHexVisits === "function" ? getHexVisits() : {};
     // So usados no fallback ao emoji, ver dentro do forEach abaixo.
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -310,18 +309,6 @@ function drawHexGrid() {
       if (!encontradas.has(mina.id)) return;
       if (!bounds.contains([mina.lat, mina.lng])) return;
       const p = project([mina.lat, mina.lng]);
-
-      // Anel a marcar o quanto a mina esta desenvolvida: e o multiplicador do
-      // hexagono dela. Sem isto nao havia forma de ver no mapa quais das
-      // minas ja renderem mais.
-      const mult = typeof multiplicadorDoHex === "function" ? multiplicadorDoHex(mina.hexId, visitas) : 1;
-      if (mult > 1.01) {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ((mult - 1) / 1));
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = RESOURCE_BY_ID[mina.recurso].cor;
-        ctx.stroke();
-      }
 
       // Icone ilustrado (mineIconImages, ver acima) se ja tiver carregado;
       // fallback ao emoji de RESOURCE_BY_ID[...].icone enquanto isso nao
@@ -345,6 +332,19 @@ function drawHexGrid() {
         ctx.shadowBlur = 0;
         ctx.fillText(RESOURCE_BY_ID[mina.recurso].icone, p.x, p.y);
       }
+
+      // Nivel do deposito (1-3, fixo - ver nivelDoDeposito, js/resources.js)
+      // no CENTRO do icone (2026-09-19, a pedido). Branco com contorno escuro
+      // para se ler sobre qualquer icone/fundo, sem sombra (o halo acima ja
+      // ficou desligado).
+      ctx.shadowBlur = 0;
+      ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(0,0,0,0.85)";
+      ctx.strokeText(String(mina.nivel), p.x, p.y);
+      ctx.fillStyle = "#fff";
+      ctx.fillText(String(mina.nivel), p.x, p.y);
+      ctx.font = "19px system-ui, -apple-system, sans-serif";
     });
   }
 

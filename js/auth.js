@@ -423,7 +423,12 @@ async function bootstrapAfterLogin(user) {
   // ja da a taxa certa. Sem isto, um jogador que so OLHA para a Economia
   // (nunca paga nada) nunca empurrava o stock para o servidor.
   try {
-    if (typeof acumularProducao === "function") acumularProducao();
+    // Nao fixa checkpoint enquanto houver depositos encontrados sem concelho
+    // carregado (dispositivo novo, cache de regioes ainda vazia): a producao
+    // estaria subestimada e o checkpoint apagava as horas em falta (2026-09-19).
+    if (typeof acumularProducao === "function" && (typeof depositosPorResolver !== "function" || depositosPorResolver() === 0)) {
+      acumularProducao();
+    }
   } catch (err) {
     console.error("Falha ao fixar checkpoint de recursos:", err);
   }

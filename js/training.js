@@ -332,9 +332,6 @@ let sessionStartTime = null; // usado para conquistas de ritmo (ex: 5km em menos
 // inteira mostrada ao lado.
 let sessionCaloriesKcal = 0;
 let sessionMovingSeconds = 0;
-// Hexagonos por onde se passou NESTA sessao (secção 21). E um conjunto, por
-// isso passar dez vezes no mesmo conta uma.
-let sessionHexIds = new Set();
 let modeDistanceAccumM = {};
 let currentNominalSpeedMps = 0;
 
@@ -904,10 +901,6 @@ function onPositionUpdate(position) {
         sessionMovingSeconds += rawDurationSeconds;
         gpsDiag.creditadas += 1;
         updateDistanceDisplay();
-        // Guarda-se o hexagono para, no FIM da sessao, contar uma visita -
-        // uma por sessao e nao uma por leitura, senao andava-se para tras e
-        // para a frente numa fronteira e enchia-se o multiplicador numa tarde.
-        registarHexDaSessao(latitude, longitude);
         // Descoberta de territorio (secção 18) - so em segmentos que de
         // facto contaram como deslocamento, para deriva de GPS parado nao
         // "descobrir" hexagonos vizinhos sem lá se ter ido.
@@ -921,17 +914,6 @@ function onPositionUpdate(position) {
 
   lastPosition = { latitude, longitude, timestamp };
   if (!lastCountedPosition) lastCountedPosition = { latitude, longitude, timestamp };
-}
-
-// Guarda o hexagono atual no conjunto da sessao (secção 21), para a visita
-// ser contada uma vez so no fim. Silencioso sem h3 carregado, como o resto.
-function registarHexDaSessao(latitude, longitude) {
-  if (typeof h3 === "undefined" || typeof getHexResolution !== "function") return;
-  try {
-    sessionHexIds.add(h3.latLngToCell(latitude, longitude, getHexResolution()));
-  } catch (e) {
-    // coordenada invalida - nao vale partir o treino por causa disto
-  }
 }
 
 // Descoberta de hexagonos durante o treino (secção 18). Envolve
@@ -1156,7 +1138,6 @@ function beginTrainingSession() {
   sessionStartTime = Date.now();
   sessionCaloriesKcal = 0;
   sessionMovingSeconds = 0;
-  sessionHexIds = new Set();
   modeDistanceAccumM = {};
   pausedTotalMs = 0;
   autoPausedMs = 0;
@@ -1313,9 +1294,6 @@ function stopTraining() {
   stopLiveStatsTicker();
   releaseWakeLock();
 
-  // Uma visita por hexagono e por sessao (secção 21). Feito aqui, no fim, e
-  // nao a cada leitura.
-  if (typeof registarVisitasDaSessao === "function") registarVisitasDaSessao(sessionHexIds);
   if (typeof renderResourcesPanel === "function") renderResourcesPanel();
   if (typeof setTrainingLowPowerRendering === "function") setTrainingLowPowerRendering(false);
 

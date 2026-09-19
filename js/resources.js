@@ -1,10 +1,11 @@
 // Economia de recursos do mapa (2026-09-07, secção 21).
 //
-// Substitui as moedas por quilometro. Existem 10 MINAS de cada recurso em
-// cada concelho e so elas produzem; os restantes hexagonos contam para o
-// territorio mas nao rendem nada. Cada mina produz por hora, multiplicado por
-// um fator que sobe quando se volta a passar por la e desce quando se deixa
-// de ir.
+// Substitui as moedas por quilometro. Cada concelho tem DEPOSITOS (antes
+// chamados minas) de cada recurso - quantos depende da area do concelho - e
+// so eles produzem; os restantes hexagonos contam para o territorio mas nao
+// rendem nada. Cada deposito tem um nivel fixo 1-3 (0,3/0,6/0,9 por hora),
+// sem multiplicadores (2026-09-19; ate ai havia um multiplicador de revisita
+// por hexagono e todos os hexagonos descobertos rendiam uma taxa base).
 //
 // NUMEROS ASSUMIDOS COMO PROVISORIOS. Foram derivados do ritmo real dos dois
 // jogadores no primeiro mes (30-40 hexagonos/semana), que e a fase em que
@@ -60,114 +61,49 @@ function mulberry32(seed) {
   };
 }
 
-// --- multiplicador por hexagono ---------------------------------------------
-//
-// +0,1 por SESSAO de treino em que se passa la (nao por leitura de GPS: senao
-// andava-se para tras e para a frente na fronteira e enchia-se numa tarde),
-// ate ao dobro. Decai 0,05/dia, mas so depois de 2 DIAS DE TOLERANCIA.
-//
-// A tolerancia nao e generosidade, e correcao: simulado sem ela, quem treina
-// 3x por semana ficava preso em 1,00 para sempre - os dias de descanso comiam
-// tudo o que os treinos construiam. Dias de descanso fazem parte de treinar.
-const MULT_MIN = 1.0;
-const MULT_MAX = 2.0;
-const MULT_POR_SESSAO = 0.1;
-const MULT_DECAI_POR_DIA = 0.05;
-const MULT_DIAS_TOLERANCIA = 2;
-
-function hojeISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function diasEntre(diaISO, ateISO) {
-  const a = Date.parse(diaISO + "T00:00:00Z");
-  const b = Date.parse(ateISO + "T00:00:00Z");
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
-  return Math.max(0, Math.round((b - a) / 86400000));
-}
-
-function getHexVisits() {
-  try {
-    const bruto = JSON.parse(localStorage.getItem(STORAGE_KEY_HEX_VISITS) || "{}");
-    return bruto && typeof bruto === "object" ? bruto : {};
-  } catch (e) {
-    return {};
-  }
-}
-
-function saveHexVisits(visitas) {
-  localStorage.setItem(STORAGE_KEY_HEX_VISITS, JSON.stringify(visitas));
-}
-
-// Multiplicador AGORA, com o decaimento ja aplicado. O valor gravado e o do
-// dia da ultima visita e o decaimento e sempre derivado - assim nao e preciso
-// nenhum relogio a correr, e nada tem de acontecer com a app fechada.
-function multiplicadorDoHex(hexId, visitas) {
-  const registo = (visitas || getHexVisits())[hexId];
-  if (!registo) return MULT_MIN;
-  const dias = diasEntre(registo.d, hojeISO());
-  const aDecair = Math.max(0, dias - MULT_DIAS_TOLERANCIA);
-  return Math.max(MULT_MIN, (Number(registo.m) || MULT_MIN) - aDecair * MULT_DECAI_POR_DIA);
-}
-
-// Chamada UMA VEZ POR SESSAO, no fim do treino, com os hexagonos por onde se
-// passou.
-function registarVisitasDaSessao(hexIdsDaSessao) {
-  if (!hexIdsDaSessao || hexIdsDaSessao.size === 0) return;
-  const visitas = getHexVisits();
-  const hoje = hojeISO();
-
-  hexIdsDaSessao.forEach((hexId) => {
-    // Aplica primeiro o decaimento acumulado e so depois soma a visita: pela
-    // ordem inversa, uma pausa longa era apagada pela visita de regresso.
-    const atual = multiplicadorDoHex(hexId, visitas);
-    visitas[hexId] = { m: Math.min(MULT_MAX, atual + MULT_POR_SESSAO), d: hoje };
-  });
-
-  saveHexVisits(visitas);
-  if (typeof queueProgressSync === "function") queueProgressSync();
-}
-
 // --- producao ---------------------------------------------------------------
 //
-// TODOS os hexagonos descobertos produzem (2026-09-09, a pedido):
-//   - hex sem mina        -> HEX_BASE_PER_HOUR de CADA recurso
-//   - hex com mina encontrada -> MINE_HEX_PER_HOUR do recurso dessa mina
-// O multiplicador do hexagono (revisitas, 1,0-2,0) aplica-se aos dois.
-const HEX_BASE_PER_HOUR = 0.1;
-const MINE_HEX_PER_HOUR = 0.5;
+// So os DEPOSITOS encontrados produzem (2026-09-19, a pedido - "hexagonos que
+// nao tem nada, nao dao recursos"). Ate 2026-09-18 todos os hexagonos
+// descobertos rendiam 0,1/h de cada recurso e as minas 0,5/h, tudo x um
+// multiplicador de revisita 1,0-2,0 - tudo isso saiu. Agora:
+//   - hexagono sem deposito        -> 0
+//   - deposito encontrado, nivel N -> DEPOSITO_POR_HORA_POR_NIVEL x N do
+//                                     recurso desse deposito (0,3 / 0,6 / 0,9)
+// Sem multiplicadores. O nivel de cada deposito e fixo (ver
+// nivelDoDeposito, mais abaixo).
+const DEPOSITO_POR_HORA_POR_NIVEL = 0.3;
 
 function producaoPorHora() {
   const total = {};
   RESOURCE_IDS.forEach((id) => { total[id] = 0; });
 
-  const descobertos = typeof getDiscoveredHexIds === "function" ? getDiscoveredHexIds() : new Set();
-  if (descobertos.size === 0) return total;
-
-  // hexId -> recurso, para os hexes descobertos que tenham uma mina JA
-  // encontrada. Depende de unlockedConcelhos (hexes.js); se ainda nao
-  // estiver carregado, esses hexes rendem so a taxa base ate estar.
-  const recursoDaMinaNoHex = {};
-  if (typeof todasAsMinas === "function") {
-    const encontradas = getMinasEncontradas();
-    todasAsMinas().forEach((mina) => {
-      if (encontradas.has(mina.id)) recursoDaMinaNoHex[mina.hexId] = mina.recurso;
-    });
-  }
-
-  const visitas = getHexVisits();
-  descobertos.forEach((hexId) => {
-    const mult = multiplicadorDoHex(hexId, visitas);
-    const recurso = recursoDaMinaNoHex[hexId];
-    if (recurso) {
-      total[recurso] += MINE_HEX_PER_HOUR * mult;
-    } else {
-      RESOURCE_IDS.forEach((id) => { total[id] += HEX_BASE_PER_HOUR * mult; });
-    }
+  // Depende de unlockedConcelhos (js/hexes.js) para saber onde estao os
+  // depositos - se ainda nao estiver carregado (ex: dispositivo novo, cache
+  // de regioes vazia) a producao fica a 0 ate estar; ver depositosPorResolver().
+  if (typeof todasAsMinas !== "function") return total;
+  const encontradas = getMinasEncontradas();
+  todasAsMinas().forEach((mina) => {
+    if (encontradas.has(mina.id)) total[mina.recurso] += DEPOSITO_POR_HORA_POR_NIVEL * mina.nivel;
   });
 
   RESOURCE_IDS.forEach((id) => { total[id] = Math.round(total[id] * 100) / 100; });
   return total;
+}
+
+// Quantos depositos ja encontrados ainda nao foi possivel resolver a um
+// concelho carregado (dispositivo novo: a lista de ids vem do Supabase mas a
+// geometria dos concelhos so chega quando o mapa os identifica). Enquanto for
+// > 0, producaoPorHora() esta a subestimar - quem fixa um checkpoint nessa
+// altura (acumularProducao) perderia producao.
+function depositosPorResolver() {
+  if (typeof todasAsMinas !== "function") return 0;
+  const encontradas = getMinasEncontradas();
+  if (encontradas.size === 0) return 0;
+  const resolvidos = new Set(todasAsMinas().map((m) => m.id));
+  let emFalta = 0;
+  encontradas.forEach((id) => { if (!resolvidos.has(id)) emFalta += 1; });
+  return emFalta;
 }
 
 // --- Fortaleza (armazem) --------------------------------------------------
@@ -337,14 +273,13 @@ function formatRecurso(valor) {
 // raiz quadrada (chegava a 14.5x, ~145 minas em Odemira - "é muito", a
 // pedido) e a escala linear com a area (>170x, insustentavel).
 //
-// Desde 2026-09-09 TODOS os hexagonos descobertos rendem (ver
-// producaoPorHora); uma mina encontrada so faz o hexagono dela render mais
-// e de um recurso especifico em vez da taxa base de todos.
+// Desde 2026-09-19 so os DEPOSITOS (as antigas minas) encontrados rendem,
+// cada um com um nivel fixo 1-3 (ver producaoPorHora/nivelDoDeposito).
 //
 // NAO ESTAO VISIVEIS ate serem encontradas. Ha um radar de 1 km (2026-09-18 -
 // substitui os dois raios antigos, 500 m + 2,5 km, por um so): som "tim tim
 // tim", vibracao pulsante (Android/Chrome so - Vibration API nunca existiu
-// no iOS/Safari) e popup "Existe uma mina no raio de 1km".
+// no iOS/Safari) e popup "Existe um depósito no raio de 1km".
 const MINES_PER_RESOURCE_MIN = 10;
 const MINE_RADAR_RADIUS_M = 1000;
 
@@ -371,6 +306,19 @@ function minasPorRecursoParaConcelho(concelho) {
   if (!area || area <= 0) return MINES_PER_RESOURCE_MIN;
   const fator = 1 + Math.log10(area / MINA_AREA_REFERENCIA_KM2);
   return Math.max(MINES_PER_RESOURCE_MIN, Math.round(MINES_PER_RESOURCE_MIN * fator));
+}
+
+// Nivel (1-3) de cada deposito (2026-09-19, a pedido - nasce com nivel fixo,
+// sem upgrades). Tem de ser DETERMINISTA e independente da posicao/ordem: usa
+// um hash so do id ("osmId:indice"), NUNCA o rand() de buildMinesFor - esse
+// gerador ja decide as posicoes das minas ja gravadas como encontradas, e
+// consumir mais um valor dele desalinharia tudo (ver o bug de 2026-09-18).
+// Distribuicao: 60% nivel 1, 30% nivel 2, 10% nivel 3.
+function nivelDoDeposito(minaId) {
+  const r = mulberry32(hashString("nivel:" + minaId))();
+  if (r < 0.6) return 1;
+  if (r < 0.9) return 2;
+  return 3;
 }
 
 // Gera UM LOTE de "quantidadePorRecurso" minas de cada recurso e acrescenta-o
@@ -415,12 +363,14 @@ function gerarLoteDeMinas(minas, hexesUsados, rand, gj, bbox, concelhoNome, osmI
     hexesUsados.add(hexId);
 
     const [hLat, hLng] = h3.cellToLatLng(hexId);
+    const id = osmId + ":" + minas.length;
     minas.push({
-      id: osmId + ":" + minas.length,
+      id,
       hexId,
       lat: hLat,
       lng: hLng,
       recurso: saca[colocadas],
+      nivel: nivelDoDeposito(id),
       concelho: concelhoNome,
     });
     colocadas += 1;
@@ -585,7 +535,7 @@ function verificarMinas(latitude, longitude) {
       achouAlguma = true;
       notarMinaEncontrada(mina.id);
       if (typeof showGameToast === "function") {
-        showGameToast("Mina de " + RESOURCE_BY_ID[mina.recurso].nome.toLowerCase() + " encontrada!", "medalha");
+        showGameToast("Depósito de " + RESOURCE_BY_ID[mina.recurso].nome.toLowerCase() + " encontrado (nível " + mina.nivel + ")!", "medalha");
       }
       return;
     }
@@ -614,7 +564,7 @@ function verificarMinas(latitude, longitude) {
     playMineRadar();
     vibrarRadar();
     if (typeof showGameToast === "function") {
-      showGameToast("Existe uma mina no raio de 1km", "aviso");
+      showGameToast("Existe um depósito no raio de 1km", "aviso");
     }
   }
 }
