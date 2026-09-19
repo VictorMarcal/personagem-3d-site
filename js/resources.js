@@ -74,9 +74,25 @@ function mulberry32(seed) {
 // nivelDoDeposito, mais abaixo).
 const DEPOSITO_POR_HORA_POR_NIVEL = 0.3;
 
+// Exploracoes da Fortaleza (2026-09-19, a pedido - "a nossa fortaleza vai ter
+// as 5 exploracoes, cada uma tem producao de 1 por hora"). Uma por recurso, sempre
+// ativas, independentes dos depositos do mapa: somam-se a eles. Ainda sem
+// evolucao (o jogador ainda nao decidiu se vai ser possivel evoluir).
+// Na vista 3D da Fortaleza vao aparecer como edificios (serraria, pedreira,
+// gruta de ferro, fazenda, poca de barro) - ainda nao modelados.
+const EXPLORACAO_POR_HORA = 1;
+const EXPLORACOES = [
+  { recurso: "madeira", nome: "Serraria" },
+  { recurso: "pedra", nome: "Pedreira" },
+  { recurso: "ferro", nome: "Gruta de ferro" },
+  { recurso: "pele", nome: "Fazenda" },
+  { recurso: "barro", nome: "Poça de barro" },
+];
+
 function producaoPorHora() {
   const total = {};
   RESOURCE_IDS.forEach((id) => { total[id] = 0; });
+  EXPLORACOES.forEach((e) => { total[e.recurso] += EXPLORACAO_POR_HORA; });
 
   // Depende de unlockedConcelhos (js/hexes.js) para saber onde estao os
   // depositos - se ainda nao estiver carregado (ex: dispositivo novo, cache

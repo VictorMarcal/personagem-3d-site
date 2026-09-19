@@ -1248,7 +1248,7 @@ Substitui por completo as estrelas colecionáveis (secção 19, removida) e as m
 | **Armadura** | Pele + Ferro |
 | **Fortaleza** | Pedra + Barro |
 | **Minas** | 10 de cada recurso no menor concelho do país, crescendo com a área (2026-09-18) — ver fórmula abaixo |
-| **Produção** (2026-09-19) | só os **depósitos** encontrados produzem: nível 1 = **0,3/h**, nível 2 = **0,6/h**, nível 3 = **0,9/h** do recurso do depósito. Hexágono sem depósito = 0. **Sem multiplicadores** |
+| **Produção** (2026-09-19) | **Explorações da Fortaleza**: 1/h de cada recurso, sempre (ver abaixo). **Depósitos** encontrados: nível 1 = **0,3/h**, nível 2 = **0,6/h**, nível 3 = **0,9/h** do recurso do depósito, somado às explorações. Hexágono sem depósito = 0. **Sem multiplicadores** |
 
 Os três pares possíveis de três materiais esgotam-se exatamente nas três peças: **nenhum material é privilegiado e cada um é pedido por duas peças**. E todas as combinações explicam-se sozinhas — arco de madeira com pontas de ferro, escudo de madeira coberto a pele, armadura de pele com rebites de ferro.
 
@@ -1274,6 +1274,16 @@ Redesenho da economia: *"agora que existem mais minas e são mais fáceis de enc
 - **Multiplicadores removidos por completo**: `MULT_*`, `multiplicadorDoHex`, `registarVisitasDaSessao` (e o registo de hexágonos por sessão em `js/training.js`), o arco no mapa, `getHexVisits`/`saveHexVisits`, o merge/sincronização de `hex_visitas` (`js/progress-sync.js`; a coluna fica no Supabase sem uso, com dados antigos por apagar quando fizer sentido) e a conquista "Terreno Conhecido".
 - **"Mina" → "depósito" nos textos ao jogador** (toasts, radar, painel de Economia, nomes/descrições das conquistas de exploração). Os identificadores internos (`todasAsMinas`, `minas_encontradas`...) mantêm o nome antigo — renomeá-los tocava em dados sincronizados. **Atenção à homonímia**: "depósito cheio" (notificação/aviso "Fortaleza cheia") continua a significar o **armazém** da Fortaleza, não estes depósitos.
 - **Dependência nova**: como a produção só sai de depósitos, precisa de saber onde estão — `todasAsMinas()` depende dos concelhos carregados (cache de regiões). Num dispositivo novo (cache vazia) a produção fica a 0 até o mapa identificar os concelhos; `depositosPorResolver()` conta os depósitos encontrados ainda sem concelho e `bootstrapAfterLogin` (`js/auth.js`) **não fixa o checkpoint** enquanto for > 0, para não apagar essas horas. Limitação conhecida: pagar/melhorar antes de isso resolver ainda fixa um checkpoint subestimado.
+
+### Explorações da Fortaleza (2026-09-19, a pedido)
+
+*"A nossa Fortaleza vai ter as 5 explorações (ainda sem saber se vai ser possível evoluir). Na visualização 3D vão existir uma serraria, uma pedreira, uma gruta de ferro, uma fazenda e uma poça de barro. Cada uma tem produção de 1 por hora."*
+
+- **Uma exploração por recurso**, sempre ativa desde o nível 1 da Fortaleza: Serraria → madeira, Pedreira → pedra, Gruta de ferro → ferro, Fazenda → pele, Poça de barro → barro. Cada uma dá `EXPLORACAO_POR_HORA = 1` (`js/resources.js`, lista `EXPLORACOES`).
+- **Soma-se aos depósitos do mapa** em `producaoPorHora()` — é a base garantida de 1/h de cada recurso, mesmo para quem ainda não encontrou nenhum depósito (e também num dispositivo novo, com a cache de concelhos vazia).
+- **Sem evolução por agora** — o jogador ainda não decidiu se as explorações vão poder subir de nível; não há custo, nível nem estado guardado. Tudo é derivado ao vivo do checkpoint `recursos_desde`, por isso a mudança aplica-se já a partir do deploy sem migração (o tempo desde o último checkpoint é recalculado com a taxa nova).
+- **UI**: o painel de Economia mostra uma linha "Fortaleza: Serraria · Pedreira · …" e a taxa `+X/h` de cada recurso já inclui a exploração.
+- **3D — por fazer**: os cinco edifícios ainda **não existem** na cena 3D (`js/main.js`, torre em `applyTowerModel`); dependem dos modelos `.glb` (ainda não feitos) e de decidir onde ficam à volta da torre.
 
 **Radar a 1 km (2026-09-15, revisto em 2026-09-18)**: começou como dois avisos separados — 500 m (`MINE_ALERT_RADIUS_M`, dois bips a 660 Hz) e um "radar" de longo alcance a 2,5 km (`MINE_RADAR_RADIUS_M`, "tim tim tim" a 1046 Hz), a pedido — *"vamos passar a ter um radar que avisa que existe uma mina no raio de 2.5km com um som do tipo tim tim tim"*. **Simplificado a pedido em 2026-09-18 para um único raio de 1 km** (`MINE_RADAR_RADIUS_M = 1000`) — `MINE_ALERT_RADIUS_M`/`playMineNearby()` removidos por completo, deixou de haver dois avisos a distinguir.
 

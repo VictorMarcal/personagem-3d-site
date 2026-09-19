@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.46.0",
+    title: "Explorações da Fortaleza",
+    changes: [
+      "A Fortaleza tem agora 5 explorações: Serraria (madeira), Pedreira (pedra), Gruta de ferro (ferro), Fazenda (pele) e Poça de barro (barro).",
+      "Cada uma produz 1 recurso por hora, sempre, somado ao que os depósitos do mapa rendem.",
+    ],
+  },
+  {
     version: "v6.45.0",
     title: "Depósitos com Nível",
     changes: [

@@ -90,6 +90,7 @@ function renderResourcesPanel() {
   painel.innerHTML =
     '<p class="resources-title">Produção por hora</p>' +
     '<p class="mines-found">Depósitos encontrados: <strong>' + minasEncontradasCount() + '</strong> de ' + todasAsMinas().length + '</p>' +
+    '<p class="mines-found">Fortaleza: ' + EXPLORACOES.map((e) => e.nome).join(" · ") + ' — <strong>' + EXPLORACAO_POR_HORA + '/h</strong> cada</p>' +
     '<dl class="resources-grid">' +
     RESOURCES.map((r) => {
       const quantidade = stock[r.id];
