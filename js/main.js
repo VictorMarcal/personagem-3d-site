@@ -71,6 +71,14 @@ let floorCameraAtaquePos = null;
 // o angulo (2026-09-20, a pedido - "afasta um pouco mais a camara"). 1 = o
 // Empty tal como esta no Floor.glb.
 const CAMERA_ATAQUE_AFASTAMENTO = 1.25;
+// Depois de afastar, baixa so a altura (Y) - 0,95 = 5% mais baixa (2026-09-20,
+// a pedido - "baixa uns 5% em altura"). 1 = sem alterar.
+const CAMERA_ATAQUE_ALTURA = 0.95;
+
+function posicionarCameraAtaque() {
+  camera.position.copy(floorCameraAtaquePos).multiplyScalar(CAMERA_ATAQUE_AFASTAMENTO);
+  camera.position.y *= CAMERA_ATAQUE_ALTURA;
+}
 
 function registrarHordaCameraPoints(model) {
   model.traverse((obj) => {
@@ -95,7 +103,7 @@ function applyNormalCamera() {
   // ha espaco para as exploracoes a volta da torre. CameraIdlePosition fica
   // so como fallback quando o Floor nao traz o Empty de ataque.
   if (floorCameraAtaquePos) {
-    camera.position.copy(floorCameraAtaquePos).multiplyScalar(CAMERA_ATAQUE_AFASTAMENTO);
+    posicionarCameraAtaque();
     camera.lookAt(0, 0, 0);
     return;
   }
@@ -135,7 +143,7 @@ function applyHordaCamera() {
   camera.fov = HORDA_CAMERA_FOV;
   camera.updateProjectionMatrix();
   if (floorCameraAtaquePos) {
-    camera.position.copy(floorCameraAtaquePos).multiplyScalar(CAMERA_ATAQUE_AFASTAMENTO);
+    posicionarCameraAtaque();
   } else {
     camera.position.set(HORDA_CAMERA_POSITION.x, HORDA_CAMERA_POSITION.y, HORDA_CAMERA_POSITION.z);
   }
