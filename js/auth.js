@@ -385,10 +385,16 @@ async function bootstrapAfterLogin(user) {
   try {
     const { data: sessions } = await supabaseClient
       .from("training_sessions")
-      .select("started_at, distance_m, duration_seconds")
+      .select("started_at, distance_m, duration_seconds, calories_kcal")
       .eq("user_id", user.id)
       .order("started_at");
     if (sessions) checkFrequencyAchievementsFromSessions(sessions);
+    // As calorias vitalicias/mensais nunca podem passar da soma das sessoes
+    // (js/progress-sync.js). Se corrigiu algo, redesenha XP/nivel/leaderboard.
+    if (sessions && corrigirCaloriasComSessoes(sessions)) {
+      refreshAllUi();
+      renderLeaderboardCard();
+    }
   } catch (err) {
     console.error("Falha ao verificar conquistas de frequência:", err);
   }

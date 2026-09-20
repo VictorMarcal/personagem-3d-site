@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.49.0",
+    title: "Calorias Sempre Certas",
+    changes: [
+      "As calorias totais (e o XP) nunca podem passar da soma das calorias dos teus treinos. Se algum valor ficar inflacionado, a app corrige-o sozinha ao abrir.",
+    ],
+  },
+  {
     version: "v6.48.1",
     title: "Novidades em Destaque",
     changes: [

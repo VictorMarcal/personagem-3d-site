@@ -289,6 +289,56 @@ function mergeMissoes(local, server) {
   return { mes: local.mes, concluidas, ativas, rejeitadaEm };
 }
 
+// --- Calorias nunca excedem o que as sessoes provam (2026-09-20) ---------------
+//
+// Bug real (VidaNova, incidente de 2026-09-16, secção 4.7): uma correcao por
+// SQL as calorias vitalicias foi DESFEITA pelo proprio telemovel, porque
+// lifetime_calories_kcal e best_session_calories_kcal estao em
+// MONOTONIC_PROGRESS_FIELDS (maximo entre local e servidor) - o valor antigo,
+// inflacionado, ficou guardado no aparelho e voltou a subir no arranque.
+//
+// Cada kcal vitalicia entra por uma sessao de treino, por isso o total
+// vitalicio nunca pode ser maior que a soma das calorias das sessoes (as ja
+// guardadas no servidor + as ainda na fila de envio), nem o recorde de uma
+// sessao maior que a melhor sessao. Corre em todos os arranques com a lista de
+// sessoes que o arranque ja vai buscar (js/auth.js) - por ser dirigido pelos
+// dados e nao por uma marca "ja corrigi", auto-repara-se mesmo que um
+// aparelho antigo volte a subir o valor inflacionado. So BAIXA (nunca sobe) e
+// so quando ha pelo menos uma sessao, para uma lista vazia/falha de rede nunca
+// apagar progresso. O mensal fica no maximo igual ao vitalicio.
+const CALORIAS_TOLERANCIA_KCAL = 1;
+
+function corrigirCaloriasComSessoes(sessoesServidor) {
+  if (!Array.isArray(sessoesServidor) || sessoesServidor.length === 0) return false;
+
+  const fila = typeof getQueuedTrainingSessions === "function" ? getQueuedTrainingSessions() : [];
+  const todas = [...sessoesServidor, ...fila];
+  const kcal = (s) => Math.max(0, Number(s && s.calories_kcal) || 0);
+  const soma = todas.reduce((total, s) => total + kcal(s), 0);
+  const melhor = todas.reduce((max, s) => Math.max(max, kcal(s)), 0);
+
+  let mudou = false;
+  if (getLifetimeCaloriesKcal() > soma + CALORIAS_TOLERANCIA_KCAL) {
+    localStorage.setItem(STORAGE_KEY_LIFETIME_KCAL, String(soma));
+    mudou = true;
+  }
+  if (getBestSessionCaloriesKcal() > melhor + CALORIAS_TOLERANCIA_KCAL) {
+    localStorage.setItem(STORAGE_KEY_BEST_SESSION_CALORIES_KCAL, String(melhor));
+    mudou = true;
+  }
+  if (getMonthlyCaloriesKcal() > getLifetimeCaloriesKcal() + CALORIAS_TOLERANCIA_KCAL) {
+    localStorage.setItem(STORAGE_KEY_MONTHLY_KCAL, String(getLifetimeCaloriesKcal()));
+    mudou = true;
+  }
+
+  if (mudou) {
+    console.warn("Calorias acima do que as sessoes provam - corrigidas para " + soma.toFixed(1) + " kcal.");
+    localStorage.setItem(SYNC_PENDING_KEY, "true");
+    queueProgressSync();
+  }
+  return mudou;
+}
+
 // (2026-09-19) mergeHexVisitas removido junto com os multiplicadores por
 // hexagono - a coluna player_progress.hex_visitas fica no Supabase sem uso.
 

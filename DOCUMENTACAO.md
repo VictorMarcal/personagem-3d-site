@@ -916,6 +916,18 @@ Depois do merge, se o resultado diferir do que está no servidor, marca-se sincr
 
 **Testado nos cinco cenários** antes de aplicar, incluindo os dois que antes eram mutuamente exclusivos: correção do servidor a chegar ao dispositivo com mutação pendente (nível 4 → 10 ✓) e treino local por sincronizar a não ser apagado pelo servidor ✓.
 
+#### Calorias limitadas pelas sessões (2026-09-20)
+
+**Porque existe**: o "Caveat conhecido" acima aconteceu mesmo. A correção por SQL do incidente de 2026-09-16 (secção 4.7) baixou `lifetime_calories_kcal` da VidaNova, mas o telemóvel dela continuava com o valor antigo (mais alto) e, sendo campo monotónico (`max`), voltou a subi-lo — perfil, leaderboard e recorde ficaram inflacionados em ~1718 kcal outra vez.
+
+**Regra** (`corrigirCaloriasComSessoes`, `js/progress-sync.js`; chamada em `bootstrapAfterLogin`, `js/auth.js`, com a lista de sessões que o arranque já busca — agora com `calories_kcal`): cada kcal vitalícia entra por uma sessão, logo
+- `lifetime_calories_kcal` ≤ soma das `calories_kcal` das sessões (servidor + fila de envio `STORAGE_KEY_SESSION_QUEUE`) + 1 kcal de tolerância;
+- `best_session_calories_kcal` ≤ maior sessão (+ tolerância);
+- calorias do mês ≤ vitalícias.
+Se um valor local passa o teto, **baixa-se** para ele, marca-se sync pendente e redesenha-se XP/leaderboard. **Dirigido pelos dados, não por uma marca "já corrigi"** — corre em todos os arranques e auto-repara-se mesmo que um aparelho antigo volte a subir o valor. Só baixa (nunca sobe) e só com ≥ 1 sessão (lista vazia/erro de rede não apaga nada). Não toca em `unspent_points`/`last_awarded_level`/conquistas já atribuídas (mesma decisão do incidente de 09-16: sem "clawback"); o **nível mostrado** desce se o XP descer.
+
+**Verificado a 2026-09-20** nos 3 jogadores: Sandra (368,8 = soma), Skllrx (4049,3 < soma 4581,9, não é afetado) e VidaNova (2536,2 → 817,9 = soma, também corrigido por SQL em `player_progress` e `leaderboard`). Distâncias batem certo (soma das sessões = total) nos 3.
+
 ### 14.2 Login: email/palavra-passe
 
 Começou só com Google (até 2026-09-11), depois ganhou Apple e email/palavra-passe no mesmo dia, e desde **2026-09-14** (a pedido: *"vamos remover a possibilidade de login com contas google e apple"*) fica só **email + palavra-passe** — um único caminho, sem provider nenhum. `#auth-modal` (`js/auth.js`) tem um formulário com dois modos (**Entrar** / **Criar conta**, `emailAuthMode`) — um botão só, o texto/ação mudam consoante o modo, para não duplicar o markup.
