@@ -386,9 +386,9 @@ button[disabled] {
    tenham apenas cores: verde facil, amarelo medio, vermelho dificil, sem
    muito contraste"). Sem o chip com o nome: o titulo da secao ja o diz.
    Tons suaves e com luminosidade parecida, para nenhum se sobrepor aos outros. */
-.mission-card-facil { background: #ebf1df; border-color: #d5e0c0; }
-.mission-card-media { background: #f6eed3; border-color: #e7dbae; }
-.mission-card-dificil { background: #f4e0d8; border-color: #e5c4b8; }
+.mission-card-facil { background: #d7e9bf; border-color: #b9d698; }
+.mission-card-media { background: #f8e5a6; border-color: #e6cc72; }
+.mission-card-dificil { background: #f1c8bb; border-color: #dd9d8a; }
 .mission-line {
   display: flex;
   align-items: center;
