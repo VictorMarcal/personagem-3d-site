@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.47.0",
+    title: "Relatórios de Batalha Detalhados",
+    changes: [
+      "Os relatórios de batalha passam a ser clicáveis: a lista mostra a horda, a data e o resultado.",
+      "Ao clicar, abre um popup com os monstros derrotados e o total, o dano provocado, o dano sofrido e, em caso de derrota, os recursos perdidos.",
+      "Relatórios antigos não têm dano registado e mostram '—' nesses campos.",
+    ],
+  },
+  {
     version: "v6.46.0",
     title: "Explorações da Fortaleza",
     changes: [

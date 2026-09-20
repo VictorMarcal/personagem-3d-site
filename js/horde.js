@@ -179,6 +179,11 @@ let hordaRouboJaAconteceu = false; // uma vez por horda, ver atacarTorreComHorda
 // no momento do saque, para o relatorio (2026-09-16, a pedido - "quantidade
 // de recursos perdidos individualmente x madeira y pedra etc").
 let hordaRouboPorRecurso = {};
+// Vida realmente retirada, para o relatorio (2026-09-20, a pedido - "dano
+// provocado" e "dano sofrido"). Conta o que de facto saiu (sem excesso num
+// golpe final), por isso os monstros todos mortos somam exatamente a vida total.
+let hordaDanoCausado = 0;
+let hordaDanoSofrido = 0;
 
 // Mesmo desenho placeholder do monstro da Masmorra (js/main.js) - capsula +
 // esfera, sem depender de nenhum modelo GLTF. Cor diferente (roxo em vez de
@@ -206,6 +211,8 @@ function iniciarHorda() {
   hordaEmCurso = true;
   hordaRouboJaAconteceu = false;
   hordaRouboPorRecurso = {};
+  hordaDanoCausado = 0;
+  hordaDanoSofrido = 0;
 
   const estado = getHordaState();
   const numero = estado.contagem + 1;
@@ -262,6 +269,8 @@ function terminarHorda() {
     resultado: hordaRouboJaAconteceu ? "derrota" : "vitoria",
     totalMonstros,
     monstrosDerrotados,
+    danoCausado: Math.round(hordaDanoCausado),
+    danoSofrido: Math.round(hordaDanoSofrido),
     recursosPerdidos: hordaRouboJaAconteceu ? hordaRouboPorRecurso : {},
   });
 
@@ -291,6 +300,7 @@ function atacarTorreComHorda() {
 
   const hpAtual = getCurrentHp(maxHp);
   const novaHp = Math.max(0, hpAtual - dano);
+  hordaDanoSofrido += hpAtual - novaHp;
   setCurrentHp(novaHp);
   if (typeof showFloatingCombatText === "function" && typeof head !== "undefined") {
     showFloatingCombatText(head, -dano, "damage");
@@ -406,10 +416,10 @@ function renderHordaRelatorios() {
   el.innerHTML = relatorios.map((r) => renderHordaRelatorioRow(r)).join("");
 }
 
-// Uma linha do relatório - separado de renderHordaRelatorios() só para não
-// ter uma função gigante. Tolerante a relatórios ANTIGOS (guardados antes
-// de 2026-09-16, sem totalMonstros/monstrosDerrotados/recursosPerdidos) -
-// mostra só o que existir, nunca "undefined" nem números inventados.
+// Uma linha do relatório: só "Horda N · data" e o resultado - o resto vive no
+// popup que abre ao clicar (2026-09-20, a pedido - "os relatórios passam a ser
+// clicáveis, tal como as medalhas"). A data do relatório serve de chave para o
+// encontrar de novo (ver o clique em #horde-reports-list, mais abaixo).
 function renderHordaRelatorioRow(r) {
   const quando = formatHordaRelatorioData(r.data);
   const vitoria = r.resultado === "vitoria";
@@ -417,19 +427,44 @@ function renderHordaRelatorioRow(r) {
     ? '<span class="horde-report-result horde-report-win">Vitória</span>'
     : '<span class="horde-report-result horde-report-loss">Derrota</span>';
 
-  const temContagemMonstros = typeof r.totalMonstros === "number" && typeof r.monstrosDerrotados === "number";
-  const detalheMonstros = temContagemMonstros
-    ? `<p class="horde-report-detail">${r.monstrosDerrotados}/${r.totalMonstros} monstros derrotados</p>`
-    : "";
+  return (
+    `<button type="button" class="horde-report-row" data-relatorio="${r.data}">` +
+    `<span class="leaderboard-name">Horda ${r.numero} · ${quando}</span>${resultadoHtml}` +
+    "</button>"
+  );
+}
 
-  let lootHtml = "";
+// Tolerante a relatórios ANTIGOS (guardados antes de 2026-09-16 sem
+// totalMonstros/monstrosDerrotados/recursosPerdidos, e antes de 2026-09-20 sem
+// danoCausado/danoSofrido) - o que não existir mostra "—", nunca "undefined"
+// nem números inventados.
+function abrirHordaRelatorio(relatorio) {
+  const vitoria = relatorio.resultado === "vitoria";
+  const numOuTraco = (v) => (typeof v === "number" ? v.toLocaleString("pt-PT") : "—");
+
+  document.getElementById("horde-report-title").textContent = "Horda " + relatorio.numero;
+  document.getElementById("horde-report-subtitle").innerHTML =
+    formatHordaRelatorioData(relatorio.data) + " · " +
+    (vitoria
+      ? '<span class="horde-report-win">Vitória</span>'
+      : '<span class="horde-report-loss">Derrota</span>');
+
+  const linha = (rotulo, valor) =>
+    `<p class="horde-report-stat"><span>${rotulo}</span><strong>${valor}</strong></p>`;
+
+  let corpo =
+    linha("Monstros derrotados", numOuTraco(relatorio.monstrosDerrotados)) +
+    linha("Monstros no total", numOuTraco(relatorio.totalMonstros)) +
+    linha("Dano provocado", numOuTraco(relatorio.danoCausado)) +
+    linha("Dano sofrido", numOuTraco(relatorio.danoSofrido));
+
   if (!vitoria) {
     const ids = typeof RESOURCE_IDS !== "undefined" ? RESOURCE_IDS : ["ferro", "madeira", "pele", "pedra", "barro"];
     // recursosPerdidos (formato novo, valor real por recurso) ou, num
     // relatorio antigo, recursosRoubadosPorRecurso (um numero só, o mesmo
     // "pretendido" repetido nos 5 - unica informação que existia então).
-    const perdidos = r.recursosPerdidos && typeof r.recursosPerdidos === "object" ? r.recursosPerdidos : null;
-    const perdaAntiga = !perdidos && Number(r.recursosRoubadosPorRecurso) > 0 ? Number(r.recursosRoubadosPorRecurso) : 0;
+    const perdidos = relatorio.recursosPerdidos && typeof relatorio.recursosPerdidos === "object" ? relatorio.recursosPerdidos : null;
+    const perdaAntiga = !perdidos && Number(relatorio.recursosRoubadosPorRecurso) > 0 ? Number(relatorio.recursosRoubadosPorRecurso) : 0;
 
     const chips = ids
       .map((id) => {
@@ -440,17 +475,29 @@ function renderHordaRelatorioRow(r) {
         return `<span class="wallet-chip">${ic}-${quantidade} ${nome}</span>`;
       })
       .join("");
-    if (chips) lootHtml = `<div class="wallet horde-report-loot">${chips}</div>`;
+    corpo +=
+      '<p class="horde-report-stat-label">Recursos perdidos</p>' +
+      (chips ? `<div class="wallet horde-report-loot">${chips}</div>` : '<p class="horde-report-detail">—</p>');
   }
 
-  return (
-    '<div class="horde-report-row">' +
-    `<div class="horde-report-head"><span class="leaderboard-name">Horda ${r.numero} · ${quando}</span>${resultadoHtml}</div>` +
-    detalheMonstros +
-    lootHtml +
-    "</div>"
-  );
+  document.getElementById("horde-report-body").innerHTML = corpo;
+  document.getElementById("horde-report-modal").classList.remove("hidden");
 }
+
+function fecharHordaRelatorio() {
+  document.getElementById("horde-report-modal").classList.add("hidden");
+}
+
+document.getElementById("btn-close-horde-report").addEventListener("click", fecharHordaRelatorio);
+document.getElementById("horde-report-modal").addEventListener("click", (event) => {
+  if (event.target.id === "horde-report-modal") fecharHordaRelatorio();
+});
+document.getElementById("horde-reports-list").addEventListener("click", (event) => {
+  const linha = event.target.closest("[data-relatorio]");
+  if (!linha) return;
+  const relatorio = getHordaRelatorios().find((r) => String(r.data) === linha.dataset.relatorio);
+  if (relatorio) abrirHordaRelatorio(relatorio);
+});
 
 // --- ataque automatico da personagem aos monstros ----------------------------
 
@@ -461,7 +508,9 @@ async function dispararContraHordaMonstro(alvo) {
   const ataque = computePlayerAtaque(getEffectiveInvestableStatLevel("forca"));
   const dano = computeBattleDamage(ataque, HORDE_MONSTER_DEFESA);
 
+  const hpAntes = alvo.hp;
   alvo.hp = Math.max(0, alvo.hp - dano);
+  hordaDanoCausado += hpAntes - alvo.hp;
   showFloatingCombatText(alvo.head, -dano, "damage");
   if (alvo.hp <= 0) scene.remove(alvo.group);
 }

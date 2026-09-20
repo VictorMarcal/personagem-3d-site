@@ -1151,6 +1151,7 @@ main {
 /* ---------- Popups -------------------------------------------------------- */
 
 #achievement-detail-modal,
+#horde-report-modal,
 .equip-upgrade-modal,
 #player-trophies-modal {
   position: fixed;
@@ -1164,6 +1165,7 @@ main {
 }
 
 #achievement-detail-modal.hidden,
+#horde-report-modal.hidden,
 .equip-upgrade-modal.hidden,
 #player-trophies-modal.hidden { display: none; }
 
@@ -1835,17 +1837,53 @@ main {
   overflow-y: auto;
 }
 .horde-report-row {
-  padding: 10px 14px;
-  border-radius: var(--r-md);
-  background: var(--surface);
-  margin-bottom: 6px;
-}
-.horde-report-row:last-child { margin-bottom: 0; }
-.horde-report-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  margin-bottom: 6px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.horde-report-row:last-child { margin-bottom: 0; }
+.horde-report-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+}
+.horde-report-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--muted);
+}
+.horde-report-stat strong {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text);
+}
+.horde-report-stat-label {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 .horde-report-detail {
   margin: 4px 0 0;
