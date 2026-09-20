@@ -369,6 +369,7 @@ function getHordaRelatorios() {
 function registarHordaRelatorio(relatorio) {
   const lista = [relatorio, ...getHordaRelatorios()].slice(0, HORDE_REPORTS_MAX);
   localStorage.setItem(STORAGE_KEY_HORDE_REPORTS, JSON.stringify(lista));
+  saveHordaRelatoriosPorVer([...getHordaRelatoriosPorVer(), relatorio.data]);
   renderHordaRelatorios();
   // Badge no separador "Eu"/card "Relatórios de Batalhas" (2026-09-18, a
   // pedido) - atualiza logo, mesmo que o jogador ja esteja dentro da app
@@ -378,23 +379,51 @@ function registarHordaRelatorio(relatorio) {
 
 // --- Badge de notificacao (2026-09-18, a pedido) ----------------------------
 //
-// Mesmo espirito de contarConquistasNaoVistas() (js/achievements.js): "visto
-// ate" e so um timestamp (STORAGE_KEY_HORDE_REPORTS_SEEN_AT), um relatorio
-// conta como "nao visto" se `data` for posterior a esse timestamp. Marcado
-// ao entrar na sub-aba Troféus (js/nav.js showSubtab) - é lá que o card
-// "Relatórios de Batalhas" fica à vista.
-function getHordaRelatoriosSeenAt() {
-  return Number(localStorage.getItem(STORAGE_KEY_HORDE_REPORTS_SEEN_AT)) || 0;
+// Mesmo espirito de getAchievementsPorVer() (js/achievements.js): desde
+// 2026-09-20 (a pedido - "clicar num relatorio ... e a forma de confirmar que
+// essa notificacao foi vista") guarda-se a lista de relatorios POR VER (o
+// `data` de cada um, que e unico), em STORAGE_KEY_HORDE_REPORTS_PENDING. Entra
+// em registarHordaRelatorio, sai ao abrir o popup do relatorio. Entrar na
+// sub-aba Troféus ja nao limpa nada. Primeira leitura sem lista: migra do
+// "visto ate" antigo (STORAGE_KEY_HORDE_REPORTS_SEEN_AT).
+function getHordaRelatoriosPorVer() {
+  const bruto = localStorage.getItem(STORAGE_KEY_HORDE_REPORTS_PENDING);
+  if (bruto !== null) {
+    try {
+      const lista = JSON.parse(bruto);
+      if (Array.isArray(lista)) return lista;
+    } catch (e) {
+      /* cai para vazio */
+    }
+    return [];
+  }
+  const seenAt = Number(localStorage.getItem(STORAGE_KEY_HORDE_REPORTS_SEEN_AT)) || 0;
+  const migrada = getHordaRelatorios().map((r) => r.data).filter((d) => Number(d) > seenAt);
+  localStorage.setItem(STORAGE_KEY_HORDE_REPORTS_PENDING, JSON.stringify(migrada));
+  return migrada;
 }
 
-function marcarHordaRelatoriosComoVistos() {
-  localStorage.setItem(STORAGE_KEY_HORDE_REPORTS_SEEN_AT, String(Date.now()));
+function saveHordaRelatoriosPorVer(lista) {
+  localStorage.setItem(STORAGE_KEY_HORDE_REPORTS_PENDING, JSON.stringify(lista));
+}
+
+function hordaRelatorioPorVer(data) {
+  return getHordaRelatoriosPorVer().includes(data);
+}
+
+function marcarHordaRelatorioComoVisto(data) {
+  const lista = getHordaRelatoriosPorVer();
+  if (!lista.includes(data)) return;
+  saveHordaRelatoriosPorVer(lista.filter((d) => d !== data));
+  if (typeof renderNavBadges === "function") renderNavBadges();
 }
 
 function contarHordaRelatoriosNaoVistos() {
-  const seenAt = getHordaRelatoriosSeenAt();
-  return getHordaRelatorios().filter((r) => Number(r.data) > seenAt).length;
+  const porVer = getHordaRelatoriosPorVer();
+  return getHordaRelatorios().filter((r) => porVer.includes(r.data)).length;
 }
+
+getHordaRelatoriosPorVer();
 
 function formatHordaRelatorioData(ts) {
   return new Date(ts).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -428,7 +457,7 @@ function renderHordaRelatorioRow(r) {
     : '<span class="horde-report-result horde-report-loss">Derrota</span>';
 
   return (
-    `<button type="button" class="horde-report-row" data-relatorio="${r.data}">` +
+    `<button type="button" class="horde-report-row${hordaRelatorioPorVer(r.data) ? " unseen" : ""}" data-relatorio="${r.data}">` +
     `<span class="leaderboard-name">Horda ${r.numero} · ${quando}</span>${resultadoHtml}` +
     "</button>"
   );
@@ -482,6 +511,12 @@ function abrirHordaRelatorio(relatorio) {
 
   document.getElementById("horde-report-body").innerHTML = corpo;
   document.getElementById("horde-report-modal").classList.remove("hidden");
+
+  // Abrir o relatorio e a confirmacao de que foi visto (2026-09-20, a pedido).
+  if (hordaRelatorioPorVer(relatorio.data)) {
+    marcarHordaRelatorioComoVisto(relatorio.data);
+    renderHordaRelatorios();
+  }
 }
 
 function fecharHordaRelatorio() {

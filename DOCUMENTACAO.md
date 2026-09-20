@@ -971,24 +971,27 @@ Começou só com Google (até 2026-09-11), depois ganhou Apple e email/palavra-p
 
 A pedido: *"deve existir um numero no canto superior direito a indicar que houve alguma conquista/notificação/relatorio... os numeros desaparecem assim que todas as notificações forem vistas"*. Cinco fontes, uma por cada notificação:
 
-| Fonte | Onde fica à vista | Marcado como visto ao entrar em |
+| Fonte | Onde fica à vista | Marcado como visto ao |
 |---|---|---|
-| Conquistas | "Eu" › "Troféus" (`#achievements-summary`) | "Eu" › "Troféus" |
-| Relatórios de horda | "Eu" › "Troféus" (`#horde-reports-card`) | "Eu" › "Troféus" |
-| Áreas desbloqueadas | "Reino" › "Mapa" (`#hex-district` + o mapa) | "Reino" › "Mapa" |
-| Minas encontradas | "Reino" › "Economia" (`#resources-panel`, linha "Minas encontradas") | "Reino" › "Economia" |
-| Depósitos cheios | "Reino" › "Economia" (aviso "Fortaleza cheia") | "Reino" › "Economia" |
+| Conquistas | "Eu" › "Troféus" (`#achievements-summary`) | **clicar na medalha** (2026-09-20) |
+| Relatórios de horda | "Eu" › "Troféus" (`#horde-reports-card`) | **clicar no relatório** (2026-09-20) |
+| Áreas desbloqueadas | "Reino" › "Mapa" (`#hex-district` + o mapa) | entrar em "Reino" › "Mapa" |
+| Minas encontradas | "Reino" › "Economia" (`#resources-panel`, linha "Minas encontradas") | entrar em "Reino" › "Economia" |
+| Depósitos cheios | "Reino" › "Economia" (aviso "Fortaleza cheia") | entrar em "Reino" › "Economia" |
 
-**"Visto até" é só um timestamp, não uma lista de ids**, para as duas primeiras fontes — `STORAGE_KEY_ACHIEVEMENTS_SEEN_AT`/`STORAGE_KEY_HORDE_REPORTS_SEEN_AT` (`js/storage-keys.js`). Um item conta como "não visto" se o seu `unlockedAt`/`data` (já existente nos dados sincronizados) for posterior a esse timestamp:
-- `contarConquistasNaoVistas()` (`js/achievements.js`) — compara `unlocked_achievements[id]` contra `getAchievementsSeenAt()`.
-- `contarHordaRelatoriosNaoVistos()` (`js/horde.js`) — compara `relatorio.data` contra `getHordaRelatoriosSeenAt()`.
+**Conquistas e relatórios: lista "por ver", confirmada ao clicar (2026-09-20, a pedido — "clicar num relatório ou numa medalha é a forma de confirmar que essa notificação foi vista")**. Antes, entrar em "Eu" › "Troféus" marcava tudo como visto com um timestamp; agora só o clique no item (medalha → abre o popup de detalhe; relatório → abre o popup do relatório) o confirma:
+- `STORAGE_KEY_ACHIEVEMENTS_PENDING` — lista de ids de conquista por ver. Entra em `unlockAchievement()` (`js/achievements.js`, só conquistas desbloqueadas **neste aparelho**: as que chegam do servidor ao hidratar não notificam) e sai em `marcarConquistaComoVista()`, chamado pelo clique em `createAchievementItemEl()`. Os 12 cartões `medal_month_NN` mapeiam para os ids reais `medal_<cor>_<ano>_<mes>` desse mês (`idsPorVerDaConquista`). `contarConquistasNaoVistas()` conta a lista (ignorando ids já não desbloqueados).
+- `STORAGE_KEY_HORDE_REPORTS_PENDING` — lista de `data` (única) de relatórios por ver. Entra em `registarHordaRelatorio()`, sai em `marcarHordaRelatorioComoVisto()` ao abrir o popup (`abrirHordaRelatorio`, `js/horde.js`). `contarHordaRelatoriosNaoVistos()` conta a lista.
+- **Ponto "por ver"** (`.unseen`, `css/style.css`) nas medalhas/relatórios ainda não confirmados — sem ele o jogador não saberia qual clicar. Só nas conquistas do próprio jogador (o popup de troféus de outro jogador não tem notificações). Nota: o resumo mostra as 5 conquistas mais recentes por `unlockedAt`; uma medalha mensal antiga (`awarded_at`) pode ficar só em "Ver todas".
+- **Migração**: as chaves `STORAGE_KEY_ACHIEVEMENTS_SEEN_AT`/`STORAGE_KEY_HORDE_REPORTS_SEEN_AT` (timestamp antigo) deixaram de ser escritas; na primeira leitura sem lista guardada, `getAchievementsPorVer()`/`getHordaRelatoriosPorVer()` fazem-na a partir delas (o que estava depois do "visto até" fica por ver) e chamam-se no arranque dos ficheiros, antes de qualquer hidratação, para um aparelho novo não receber a conta toda como notificação.
+- **Bug corrigido na mesma versão (v6.48.0)**: `renderNavBadges` vivia só dentro do IIFE de `js/nav.js`, por isso todas as chamadas `typeof renderNavBadges === "function"` dos outros ficheiros (desbloquear conquista, registar relatório, encontrar mina...) eram código morto e os números só atualizavam ao mudar de separador. Agora está exposta como `window.renderNavBadges`.
 
 **As três fontes do "Reino" não têm timestamp próprio nos dados sincronizados** (concelhos desbloqueados, minas encontradas e stock de recursos são só listas/números, sem "quando") — por isso guardam, só localmente (nunca sincronizado), um mapa `{id: quando notei pela primeira vez}`:
 - `STORAGE_KEY_CONCELHOS_NOTADOS_EM` — preenchido por `notarConcelhosNovos()` dentro de `computeUnlockedRegions()` (`js/hexes.js`), na primeira vez que cada concelho aparece em `unlockedConcelhos`.
 - `STORAGE_KEY_MINAS_NOTADAS_EM` — preenchido por `notarMinaEncontrada()` dentro de `verificarMinas()` (`js/resources.js`), no momento em que cada mina é encontrada.
 - `STORAGE_KEY_RECURSOS_CHEIOS_EM` — preenchido/limpo por `avisarRecursosCheios()` (`js/resources-ui.js`) a cada transição para dentro/fora de "cheio" — um recurso que esvazia e volta a encher conta como notificação nova outra vez, mesmo espírito de `recursosCheiosAvisados` (o toast em memória que já existia, agora com um registo persistente ao lado). `contarAreasNaoVistas()`/`contarMinasNaoVistas()`/`contarDepositosCheiosNaoVistos()` comparam esses mapas contra `STORAGE_KEY_REINO_MAPA_SEEN_AT`/`STORAGE_KEY_REINO_ECONOMIA_SEEN_AT` (este último **partilhado** entre minas e depósitos — os dois ficam no painel de Economia, marcados como vistos juntos, mesmo padrão de Troféus/Relatórios).
 
-**Marcado como visto ao entrar na sub-aba correspondente** (`showSubtab()`, `js/nav.js`) — "Eu"›"Troféus" marca conquistas+horda; "Reino"›"Mapa" marca áreas; "Reino"›"Economia" marca minas+depósitos juntos.
+**Reino: marcado como visto ao entrar na sub-aba** (`showSubtab()`, `js/nav.js`) — "Reino"›"Mapa" marca áreas; "Reino"›"Economia" marca minas+depósitos juntos. ("Eu"›"Troféus" deixou de marcar seja o que for — ver acima.)
 
 **`renderNavBadges()`/`setNavBadge()`** (`js/nav.js`) desenham os números:
 - Separador "Eu" (`.tab-btn[data-tab="eu"]`): soma conquistas + relatórios de horda.

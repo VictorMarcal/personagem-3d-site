@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.48.0",
+    title: "Clicar Confirma a Novidade",
+    changes: [
+      "Os números de novidades das medalhas e dos relatórios de batalha já não desaparecem só por abrires os Troféus: desaparecem quando clicas na medalha ou no relatório.",
+      "As medalhas e os relatórios ainda por ver mostram um ponto para saberes quais são.",
+    ],
+  },
+  {
     version: "v6.47.0",
     title: "Relatórios de Batalha Detalhados",
     changes: [

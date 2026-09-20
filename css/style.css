@@ -1130,6 +1130,22 @@ main {
 }
 
 .achievement-item:hover { background: var(--sand-300); }
+
+/* Ponto "por ver" (2026-09-20): clicar no item confirma a notificacao e tira-o. */
+.achievement-item,
+.horde-report-row { position: relative; }
+.achievement-item.unseen::after,
+.horde-report-row.unseen::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--warn-ink);
+  box-shadow: 0 0 0 2px var(--surface);
+}
 .achievement-item.read-only { cursor: default; }
 
 .achievement-item.locked { opacity: 0.45; filter: grayscale(1); }

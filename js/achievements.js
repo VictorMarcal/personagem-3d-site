@@ -559,30 +559,83 @@ function unlockAchievement(id, unlockedAt) {
     // Badge no separador "Eu"/sub-aba "Troféus" (secção 15, 2026-09-18) -
     // atualiza logo, mesmo que o jogador ja esteja dentro da app quando
     // isto acontece (ex: conquista desbloqueada ao terminar um treino).
+    adicionarConquistaPorVer(id);
     if (typeof renderNavBadges === "function") renderNavBadges();
   }
 }
 
 // --- Badge de notificacao (2026-09-18, a pedido) ----------------------------
 //
-// "Visto ate" e um TIMESTAMP so (STORAGE_KEY_ACHIEVEMENTS_SEEN_AT,
-// js/storage-keys.js) - nao uma lista de ids. Uma conquista conta como "nao
-// vista" se foi desbloqueada DEPOIS desse timestamp. Marcado ao entrar na
-// sub-aba Troféus (js/nav.js showSubtab) - é lá que as conquistas ficam à
-// vista (grelha de resumo, #achievements-summary).
-function getAchievementsSeenAt() {
-  return Number(localStorage.getItem(STORAGE_KEY_ACHIEVEMENTS_SEEN_AT)) || 0;
+// Desde 2026-09-20 (a pedido - "clicar num relatorio ou numa medalha e a forma
+// de confirmar que essa notificacao foi vista") guarda-se a LISTA do que esta
+// por ver (STORAGE_KEY_ACHIEVEMENTS_PENDING): o id entra em unlockAchievement()
+// e sai quando o jogador clica na medalha (createAchievementItemEl). Entrar na
+// sub-aba Troféus ja nao limpa nada. So entram conquistas desbloqueadas neste
+// aparelho - as que chegam de um hidratar do servidor nao notificam.
+//
+// Primeira leitura sem lista guardada (chave a null): migra do sistema antigo
+// de timestamp, ficando por ver as desbloqueadas depois do "visto ate" - quem
+// ja tinha badges continua a te-los, quem nunca tinha aberto os Troféus tem as
+// suas por ver. Chamado no arranque deste ficheiro (fim da secção), antes de
+// qualquer hidratacao do servidor, para uma conta num aparelho novo nao
+// receber tudo como notificacao.
+function getAchievementsPorVer() {
+  const bruto = localStorage.getItem(STORAGE_KEY_ACHIEVEMENTS_PENDING);
+  if (bruto !== null) {
+    try {
+      const lista = JSON.parse(bruto);
+      if (Array.isArray(lista)) return lista;
+    } catch (e) {
+      /* cai para vazio */
+    }
+    return [];
+  }
+  const seenAt = Number(localStorage.getItem(STORAGE_KEY_ACHIEVEMENTS_SEEN_AT)) || 0;
+  const migrada = Object.entries(getUnlockedAchievements())
+    .filter(([, ts]) => Number(ts) > seenAt)
+    .map(([id]) => id);
+  localStorage.setItem(STORAGE_KEY_ACHIEVEMENTS_PENDING, JSON.stringify(migrada));
+  return migrada;
 }
 
-function marcarConquistasComoVistas() {
-  localStorage.setItem(STORAGE_KEY_ACHIEVEMENTS_SEEN_AT, String(Date.now()));
+function saveAchievementsPorVer(lista) {
+  localStorage.setItem(STORAGE_KEY_ACHIEVEMENTS_PENDING, JSON.stringify(lista));
+}
+
+function adicionarConquistaPorVer(id) {
+  const lista = getAchievementsPorVer();
+  if (!lista.includes(id)) saveAchievementsPorVer([...lista, id]);
+}
+
+// Os 12 cartoes de medalha mensal (medal_month_NN) representam o id real
+// medal_<cor>_<ano>_<mes> - por ver = qualquer id real desse mes na lista.
+function idsPorVerDaConquista(id, lista = getAchievementsPorVer()) {
+  const slot = id.match(/^medal_month_(\d{2})$/);
+  if (!slot) return lista.includes(id) ? [id] : [];
+  return lista.filter((real) => {
+    const m = real.match(MONTHLY_MEDAL_ID_PATTERN);
+    return m && m[3] === slot[1];
+  });
+}
+
+function conquistaPorVer(id) {
+  return idsPorVerDaConquista(id).length > 0;
+}
+
+function marcarConquistaComoVista(id) {
+  const lista = getAchievementsPorVer();
+  const aRemover = idsPorVerDaConquista(id, lista);
+  if (aRemover.length === 0) return;
+  saveAchievementsPorVer(lista.filter((x) => !aRemover.includes(x)));
+  if (typeof renderNavBadges === "function") renderNavBadges();
 }
 
 function contarConquistasNaoVistas() {
-  const seenAt = getAchievementsSeenAt();
   const unlocked = getUnlockedAchievements();
-  return Object.values(unlocked).filter((ts) => Number(ts) > seenAt).length;
+  return getAchievementsPorVer().filter((id) => unlocked[id] !== undefined).length;
 }
+
+getAchievementsPorVer();
 
 // Progresso atual de uma conquista (para a barra), quer ja esteja
 // desbloqueada quer nao
@@ -996,7 +1049,21 @@ function createAchievementItemEl(achievement, unlockedMap = getUnlockedAchieveme
 
   const item = document.createElement("div");
   item.className = "achievement-item " + (unlocked ? "unlocked" : "locked") + (onClick ? "" : " read-only");
-  if (onClick) item.addEventListener("click", () => onClick(achievement));
+  item.dataset.achievementId = achievement.id;
+  if (onClick) {
+    // Ponto "por ver" so nas conquistas do proprio jogador (com onClick) -
+    // o popup de trofeus de outro jogador (onClick a null) nao tem notificacoes.
+    if (unlocked && conquistaPorVer(achievement.id)) item.classList.add("unseen");
+    item.addEventListener("click", () => {
+      onClick(achievement);
+      // Clicar e a confirmacao de que foi vista (2026-09-20, a pedido). Tira o
+      // ponto de todas as copias (resumo e lista completa mostram o mesmo item).
+      marcarConquistaComoVista(achievement.id);
+      document
+        .querySelectorAll('.achievement-item.unseen[data-achievement-id="' + achievement.id + '"]')
+        .forEach((el) => el.classList.remove("unseen"));
+    });
+  }
 
   const icon = document.createElement("div");
   icon.className = "achievement-icon";

@@ -127,14 +127,9 @@
       if (typeof startHordaTicker === "function") startHordaTicker();
     }
 
-    // Badges de notificação (secção 15, 2026-09-18, a pedido): entrar em
-    // "Eu" › "Troféus" é onde as conquistas (#achievements-summary) E os
-    // relatórios de horda (#horde-reports-card) ficam à vista - marca os
-    // dois como vistos aqui, não em sítios separados.
-    if (tab === "eu" && sub === "trofeus") {
-      if (typeof marcarConquistasComoVistas === "function") marcarConquistasComoVistas();
-      if (typeof marcarHordaRelatoriosComoVistos === "function") marcarHordaRelatoriosComoVistos();
-    }
+    // Conquistas e relatórios de horda NÃO se marcam como vistos ao entrar
+    // em "Eu" › "Troféus" (mudou em 2026-09-20, a pedido): só ao clicar no
+    // próprio item (medalha/relatório), ver js/achievements.js e js/horde.js.
     // "Áreas desbloqueadas" fica à vista no Mapa (#hex-district + o próprio
     // mapa); "Minas encontradas" e "Depósitos cheios" ficam os dois no
     // painel de Economia (#resources-panel) - marcados juntos, mesmo
@@ -279,6 +274,13 @@
   // primeira vez. Chamada extra aqui garante os números logo ao abrir a
   // app, seja qual for o separador de arranque.
   renderNavBadges();
+
+  // Global de propósito: js/achievements.js, js/horde.js, js/hexes.js,
+  // js/resources*.js e js/game-config.js chamam-na (com "typeof ... ===
+  // 'function'") para atualizar os números logo que há uma novidade ou que
+  // uma é confirmada. Sem isto, dentro do IIFE, essas chamadas nunca corriam
+  // e os badges só se atualizavam ao mudar de separador (bug desde v6.43).
+  window.renderNavBadges = renderNavBadges;
 })();
 
 /* ==========================================================================

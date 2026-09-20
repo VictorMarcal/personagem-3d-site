@@ -204,6 +204,17 @@ const STORAGE_KEY_HORDE_REPORTS = "personagem.hordaRelatorios";
 const STORAGE_KEY_ACHIEVEMENTS_SEEN_AT = "personagem.conquistasVistasEm";
 const STORAGE_KEY_HORDE_REPORTS_SEEN_AT = "personagem.hordaRelatoriosVistosEm";
 
+// Conquistas e relatorios (2026-09-20, a pedido - "clicar num relatorio ou
+// numa medalha e a forma de confirmar que essa notificacao foi vista"):
+// deixaram de se marcar como vistos ao entrar na sub-aba Trofeus. Agora
+// guarda-se a lista do que ESTA POR VER (ids de conquista / `data` de cada
+// relatorio) - entra ao ser desbloqueado/registado e sai ao clicar no item.
+// As duas chaves SEEN_AT acima ficam so como ponto de partida, lidas uma vez
+// para migrar quem ja tinha badges (ver getAchievementsPorVer /
+// getHordaRelatoriosPorVer).
+const STORAGE_KEY_ACHIEVEMENTS_PENDING = "personagem.conquistasPorVer";
+const STORAGE_KEY_HORDE_REPORTS_PENDING = "personagem.hordaRelatoriosPorVer";
+
 // Badges do separador "Reino" (2026-09-18, a pedido - "vai existir para
 // Areas desbloqueadas, para Minas encontradas, para Depositos cheios").
 // Mesmo "visto ate um timestamp" das duas de cima, mas concelhos/minas/
