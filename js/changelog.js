@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.49.3",
+    title: "Missões Mais Simples",
+    changes: [
+      "O texto das missões deixa de ter a palavra 'acumulado' (por exemplo, 'Corre 15 km'). O progresso continua a somar-se ao longo dos treinos.",
+    ],
+  },
+  {
     version: "v6.49.2",
     title: "Câmara da Fortaleza",
     changes: [

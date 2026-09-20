@@ -398,21 +398,18 @@ function verificarMissaoAtiva(sessao) {
 
 // --- texto ----------------------------------------------------------------
 
-// "(acumulado)" so nos tipos com alvo numerico, onde faz sentido perguntar
-// "tenho de fazer isto de uma vez?" - descobre_mina/descobre_concelho sao um
-// evento unico (achar UMA mina, desbloquear UM concelho), nao ha ambiguidade
-// nenhuma a desfazer nesses. Fica no PROPRIO texto da missao (nao so num
-// aviso a parte) para aparecer sempre - antes e depois de aceitar (bug
-// reportado via Trello, 2026-09-14: o aviso a parte so aparecia no ecra de
-// aceitar, quem ja tinha a missao aceite nunca chegava a ve-lo).
+// Ate 2026-09-19 os tipos com alvo numerico levavam "(acumulado)" no texto
+// (Trello, 2026-09-14: "nao ha indicacao de que correr 15km sao acumulativos
+// ou seguidos"). Removido a pedido em 2026-09-20 - o progresso continua a ser
+// cumulativo (ver verificarMissaoAtiva), so o aviso saiu do texto.
 function missaoTexto(missao) {
   switch (missao.tipo) {
     case "correr_km":
-      return `Corre ${Math.round(missao.alvo / 1000)} km (acumulado)`;
+      return `Corre ${Math.round(missao.alvo / 1000)} km`;
     case "caminhar_km":
-      return `Caminha ${Math.round(missao.alvo / 1000)} km (acumulado)`;
+      return `Caminha ${Math.round(missao.alvo / 1000)} km`;
     case "descobre_hex":
-      return `Descobre ${missao.alvo} hexágonos novos (acumulado)`;
+      return `Descobre ${missao.alvo} hexágonos novos`;
     case "descobre_mina": {
       const nome = typeof RESOURCE_BY_ID !== "undefined" && RESOURCE_BY_ID[missao.recurso] ? RESOURCE_BY_ID[missao.recurso].nome.toLowerCase() : missao.recurso;
       return `Encontra uma mina de ${nome}`;
