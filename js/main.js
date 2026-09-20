@@ -57,7 +57,13 @@ const CAM_TARGET_FACTOR = 0.85;
 // terreno carrega. Sem elas (Floor antigo, ou ainda a carregar), cai nas
 // formulas/constantes ja existentes abaixo, como sempre foi.
 const FLOOR_CAMERA_IDLE_EMPTY_NAMES = ["CameraIdlePosition", "CameraIdle"];
-const FLOOR_CAMERA_ATAQUE_EMPTY_NAMES = ["CameraAtackPosition", "CameraAttackPosition", "CameraAtaque"];
+const FLOOR_CAMERA_ATAQUE_EMPTY_NAMES = [
+  "CameraAtackPosition",
+  "CameraAttackPosition",
+  "CameraAtaque",
+  "CamaraAtackPosition",
+  "CamaraAttackPosition",
+];
 let floorCameraIdlePos = null;
 let floorCameraAtaquePos = null;
 
@@ -76,6 +82,18 @@ function registrarHordaCameraPoints(model) {
 function applyNormalCamera() {
   camera.fov = NORMAL_CAMERA_FOV;
   camera.updateProjectionMatrix();
+
+  // 2026-09-20, a pedido ("passa a camara para o CamaraAttackPosition"): a
+  // vista normal da Fortaleza usa a MESMA posicao da camara de ataque (a mais
+  // alta/recuada, mostra o terreno todo), o mesmo enquadramento de
+  // applyHordaCamera() - assim a horda comecar/acabar ja nao muda de vista, e
+  // ha espaco para as exploracoes a volta da torre. CameraIdlePosition fica
+  // so como fallback quando o Floor nao traz o Empty de ataque.
+  if (floorCameraAtaquePos) {
+    camera.position.copy(floorCameraAtaquePos);
+    camera.lookAt(0, 0, 0);
+    return;
+  }
 
   if (floorCameraIdlePos) {
     camera.position.copy(floorCameraIdlePos);

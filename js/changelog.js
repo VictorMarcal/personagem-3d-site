@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.49.2",
+    title: "Câmara da Fortaleza",
+    changes: [
+      "A vista normal da Fortaleza passa a usar a câmara mais alta e recuada (a mesma do ataque das hordas), que mostra o terreno todo à volta da torre.",
+    ],
+  },
+  {
     version: "v6.49.1",
     title: "Missões por Cores",
     changes: [

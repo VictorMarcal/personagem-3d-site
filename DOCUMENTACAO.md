@@ -1568,7 +1568,7 @@ Todos lidos por `registrarHordaSpawnPoints()`/`registrarHordaCameraPoints()`, ch
 
 ### Câmara de topo durante uma horda
 
-Enquanto uma horda decorre, a câmara muda para `CameraAtackPosition` (mais alta/recuada, vê-se o terreno todo) em vez da vista normal — `applyHordaCamera()`/`applyNormalCamera()`, chamadas em `iniciarHorda()`/`terminarHorda()`. `applyPersonagemCamera()` escolhe qual aplicar sempre que a câmara volta a ser posta na cena Reino › Fortaleza por outro motivo (fim de luta na Masmorra, modelos a carregar pela primeira vez), para uma horda em curso não perder a vista de topo ao entrar/sair da Masmorra.
+**Desde 2026-09-20 (a pedido — "passa a câmara para o CamaraAttackPosition") a vista normal também usa `CameraAtackPosition`** (`applyNormalCamera` → mesma posição e `lookAt(0,0,0)` que `applyHordaCamera`); `CameraIdlePosition` ficou só como *fallback* quando o Floor não traz o Empty de ataque, e a horda começar/acabar já não muda de vista. O Empty de ataque também é reconhecido com a grafia `CamaraAttackPosition`/`CamaraAtackPosition`. O resto deste parágrafo descreve o comportamento anterior, em que a horda mudava a câmara: enquanto uma horda decorre, a câmara muda para `CameraAtackPosition` (mais alta/recuada, vê-se o terreno todo) em vez da vista normal — `applyHordaCamera()`/`applyNormalCamera()`, chamadas em `iniciarHorda()`/`terminarHorda()`. `applyPersonagemCamera()` escolhe qual aplicar sempre que a câmara volta a ser posta na cena Reino › Fortaleza por outro motivo (fim de luta na Masmorra, modelos a carregar pela primeira vez), para uma horda em curso não perder a vista de topo ao entrar/sair da Masmorra.
 
 ### Vida partilhada com a Masmorra, sem "vida da torre" à parte
 
