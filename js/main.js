@@ -72,12 +72,21 @@ let floorCameraAtaquePos = null;
 // Empty tal como esta no Floor.glb.
 const CAMERA_ATAQUE_AFASTAMENTO = 1.25;
 // Depois de afastar, baixa so a altura (Y) - 0,95 = 5% mais baixa (2026-09-20,
-// a pedido - "baixa uns 5% em altura"). 1 = sem alterar.
-const CAMERA_ATAQUE_ALTURA = 0.95;
+// a pedido - "baixa uns 5% em altura"), depois 0,80 ("baixa mais um bocado").
+// 1 = sem alterar.
+const CAMERA_ATAQUE_ALTURA = 0.8;
 
 function posicionarCameraAtaque() {
   camera.position.copy(floorCameraAtaquePos).multiplyScalar(CAMERA_ATAQUE_AFASTAMENTO);
   camera.position.y *= CAMERA_ATAQUE_ALTURA;
+}
+
+// A camara olha SEMPRE para a personagem (a pedido - "com o lookat sempre para
+// a personagem"), ao meio do corpo (a personagem tem ~1,8 de altura, ver
+// HERO_TARGET_HEIGHT), e nao para a origem no chao: com a camara mais baixa,
+// olhar para o pe da torre deixava a personagem no topo fora do centro.
+function mirarPersonagem() {
+  camera.lookAt(character.position.x, character.position.y + 0.9, character.position.z);
 }
 
 function registrarHordaCameraPoints(model) {
@@ -104,7 +113,7 @@ function applyNormalCamera() {
   // so como fallback quando o Floor nao traz o Empty de ataque.
   if (floorCameraAtaquePos) {
     posicionarCameraAtaque();
-    camera.lookAt(0, 0, 0);
+    mirarPersonagem();
     return;
   }
 
@@ -147,7 +156,7 @@ function applyHordaCamera() {
   } else {
     camera.position.set(HORDA_CAMERA_POSITION.x, HORDA_CAMERA_POSITION.y, HORDA_CAMERA_POSITION.z);
   }
-  camera.lookAt(0, 0, 0);
+  mirarPersonagem();
 }
 
 // Escolhe a vista de topo da horda quando uma esta em curso, senao a normal
