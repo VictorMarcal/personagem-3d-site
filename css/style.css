@@ -1146,6 +1146,27 @@ main {
   background: var(--warn-ink);
   box-shadow: 0 0 0 2px var(--surface);
 }
+
+/* Destaque do item por abrir (2026-09-20, a pedido - "ficam destacados"):
+   anel e fundo na cor de accent, com um pulso suave no anel. Seletores com
+   3 classes para vencer .achievement-item.unlocked (verde) mais abaixo. */
+.achievement-item.unlocked.unseen,
+.achievement-item.unlocked.unseen:hover,
+.horde-report-row.unseen,
+.horde-report-row.unseen:hover {
+  background: var(--accent-200);
+  border-color: var(--accent-600);
+  box-shadow: 0 0 0 2px var(--accent-400);
+  animation: unseen-pulse 2.2s ease-in-out infinite;
+}
+@keyframes unseen-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--accent-400); }
+  50% { box-shadow: 0 0 0 5px var(--accent-300); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .achievement-item.unlocked.unseen,
+  .horde-report-row.unseen { animation: none; }
+}
 .achievement-item.read-only { cursor: default; }
 
 .achievement-item.locked { opacity: 0.45; filter: grayscale(1); }
@@ -1859,7 +1880,7 @@ main {
   gap: 10px;
   width: 100%;
   padding: 10px 14px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--r-md);
   background: var(--surface);
   margin-bottom: 6px;

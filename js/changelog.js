@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.48.1",
+    title: "Novidades em Destaque",
+    changes: [
+      "As medalhas e os relatórios de batalha que ainda não abriste ficam destacados (fundo e contorno laranja, com um brilho suave) até clicares neles.",
+    ],
+  },
+  {
     version: "v6.48.0",
     title: "Clicar Confirma a Novidade",
     changes: [
