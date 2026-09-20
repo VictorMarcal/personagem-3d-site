@@ -66,6 +66,11 @@ const FLOOR_CAMERA_ATAQUE_EMPTY_NAMES = [
 ];
 let floorCameraIdlePos = null;
 let floorCameraAtaquePos = null;
+// A camara de ataque olha sempre para a origem (a torre), por isso multiplicar
+// a posicao do Empty por este fator afasta-a ao longo do mesmo eixo, sem mudar
+// o angulo (2026-09-20, a pedido - "afasta um pouco mais a camara"). 1 = o
+// Empty tal como esta no Floor.glb.
+const CAMERA_ATAQUE_AFASTAMENTO = 1.25;
 
 function registrarHordaCameraPoints(model) {
   model.traverse((obj) => {
@@ -90,7 +95,7 @@ function applyNormalCamera() {
   // ha espaco para as exploracoes a volta da torre. CameraIdlePosition fica
   // so como fallback quando o Floor nao traz o Empty de ataque.
   if (floorCameraAtaquePos) {
-    camera.position.copy(floorCameraAtaquePos);
+    camera.position.copy(floorCameraAtaquePos).multiplyScalar(CAMERA_ATAQUE_AFASTAMENTO);
     camera.lookAt(0, 0, 0);
     return;
   }
@@ -130,7 +135,7 @@ function applyHordaCamera() {
   camera.fov = HORDA_CAMERA_FOV;
   camera.updateProjectionMatrix();
   if (floorCameraAtaquePos) {
-    camera.position.copy(floorCameraAtaquePos);
+    camera.position.copy(floorCameraAtaquePos).multiplyScalar(CAMERA_ATAQUE_AFASTAMENTO);
   } else {
     camera.position.set(HORDA_CAMERA_POSITION.x, HORDA_CAMERA_POSITION.y, HORDA_CAMERA_POSITION.z);
   }
