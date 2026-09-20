@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.49.1",
+    title: "Missões por Cores",
+    changes: [
+      "Os cartões de missão deixam de ter a etiqueta Fácil/Média/Difícil: a dificuldade passa a ser só a cor (verde, amarelo e vermelho, em tons suaves).",
+    ],
+  },
+  {
     version: "v6.49.0",
     title: "Calorias Sempre Certas",
     changes: [

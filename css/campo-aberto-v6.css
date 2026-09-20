@@ -382,25 +382,19 @@ button[disabled] {
   margin-bottom: 10px;
 }
 .mission-card:last-child { margin-bottom: 0; }
+/* A dificuldade e so a cor do cartao (2026-09-20, a pedido - "quero que
+   tenham apenas cores: verde facil, amarelo medio, vermelho dificil, sem
+   muito contraste"). Sem o chip com o nome: o titulo da secao ja o diz.
+   Tons suaves e com luminosidade parecida, para nenhum se sobrepor aos outros. */
+.mission-card-facil { background: #ebf1df; border-color: #d5e0c0; }
+.mission-card-media { background: #f6eed3; border-color: #e7dbae; }
+.mission-card-dificil { background: #f4e0d8; border-color: #e5c4b8; }
 .mission-line {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin: 0 0 6px;
 }
-.mission-chip {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--muted);
-}
-.mission-chip-facil { background: var(--sage-200); color: var(--sage-700); }
-.mission-chip-media { background: var(--accent-200); color: var(--accent-700); }
-.mission-chip-dificil { background: var(--ink); color: var(--surface-2); }
 .mission-reward {
   display: inline-flex;
   align-items: center;

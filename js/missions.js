@@ -457,12 +457,11 @@ function renderMissoesAtivas(estado, sessaoAoVivo) {
   const cartoes = MISSION_SLOTS.map((slot) => {
     const ativa = estado.ativas[slot];
     if (!ativa) return "";
-    const chip = `<span class="mission-chip mission-chip-${slot}">${MISSION_SLOT_LABEL[slot]}</span>`;
     const prog = missionProgress(ativa, sessaoAoVivo);
     const pct = Math.max(0, Math.min(100, (prog.current / prog.target) * 100));
     return (
-      '<div class="mission-card mission-active">' +
-      `<p class="mission-line">${chip}${missaoRecompensaHtml(ativa.recompensa)}</p>` +
+      `<div class="mission-card mission-active mission-card-${slot}">` +
+      `<p class="mission-line">${missaoRecompensaHtml(ativa.recompensa)}</p>` +
       `<p class="mission-goal">${missaoTexto(ativa)}</p>` +
       `<div class="mission-progress-track"><div class="mission-progress-fill" data-mission-fill="${slot}" style="width:${pct}%"></div></div>` +
       `<p class="mission-progress-text" data-mission-progress="${slot}">${missaoProgressoTexto(ativa, prog)}</p>` +
@@ -494,13 +493,12 @@ function renderMissionSlotBlock(estado, slot) {
   const cartoes = tiposDisponiveis(estado, slot)
     .filter((m) => !(ativa && ativa.tipo === m.tipo))
     .map((m) => {
-      const chip = `<span class="mission-chip mission-chip-${slot}">${MISSION_SLOT_LABEL[slot]}</span>`;
       const concluida = tipoJaConcluido(estado, slot, m.tipo);
 
       if (concluida) {
         return (
-          '<div class="mission-card mission-card-locked">' +
-          `<p class="mission-line">${chip}${missaoRecompensaHtml(m.recompensa)}</p>` +
+          `<div class="mission-card mission-card-locked mission-card-${slot}">` +
+          `<p class="mission-line">${missaoRecompensaHtml(m.recompensa)}</p>` +
           `<p class="mission-goal">${missaoTexto(m)}</p>` +
           '<p class="mission-progress-text">Concluída este mês</p>' +
           "</div>"
@@ -510,8 +508,8 @@ function renderMissionSlotBlock(estado, slot) {
       if (ativa || restante > 0) {
         const motivo = ativa ? "Bloqueada" : `Bloqueada (${formatCooldownRestante(restante)})`;
         return (
-          '<div class="mission-card mission-card-locked">' +
-          `<p class="mission-line">${chip}${missaoRecompensaHtml(m.recompensa)}</p>` +
+          `<div class="mission-card mission-card-locked mission-card-${slot}">` +
+          `<p class="mission-line">${missaoRecompensaHtml(m.recompensa)}</p>` +
           `<p class="mission-goal">${missaoTexto(m)}</p>` +
           `<p class="mission-progress-text">${motivo}</p>` +
           "</div>"
@@ -519,8 +517,8 @@ function renderMissionSlotBlock(estado, slot) {
       }
 
       return (
-        '<div class="mission-card">' +
-        `<p class="mission-line">${chip}${missaoRecompensaHtml(m.recompensa)}</p>` +
+        `<div class="mission-card mission-card-${slot}">` +
+        `<p class="mission-line">${missaoRecompensaHtml(m.recompensa)}</p>` +
         `<p class="mission-goal">${missaoTexto(m)}</p>` +
         `<button class="mission-btn-accept btn-primary" type="button" data-mission-slot="${slot}" data-mission-tipo="${m.tipo}">Aceitar</button>` +
         "</div>"
