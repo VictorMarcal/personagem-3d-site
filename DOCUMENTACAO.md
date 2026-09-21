@@ -1,6 +1,8 @@
-# Personagem 3D — Estado da Arte
+# Bootlands — Estado da Arte
 
 > Documento gerado a partir de toda a conversa de desenvolvimento. Descreve o estado atual do projeto: arquitetura, fórmulas, decisões de design e limitações conhecidas.
+
+> **Nome (2026-09-21):** a app passa a chamar-se **Bootlands** (antes "Personagem 3D"). Domínio comprado: `bootlands.com` (o `bootlands.pt` estava livre a 2026-09-21). Mudou só o que o jogador vê — título da página (`<title>`), título do ecrã de login e cabeçalho antes do login (`index.html`). O nome do repositório (`personagem-3d-site`), o URL do GitHub Pages e as chaves internas do `localStorage` (`personagem.*`) **ficam como estão**: renomeá-los partia sessões e dados guardados dos jogadores. Restantes menções a "Personagem 3D" neste documento são histórico.
 
 **Repositório:** [VictorMarcal/personagem-3d-site](https://github.com/VictorMarcal/personagem-3d-site)
 **Site publicado:** https://victormarcal.github.io/personagem-3d-site/ (GitHub Pages)

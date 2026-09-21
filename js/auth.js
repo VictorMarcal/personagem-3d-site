@@ -211,7 +211,7 @@ btnPasswordResetConfirm.addEventListener("click", async () => {
 
 // --- HUD ------------------------------------------------------------------
 
-// Mostra o nome escolhido no lugar de "Personagem 3D" no cabecalho (2026-08-06,
+// Mostra o nome escolhido no lugar do nome da app ("Bootlands", antes "Personagem 3D") no cabecalho (2026-08-06,
 // a pedido - antes ficava so num span sr-only, nunca visivel) - o leaderboard
 // ja usa currentDisplayName() diretamente.
 function applyDisplayNameToHud() {

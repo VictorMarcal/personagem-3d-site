@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.50.0",
+    title: "Bem-vindo ao Bootlands",
+    changes: [
+      "A app passa a chamar-se Bootlands (antes Personagem 3D). O jogo é o mesmo, só o nome mudou.",
+    ],
+  },
+  {
     version: "v6.49.3",
     title: "Missões Mais Simples",
     changes: [
