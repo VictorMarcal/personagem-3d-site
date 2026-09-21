@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.54.2",
+    title: "Corrida e Caminhada no Relatório",
+    changes: [
+      "Quando fazes corrida e caminhada no mesmo treino, o resumo do fim do treino, os teus treinos de hoje e o histórico passam a mostrar os dois (por exemplo 'Corrida e Caminhada', com os km de cada um). Antes só aparecia o modo em que andaste mais tempo.",
+    ],
+  },
+  {
     version: "v6.54.1",
     title: "Missões Concluídas na Hora",
     changes: [

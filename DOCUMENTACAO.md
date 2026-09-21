@@ -342,6 +342,15 @@ O contentor "Treinos de hoje" deixou de ter fundo próprio — dois fundos encai
 
 **Só a essência à vista: distância, velocidade média e XP (2026-09-13, a pedido)** — o resto (tempos, calorias ativas/totais, repartição por modo) passou para trás do mesmo botão **"Ver mais detalhes"** que o painel de treino ao vivo já usa (`.training-detail-toggle`, mesmo texto/comportamento do "Ver detalhe da sessão" de `js/nav.js`, mas um por card — `wireTrainingCardToggles()`). Motivo: já não havia opção de corrigir o modo no fim do card (ver secção 4.5, removida na mesma data), e sem ela a grelha completa ficava a ocupar espaço que a maioria dos jogadores não lê no dia a dia.
 
+#### Corrida e caminhada visíveis nos relatórios (2026-09-21, v6.54.2)
+
+**Reportado** (Trello #29, e outra vez em 2026-09-21): *"fiz corrida e caminhada mas o relatório só mostra que corri"*. **Os dados estavam certos**: a sessão 155 do Skllrx (2026-09-21, 6156 m, 79 min) tem `distance_by_mode = { correr: 5164, caminhar: 992 }` e `time_by_mode` dos dois — a deteção e a gravação funcionavam. O que falhava era a **apresentação**, que só mostrava o modo **dominante** (`training_sessions.mode`, o que ocupou mais tempo):
+- o **resumo do fim do treino** (`showTrainingSummary`) só tinha `summary-mode` ("Correr") e a distância total, sem repartição nenhuma;
+- o **card de "Treinos de hoje"** tinha o título do modo dominante ("Corrida") e a repartição escondida atrás de "Ver mais detalhes";
+- a **lista do histórico** (Perfil) mostrava só o modo dominante.
+
+**Agora**, com mais de um modo com distância (`modosDaSessao`, `js/training.js`): o título passa a "Corrida e Caminhada" (o que mais andou primeiro, `tituloDaSessao`) e a repartição "Corrida 5,16 km / Caminhada 0,99 km" fica **sempre à vista** (`reparticaoPorModoHtml`) — no popup do fim (`#summary-modes`), por baixo da distância no card de hoje e no título da linha do histórico (`js/profile.js` passou a pedir `distance_by_mode`). Com **um só modo** nada muda. Sessões antigas sem `distance_by_mode` mostram o modo dominante como antes. A missão "Corre X km" continua a contar **só** a parte detetada como correr.
+
 #### Repartição por modo dentro de um treino (2026-09-07)
 
 A pedido: *"quero que apareça o que realmente foi registado"*. Até aqui guardava-se só a distância **total** e o modo **dominante** — uma sessão de 5,19 km em que se correu, andou e pedalou aparecia como *"Correr — 5,19 km"*, e metade do que aconteceu ficava escondido.

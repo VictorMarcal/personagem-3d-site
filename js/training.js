@@ -59,6 +59,34 @@ const MODE_LABEL_PT = { caminhar: "Caminhar", correr: "Correr", bicicleta: "Bici
 // 2026-09-10 (ver comentario acima do MODE_LABEL_PT).
 const TRAINING_CARD_TITLE_PT = { caminhar: "Caminhada", correr: "Corrida" };
 
+// Modos com distancia numa sessao (distance_by_mode), do que mais andou para
+// o que menos. Vazio se a sessao e antiga e nao tem a reparticao.
+function modosDaSessao(porModo) {
+  if (!porModo || typeof porModo !== "object") return [];
+  return Object.keys(porModo)
+    .filter((m) => porModo[m] > 0)
+    .sort((a, b) => porModo[b] - porModo[a]);
+}
+
+// Titulo de uma sessao (2026-09-21, a pedido - "fiz corrida e caminhada mas o
+// relatorio so mostra que corri"): o modo DOMINANTE sozinho escondia a
+// caminhada de quem fez os dois. Com mais de um modo lista-os todos, o que
+// mais andou primeiro: "Corrida e Caminhada".
+function tituloDaSessao(porModo, modoDominante) {
+  const modos = modosDaSessao(porModo);
+  if (modos.length > 1) return modos.map((m) => TRAINING_CARD_TITLE_PT[m] || m).join(" e ");
+  return TRAINING_CARD_TITLE_PT[modoDominante] || "Treino";
+}
+
+// Linhas "Corrida 5,16 km / Caminhada 0,99 km" (so com mais de um modo).
+function reparticaoPorModoHtml(porModo) {
+  const modos = modosDaSessao(porModo);
+  if (modos.length < 2) return "";
+  return modos
+    .map((m) => `<dt>${TRAINING_CARD_TITLE_PT[m] || m}</dt><dd>${formatDistanceKm(porModo[m])}</dd>`)
+    .join("");
+}
+
 // --- Deteccao automatica de atividade (2026-08-10, secção 17.1 da
 // documentacao) - substitui a escolha manual de modo. Cada segmento de GPS
 // e classificado pela velocidade MEDIA de uma janela deslizante (evita
@@ -1256,7 +1284,7 @@ function finishFromPause() {
 // Resumo no fim do treino (secção 4.7). Separa sempre ATIVO de TOTAL: o
 // jogador tem de conseguir ver de onde vem a diferenca, senao "porque e que
 // o treino diz 40 minutos se eu estive uma hora na rua" volta a ser pergunta.
-function showTrainingSummary({ mode, distanceM, activeSeconds, pausedSeconds, activeKcal, totalKcal, xp }) {
+function showTrainingSummary({ mode, distanceM, activeSeconds, pausedSeconds, activeKcal, totalKcal, xp, distanceByMode }) {
   const set = (id, value) => {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
@@ -1264,7 +1292,13 @@ function showTrainingSummary({ mode, distanceM, activeSeconds, pausedSeconds, ac
   const activeHours = activeSeconds / 3600;
   const avgSpeedKmh = activeHours > 0 ? distanceM / 1000 / activeHours : 0;
 
-  set("summary-mode", MODE_LABEL_PT[mode] || "—");
+  const modos = modosDaSessao(distanceByMode);
+  set("summary-mode", modos.length > 1 ? tituloDaSessao(distanceByMode, mode) : MODE_LABEL_PT[mode] || "—");
+  const modosEl = document.getElementById("summary-modes");
+  if (modosEl) {
+    modosEl.innerHTML = reparticaoPorModoHtml(distanceByMode);
+    modosEl.hidden = modos.length < 2;
+  }
   set("summary-active-time", formatDurationClock(activeSeconds));
   set("summary-paused-time", formatDurationClock(pausedSeconds));
   set("summary-total-time", formatDurationClock(activeSeconds + pausedSeconds));
@@ -1400,6 +1434,7 @@ function stopTraining() {
       activeKcal: sessionCalories,
       totalKcal: sessionTotalCalories,
       xp: sessionTotalCalories,
+      distanceByMode: sessionDistanceByMode,
     });
   }
 
@@ -1504,21 +1539,18 @@ function renderTrainingCard(s) {
   // Reparticao por modo (secção 4.9). So se mostra quando ha mais do que um
   // modo: numa sessao inteirinha a correr, repetir "Corrida: 5,19 km" por
   // baixo dos "5,19 km" seria ruido.
-  const porModo = s.distance_by_mode && typeof s.distance_by_mode === "object" ? s.distance_by_mode : null;
-  const modosComDistancia = porModo ? Object.keys(porModo).filter((m) => porModo[m] > 0) : [];
-  const reparticao = modosComDistancia.length > 1
-    ? '<dl class="training-modes">' + modosComDistancia
-        .sort((a, b) => porModo[b] - porModo[a])
-        .map((m) => `<dt>${MODE_LABEL_PT[m] || m}</dt><dd>${formatDistanceKm(porModo[m])}</dd>`)
-        .join("") + "</dl>"
-    : "";
+  // Desde 2026-09-21 fica SEMPRE A VISTA por baixo da distancia (antes estava
+  // dentro de "Ver mais detalhes" e o titulo dizia so o modo dominante).
+  const reparticaoLinhas = reparticaoPorModoHtml(s.distance_by_mode);
+  const reparticao = reparticaoLinhas ? '<dl class="training-modes">' + reparticaoLinhas + "</dl>" : "";
 
   // So distancia, velocidade média e XP à vista (2026-09-13, a pedido) - o
   // resto (tempos, calorias, repartição por modo) fica atrás do mesmo botão
   // "Ver mais detalhes" que o painel de treino ao vivo já usa (js/nav.js).
   return `<li class="training-card">
-      <p class="training-label">${TRAINING_CARD_TITLE_PT[s.mode] || "Treino"}</p>
+      <p class="training-label">${tituloDaSessao(s.distance_by_mode, s.mode)}</p>
       <p class="training-distance">${formatDistanceKm(Number(s.distance_m) || 0)}</p>
+      ${reparticao}
       <div class="training-tiles">
         <div class="training-tile">
           <p class="training-tile-label">Velocidade Média</p>
@@ -1531,7 +1563,6 @@ function renderTrainingCard(s) {
       </div>
       <button class="training-detail-toggle training-card-detail-toggle" type="button" aria-expanded="false">Ver mais detalhes</button>
       <div class="training-card-detail" hidden>
-        ${reparticao}
         <dl class="summary-grid">
           ${linha("Tempo ativo", formatDurationClock(activeSeconds))}
           ${linha("Tempo em pausa", temPausa ? formatDurationClock(pausedSeconds) : desconhecido)}

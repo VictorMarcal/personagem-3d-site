@@ -195,7 +195,10 @@ function formatSessionListItem(s) {
   const distance = toNum(s.distance_m);
   const duration = toNum(s.duration_seconds);
   const avgSpeedMps = duration > 0 ? distance / duration : 0;
-  const modeLabel = MODE_LABEL_PT[s.mode] || "Treino";
+  // Com mais de um modo mostra todos ("Corrida e Caminhada"), como o resumo.
+  const modeLabel = modosDaSessao(s.distance_by_mode).length > 1
+    ? tituloDaSessao(s.distance_by_mode, s.mode)
+    : MODE_LABEL_PT[s.mode] || "Treino";
   return `${modeLabel} — ${formatDistanceKm(distance)} · ${Math.round(duration / 60)} min · ${formatSpeedKmh(avgSpeedMps)}`;
 }
 
@@ -525,7 +528,7 @@ async function renderProfileTab() {
 
   const { data: sessions, error } = await supabaseClient
     .from("training_sessions")
-    .select("started_at, distance_m, mode, duration_seconds, calories_kcal")
+    .select("started_at, distance_m, mode, duration_seconds, calories_kcal, distance_by_mode")
     .eq("user_id", currentUserId)
     .order("started_at");
 
