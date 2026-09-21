@@ -176,7 +176,8 @@ const STORAGE_KEY_MISSIONS_LIFETIME = "personagem.missoesConcluidasVitalicio";
 // e a proxima e QUANTAS ja aconteceram (define quantos monstros a proxima
 // traz) - a horda em curso (posicoes/vida dos monstros) nao e persistida,
 // tal como uma luta na Masmorra tambem nao sobrevive a um reload.
-// { proximaEm: ts, contagem: numero de hordas ja repelidas }.
+// { proximaEm: ts, contagem: numero de hordas ja repelidas (VENCIDAS pelo
+// jogador - desde 2026-09-21 uma horda que vence a torre nao conta) }.
 // Chave renomeada de "personagem.horda" para "personagem.horda2"
 // (2026-09-16, a pedido - "reset das hordas, passar para lvl 1 e periodo
 // de ataque de 23h") ao sair da fase de testes (1 min) para produção

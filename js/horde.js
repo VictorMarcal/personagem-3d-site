@@ -8,6 +8,12 @@
 // Regras (todas a pedido do Victor):
 //   - Horda 1 = 1 monstro, horda 2 = 2, horda 3 = 3, ... sem limite (o
 //     mesmo pivot pode calhar a mais de um monstro da mesma horda).
+//   - O numero de monstros SO SOBE quando a horda e VENCIDA pelo jogador
+//     (2026-09-21, a pedido - "assim que uma horda vence a torre, deixa de
+//     incrementar monstros, so incrementa quando essa horda e vencida"):
+//     se a horda vence a torre (derrota), a proxima traz os MESMOS monstros.
+//     A "contagem" gravada passou a ser o numero de hordas VENCIDAS
+//     (monstros da proxima = contagem + 1).
 //   - Cada monstro nasce num dos ate 12 pivots do Floor.glb escolhido AO
 //     ACASO (2026-09-16, a pedido - ver hordaSpawnPosition()), e nao nasce
 //     todos ao mesmo tempo: cada um espera HORDE_SPAWN_STAGGER_MS (0.5s)
@@ -139,8 +145,9 @@ function hordaSpawnPosition() {
 // So isto e gravado - a horda EM CURSO (posicoes/vida dos monstros) fica so
 // em memoria e nao sobrevive a um reload, tal como uma luta na Masmorra
 // tambem nao. Um reload a meio de uma horda simplesmente perde-a; a proxima
-// (ja maior, porque a contagem sobe ao INICIAR, nao ao terminar) continua
-// agendada certa.
+// continua agendada certa e com o mesmo numero de monstros (a contagem so
+// sobe quando uma horda e VENCIDA, ver terminarHorda - uma horda perdida por
+// reload conta como nao vencida).
 
 function getHordaState() {
   try {
@@ -172,6 +179,7 @@ const HORDE_SPAWN_STAGGER_MS = 500;
 
 let hordaMonstros = []; // { group, head, hp, nascido, delayNascimentoMs }
 let hordaEmCurso = false;
+let hordaNumeroEmCurso = 0; // monstros da horda a decorrer (= "Horda N" no relatorio)
 let heroHordaAttackCooldownMs = 0;
 let hordaRouboJaAconteceu = false; // uma vez por horda, ver atacarTorreComHorda()
 // Perdido de FACTO por recurso (pode ser menos que HORDE_ROUBO_POR_RECURSO x
@@ -216,6 +224,7 @@ function iniciarHorda() {
 
   const estado = getHordaState();
   const numero = estado.contagem + 1;
+  hordaNumeroEmCurso = numero;
 
   hordaMonstros = [];
   for (let i = 0; i < numero; i++) {
@@ -233,11 +242,10 @@ function iniciarHorda() {
     });
   }
 
-  // A contagem/agenda da PROXIMA horda fica logo marcada ao iniciar esta,
-  // não so ao terminar - simplificação deliberada (ver comentário acima do
-  // estado persistido); a diferença é so o tempo que esta horda demora a
-  // ser repelida (segundos), irrelevante face ao intervalo de 1 min/23h.
-  saveHordaState({ contagem: numero, proximaEm: Date.now() + HORDE_INTERVAL_MS });
+  // A AGENDA da proxima horda fica logo marcada ao iniciar esta (a diferenca
+  // e so o tempo que esta demora, segundos, irrelevante face a 23h). A
+  // CONTAGEM nao sobe aqui: so quando a horda e vencida (terminarHorda).
+  saveHordaState({ contagem: estado.contagem, proximaEm: Date.now() + HORDE_INTERVAL_MS });
 
   if (typeof showGameToast === "function") {
     showGameToast(`Horda a atacar a Fortaleza! (${numero} monstro${numero > 1 ? "s" : ""})`, "aviso");
@@ -263,9 +271,16 @@ function terminarHorda() {
   hordaMonstros = [];
   hordaEmCurso = false;
 
+  // So uma horda VENCIDA faz a seguinte trazer mais um monstro; se a horda
+  // venceu a torre, a proxima repete o mesmo numero (2026-09-21, a pedido).
+  if (!hordaRouboJaAconteceu) {
+    const estado = getHordaState();
+    saveHordaState({ ...estado, contagem: estado.contagem + 1 });
+  }
+
   registarHordaRelatorio({
     data: Date.now(),
-    numero: getHordaState().contagem,
+    numero: hordaNumeroEmCurso,
     resultado: hordaRouboJaAconteceu ? "derrota" : "vitoria",
     totalMonstros,
     monstrosDerrotados,

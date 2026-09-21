@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.52.0",
+    title: "Hordas Justas",
+    changes: [
+      "Se uma horda vencer a torre, a horda seguinte traz o mesmo número de monstros. Só quando repeles uma horda é que a próxima passa a ter mais um.",
+    ],
+  },
+  {
     version: "v6.51.0",
     title: "Níveis Mais Rápidos",
     changes: [
