@@ -25,7 +25,7 @@
 // (mesmo espírito do ASSET_V dos modelos 3D, js/main.js).
 const ICON_IMAGE_NAMES = new Set(["ferro", "madeira", "pele", "pedra", "barro"]);
 const ICON_IMAGE_BASE_PATH = "assets/Icons/Recursos/";
-const ICON_IMAGE_V = "2";
+const ICON_IMAGE_V = "3";
 
 const ICON_PATHS = {
   // --- equipamento ---------------------------------------------------------

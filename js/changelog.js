@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.52.1",
+    title: "Ícones Novos",
+    changes: [
+      "Os ícones dos 5 recursos (ferro, madeira, pele, pedra e barro) foram redesenhados.",
+    ],
+  },
+  {
     version: "v6.52.0",
     title: "Hordas Justas",
     changes: [
