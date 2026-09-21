@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.51.0",
+    title: "Níveis Mais Rápidos",
+    changes: [
+      "Subir de nível custa agora cerca de metade das calorias (a curva ficou mais suave). Ao ritmo de 500 kcal por dia, o nível 30 chega em 116 dias em vez de 209.",
+      "O teu nível é recalculado automaticamente: se subires de nível com a nova curva, recebes os pontos de status ao abrir a app.",
+    ],
+  },
+  {
     version: "v6.50.2",
     title: "Nova Palavra-passe",
     changes: [

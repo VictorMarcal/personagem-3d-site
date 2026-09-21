@@ -40,6 +40,13 @@
 // expoente fica em 1,3 - a forma da curva estava certa, o que estava
 // errado era a escala.
 //
+// EXPOENTE 1,3 -> 1,1 em 2026-09-21 (a pedido - "na formula antiga, eleva 1.1"):
+// a curva de niveis fica mais suave, cada nivel custa cerca de metade do que
+// custava e o total ate ao nivel 100 cai de 1 750 850 para 762 643 kcal. A 500
+// kcal por dia: nivel 30 em 116 dias (era 209), nivel 50 em 345 (era 687),
+// nivel 100 em 1 494 (era 3 422). Sem migracao: o nivel e recalculado ao vivo
+// e os pontos dos niveis novos sao creditados por awardPointsIfNeeded.
+//
 // Historico: era 70 (equivalente calorico de 1 km a correr para 70 kg) e
 // vivia no card de Debug, editavel por dispositivo; passou a 500 fixo em
 // bddd1e4, quando o Debug foi removido. Os 500 exageraram 7x.
@@ -48,7 +55,7 @@
 // (js/equipment.js) ja atribui pontos por TODOS os niveis entre o ultimo
 // premiado e o atual, por isso quem estava preso recebe-os de uma vez.
 const LEVEL_BASE = 100;
-const LEVEL_EXP = 1.3;
+const LEVEL_EXP = 1.1;
 
 // Curvas de status dos MONSTROS (computeCreatureStatValue, js/monsters.js).
 // Ataque e Defesa trocam de curva de crescimento (decisao tomada ao

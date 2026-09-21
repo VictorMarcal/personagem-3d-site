@@ -488,10 +488,16 @@ Num telemóvel com DPR 3, durante um treino, isso é cerca de **17× menos traba
 
 ```
 incremento(n) = round(LEVEL_BASE × n^LEVEL_EXP)
-LEVEL_BASE = 100, LEVEL_EXP = 1.3
+LEVEL_BASE = 100, LEVEL_EXP = 1.1   (era 1,3 até 2026-09-20)
 ```
 
 Escolhida para não ser nem linear nem exponencial — os incrementos crescem, mas a taxa de crescimento desacelera.
+
+### 5.0 Expoente 1,3 → 1,1 (2026-09-21, a pedido — "na fórmula antiga, eleva 1.1")
+
+Depois de comparar três curvas com um ritmo de 500 kcal/dia (`100 × n^1,3` atual, `100 × e^(0,05 × n)` e `100 × n^1,1`), ficou **`100 × n^1,1`**. Custo de cada nível ≈ metade; total até ao nível 100: **762 643 kcal** (era 1 750 850). A 500 kcal/dia, todos os dias: nível 10 em 11 dias (era 15), 30 em 116 (era 209), 50 em 345 (era 687), 100 em 1 494 dias = 4,1 anos (era 3 422 dias = 9,4 anos). A 4 dias por semana os tempos multiplicam por 1,75.
+
+**Sem migração** (mesma lógica de 5.1): o nível é recalculado ao vivo a partir das calorias vitalícias e `awardPointsIfNeeded` credita 1 ponto por cada nível ganho acima de `last_awarded_level`; nunca retira. Efeito nos 3 jogadores reais a 2026-09-21 (calorias da base de dados): Skllrx 4 049 kcal → nível 7 passa a **8** (+1 ponto, 786/985 para o 9); Sandra 541 kcal → continua **3** (227/335); VidaNova 818 kcal → **4** (o `last_awarded_level` dela é 6, herdado das calorias inflacionadas de 09-16 — não recebe nada e não perde os pontos já dados). Não afeta as curvas dos monstros (`STAT_*`), a Fortaleza nem o equipamento.
 
 ### 5.1 Como a base chegou aos 100 (2026-09-07)
 
@@ -543,9 +549,9 @@ O Bernardo não recebe pontos de imediato porque já os tinha recebido pelo nív
 | Nível | Calorias p/ subir | Total acumulado |
 |---:|---:|---:|
 | 1→2 | 100 XP | 100 XP |
-| 5→6 | 810 XP | 2.179 XP |
-| 10→11 | 1.995 XP | 9.689 XP |
-| 16→17 | 3.676 XP | 27.428 XP |
+| 5→6 | 587 XP | 1.695 XP |
+| 10→11 | 1.259 XP | 6.628 XP |
+| 16→17 | 2.111 XP | 17.146 XP |
 | 20→21 | 4.913 XP | 45.198 XP |
 | — | — | **~1.197.725 kcal até ao nível 100** |
 
