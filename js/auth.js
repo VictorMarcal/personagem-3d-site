@@ -82,6 +82,16 @@ function setEmailAuthMode(mode) {
   showEmailAuthStatus("", false);
 }
 
+// Botoes da pagina de entrada (index.html, .landing-final): escolhem o modo do
+// cartao de login, levam ao topo onde ele esta e poem o cursor no email.
+document.querySelectorAll("[data-landing-cta]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    setEmailAuthMode(btn.dataset.landingCta === "criar" ? "criar" : "entrar");
+    authModalEl.scrollTo({ top: 0, behavior: "smooth" });
+    emailAuthEmailEl.focus({ preventScroll: true });
+  });
+});
+
 btnEmailAuthToggle.addEventListener("click", () => {
   setEmailAuthMode(emailAuthMode === "criar" ? "entrar" : "criar");
 });

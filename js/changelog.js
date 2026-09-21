@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.53.0",
+    title: "Nova Página de Entrada",
+    changes: [
+      "A página que vês antes de entrares deixou de ser só um login: explica como funciona o jogo (treina, descobre, constrói e defende), mostra as 5 explorações da Fortaleza e tem um convite para criar conta.",
+    ],
+  },
+  {
     version: "v6.52.1",
     title: "Ícones Novos",
     changes: [
