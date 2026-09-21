@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.56.0",
+    title: "Missões Sem Dificuldade",
+    changes: [
+      "As missões deixam de ter dificuldade (Fácil, Média, Difícil): são 9 missões por mês numa só lista, cada uma com a sua recompensa.",
+      "Podes ter até 3 missões ativas ao mesmo tempo, quaisquer das 9. Se desistires de uma, esperas 12 horas antes de ativar outra.",
+      "As medalhas de missões passam a contar só quantas missões concluíste (a primeira, 5, 10, 25, 50 e 100), mais o Mês Perfeito.",
+    ],
+  },
+  {
     version: "v6.55.0",
     title: "Armazéns Limpos",
     changes: [

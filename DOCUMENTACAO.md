@@ -1478,6 +1478,22 @@ O ticker **só corre com a sub-aba visível** e pára quando a página fica esco
 
 `js/missions.js` + painel no separador **Treinar**, com **dois pontos de montagem** — `#missions-panel` dentro do `#start-screen` (**por cima** de "Treinos de hoje" — 2026-09-13, a pedido; era por baixo até essa data) e `#missions-panel-training` dentro do `#training-screen`, por baixo do botão "Pausa". `renderMissionsPanel()` escreve o mesmo HTML nos dois; só um fica visível de cada vez, consoante `showStartScreen()`/`showTrainingScreen()` (`js/training.js`). O segundo ponto de montagem foi adicionado a corrigir um bug (2026-09-15, Trello: *"Missões desaparecem ao iniciar um treino, não devia"*) — antes só existia dentro do `#start-screen`, por isso desaparecia por completo assim que o treino começava (o ecrã trocava para `#training-screen`, sem missões nenhumas lá dentro), em vez de continuar visível para o jogador acompanhar o progresso a meio do treino. A pedido original: *"adicionar missões mensais (secção treinar) que dão como recompensa recursos"*.
 
+### VERSÃO EM VIGOR: 9 missões sem dificuldade (2026-09-21, v6.56.0, a pedido)
+
+*"Vamos remover a interpretação de dificuldade de missões. Existem 9 missões por mês. Existem medalhas pelo número de missões feitas e podem estar ativas [3] missões de cada vez, sendo que sempre que alguém desiste de alguma tem que esperar [12 h] para a ativar outra novamente."* (os dois valores em falta na mensagem foram confirmados: **3 ativas** e **12 horas**, iguais aos de antes; e as **9 missões são as de sempre, sem etiquetas**.)
+
+**O que o jogador vê**: uma lista única. "Missões Ativas · n/3" (até 3, com progresso e Desistir) e "Missões do mês" (as restantes, ordenadas pela recompensa: Aceitar / Bloqueada / Concluída este mês). **Nada** de Fácil/Média/Difícil, nem cores por dificuldade (as cores verde/amarelo/vermelho de 09-20 saíram), nem no popup de conclusão.
+
+**Regras**: até `MISSION_MAX_ATIVAS = 3` ativas, quaisquer das 9 (podem ser as 3 de "correr 15/35/70 km"); desistir perde o progresso e trava a ativação de **qualquer** missão durante `MISSION_REJECT_COOLDOWN_MS = 12 h` (um só relógio, `rejeitadaEm` número — antes era um por dificuldade); concluir não trava nada; cada missão só conta uma vez por mês.
+
+**Por baixo, nada mudou de sítio**: continuam a existir os 3 "grupos" internos (`MISSION_SLOTS`: facil/media/dificil) só porque é deles que saem os **alvos e as recompensas** (`MISSION_ALVO`, `MISSION_RECOMPENSA`, 50/120/300) e o **id** de cada missão (`"facil:correr_km"`, o mesmo formato que `concluidas` já usava). O jogador nunca os vê.
+
+**Estado** (`STORAGE_KEY_MISSIONS`, `missoes_mensais`): `{ mes, ativas: { "<id>": missão }, concluidas: ["<id>"], rejeitadaEm: ts|null }`. **Migração ao ler** (`migrarEstadoMissoes`): o formato de 09-15 a 09-20 (`ativas` por dificuldade `{facil,media,dificil}`, `rejeitadaEm` por dificuldade) converte-se sozinho — cada ativa passa a chave `"grupo:tipo"` com o **progresso preservado**, e o cooldown fica o mais recente dos três. Idempotente; sem SQL (o servidor é reescrito no novo formato no próximo sync de cada jogador). `mergeMissoes` (`js/progress-sync.js`) passou a unir as ativas **por id** (maior `progressoM` se os dois lados a têm; descarta as já concluídas) e a fazer `max` do `rejeitadaEm`. Um aparelho ainda com o código antigo que leia o formato novo vê as missões como não ativas até recarregar.
+
+**Medalhas** (`js/achievements.js`): só contam **quantas** missões se concluíram — `mission_total_1` "Primeira Missão", `_5`, `_10`, `_25`, `_50`, `_100` ("N Missões Concluídas") + "Mês Perfeito" (as 9 no mesmo mês). Saíram as 18 conquistas por dificuldade (`mission_first_facil`, `mission_media_10`...): quem as tinha desbloqueadas fica com esses ids no mapa (órfãos, como os da bicicleta), deixam de aparecer na grelha; a "Primeira Missão" é atribuída a quem já tinha ≥ 1 missão concluída. `registarMissaoConcluidaVitalicio` continua a chamar-se com o grupo (contadores `facil/media/dificil` ficam sem uso).
+
+**Tudo o que está abaixo até ao fim da secção descreve o modelo por dificuldade (09-10 a 09-20) e é histórico** — a lógica de progresso, os tipos, os alvos, a verificação ao vivo, o popup de conclusão e as recompensas continuam válidos.
+
 ### As regras (todas a pedido; ver "Redesenho final" abaixo para a versão em vigor)
 
 - Cada mês de calendário tem **9 missões**: 3 dificuldades (**fácil**, **média**, **difícil**) × 3 tipos cada — ver "Redesenho final".

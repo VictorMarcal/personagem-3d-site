@@ -382,13 +382,8 @@ button[disabled] {
   margin-bottom: 10px;
 }
 .mission-card:last-child { margin-bottom: 0; }
-/* A dificuldade e so a cor do cartao (2026-09-20, a pedido - "quero que
-   tenham apenas cores: verde facil, amarelo medio, vermelho dificil, sem
-   muito contraste"). Sem o chip com o nome: o titulo da secao ja o diz.
-   Tons suaves e com luminosidade parecida, para nenhum se sobrepor aos outros. */
-.mission-card-facil { background: #d7e9bf; border-color: #b9d698; }
-.mission-card-media { background: #f8e5a6; border-color: #e6cc72; }
-.mission-card-dificil { background: #f1c8bb; border-color: #dd9d8a; }
+/* Sem dificuldade (2026-09-21, a pedido): todos os cartoes de missao tem o
+   mesmo aspeto - as cores verde/amarelo/vermelho de 2026-09-20 sairam. */
 .mission-line {
   display: flex;
   align-items: center;

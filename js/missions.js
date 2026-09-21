@@ -1,34 +1,27 @@
 // Missoes mensais (secção 22, 2026-09-10, a pedido).
 //
-// 9 missoes por mes: 3 dificuldades (facil, media, dificil) x 3 tipos cada
-// (MISSION_POOL). TODAS AS 9 ESTAO SEMPRE VISIVEIS (2026-09-15, a pedido -
-// "todas as missões estão sempre visíveis", sem lista escondida nem toggle),
-// organizadas em 3 sub-paineis, um por dificuldade. Dentro de um sub-painel,
-// aceitar um tipo BLOQUEIA os outros 2 tipos DESSA MESMA dificuldade (as
-// outras duas dificuldades nao sao afetadas - pode haver ate 3 missoes
-// ativas ao mesmo tempo, uma por dificuldade). Os tipos de cada mes sao
-// DETERMINISTAS: saem de um gerador semeado no proprio mes ("2026-09"), tal
-// como as minas saem do osm_id do concelho (secção 21). Nao se guarda a
-// missao, so o ESTADO: qual esta aceite em CADA dificuldade, quais ja foram
-// concluidas e quando foi a ultima recusa de CADA dificuldade.
+// 9 missoes por mes, SEM dificuldade (2026-09-21, a pedido - "vamos remover a
+// interpretacao de dificuldade de missoes"): uma lista unica, sem etiquetas
+// Facil/Media/Dificil nem cores por dificuldade. Cada missao mantem o seu
+// alvo e a sua recompensa (as 9 de sempre); por dentro continuam agrupadas em
+// tres "grupos" (MISSION_SLOTS: facil/media/dificil) so porque e daqui que
+// saem os alvos, as recompensas e os ids ("grupo:tipo", ex. "facil:correr_km")
+// ja gravados nas concluidas e nas conquistas - o jogador nunca os ve. Os tipos
+// de cada mes sao DETERMINISTAS (gerador semeado no mes, como as minas em
+// secção 21): so se guarda o ESTADO.
+//
+// Estado: { mes, ativas: { "<id>": missao aceite, ... }, concluidas: ["<id>", ...],
+// rejeitadaEm: timestamp da ultima desistencia | null }.
 //
 // Regras (todas a pedido):
-//   - Ate 1 missao ATIVA POR DIFICULDADE (3 no total, uma facil, uma media,
-//     uma dificil) - dificuldades diferentes nao se bloqueiam entre si.
-//   - Desistir de uma missao PERDE o progresso dela (progressoM volta a 0 -
-//     a proxima que se aceite nessa dificuldade comeca do zero) e trava
-//     novas aceitacoes NESSA dificuldade durante 12h - nao afeta as outras
-//     duas.
-//   - Concluir NAO trava nada - aceita-se logo a seguinte dessa dificuldade
-//     (2026-09-16, a pedido - "quero mesmo 9 por mes": ate entao, concluir
-//     UM tipo de uma dificuldade bloqueava OS OUTROS 2 tipos dessa mesma
-//     dificuldade ate ao mes seguinte; agora cada TIPO tem o seu proprio
-//     registo de conclusao, por isso os 3 tipos de cada dificuldade podem
-//     ser concluidos no mesmo mes - 9 missoes no total, nao 3).
-//   - Cada TIPO so pode ser concluido uma vez por mes - so no mes seguinte
-//     volta a estar disponivel (ver tipoJaConcluido()).
-//   - O progresso conta a partir do INSTANTE em que se aceita (baseline), nao
-//     desde o inicio do mes - recusar/falhar nunca "credita" trabalho antigo.
+//   - Ate MISSION_MAX_ATIVAS (3) missoes ATIVAS ao mesmo tempo, quaisquer das 9.
+//   - Desistir de uma missao PERDE o progresso dela e trava a ativacao de
+//     QUALQUER missao durante MISSION_REJECT_COOLDOWN_MS (12h) - um so tempo
+//     para todas (antes era por dificuldade).
+//   - Concluir NAO trava nada.
+//   - Cada missao so pode ser concluida uma vez por mes.
+//   - O progresso conta a partir do INSTANTE em que se aceita (baseline).
+//   - As medalhas contam quantas missoes se concluiram (js/achievements.js).
 //
 // Depende de: js/resources.js (hashString, mulberry32, RESOURCE_IDS,
 // RESOURCE_BY_ID, acumularProducao, warehouseCap, getWarehouseLevel,
@@ -37,16 +30,16 @@
 // (formatMonthKey, MONTH_NAMES_PT), js/equipment.js (showGameToast),
 // js/icons.js (icon), js/progress-sync.js (queueProgressSync),
 // js/achievements.js (registarMissaoConcluidaVitalicio, 2026-09-16).
-// Carrega
-// depois de todos eles.
+// Carrega depois de todos eles.
 
+// Grupos INTERNOS (nao mostrados): de onde vem alvo/recompensa e o prefixo do id.
 const MISSION_SLOTS = ["facil", "media", "dificil"];
-const MISSION_SLOT_LABEL = { facil: "Fácil", media: "Média", dificil: "Difícil" };
+const MISSION_MAX_ATIVAS = 3;
 // 12h desde 2026-09-15 (era 24h) - a pedido, junto com a mudanca para "todas
 // as missoes sempre visiveis" (ver cabecalho do ficheiro).
 const MISSION_REJECT_COOLDOWN_MS = 12 * 60 * 60 * 1000;
 
-// Pools por dificuldade - exatamente 3 tipos cada, sempre TODOS visiveis ao
+// Pools por GRUPO interno (a antiga dificuldade, hoje invisivel) - exatamente 3 tipos cada, sempre TODOS visiveis ao
 // mesmo tempo (ver generateMonthlyMissions/renderMissionSlotBlock), nunca
 // sorteados nem escondidos atras de um toggle. "correr_km"/"caminhar_km" sao
 // dois tipos irmaos (mesma logica, cada um so conta a sua fatia de distancia
@@ -65,7 +58,7 @@ const MISSION_POOL = {
 // a pedido - "quero mesmo 9 por mês", antes eram só 3).
 const MISSION_TOTAL_TIPOS = MISSION_SLOTS.reduce((soma, slot) => soma + MISSION_POOL[slot].length, 0);
 
-// Alvos por tipo e dificuldade. NUMEROS PROVISORIOS, mesma nota da secção 21:
+// Alvos por tipo e grupo. NUMEROS PROVISORIOS, mesma nota da secção 21:
 // derivados do ritmo dos dois jogadores no primeiro mes (~30-40 hexes/semana,
 // e a fase em que tudo a volta de casa e novo). A rever quando houver mais
 // historico real. caminhar_km comeca com os mesmos alvos de correr_km -
@@ -78,7 +71,7 @@ const MISSION_ALVO = {
   descobre_concelho: { facil: 1, media: 1, dificil: 1 },
 };
 
-// Recompensa em UNIDADES de um recurso, por dificuldade. O recurso concreto
+// Recompensa em UNIDADES de um recurso, por grupo. O recurso concreto
 // e semeado no mes. A quantidade e limitada pelo teto da Fortaleza ao ser
 // creditada (como a producao), por isso a dificil so rende tudo com a
 // Fortaleza ja subida - de proposito.
@@ -133,12 +126,25 @@ function generateMonthlyMissions(monthKey) {
 // --- estado -------------------------------------------------------------------
 
 function estadoMissoesVazio(monthKey) {
-  return {
-    mes: monthKey,
-    ativas: { facil: null, media: null, dificil: null },
-    concluidas: [],
-    rejeitadaEm: { facil: null, media: null, dificil: null },
-  };
+  return { mes: monthKey, ativas: {}, concluidas: [], rejeitadaEm: null };
+}
+
+// Id de uma missao ("grupo:tipo") - o mesmo formato que sempre esteve em
+// `concluidas`, por isso nada do que ja esta gravado muda de sentido.
+function idDaMissao(slot, tipo) {
+  return slot + ":" + tipo;
+}
+
+// As 9 missoes do mes numa lista unica, da que rende menos para a que rende
+// mais (a ordem e so de apresentacao; dentro da mesma recompensa fica a do
+// pool). Cada uma leva o seu `id`.
+function todasAsMissoesDoMes(monthKey) {
+  const porGrupo = generateMonthlyMissions(monthKey);
+  const lista = [];
+  MISSION_SLOTS.forEach((slot) => {
+    (porGrupo[slot] || []).forEach((m) => lista.push({ ...m, id: idDaMissao(m.slot, m.tipo) }));
+  });
+  return lista.sort((a, b) => a.recompensa.quantidade - b.recompensa.quantidade);
 }
 
 // Migra o formato antigo (uma so `ativa`/`rejeitadaEm` GLOBAL, quando so
@@ -151,16 +157,44 @@ function estadoMissoesVazio(monthKey) {
 // dificuldade tinha sido recusada - perde-se na migracao (efeito minimo e
 // unico) em vez de aplicar as 3 de uma vez, o que seria pior.
 function migrarEstadoMissoes(estado) {
-  if (!estado || typeof estado !== "object" || estado.ativas) return estado;
-  const ativas = { facil: null, media: null, dificil: null };
-  if (estado.ativa && MISSION_SLOTS.includes(estado.ativa.slot)) {
-    ativas[estado.ativa.slot] = estado.ativa;
+  if (!estado || typeof estado !== "object") return estado;
+
+  // Formatos ANTIGOS -> novo. (1) uma so `ativa` global (ate 2026-09-15); (2)
+  // `ativas` por dificuldade { facil, media, dificil } e `rejeitadaEm` por
+  // dificuldade (ate 2026-09-20). Idempotente: um estado ja no formato novo
+  // (`ativas` indexado por id, `rejeitadaEm` numero) passa quase incolume.
+  // Nao escreve no localStorage - quem chama decide (getMissionStateRaw e usada
+  // pelo snapshot de sincronizacao, que nao pode escrever a meio).
+  let ativasPorGrupo = null;
+  if (!estado.ativas && estado.ativa) {
+    ativasPorGrupo = {};
+    if (MISSION_SLOTS.includes(estado.ativa.slot)) ativasPorGrupo[estado.ativa.slot] = estado.ativa;
+  } else if (estado.ativas && Object.keys(estado.ativas).some((k) => MISSION_SLOTS.includes(k))) {
+    ativasPorGrupo = estado.ativas;
   }
+
+  if (ativasPorGrupo) {
+    const ativas = {};
+    MISSION_SLOTS.forEach((slot) => {
+      const a = ativasPorGrupo[slot];
+      if (!a || !a.tipo) return;
+      const grupo = a.slot || slot;
+      const id = idDaMissao(grupo, a.tipo);
+      ativas[id] = { ...a, slot: grupo, id };
+    });
+    // O cooldown antigo era por dificuldade: fica o mais recente dos tres.
+    const rej =
+      estado.rejeitadaEm && typeof estado.rejeitadaEm === "object"
+        ? Math.max(0, ...MISSION_SLOTS.map((slot) => Number(estado.rejeitadaEm[slot]) || 0))
+        : 0;
+    return { mes: estado.mes, ativas, concluidas: estado.concluidas || [], rejeitadaEm: rej || null };
+  }
+
   return {
-    mes: estado.mes,
-    ativas,
+    ...estado,
+    ativas: estado.ativas || {},
     concluidas: estado.concluidas || [],
-    rejeitadaEm: { facil: null, media: null, dificil: null },
+    rejeitadaEm: Number(estado.rejeitadaEm) || null,
   };
 }
 
@@ -275,41 +309,46 @@ function missionProgress(ativa, sessaoAoVivo) {
 
 // --- regras -----------------------------------------------------------------
 
-// Cooldown de recusa, POR DIFICULDADE desde 2026-09-15 (era global) - recusar
-// a facil so trava a facil, media e dificil continuam livres.
-function missionCooldownRestanteMs(estado, slot) {
-  const ts = estado.rejeitadaEm && estado.rejeitadaEm[slot];
+// Cooldown de desistencia, UM SO para todas as missoes (2026-09-21, a pedido;
+// de 2026-09-15 a 2026-09-20 era por dificuldade): quem desiste de qualquer
+// missao espera MISSION_REJECT_COOLDOWN_MS antes de poder ativar outra.
+function missionCooldownRestanteMs(estado) {
+  const ts = Number(estado.rejeitadaEm) || 0;
   if (!ts) return 0;
-  return Math.max(0, MISSION_REJECT_COOLDOWN_MS - (Date.now() - Number(ts)));
+  return Math.max(0, MISSION_REJECT_COOLDOWN_MS - (Date.now() - ts));
 }
 
-// Um TIPO especifico ja foi concluido este mes se o seu "slot:tipo" estiver
-// em concluidas - OU se so o "slot" (formato antigo, anterior a 2026-09-16,
-// quando concluir 1 tipo bloqueava a dificuldade toda) la estiver, para nao
-// "desconcluir" retroativamente quem ja tinha uma dificuldade fechada esse
-// mes sob a regra antiga.
-function tipoJaConcluido(estado, slot, tipo) {
-  return estado.concluidas.includes(slot) || estado.concluidas.includes(slot + ":" + tipo);
+// Uma missao ja foi concluida este mes se o seu id ("grupo:tipo") estiver em
+// concluidas - OU se so o "grupo" (formato antigo, anterior a 2026-09-16,
+// quando concluir 1 tipo fechava o grupo todo) la estiver, para nao
+// "desconcluir" retroativamente quem ja tinha um grupo fechado esse mes.
+function missaoJaConcluida(estado, missao) {
+  return estado.concluidas.includes(missao.id) || estado.concluidas.includes(missao.slot);
 }
 
-// Um TIPO aceita-se se: a dificuldade nao tem outro tipo ja ativo, esse
-// TIPO especifico nao foi concluido este mes, e a dificuldade nao esta em
-// cooldown de recusa - independente do estado das OUTRAS duas dificuldades.
-function podeAceitarMissao(estado, slot, tipo) {
-  return !estado.ativas[slot] && !tipoJaConcluido(estado, slot, tipo) && missionCooldownRestanteMs(estado, slot) === 0;
+// Uma missao aceita-se se: ainda nao esta ativa nem foi concluida este mes,
+// ha menos de MISSION_MAX_ATIVAS ativas (3) e nao se desistiu de nenhuma
+// missao ha menos de MISSION_REJECT_COOLDOWN_MS (12h).
+function podeAceitarMissao(estado, missao) {
+  return (
+    !estado.ativas[missao.id] &&
+    !missaoJaConcluida(estado, missao) &&
+    Object.keys(estado.ativas).length < MISSION_MAX_ATIVAS &&
+    missionCooldownRestanteMs(estado) === 0
+  );
 }
 
-// Todos os tipos de UMA dificuldade este mes, com os detalhes gerados.
-function tiposDisponiveis(estado, slot) {
-  return generateMonthlyMissions(estado.mes)[slot] || [];
+// Uma missao do mes pelo seu id ("grupo:tipo"), com os detalhes gerados.
+function missaoPorId(estado, id) {
+  return todasAsMissoesDoMes(estado.mes).find((m) => m.id === id) || null;
 }
 
-function aceitarMissao(slot, tipo) {
+function aceitarMissao(id) {
   const estado = getMissionState();
-  if (!podeAceitarMissao(estado, slot, tipo)) return false;
-  const missao = tiposDisponiveis(estado, slot).find((m) => m.tipo === tipo);
-  if (!missao) return false;
-  estado.ativas[slot] = {
+  const missao = missaoPorId(estado, id);
+  if (!missao || !podeAceitarMissao(estado, missao)) return false;
+  estado.ativas[id] = {
+    id,
     slot: missao.slot,
     tipo: missao.tipo,
     alvo: missao.alvo,
@@ -325,11 +364,11 @@ function aceitarMissao(slot, tipo) {
   return true;
 }
 
-function desistirMissao(slot) {
+function desistirMissao(id) {
   const estado = getMissionState();
-  if (!estado.ativas[slot]) return false;
-  estado.ativas[slot] = null;
-  estado.rejeitadaEm[slot] = Date.now();
+  if (!estado.ativas[id]) return false;
+  delete estado.ativas[id];
+  estado.rejeitadaEm = Date.now(); // trava a ativacao de QUALQUER missao
   saveMissionState(estado);
   renderMissionsPanel();
   return true;
@@ -350,24 +389,23 @@ function concederRecompensaMissao(recompensa) {
 
 // Chamada no fim de um treino (com `sessao`), no arranque pos-login e quando
 // as regioes sao recalculadas (sem `sessao`) - sempre que o progresso de uma
-// missao pode ter mudado. Verifica as 3 dificuldades independentemente
-// (2026-09-15 - podem estar as 3 ativas ao mesmo tempo).
+// missao pode ter mudado. Verifica TODAS as missoes ativas (ate 3).
 //
 // sessao (opcional): { distanciaPorModo: { correr, caminhar } } da sessao que
 // acabou. So correr_km/caminhar_km a usam - cada uma so soma a sua propria
 // fatia (correr ou caminhar) ao acumulador.
-// Conclui UMA missao: regista-a nas concluidas, liberta a dificuldade, conta
+// Conclui UMA missao: regista-a nas concluidas, liberta um lugar entre as ativas, conta
 // para as conquistas, credita a recompensa e da feedback (toast + popup).
 // Partilhada pela verificacao de fim de treino e pela AO VIVO (abaixo) - o
 // jogador nao pode ficar sem resposta ate carregar em "Terminar" (bug
 // reportado 2026-09-21: "o sistema nao valida que uma missao foi concluida,
 // nao mostrou popup, nao deu medalha, nao deu feedback").
-function concluirMissao(estado, slot, ativa) {
-  estado.concluidas.push(slot + ":" + ativa.tipo);
-  estado.ativas[slot] = null;
+function concluirMissao(estado, id, ativa) {
+  estado.concluidas.push(id);
+  delete estado.ativas[id];
 
   if (typeof registarMissaoConcluidaVitalicio === "function") {
-    registarMissaoConcluidaVitalicio(slot, estado.concluidas.length);
+    registarMissaoConcluidaVitalicio(ativa.slot, estado.concluidas.length);
   }
 
   concederRecompensaMissao(ativa.recompensa);
@@ -401,11 +439,9 @@ function mostrarProximaMissaoConcluida() {
   const nomeRecurso = typeof RESOURCE_BY_ID !== "undefined" && RESOURCE_BY_ID[r.recurso] ? RESOURCE_BY_ID[r.recurso].nome : r.recurso;
   const ic = typeof icon === "function" && r.recurso ? icon(r.recurso, 16) : "";
   document.getElementById("mission-complete-goal").textContent = missaoTexto(ativa);
-  document.getElementById("mission-complete-slot").textContent = MISSION_SLOT_LABEL[ativa.slot] || "";
   document.getElementById("mission-complete-reward").innerHTML = r.quantidade
     ? `<span class="wallet-chip">${ic}+${r.quantidade} ${nomeRecurso}</span>`
     : "";
-  modal.dataset.slot = ativa.slot || "";
   modal.classList.remove("hidden");
 }
 
@@ -425,10 +461,7 @@ function verificarMissaoAtiva(sessao) {
   const estado = getMissionState();
   let mudou = false;
 
-  MISSION_SLOTS.forEach((slot) => {
-    const ativa = estado.ativas[slot];
-    if (!ativa) return;
-
+  Object.entries(estado.ativas).forEach(([id, ativa]) => {
     if (sessao && (ativa.tipo === "correr_km" || ativa.tipo === "caminhar_km")) {
       const modo = ativa.tipo === "correr_km" ? "correr" : "caminhar";
       const andou = Number(sessao.distanciaPorModo && sessao.distanciaPorModo[modo]) || 0;
@@ -442,7 +475,7 @@ function verificarMissaoAtiva(sessao) {
     if (!prog.done) return;
 
     mudou = true;
-    concluirMissao(estado, slot, ativa);
+    concluirMissao(estado, id, ativa);
   });
 
   if (mudou) saveMissionState(estado);
@@ -458,12 +491,10 @@ function verificarMissaoAtiva(sessao) {
 function verificarMissoesAoVivo(sessaoAoVivo) {
   const estado = getMissionState();
   let mudou = false;
-  MISSION_SLOTS.forEach((slot) => {
-    const ativa = estado.ativas[slot];
-    if (!ativa) return;
+  Object.entries(estado.ativas).forEach(([id, ativa]) => {
     if (!missionProgress(ativa, sessaoAoVivo).done) return;
     mudou = true;
-    concluirMissao(estado, slot, ativa);
+    concluirMissao(estado, id, ativa);
   });
   if (mudou) {
     saveMissionState(estado);
@@ -521,85 +552,60 @@ function formatCooldownRestante(ms) {
 
 // --- UI -------------------------------------------------------------------
 
-// Card "Missões Ativas" (2026-09-15, a pedido: "as missões que foram
-// escolhidas passam para um novo card... e saem dos cards onde estavam") -
-// junta as missões aceites das 3 dificuldades num só sítio, com progresso e
-// Desistir; deixam de aparecer no sub-painel da sua dificuldade (ver
-// renderMissionSlotBlock). Omitido por completo quando nenhuma está aceite.
+// Card "Missões Ativas" (2026-09-15, a pedido): as missões aceites (até 3),
+// com progresso e Desistir; deixam de aparecer na lista do mês (ver
+// renderListaDeMissoes). Omitido por completo quando nenhuma está aceite.
 function renderMissoesAtivas(estado, sessaoAoVivo) {
-  const cartoes = MISSION_SLOTS.map((slot) => {
-    const ativa = estado.ativas[slot];
-    if (!ativa) return "";
-    const prog = missionProgress(ativa, sessaoAoVivo);
-    const pct = Math.max(0, Math.min(100, (prog.current / prog.target) * 100));
-    return (
-      `<div class="mission-card mission-active mission-card-${slot}">` +
-      `<p class="mission-line">${missaoRecompensaHtml(ativa.recompensa)}</p>` +
-      `<p class="mission-goal">${missaoTexto(ativa)}</p>` +
-      `<div class="mission-progress-track"><div class="mission-progress-fill" data-mission-fill="${slot}" style="width:${pct}%"></div></div>` +
-      `<p class="mission-progress-text" data-mission-progress="${slot}">${missaoProgressoTexto(ativa, prog)}</p>` +
-      `<button class="btn-mission-desistir mission-btn-ghost" type="button" data-mission-slot="${slot}">Desistir</button>` +
-      "</div>"
-    );
-  }).join("");
-  if (!cartoes) return "";
-  return `<section class="mission-subpanel"><h3 class="mission-subpanel-title">Missões Ativas</h3>${cartoes}</section>`;
-}
-
-// Sub-painel de UMA dificuldade: mostra os tipos ainda POR ESCOLHER dessa
-// dificuldade (2 se já há uma ativa - a 3ª mudou-se para "Missões Ativas",
-// ver acima - ou as 3 nos outros casos). Cada tipo mostrado tem um de 3
-// estados:
-//   - concluído este mês: cartão apagado, sem botão (só ESSE tipo -
-//     2026-09-16, concluir um tipo já não bloqueia os outros 2 da mesma
-//     dificuldade, ver tipoJaConcluido()).
-//   - bloqueado: outro tipo desta MESMA dificuldade já está ativo, ou esta
-//     dificuldade está em cooldown de recusa (12h) - sem botão.
-//   - disponível: nenhuma ativa nesta dificuldade, sem cooldown, e este
-//     tipo ainda não foi concluído este mês - botão "Aceitar".
-// As outras duas dificuldades nunca bloqueiam esta - só o que se passa
-// DENTRO da própria dificuldade importa.
-function renderMissionSlotBlock(estado, slot) {
-  const ativa = estado.ativas[slot];
-  const restante = ativa ? 0 : missionCooldownRestanteMs(estado, slot);
-
-  const cartoes = tiposDisponiveis(estado, slot)
-    .filter((m) => !(ativa && ativa.tipo === m.tipo))
-    .map((m) => {
-      const concluida = tipoJaConcluido(estado, slot, m.tipo);
-
-      if (concluida) {
-        return (
-          `<div class="mission-card mission-card-locked mission-card-${slot}">` +
-          `<p class="mission-line">${missaoRecompensaHtml(m.recompensa)}</p>` +
-          `<p class="mission-goal">${missaoTexto(m)}</p>` +
-          '<p class="mission-progress-text">Concluída este mês</p>' +
-          "</div>"
-        );
-      }
-
-      if (ativa || restante > 0) {
-        const motivo = ativa ? "Bloqueada" : `Bloqueada (${formatCooldownRestante(restante)})`;
-        return (
-          `<div class="mission-card mission-card-locked mission-card-${slot}">` +
-          `<p class="mission-line">${missaoRecompensaHtml(m.recompensa)}</p>` +
-          `<p class="mission-goal">${missaoTexto(m)}</p>` +
-          `<p class="mission-progress-text">${motivo}</p>` +
-          "</div>"
-        );
-      }
-
+  const ativas = Object.entries(estado.ativas);
+  if (!ativas.length) return "";
+  const cartoes = ativas
+    .map(([id, ativa]) => {
+      const prog = missionProgress(ativa, sessaoAoVivo);
+      const pct = Math.max(0, Math.min(100, (prog.current / prog.target) * 100));
       return (
-        `<div class="mission-card mission-card-${slot}">` +
-        `<p class="mission-line">${missaoRecompensaHtml(m.recompensa)}</p>` +
-        `<p class="mission-goal">${missaoTexto(m)}</p>` +
-        `<button class="mission-btn-accept btn-primary" type="button" data-mission-slot="${slot}" data-mission-tipo="${m.tipo}">Aceitar</button>` +
+        '<div class="mission-card mission-active">' +
+        `<p class="mission-line">${missaoRecompensaHtml(ativa.recompensa)}</p>` +
+        `<p class="mission-goal">${missaoTexto(ativa)}</p>` +
+        `<div class="mission-progress-track"><div class="mission-progress-fill" data-mission-fill="${id}" style="width:${pct}%"></div></div>` +
+        `<p class="mission-progress-text" data-mission-progress="${id}">${missaoProgressoTexto(ativa, prog)}</p>` +
+        `<button class="btn-mission-desistir mission-btn-ghost" type="button" data-mission-id="${id}">Desistir</button>` +
         "</div>"
       );
     })
     .join("");
+  return `<section class="mission-subpanel"><h3 class="mission-subpanel-title">Missões Ativas · ${ativas.length}/${MISSION_MAX_ATIVAS}</h3>${cartoes}</section>`;
+}
 
-  return `<section class="mission-subpanel"><h3 class="mission-subpanel-title">${MISSION_SLOT_LABEL[slot]}</h3>${cartoes}</section>`;
+// Lista das 9 missoes do mes (2026-09-21, sem dificuldade), ordenada pela
+// recompensa; as ativas ja estao em "Missões Ativas" e nao repetem aqui. Cada
+// uma mostrada tem um de 3 estados:
+//   - concluida este mes: cartao apagado, sem botao.
+//   - bloqueada: ja ha MISSION_MAX_ATIVAS ativas, ou desistiu-se de uma missao
+//     ha menos de 12h (mostra o tempo que falta) - sem botao.
+//   - disponivel: botao "Aceitar".
+function renderListaDeMissoes(estado) {
+  const restante = missionCooldownRestanteMs(estado);
+  const cheio = Object.keys(estado.ativas).length >= MISSION_MAX_ATIVAS;
+
+  const cartoes = todasAsMissoesDoMes(estado.mes)
+    .filter((m) => !estado.ativas[m.id])
+    .map((m) => {
+      const cabeca = `<p class="mission-line">${missaoRecompensaHtml(m.recompensa)}</p><p class="mission-goal">${missaoTexto(m)}</p>`;
+
+      if (missaoJaConcluida(estado, m)) {
+        return `<div class="mission-card mission-card-locked">${cabeca}<p class="mission-progress-text">Concluída este mês</p></div>`;
+      }
+
+      if (cheio || restante > 0) {
+        const motivo = restante > 0 ? `Bloqueada (${formatCooldownRestante(restante)})` : `Bloqueada (já tens ${MISSION_MAX_ATIVAS} ativas)`;
+        return `<div class="mission-card mission-card-locked">${cabeca}<p class="mission-progress-text">${motivo}</p></div>`;
+      }
+
+      return `<div class="mission-card">${cabeca}<button class="mission-btn-accept btn-primary" type="button" data-mission-aceitar="${m.id}">Aceitar</button></div>`;
+    })
+    .join("");
+
+  return `<section class="mission-subpanel"><h3 class="mission-subpanel-title">Missões do mês</h3>${cartoes}</section>`;
 }
 
 // Atualiza SÓ a barra/texto de progresso das missões de distância ativas,
@@ -616,16 +622,15 @@ function updateLiveMissionProgress(sessaoAoVivo) {
   verificarMissoesAoVivo(sessaoAoVivo);
 
   const estado = getMissionState();
-  MISSION_SLOTS.forEach((slot) => {
-    const ativa = estado.ativas[slot];
-    if (!ativa || (ativa.tipo !== "correr_km" && ativa.tipo !== "caminhar_km" && ativa.tipo !== "descobre_hex")) return;
+  Object.entries(estado.ativas).forEach(([id, ativa]) => {
+    if (ativa.tipo !== "correr_km" && ativa.tipo !== "caminhar_km" && ativa.tipo !== "descobre_hex") return;
     const prog = missionProgress(ativa, sessaoAoVivo);
     const pct = Math.max(0, Math.min(100, (prog.current / prog.target) * 100));
     const texto = missaoProgressoTexto(ativa, prog);
-    document.querySelectorAll(`[data-mission-fill="${slot}"]`).forEach((el) => {
+    document.querySelectorAll(`[data-mission-fill="${id}"]`).forEach((el) => {
       el.style.width = pct + "%";
     });
-    document.querySelectorAll(`[data-mission-progress="${slot}"]`).forEach((el) => {
+    document.querySelectorAll(`[data-mission-progress="${id}"]`).forEach((el) => {
       el.textContent = texto;
     });
   });
@@ -650,9 +655,9 @@ function renderMissionsPanel(sessaoAoVivo) {
   const mesLabel = missionMonthLabel(estado.mes);
 
   const corpo =
-    '<p class="mission-help">Podes ter uma missão ativa por dificuldade (3 no total) e concluir os 3 tipos de cada dificuldade por mês (9 no total). Desistir perde o progresso e bloqueia essa dificuldade 12h.</p>' +
+    `<p class="mission-help">Podes ter até ${MISSION_MAX_ATIVAS} missões ativas ao mesmo tempo e concluir as ${MISSION_TOTAL_TIPOS} do mês. Desistir perde o progresso e bloqueia novas missões durante ${Math.round(MISSION_REJECT_COOLDOWN_MS / 3600000)} h.</p>` +
     renderMissoesAtivas(estado, sessaoAoVivo) +
-    MISSION_SLOTS.map((slot) => renderMissionSlotBlock(estado, slot)).join("");
+    renderListaDeMissoes(estado);
 
   const html =
     `<div class="mission-head"><span class="mission-title">Missões · ${mesLabel}</span>` +
@@ -664,13 +669,13 @@ function renderMissionsPanel(sessaoAoVivo) {
 
     painel.querySelectorAll(".btn-mission-desistir").forEach((btn) => {
       btn.addEventListener("click", () => {
-        if (confirm("Desistir desta missão? Perdes o progresso e ficas 12 horas sem poder aceitar outra da mesma dificuldade.")) {
-          desistirMissao(btn.dataset.missionSlot);
+        if (confirm(`Desistir desta missão? Perdes o progresso e ficas ${Math.round(MISSION_REJECT_COOLDOWN_MS / 3600000)} horas sem poder ativar outra.`)) {
+          desistirMissao(btn.dataset.missionId);
         }
       });
     });
-    painel.querySelectorAll("[data-mission-slot][data-mission-tipo]").forEach((btn) => {
-      btn.addEventListener("click", () => aceitarMissao(btn.dataset.missionSlot, btn.dataset.missionTipo));
+    painel.querySelectorAll("[data-mission-aceitar]").forEach((btn) => {
+      btn.addEventListener("click", () => aceitarMissao(btn.dataset.missionAceitar));
     });
   });
 }
