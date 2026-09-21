@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.58.0",
+    title: "Botão Instalar a app",
+    changes: [
+      "A página de entrada tem agora o botão \"Instalar a app\": um toque e o Bootlands fica no ecrã inicial. No iPhone mostra os passos do Safari.",
+    ],
+  },
+  {
     version: "v6.57.0",
     title: "Instala o Bootlands",
     changes: [
