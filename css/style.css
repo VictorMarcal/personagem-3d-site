@@ -1188,6 +1188,7 @@ main {
 /* ---------- Popups -------------------------------------------------------- */
 
 #achievement-detail-modal,
+#mission-complete-modal,
 #horde-report-modal,
 .equip-upgrade-modal,
 #player-trophies-modal {
@@ -1202,6 +1203,7 @@ main {
 }
 
 #achievement-detail-modal.hidden,
+#mission-complete-modal.hidden,
 #horde-report-modal.hidden,
 .equip-upgrade-modal.hidden,
 #player-trophies-modal.hidden { display: none; }
@@ -1231,6 +1233,23 @@ main {
   font-family: var(--font-heading);
   font-size: 22px;
 }
+
+/* Popup "Missao concluida" (2026-09-21): a etiqueta da dificuldade leva a cor da
+   dificuldade, como os cartoes das missoes. */
+.mission-complete-slot {
+  margin: 0;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--sage-200);
+}
+#mission-complete-modal[data-slot="media"] .mission-complete-slot { background: #f8e5a6; }
+#mission-complete-modal[data-slot="dificil"] .mission-complete-slot { background: #f1c8bb; }
+#mission-complete-modal .wallet { justify-content: center; }
 
 .achievement-detail-close {
   position: absolute;

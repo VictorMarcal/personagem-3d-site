@@ -356,6 +356,71 @@ function concederRecompensaMissao(recompensa) {
 // sessao (opcional): { distanciaPorModo: { correr, caminhar } } da sessao que
 // acabou. So correr_km/caminhar_km a usam - cada uma so soma a sua propria
 // fatia (correr ou caminhar) ao acumulador.
+// Conclui UMA missao: regista-a nas concluidas, liberta a dificuldade, conta
+// para as conquistas, credita a recompensa e da feedback (toast + popup).
+// Partilhada pela verificacao de fim de treino e pela AO VIVO (abaixo) - o
+// jogador nao pode ficar sem resposta ate carregar em "Terminar" (bug
+// reportado 2026-09-21: "o sistema nao valida que uma missao foi concluida,
+// nao mostrou popup, nao deu medalha, nao deu feedback").
+function concluirMissao(estado, slot, ativa) {
+  estado.concluidas.push(slot + ":" + ativa.tipo);
+  estado.ativas[slot] = null;
+
+  if (typeof registarMissaoConcluidaVitalicio === "function") {
+    registarMissaoConcluidaVitalicio(slot, estado.concluidas.length);
+  }
+
+  concederRecompensaMissao(ativa.recompensa);
+  if (typeof showGameToast === "function") {
+    const r = ativa.recompensa;
+    const nome = typeof RESOURCE_BY_ID !== "undefined" && RESOURCE_BY_ID[r.recurso] ? RESOURCE_BY_ID[r.recurso].nome.toLowerCase() : r.recurso;
+    showGameToast(`Missão concluída! +${r.quantidade} de ${nome}`, "medalha");
+  }
+  mostrarMissaoConcluida(ativa);
+}
+
+// Popup "Missao concluida" (2026-09-21). Fila: se duas missoes fecham ao mesmo
+// tempo mostram-se uma a seguir a outra, cada uma com o seu "Continuar".
+const missoesConcluidasPorMostrar = [];
+
+function mostrarMissaoConcluida(ativa) {
+  missoesConcluidasPorMostrar.push(ativa);
+  const modal = document.getElementById("mission-complete-modal");
+  if (modal && modal.classList.contains("hidden")) mostrarProximaMissaoConcluida();
+}
+
+function mostrarProximaMissaoConcluida() {
+  const modal = document.getElementById("mission-complete-modal");
+  if (!modal) return;
+  const ativa = missoesConcluidasPorMostrar.shift();
+  if (!ativa) {
+    modal.classList.add("hidden");
+    return;
+  }
+  const r = ativa.recompensa || {};
+  const nomeRecurso = typeof RESOURCE_BY_ID !== "undefined" && RESOURCE_BY_ID[r.recurso] ? RESOURCE_BY_ID[r.recurso].nome : r.recurso;
+  const ic = typeof icon === "function" && r.recurso ? icon(r.recurso, 16) : "";
+  document.getElementById("mission-complete-goal").textContent = missaoTexto(ativa);
+  document.getElementById("mission-complete-slot").textContent = MISSION_SLOT_LABEL[ativa.slot] || "";
+  document.getElementById("mission-complete-reward").innerHTML = r.quantidade
+    ? `<span class="wallet-chip">${ic}+${r.quantidade} ${nomeRecurso}</span>`
+    : "";
+  modal.dataset.slot = ativa.slot || "";
+  modal.classList.remove("hidden");
+}
+
+function fecharMissaoConcluida() {
+  document.getElementById("mission-complete-modal").classList.add("hidden");
+  if (missoesConcluidasPorMostrar.length) mostrarProximaMissaoConcluida();
+}
+
+(function ligarPopupMissaoConcluida() {
+  const botao = document.getElementById("btn-close-mission-complete");
+  const modal = document.getElementById("mission-complete-modal");
+  if (botao) botao.addEventListener("click", fecharMissaoConcluida);
+  if (modal) modal.addEventListener("click", (e) => { if (e.target === modal) fecharMissaoConcluida(); });
+})();
+
 function verificarMissaoAtiva(sessao) {
   const estado = getMissionState();
   let mudou = false;
@@ -376,24 +441,35 @@ function verificarMissaoAtiva(sessao) {
     const prog = missionProgress(ativa);
     if (!prog.done) return;
 
-    estado.concluidas.push(slot + ":" + ativa.tipo);
-    estado.ativas[slot] = null;
     mudou = true;
-
-    if (typeof registarMissaoConcluidaVitalicio === "function") {
-      registarMissaoConcluidaVitalicio(slot, estado.concluidas.length);
-    }
-
-    concederRecompensaMissao(ativa.recompensa);
-    if (typeof showGameToast === "function") {
-      const r = ativa.recompensa;
-      const nome = typeof RESOURCE_BY_ID !== "undefined" && RESOURCE_BY_ID[r.recurso] ? RESOURCE_BY_ID[r.recurso].nome.toLowerCase() : r.recurso;
-      showGameToast(`Missão concluída! +${r.quantidade} de ${nome}`, "medalha");
-    }
+    concluirMissao(estado, slot, ativa);
   });
 
   if (mudou) saveMissionState(estado);
   renderMissionsPanel();
+}
+
+// Verificacao AO VIVO (2026-09-21): chamada a cada segundo durante um treino
+// (updateLiveMissionProgress, js/training.js) e sempre que algo muda a meio
+// (deposito encontrado, concelho aberto). Conclui logo qualquer missao cujo
+// progresso (incluindo a fatia da sessao em curso) ja chegou ao alvo. Depois
+// de concluida a missao sai das ativas, por isso o fim do treino nao a volta
+// a somar.
+function verificarMissoesAoVivo(sessaoAoVivo) {
+  const estado = getMissionState();
+  let mudou = false;
+  MISSION_SLOTS.forEach((slot) => {
+    const ativa = estado.ativas[slot];
+    if (!ativa) return;
+    if (!missionProgress(ativa, sessaoAoVivo).done) return;
+    mudou = true;
+    concluirMissao(estado, slot, ativa);
+  });
+  if (mudou) {
+    saveMissionState(estado);
+    renderMissionsPanel();
+  }
+  return mudou;
 }
 
 // --- texto ----------------------------------------------------------------
@@ -535,10 +611,14 @@ function renderMissionSlotBlock(estado, slot) {
 // elementos marcados com data-mission-fill/data-mission-progress - nunca
 // recria os cards/botões, por isso um toque em curso nunca é interrompido.
 function updateLiveMissionProgress(sessaoAoVivo) {
+  // Primeiro valida: se alguma acabou de ficar completa, conclui-a (o painel e
+  // redesenhado la dentro) em vez de so deixar a barra a 100 %.
+  verificarMissoesAoVivo(sessaoAoVivo);
+
   const estado = getMissionState();
   MISSION_SLOTS.forEach((slot) => {
     const ativa = estado.ativas[slot];
-    if (!ativa || (ativa.tipo !== "correr_km" && ativa.tipo !== "caminhar_km")) return;
+    if (!ativa || (ativa.tipo !== "correr_km" && ativa.tipo !== "caminhar_km" && ativa.tipo !== "descobre_hex")) return;
     const prog = missionProgress(ativa, sessaoAoVivo);
     const pct = Math.max(0, Math.min(100, (prog.current / prog.target) * 100));
     const texto = missaoProgressoTexto(ativa, prog);

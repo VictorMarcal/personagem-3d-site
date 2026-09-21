@@ -577,6 +577,8 @@ function verificarMinas(latitude, longitude) {
     if (typeof renderResourcesPanel === "function") renderResourcesPanel();
     if (typeof redrawHexMap === "function") redrawHexMap();
     if (typeof renderNavBadges === "function") renderNavBadges();
+    // Uma missao "encontra um deposito de X" pode ter acabado de ficar completa.
+    if (typeof verificarMissaoAtiva === "function") verificarMissaoAtiva();
   } else if (avisouRadar) {
     playMineRadar();
     vibrarRadar();

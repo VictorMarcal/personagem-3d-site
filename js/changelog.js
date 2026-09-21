@@ -7,6 +7,15 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.54.1",
+    title: "Missões Concluídas na Hora",
+    changes: [
+      "Corrigido: uma missão que ficava completa a meio de um treino só era dada como concluída quando carregavas em Terminar. Agora é validada logo que chega ao alvo.",
+      "Quando concluis uma missão aparece um popup com a recompensa, além do aviso e da medalha.",
+      "As missões de descobrir hexágonos passam a mostrar o progresso a subir durante o treino, e a de encontrar um depósito é validada no momento em que o encontras.",
+    ],
+  },
+  {
     version: "v6.54.0",
     title: "Nova Produção de Recursos",
     changes: [
