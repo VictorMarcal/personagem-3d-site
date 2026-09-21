@@ -1182,7 +1182,8 @@ Verificado no ponto de Braga: freguesia `R4135545` (nível 8) → concelho `R411
 
 - um hexágono só gera pedidos se **não cair dentro de nenhum concelho já conhecido** — e isso testa-se localmente, de graça (`pointInGeoJson`, ray casting). O custo é ~3 pedidos por concelho **novo** e **zero** enquanto se anda pelos já conhecidos
 - amostragem a H3 resolução 6 (~8 km), mais fina que o concelho mais pequeno, para nenhum passar despercebido
-- máximo 2 concelhos novos por abertura do mapa, com 1,1 s entre pedidos
+- até 12 zonas por ronda (v6.58.1; eram 2), com 1,1 s entre pedidos, **uma de cada vez**: depois de cada resposta os candidatos são recalculados (duas amostras da mesma zona já não gastam dois pedidos) e cada concelho novo é gravado e aplicado (`applyRegions`) logo, para os depósitos dele contarem sem esperar pelo fim. Uma zona sem novidade não se repete na mesma ronda; 2 erros seguidos (rede em baixo) terminam-na. Corre no arranque pós-login (`hydrateHexesFromSupabase` → `renderHexMap`) e a cada abertura do mapa, com trava contra duas rondas em simultâneo
+- **Porquê (2026-09-21)**: a cache de concelhos é só local, **por endereço**. No domínio novo (`bootlands.com`) começou vazia e, com 2 por abertura, os depósitos de Amares (concelho ainda por identificar) não contavam na Economia nem se desenhavam no mapa durante 2–3 aberturas — `todasAsMinas()` só olha para `unlockedConcelhos`. Simulado com os 122 hexágonos do Skllrx: Braga na 1.ª, Amares na 2.ª, Vila Verde e Guimarães na 3.ª
 - cache em `localStorage` (`STORAGE_KEY_DISTRICTS`, com número de versão — a versão antiga guardava distritos e é deitada fora)
 
 `polygon_threshold=0.0008` pede a simplificação da fronteira ao servidor: menos vértices para desenhar e para recortar, sem perder a forma.

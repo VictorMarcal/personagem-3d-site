@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.58.1",
+    title: "Depósitos de todos os concelhos",
+    changes: [
+      "Os concelhos por onde já passaste passam a ser identificados todos de uma vez ao entrares, e não dois de cada vez. Os depósitos de concelhos como Amares já contam para o ganho e aparecem no mapa logo no início.",
+    ],
+  },
+  {
     version: "v6.58.0",
     title: "Botão Instalar a app",
     changes: [

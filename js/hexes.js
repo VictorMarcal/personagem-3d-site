@@ -385,7 +385,12 @@ function redrawHexMap() {
 // A fronteira do concelho vem 7x mais leve que a do distrito (1,9 KB contra
 // 13,8 KB), por isso desenhar e recortar sai mais barato do que antes.
 const NOMINATIM_GAP_MS = 1100;
-const REGION_LOOKUPS_PER_OPEN = 2;
+// Zonas resolvidas de uma vez (2026-09-21): a cache de concelhos vive so no
+// telemovel (por endereco), por isso um aparelho/dominio novo comeca vazio e
+// com 2 por abertura os depositos de concelhos ainda nao identificados nem
+// contavam nem apareciam no mapa durante varias aberturas.
+const REGION_LOOKUPS_PER_OPEN = 12;
+const REGION_LOOKUP_MAX_ERRORS = 2;
 const REGION_CACHE_VERSION = 2;
 
 // Nivel administrativo em Portugal: 7 = concelho/municipio, 6 = distrito.
@@ -417,9 +422,9 @@ const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // concelho conhecido - e isso testa-se aqui, de graca. Assim o custo e de
 // ~3 pedidos por concelho NOVO e zero enquanto se anda pelos ja conhecidos,
 // em vez de um pedido por zona grande do mapa.
-function regionCandidates(cache, limit) {
+function regionCandidates(cache, limit, skip) {
   const known = cache.concelhos.map((c) => c.geojson);
-  const seen = new Set();
+  const seen = new Set(skip || []);
   const out = [];
   for (const cell of getDiscoveredHexIds()) {
     const [lat, lng] = h3.cellToLatLng(cell);
@@ -429,7 +434,7 @@ function regionCandidates(cache, limit) {
     const coarse = h3.cellToParent(cell, 6);
     if (seen.has(coarse)) continue;
     seen.add(coarse);
-    out.push([lat, lng]);
+    out.push([lat, lng, coarse]);
     if (out.length >= limit) break;
   }
   return out;
@@ -483,35 +488,56 @@ async function resolveRegionAt(lat, lng) {
   };
 }
 
+let identifyRegionsEmCurso = false;
+
+// Um candidato de cada vez, recalculado depois de cada resposta: dois pontos
+// da mesma zona ja nao gastam dois pedidos, e cada concelho novo e gravado e
+// aplicado logo (os depositos dele passam a contar sem esperar pelo fim).
 async function identifyRegions() {
-  const cache = loadRegionCache();
-  const candidates = regionCandidates(cache, REGION_LOOKUPS_PER_OPEN);
-  if (candidates.length === 0) return;
+  if (identifyRegionsEmCurso) return;
+  identifyRegionsEmCurso = true;
+  try {
+    const cache = loadRegionCache();
+    const semResultado = new Set();
+    let erros = 0;
 
-  let changed = false;
-  for (const [lat, lng] of candidates) {
-    try {
-      const found = await resolveRegionAt(lat, lng);
-      if (found) {
-        if (!cache.concelhos.some((c) => c.osmId === found.concelho.osmId)) {
-          cache.concelhos.push(found.concelho);
-          changed = true;
+    for (let i = 0; i < REGION_LOOKUPS_PER_OPEN; i += 1) {
+      const [candidato] = regionCandidates(cache, 1, semResultado);
+      if (!candidato) break;
+      const [lat, lng, zona] = candidato;
+
+      let mudou = false;
+      try {
+        const found = await resolveRegionAt(lat, lng);
+        if (found) {
+          if (!cache.concelhos.some((c) => c.osmId === found.concelho.osmId)) {
+            cache.concelhos.push(found.concelho);
+            mudou = true;
+          }
+          if (found.distrito && !cache.distritos.some((d) => d.osmId === found.distrito.osmId)) {
+            cache.distritos.push(found.distrito);
+            mudou = true;
+          }
         }
-        if (found.distrito && !cache.distritos.some((d) => d.osmId === found.distrito.osmId)) {
-          cache.distritos.push(found.distrito);
-          changed = true;
-        }
+        // Sem novidade (nada a resolver ou concelho ja conhecido): nao voltar
+        // a perguntar por esta zona nesta ronda.
+        if (!mudou) semResultado.add(zona);
+      } catch (e) {
+        // Sem rede ou servico em baixo: fica por identificar e tenta-se na
+        // proxima vez. O resto do mapa nunca e afetado.
+        semResultado.add(zona);
+        erros += 1;
+        if (erros >= REGION_LOOKUP_MAX_ERRORS) break;
       }
-    } catch (e) {
-      // Sem rede ou servico em baixo: fica por identificar e tenta-se noutra
-      // abertura do mapa. O resto do mapa nunca e afetado.
-    }
-    await sleepMs(NOMINATIM_GAP_MS);
-  }
 
-  if (changed) {
-    saveRegionCache(cache);
-    applyRegions(cache);
+      if (mudou) {
+        saveRegionCache(cache);
+        applyRegions(cache);
+      }
+      await sleepMs(NOMINATIM_GAP_MS);
+    }
+  } finally {
+    identifyRegionsEmCurso = false;
   }
 }
 
