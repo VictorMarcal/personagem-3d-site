@@ -63,24 +63,35 @@ function mulberry32(seed) {
 
 // --- producao ---------------------------------------------------------------
 //
-// So os DEPOSITOS encontrados produzem (2026-09-19, a pedido - "hexagonos que
-// nao tem nada, nao dao recursos"). Ate 2026-09-18 todos os hexagonos
-// descobertos rendiam 0,1/h de cada recurso e as minas 0,5/h, tudo x um
-// multiplicador de revisita 1,0-2,0 - tudo isso saiu. Agora:
-//   - hexagono sem deposito        -> 0
-//   - deposito encontrado, nivel N -> DEPOSITO_POR_HORA_POR_NIVEL x N do
-//                                     recurso desse deposito (0,3 / 0,6 / 0,9)
-// Sem multiplicadores. O nivel de cada deposito e fixo (ver
-// nivelDoDeposito, mais abaixo).
-const DEPOSITO_POR_HORA_POR_NIVEL = 0.3;
+// Formula (2026-09-21, a pedido - "ganho = 10 + ((0,1 x n) x (10 + n))", com
+// a ressalva de que o 10 e uma VARIAVEL a poder ser ajustada):
+//
+//   producao/h de um recurso = G + (B x n) x (G + n)
+//   G = EXPLORACAO_POR_HORA (ganho inicial, hoje 10)
+//   B = DEPOSITO_BONUS_FRACAO (0,1)
+//   n = depositos JA ENCONTRADOS desse recurso
+//
+// A curva acelera (cada deposito novo vale mais que o anterior): com G = 10,
+// n = 0 -> 10/h, 5 -> 17,5, 10 -> 30, 20 -> 70. Os depositos NAO tem nivel (o
+// nivel 1-3 de 2026-09-19 saiu, e o numero no icone do mapa tambem). Um
+// hexagono sem deposito continua a render 0, e nao ha multiplicadores de
+// revisita. Antes: exploracoes a 1/h + depositos a 0,3/0,6/0,9 por hora
+// conforme o nivel.
+const DEPOSITO_BONUS_FRACAO = 0.1;
+
+// Ganho por hora de UM recurso com n depositos encontrados. Isolada (e sem
+// tocar em nada do jogo) para se poder afinar/testar a formula.
+function ganhoPorHora(ganhoInicial, n) {
+  return ganhoInicial + DEPOSITO_BONUS_FRACAO * n * (ganhoInicial + n);
+}
 
 // Exploracoes da Fortaleza (2026-09-19, a pedido - "a nossa fortaleza vai ter
-// as 5 exploracoes, cada uma tem producao de 1 por hora"). Uma por recurso, sempre
-// ativas, independentes dos depositos do mapa: somam-se a eles. Ainda sem
-// evolucao (o jogador ainda nao decidiu se vai ser possivel evoluir).
+// as 5 exploracoes"). Uma por recurso, sempre ativas, independentes dos
+// depositos do mapa: somam-se a eles. Ainda sem evolucao. Producao inicial
+// 1 -> 10 por hora em 2026-09-21 (a pedido - "ganho inicial = 10 por hora").
 // Na vista 3D da Fortaleza vao aparecer como edificios (serraria, pedreira,
 // gruta de ferro, fazenda, poca de barro) - ainda nao modelados.
-const EXPLORACAO_POR_HORA = 1;
+const EXPLORACAO_POR_HORA = 10;
 const EXPLORACOES = [
   { recurso: "madeira", nome: "Serraria" },
   { recurso: "pedra", nome: "Pedreira" },
@@ -99,8 +110,12 @@ function producaoPorHora() {
   // de regioes vazia) a producao fica a 0 ate estar; ver depositosPorResolver().
   if (typeof todasAsMinas !== "function") return total;
   const encontradas = getMinasEncontradas();
+  const depositosPorRecurso = {};
   todasAsMinas().forEach((mina) => {
-    if (encontradas.has(mina.id)) total[mina.recurso] += DEPOSITO_POR_HORA_POR_NIVEL * mina.nivel;
+    if (encontradas.has(mina.id)) depositosPorRecurso[mina.recurso] = (depositosPorRecurso[mina.recurso] || 0) + 1;
+  });
+  RESOURCE_IDS.forEach((id) => {
+    total[id] = ganhoPorHora(total[id], depositosPorRecurso[id] || 0);
   });
 
   RESOURCE_IDS.forEach((id) => { total[id] = Math.round(total[id] * 100) / 100; });
@@ -289,8 +304,8 @@ function formatRecurso(valor) {
 // raiz quadrada (chegava a 14.5x, ~145 minas em Odemira - "é muito", a
 // pedido) e a escala linear com a area (>170x, insustentavel).
 //
-// Desde 2026-09-19 so os DEPOSITOS (as antigas minas) encontrados rendem,
-// cada um com um nivel fixo 1-3 (ver producaoPorHora/nivelDoDeposito).
+// Cada DEPOSITO (as antigas minas) encontrado aumenta o ganho do recurso dele
+// (ver ganhoPorHora/producaoPorHora); sem niveis desde 2026-09-21.
 //
 // NAO ESTAO VISIVEIS ate serem encontradas. Ha um radar de 1 km (2026-09-18 -
 // substitui os dois raios antigos, 500 m + 2,5 km, por um so): som "tim tim
@@ -322,19 +337,6 @@ function minasPorRecursoParaConcelho(concelho) {
   if (!area || area <= 0) return MINES_PER_RESOURCE_MIN;
   const fator = 1 + Math.log10(area / MINA_AREA_REFERENCIA_KM2);
   return Math.max(MINES_PER_RESOURCE_MIN, Math.round(MINES_PER_RESOURCE_MIN * fator));
-}
-
-// Nivel (1-3) de cada deposito (2026-09-19, a pedido - nasce com nivel fixo,
-// sem upgrades). Tem de ser DETERMINISTA e independente da posicao/ordem: usa
-// um hash so do id ("osmId:indice"), NUNCA o rand() de buildMinesFor - esse
-// gerador ja decide as posicoes das minas ja gravadas como encontradas, e
-// consumir mais um valor dele desalinharia tudo (ver o bug de 2026-09-18).
-// Distribuicao: 60% nivel 1, 30% nivel 2, 10% nivel 3.
-function nivelDoDeposito(minaId) {
-  const r = mulberry32(hashString("nivel:" + minaId))();
-  if (r < 0.6) return 1;
-  if (r < 0.9) return 2;
-  return 3;
 }
 
 // Gera UM LOTE de "quantidadePorRecurso" minas de cada recurso e acrescenta-o
@@ -386,7 +388,6 @@ function gerarLoteDeMinas(minas, hexesUsados, rand, gj, bbox, concelhoNome, osmI
       lat: hLat,
       lng: hLng,
       recurso: saca[colocadas],
-      nivel: nivelDoDeposito(id),
       concelho: concelhoNome,
     });
     colocadas += 1;
@@ -551,7 +552,7 @@ function verificarMinas(latitude, longitude) {
       achouAlguma = true;
       notarMinaEncontrada(mina.id);
       if (typeof showGameToast === "function") {
-        showGameToast("Depósito de " + RESOURCE_BY_ID[mina.recurso].nome.toLowerCase() + " encontrado (nível " + mina.nivel + ")!", "medalha");
+        showGameToast("Depósito de " + RESOURCE_BY_ID[mina.recurso].nome.toLowerCase() + " encontrado! O ganho deste recurso sobe.", "medalha");
       }
       return;
     }

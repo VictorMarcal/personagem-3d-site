@@ -1282,7 +1282,7 @@ Substitui por completo as estrelas colecionáveis (secção 19, removida) e as m
 | **Armadura** | Pele + Ferro |
 | **Fortaleza** | Pedra + Barro |
 | **Minas** | 10 de cada recurso no menor concelho do país, crescendo com a área (2026-09-18) — ver fórmula abaixo |
-| **Produção** (2026-09-19) | **Explorações da Fortaleza**: 1/h de cada recurso, sempre (ver abaixo). **Depósitos** encontrados: nível 1 = **0,3/h**, nível 2 = **0,6/h**, nível 3 = **0,9/h** do recurso do depósito, somado às explorações. Hexágono sem depósito = 0. **Sem multiplicadores** |
+| **Produção** (2026-09-21) | por recurso: **G + (0,1 × n) × (G + n)** com **G = 10/h** (variável `EXPLORACAO_POR_HORA`, exploração da Fortaleza, sempre ativa) e n = depósitos já encontrados desse recurso. Sem níveis nos depósitos, hexágono sem depósito = 0, **sem multiplicadores**. (Até 2026-09-20: exploração 1/h + depósitos de nível 1-3 a 0,3/0,6/0,9/h) |
 
 Os três pares possíveis de três materiais esgotam-se exatamente nas três peças: **nenhum material é privilegiado e cada um é pedido por duas peças**. E todas as combinações explicam-se sozinhas — arco de madeira com pontas de ferro, escudo de madeira coberto a pele, armadura de pele com rebites de ferro.
 
@@ -1301,7 +1301,17 @@ Os três pares possíveis de três materiais esgotam-se exatamente nas três pe�
 
 **As minas continuam invisíveis até serem encontradas** (radar a 1 km, ver abaixo — reclamadas ao entrar no hexágono — a mesma regra que descobre território). O que muda é só o que rende: antes um hexágono sem mina dava 0.
 
-### Depósitos com nível; hexágonos vazios deixam de render (2026-09-19, a pedido)
+### Produção por depósito, sem níveis (2026-09-21, a pedido — substitui os níveis de 09-19)
+
+*"Os depósitos não têm níveis; em contrapartida cada depósito descoberto aumenta os ganhos. Ganho inicial = 10 por hora."* — e, depois de duas leituras erradas (soma de 0,1/h; percentagem linear `G × (1 + 0,1 × n)`), a fórmula final: *"ganho = 10 + ((0,1 × n) × (10 + n))"*, com a nota de que **o 10 é uma variável** que pode ter de se ajustar.
+
+- **Fórmula** (`ganhoPorHora()` / `producaoPorHora()`, `js/resources.js`): `G + (B × n) × (G + n)`, com `G = EXPLORACAO_POR_HORA` (10), `B = DEPOSITO_BONUS_FRACAO` (0,1) e `n` = depósitos já encontrados **desse** recurso. Equivale a `G + B·n·G + B·n²`: **acelera** (cada depósito novo vale mais que o anterior). Com G = 10: n = 0 → 10/h · 1 → 11,1 · 2 → 12,4 · 3 → 13,9 · 5 → 17,5 · 10 → 30 · 15 → 47,5 · 20 → 70 · 24 → 91,6. Sem teto (o teto é o armazém da Fortaleza). Mudar o ganho inicial é editar só `EXPLORACAO_POR_HORA`.
+- **Removidos**: `nivelDoDeposito`, `DEPOSITO_POR_HORA_POR_NIVEL`, o campo `nivel` de cada depósito e o número desenhado no centro do ícone no mapa (`js/hexes.js`). O toast passa a "Depósito de X encontrado! O ganho deste recurso sobe.".
+- **Sem migração**: tudo é derivado ao vivo do checkpoint `recursos_desde`. Efeito imediato: o tempo desde o último checkpoint de cada jogador é recalculado a 10/h (com o teto da Fortaleza).
+
+**O texto abaixo descreve o modelo de níveis de 2026-09-19, hoje substituído** (mantido só como registo; a parte dos hexágonos vazios, dos multiplicadores removidos e do "mina → depósito" continua válida):
+
+### (Histórico) Depósitos com nível; hexágonos vazios deixam de render (2026-09-19, a pedido)
 
 Redesenho da economia: *"agora que existem mais minas e são mais fáceis de encontrar no próprio concelho, hexágonos que não têm nada, não dão recursos. As minas passam a chamar-se depósitos e têm níveis (1: 0,3/h · 2: 0,6/h · 3: 0,9/h). Não existem multiplicadores. Cada depósito tem um número no centro do ícone que indica o nível."*
 
@@ -1315,7 +1325,7 @@ Redesenho da economia: *"agora que existem mais minas e são mais fáceis de enc
 
 *"A nossa Fortaleza vai ter as 5 explorações (ainda sem saber se vai ser possível evoluir). Na visualização 3D vão existir uma serraria, uma pedreira, uma gruta de ferro, uma fazenda e uma poça de barro. Cada uma tem produção de 1 por hora."*
 
-- **Uma exploração por recurso**, sempre ativa desde o nível 1 da Fortaleza: Serraria → madeira, Pedreira → pedra, Gruta de ferro → ferro, Fazenda → pele, Poça de barro → barro. Cada uma dá `EXPLORACAO_POR_HORA = 1` (`js/resources.js`, lista `EXPLORACOES`).
+- **Uma exploração por recurso**, sempre ativa desde o nível 1 da Fortaleza: Serraria → madeira, Pedreira → pedra, Gruta de ferro → ferro, Fazenda → pele, Poça de barro → barro. Cada uma dá `EXPLORACAO_POR_HORA` (`js/resources.js`, lista `EXPLORACOES`) — **1/h ao início, 10/h desde 2026-09-21**.
 - **Soma-se aos depósitos do mapa** em `producaoPorHora()` — é a base garantida de 1/h de cada recurso, mesmo para quem ainda não encontrou nenhum depósito (e também num dispositivo novo, com a cache de concelhos vazia).
 - **Sem evolução por agora** — o jogador ainda não decidiu se as explorações vão poder subir de nível; não há custo, nível nem estado guardado. Tudo é derivado ao vivo do checkpoint `recursos_desde`, por isso a mudança aplica-se já a partir do deploy sem migração (o tempo desde o último checkpoint é recalculado com a taxa nova).
 - **UI**: o painel de Economia mostra uma linha "Fortaleza: Serraria · Pedreira · …" e a taxa `+X/h` de cada recurso já inclui a exploração.

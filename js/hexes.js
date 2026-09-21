@@ -333,18 +333,8 @@ function drawHexGrid() {
         ctx.fillText(RESOURCE_BY_ID[mina.recurso].icone, p.x, p.y);
       }
 
-      // Nivel do deposito (1-3, fixo - ver nivelDoDeposito, js/resources.js)
-      // no CENTRO do icone (2026-09-19, a pedido). Branco com contorno escuro
-      // para se ler sobre qualquer icone/fundo, sem sombra (o halo acima ja
-      // ficou desligado).
-      ctx.shadowBlur = 0;
-      ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(0,0,0,0.85)";
-      ctx.strokeText(String(mina.nivel), p.x, p.y);
-      ctx.fillStyle = "#fff";
-      ctx.fillText(String(mina.nivel), p.x, p.y);
-      ctx.font = "19px system-ui, -apple-system, sans-serif";
+      // (Ate 2026-09-20 aqui desenhava-se o nivel 1-3 do deposito no centro do
+      // icone; os depositos deixaram de ter nivel.)
     });
   }
 

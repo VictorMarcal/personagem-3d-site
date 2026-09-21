@@ -7,6 +7,14 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.54.0",
+    title: "Nova Produção de Recursos",
+    changes: [
+      "Cada exploração da Fortaleza passa a produzir 10 recursos por hora (antes 1).",
+      "Os depósitos deixam de ter nível: cada depósito que encontras aumenta o ganho desse recurso, e cada um vale mais do que o anterior (com 5 depósitos de madeira, a madeira passa de 10 para 17,5 por hora; com 10, para 30). O número no ícone do mapa desapareceu.",
+    ],
+  },
+  {
     version: "v6.53.0",
     title: "Nova Página de Entrada",
     changes: [
