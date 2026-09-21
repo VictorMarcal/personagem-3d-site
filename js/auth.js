@@ -169,6 +169,16 @@ const passwordResetInputEl = document.getElementById("password-reset-input");
 const btnPasswordResetConfirm = document.getElementById("btn-password-reset-confirm");
 const passwordResetStatusEl = document.getElementById("password-reset-status");
 
+// true entre abrir o link de recuperacao e a palavra-passe ficar definida:
+// nesse intervalo TODOS os eventos de sessao do Supabase (incluindo o
+// USER_UPDATED que updateUser dispara) sao ignorados pelo listener principal -
+// a sessao de recuperacao nao e um login, ver onAuthStateChange mais abaixo.
+// Ja arranca a true se o URL traz type=recovery: o supabase-js emite SIGNED_IN
+// ANTES de PASSWORD_RECOVERY para um link de recuperacao, e sem isto esse
+// primeiro evento arrancava o jogo por baixo do popup de nova palavra-passe.
+// Le-se de forma sincrona, antes de o supabase-js limpar o #hash do endereco.
+let passwordRecoveryEmFluxo = /[#&?]type=recovery\b/.test(window.location.hash + window.location.search);
+
 function openPasswordResetModal() {
   authModalEl.classList.add("hidden");
   passwordResetModalEl.classList.remove("hidden");
@@ -195,18 +205,26 @@ btnPasswordResetConfirm.addEventListener("click", async () => {
     passwordResetStatusEl.classList.add("auth-status-error");
     return;
   }
-  if (typeof showGameToast === "function") showGameToast("Palavra-passe guardada!", "medalha");
-  passwordResetModalEl.classList.add("hidden");
-  // A sessao de recuperacao ja e uma sessao valida - so nao foi tratada como
-  // login (o listener principal ignora PASSWORD_RECOVERY de proposito) ate
-  // a palavra-passe ficar definida, para nao arrancar o jogo com uma conta
-  // "a meio" de escolher a palavra-passe.
-  if (!bootstrapped && data.user) {
-    bootstrapped = true;
-    bootstrapAfterLogin(data.user).catch((err) => {
-      console.error("Falha ao preparar sessão após repor a palavra-passe:", err);
-    });
+  // Palavra-passe definida: NAO entra no jogo (2026-09-21, a pedido - "assim
+  // que a nova passe e definida... deveria saltar para a pagina de login
+  // novamente"). Termina a sessao de recuperacao SO NESTE APARELHO
+  // (scope "local" - o "global", que e a pre-definicao, desligava tambem os
+  // outros telemoveis do jogador, mesmo a meio de um treino) e volta ao login
+  // com o email ja preenchido, para entrar com a palavra-passe nova.
+  const emailDaConta = data && data.user ? data.user.email : "";
+  try {
+    await supabaseClient.auth.signOut({ scope: "local" });
+  } catch (err) {
+    console.error("Falha ao terminar a sessão de recuperação:", err);
   }
+  passwordRecoveryEmFluxo = false;
+  passwordResetInputEl.value = "";
+  passwordResetModalEl.classList.add("hidden");
+  authModalEl.classList.remove("hidden");
+  setEmailAuthMode("entrar");
+  if (emailDaConta) emailAuthEmailEl.value = emailDaConta;
+  emailAuthPasswordEl.value = "";
+  showEmailAuthStatus("Palavra-passe alterada! Entra com a nova palavra-passe.", false);
 });
 
 // --- HUD ------------------------------------------------------------------
@@ -464,9 +482,11 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   // btnPasswordResetConfirm). So depois de a definir e que se arranca o
   // jogo com esta sessao.
   if (event === "PASSWORD_RECOVERY") {
+    passwordRecoveryEmFluxo = true;
     openPasswordResetModal();
     return;
   }
+  if (passwordRecoveryEmFluxo) return;
   if (!session) return;
   hideAuthModal();
   if (bootstrapped) return;

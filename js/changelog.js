@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.50.2",
+    title: "Nova Palavra-passe",
+    changes: [
+      "Depois de definires a palavra-passe nova, a app volta ao ecrã de login (com o teu email já preenchido) em vez de entrar logo no jogo. Entras com a palavra-passe nova.",
+    ],
+  },
+  {
     version: "v6.50.1",
     title: "Teclado no Login",
     changes: [
