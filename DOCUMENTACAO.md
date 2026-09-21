@@ -44,6 +44,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/profile.js` | Aba de Perfil: histórico de treinos, agregados semana/mês, gráficos SVG |
 | `js/changelog.js` | Card "Versão da Aplicação" na aba Perfil: notas de atualização em linguagem simples (array `CHANGELOG`), traduzidas a partir do histórico técnico de versões |
 | `js/orientation.js` | Aviso de rodar para retrato em dispositivos touch — usa `screen.orientation` (rotação física), **não** `matchMedia("(orientation: landscape)")`: com o teclado aberto e `interactive-widget=resizes-content` a janela fica mais larga do que alta e o aviso tapava os campos de login (bug do Trello #9 reaberto a 2026-09-21, v6.50.1); `matchMedia` só como último recurso |
+| `manifest.webmanifest`, `sw.js`, `assets/Icons/app/` | PWA (2026-09-21): manifesto, service worker mínimo (sem cache) e os ícones da app — ver secção 24 |
 | `js/nav.js` | Barra de separadores inferior (Personagem/Treino/Batalhas/Troféus/Perfil), tema "Campo Aberto" — ver secção 15 |
 | `assets/arenaTeste.glb` | Modelo 3D do chão da arena da Masmorra (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Floor.glb` | Terreno/cenário da aba Reino › Fortaleza (secção 9), `loadSceneryFloor()` em `js/main.js` — WIP |
@@ -1666,3 +1667,14 @@ Os ataques dos monstros tiram dano à **Vida atual do jogador** — `getCurrentH
 
 - Números de combate do monstro placeholder (vida 20, ataque 4, defesa 0) são um primeiro palpite, sem nenhuma afinação contra o dano/vida reais do jogador — a rever quando houver modelos e stats a sério.
 - Sem recompensa nenhuma por repelir uma horda (só um toast "Horda repelida!") — por decidir se deve dar recursos/pontos, tal como as missões e os mini-bosses dão.
+
+## 24. PWA — instalar no ecrã inicial (2026-09-21, v6.57.0, a pedido)
+
+Primeiro passo para "tornar isto uma app" (o passo seguinte, a pedido, seria encapsular em Capacitor para Android). O site passa a poder **instalar-se** no telemóvel, com ícone próprio e sem a barra do navegador. **Não resolve o GPS com o ecrã bloqueado** (o site, instalado ou não, deixa de receber posição — ver secção 4.2); isso só se resolve com uma app nativa.
+
+- **`manifest.webmanifest`**: nome/short_name "Bootlands", `display: standalone`, `orientation: portrait`, `start_url` e `scope` `./`, cores `background_color` #f5ead8 (creme do tema) e `theme_color` #c67139 (terracota — barra de estado), 3 ícones (192 e 512 `any`, 512 `maskable`).
+- **Ícones** (`assets/Icons/app/`, 4 PNG RGBA: `icon-512`, `icon-192`, `apple-touch-icon` 180, `favicon-32`): terracota com o hexágono (a célula H3 do mapa) em creme e a Fortaleza no centro (o mesmo desenho do ícone `fortaleza`). **Gerados por script** (rasterizador próprio em Node + `zlib`, sem dependências), com o conteúdo dentro da zona segura de 80 % dos ícones `maskable`.
+- **`sw.js`**: service worker **mínimo e sem cache** — `fetch` a passar direto para a rede. Existe só para a app ser instalável. **De propósito não guarda nada**: o jogo atualiza-se várias vezes por dia (versões em `?v=`) e um cache podia prender um jogador numa versão antiga; também não há modo offline (o jogo precisa do Supabase). Registado no fim do `index.html`.
+- **`index.html`**: `<link rel="manifest">`, `theme-color`, favicon, `apple-touch-icon` e os metas `mobile-web-app-capable`/`apple-mobile-web-app-*`.
+- **Como instalar**: Chrome Android — menu (⋮) › **Instalar app** (ou Adicionar ao ecrã inicial). A app instalada partilha o `localStorage` e a sessão com o Chrome (mesmo endereço), por isso não pede novo login.
+- **Testado** no browser de desenvolvimento: manifesto lido (nome, standalone, 3 ícones com os tamanhos certos), service worker `activated` com escopo `/`, jogo a funcionar por trás dele, sem erros na consola. **Não testado** o botão "Instalar" num telemóvel real.

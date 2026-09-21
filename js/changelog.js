@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.57.0",
+    title: "Instala o Bootlands",
+    changes: [
+      "O Bootlands já pode ser instalado no ecrã inicial do telemóvel, com ícone próprio e sem a barra do navegador. No Chrome: menu (⋮) › Instalar app (ou Adicionar ao ecrã inicial).",
+    ],
+  },
+  {
     version: "v6.56.0",
     title: "Missões Sem Dificuldade",
     changes: [
