@@ -2588,6 +2588,21 @@ dd.summary-xp-row { color: var(--accent); font-size: 17px; }
   color: var(--muted-2);
 }
 
+/* Numero de depositos encontrados do recurso, ao lado do nome (2026-09-21). */
+.resource-name { min-width: 68px; }
+.resource-deposits {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--sage-200);
+  color: var(--sage-700);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 /* A mesma cor do hexagono no mapa - e o que liga o painel ao territorio. */
 .resource-dot {
   width: 12px;

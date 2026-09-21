@@ -84,6 +84,7 @@ function renderResourcesPanel() {
   const porHora = producaoPorHora();
   const nivel = getWarehouseLevel();
   const tecto = warehouseCap(nivel);
+  const depositos = depositosEncontradosPorRecurso();
 
   avisarRecursosCheios(stock, tecto);
 
@@ -98,7 +99,11 @@ function renderResourcesPanel() {
       return (
         // icon(r.id) usa a cor da familia definida em js/icons.js — a mesma
         // que o r.cor de js/resources.js, mas em traco em vez de bola cheia
-        "<dt>" + icon(r.id, 17) + r.nome + "</dt>" +
+        // O numero ao lado do nome e o n de depositos ja encontrados desse
+        // recurso (2026-09-21, a pedido) - o que faz subir o ganho por hora.
+        "<dt>" + icon(r.id, 17) + '<span class="resource-name">' + r.nome + "</span>" +
+        '<span class="resource-deposits" title="Depósitos encontrados de ' + r.nome.toLowerCase() + '">' +
+        icon("mina", 12) + depositos[r.id] + "</span></dt>" +
         '<dd class="' + (cheio ? "resource-full" : "") + '">' +
         formatRecurso(quantidade) + " / " + formatRecurso(tecto) +
         '<span class="resource-rate">' + (cheio ? "parada" : "+" + porHora[r.id].toFixed(1) + "/h") + "</span>" +

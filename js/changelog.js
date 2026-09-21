@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.54.3",
+    title: "Depósitos na Economia",
+    changes: [
+      "Na Economia, ao lado de cada recurso aparece agora o número de depósitos que já encontraste desse recurso (0, 1, 2, 3...). É esse número que faz subir o ganho por hora.",
+    ],
+  },
+  {
     version: "v6.54.2",
     title: "Corrida e Caminhada no Relatório",
     changes: [

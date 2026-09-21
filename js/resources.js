@@ -100,6 +100,20 @@ const EXPLORACOES = [
   { recurso: "barro", nome: "Poça de barro" },
 ];
 
+// Depositos JA ENCONTRADOS por recurso ({ ferro: 1, madeira: 0, ... }) - o "n"
+// da formula de producao e o numero mostrado ao lado de cada recurso no painel
+// de Economia. Todos os recursos vem sempre com um numero (0 se nenhum).
+function depositosEncontradosPorRecurso() {
+  const contagem = {};
+  RESOURCE_IDS.forEach((id) => { contagem[id] = 0; });
+  if (typeof todasAsMinas !== "function") return contagem;
+  const encontradas = getMinasEncontradas();
+  todasAsMinas().forEach((mina) => {
+    if (encontradas.has(mina.id) && mina.recurso in contagem) contagem[mina.recurso] += 1;
+  });
+  return contagem;
+}
+
 function producaoPorHora() {
   const total = {};
   RESOURCE_IDS.forEach((id) => { total[id] = 0; });
@@ -109,13 +123,9 @@ function producaoPorHora() {
   // depositos - se ainda nao estiver carregado (ex: dispositivo novo, cache
   // de regioes vazia) a producao fica a 0 ate estar; ver depositosPorResolver().
   if (typeof todasAsMinas !== "function") return total;
-  const encontradas = getMinasEncontradas();
-  const depositosPorRecurso = {};
-  todasAsMinas().forEach((mina) => {
-    if (encontradas.has(mina.id)) depositosPorRecurso[mina.recurso] = (depositosPorRecurso[mina.recurso] || 0) + 1;
-  });
+  const depositosPorRecurso = depositosEncontradosPorRecurso();
   RESOURCE_IDS.forEach((id) => {
-    total[id] = ganhoPorHora(total[id], depositosPorRecurso[id] || 0);
+    total[id] = ganhoPorHora(total[id], depositosPorRecurso[id]);
   });
 
   RESOURCE_IDS.forEach((id) => { total[id] = Math.round(total[id] * 100) / 100; });
