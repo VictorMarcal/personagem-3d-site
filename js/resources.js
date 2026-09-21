@@ -100,6 +100,18 @@ const EXPLORACOES = [
   { recurso: "barro", nome: "Poça de barro" },
 ];
 
+// LIMPEZA DO ARMAZEM (2026-09-21, a pedido - "limpa os recursos em armazem para
+// toda a gente, nao e justo"): o modelo de producao mudou (10/h + depositos) e
+// uns jogadores tinham stock acumulado com o modelo antigo. Qualquer stock cujo
+// checkpoint (recursos_desde) seja ANTERIOR a este instante (ms, 21/09/2026
+// 19:52 UTC+1) e descartado - stock a zero e checkpoint = agora - por
+// reconcileProgressWithServer (js/progress-sync.js). Tem de ser assim, e nao so
+// um UPDATE no servidor, porque recursos e um campo de MAXIMO entre aparelho e
+// servidor (mergeRecursosBases): um telemovel com o stock antigo repunha-o. Um
+// checkpoint posterior a este instante (o de quem ja limpou) nunca volta a ser
+// limpo.
+const RESET_RECURSOS_EM = 1790016756673;
+
 // Depositos JA ENCONTRADOS por recurso ({ ferro: 1, madeira: 0, ... }) - o "n"
 // da formula de producao e o numero mostrado ao lado de cada recurso no painel
 // de Economia. Todos os recursos vem sempre com um numero (0 se nenhum).

@@ -375,6 +375,16 @@ function reconcileProgressWithServer(serverProgress) {
   // minas hidratadas - ver mergeRecursosBases.
   merged.recursos = mergeRecursosBases(local.recursos, serverProgress.recursos);
   merged.recursos_desde = checkpointRecursosMaisAntigo(local.recursos_desde, serverProgress.recursos_desde);
+  // Limpeza do armazem (2026-09-21, ver RESET_RECURSOS_EM em js/resources.js):
+  // um checkpoint anterior ao reset significa stock antigo - zera-o e comeca de
+  // novo a contar agora. E o CHECKPOINT mais antigo dos dois lados que decide,
+  // por isso um aparelho que ainda tenha stock antigo tambem e apanhado.
+  if (typeof RESET_RECURSOS_EM !== "undefined" && Number(merged.recursos_desde) < RESET_RECURSOS_EM) {
+    const zerados = {};
+    (typeof RESOURCE_IDS !== "undefined" ? RESOURCE_IDS : Object.keys(merged.recursos || {})).forEach((id) => { zerados[id] = 0; });
+    merged.recursos = zerados;
+    merged.recursos_desde = Date.now();
+  }
   merged.minas_encontradas = [
     ...new Set([...(local.minas_encontradas || []), ...(serverProgress.minas_encontradas || [])]),
   ];

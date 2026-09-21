@@ -1310,6 +1310,14 @@ Os três pares possíveis de três materiais esgotam-se exatamente nas três pe�
 
 **As minas continuam invisíveis até serem encontradas** (radar a 1 km, ver abaixo — reclamadas ao entrar no hexágono — a mesma regra que descobre território). O que muda é só o que rende: antes um hexágono sem mina dava 0.
 
+### Limpeza do armazém de todos os jogadores (2026-09-21, v6.55.0, a pedido — *"limpa os recursos em armazém para toda a gente, não é justo"*)
+
+Uns jogadores tinham stock acumulado com o modelo de produção antigo (Skllrx ~800 de cada, os outros 77 a 200); com o novo (10/h) isso deixou de ser justo. **Stock de todos a zero**; nível da Fortaleza, equipamento, missões e pontos ficam.
+
+- **Não basta um `UPDATE`**: `recursos` está em `MONOTONIC`-ish (`mergeRecursosBases` = máximo de cada recurso entre aparelho e servidor), por isso um telemóvel com o stock antigo **repunha-o** — o mesmo problema das calorias de 09-16 (secção 14.1). A regra vive no código: `RESET_RECURSOS_EM` (`js/resources.js`, 2026-09-21 19:52 UTC+1); em `reconcileProgressWithServer` (`js/progress-sync.js`), se o **checkpoint mais antigo** dos dois lados (`recursos_desde`) for anterior a esse instante, o stock é zerado e o checkpoint passa a "agora". Um checkpoint posterior nunca volta a ser limpo.
+- **No servidor**: `player_progress.recursos` = 0 e `recursos_desde` = `RESET_RECURSOS_EM` para os 3 jogadores (SQL, depois de o código estar publicado). O checkpoint novo também **elimina o "prémio" retroativo** de recalcular o tempo desde o último checkpoint a 10/h.
+- **Caveat**: um telemóvel ainda com a versão antiga que faça um checkpoint (pagar/melhorar) depois do reset pode repor stock antigo com um checkpoint posterior; a regra só apanha checkpoints anteriores. Com 3 jogadores e um deploy de minutos, o risco é pequeno.
+
 ### Produção por depósito, sem níveis (2026-09-21, a pedido — substitui os níveis de 09-19)
 
 *"Os depósitos não têm níveis; em contrapartida cada depósito descoberto aumenta os ganhos. Ganho inicial = 10 por hora."* — e, depois de duas leituras erradas (soma de 0,1/h; percentagem linear `G × (1 + 0,1 × n)`), a fórmula final: *"ganho = 10 + ((0,1 × n) × (10 + n))"*, com a nota de que **o 10 é uma variável** que pode ter de se ajustar.

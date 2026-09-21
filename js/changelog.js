@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.55.0",
+    title: "Armazéns Limpos",
+    changes: [
+      "Os recursos guardados na Fortaleza foram repostos a zero para todos os jogadores, para o novo modelo de produção (10 por hora mais os depósitos) começar igual para toda a gente. O nível da Fortaleza, o equipamento e as missões não mudaram.",
+    ],
+  },
+  {
     version: "v6.54.3",
     title: "Depósitos na Economia",
     changes: [
