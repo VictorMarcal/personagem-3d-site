@@ -43,7 +43,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/training.js` | GPS, tracking de distância, sessões de treino, filtros de ruído, fila local de sessões pendentes para `training_sessions` |
 | `js/profile.js` | Aba de Perfil: histórico de treinos, agregados semana/mês, gráficos SVG |
 | `js/changelog.js` | Card "Versão da Aplicação" na aba Perfil: notas de atualização em linguagem simples (array `CHANGELOG`), traduzidas a partir do histórico técnico de versões |
-| `js/orientation.js` | Aviso de rodar para retrato em dispositivos touch |
+| `js/orientation.js` | Aviso de rodar para retrato em dispositivos touch — usa `screen.orientation` (rotação física), **não** `matchMedia("(orientation: landscape)")`: com o teclado aberto e `interactive-widget=resizes-content` a janela fica mais larga do que alta e o aviso tapava os campos de login (bug do Trello #9 reaberto a 2026-09-21, v6.50.1); `matchMedia` só como último recurso |
 | `js/nav.js` | Barra de separadores inferior (Personagem/Treino/Batalhas/Troféus/Perfil), tema "Campo Aberto" — ver secção 15 |
 | `assets/arenaTeste.glb` | Modelo 3D do chão da arena da Masmorra (secção 9), carregado por `js/main.js` via `GLTFLoader` |
 | `assets/Floor.glb` | Terreno/cenário da aba Reino › Fortaleza (secção 9), `loadSceneryFloor()` em `js/main.js` — WIP |

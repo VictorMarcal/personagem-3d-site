@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.50.1",
+    title: "Teclado no Login",
+    changes: [
+      "Corrigido: ao escrever a palavra-passe no telemóvel, o teclado fazia aparecer o aviso 'rode o dispositivo para o modo retrato' por cima dos campos. Agora o aviso só aparece se o telemóvel estiver mesmo deitado.",
+    ],
+  },
+  {
     version: "v6.50.0",
     title: "Bem-vindo ao Bootlands",
     changes: [
