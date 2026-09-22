@@ -102,6 +102,61 @@ a:hover { color: var(--accent-600); }
   padding: 18px 20px 10px;
 }
 
+/* Menu de Definicoes (2026-09-22): engrenagem no canto superior direito do
+   cabecalho, com um pequeno dropdown por baixo - ver js/settings.js. */
+.settings-wrap { position: relative; }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.icon-btn:hover { background: rgba(32, 30, 29, 0.06); }
+
+.settings-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  padding: 6px;
+  border-radius: var(--r-md);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+}
+
+.settings-menu.hidden { display: none; }
+
+.settings-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-menu-item:hover { background: var(--surface); }
+.settings-menu-item-danger { color: var(--accent-700); }
+
 .site-header h1 {
   font-size: 21px;
 }
@@ -1190,6 +1245,7 @@ main {
 #achievement-detail-modal,
 #mission-complete-modal,
 #horde-report-modal,
+#feedback-modal,
 .equip-upgrade-modal,
 #player-trophies-modal {
   position: fixed;
@@ -1205,12 +1261,14 @@ main {
 #achievement-detail-modal.hidden,
 #mission-complete-modal.hidden,
 #horde-report-modal.hidden,
+#feedback-modal.hidden,
 .equip-upgrade-modal.hidden,
 #player-trophies-modal.hidden { display: none; }
 
 .achievement-detail-box,
 .equip-upgrade-box,
-.player-trophies-box {
+.player-trophies-box,
+.feedback-box {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1309,6 +1367,49 @@ main {
 
 .equip-upgrade-box .btn-primary,
 .achievement-detail-box .btn-primary { width: 100%; }
+
+/* Popup "Dar feedback" (2026-09-22) - texto a esquerda, ao contrario do resto
+   da achievement-detail-box que e centrada, porque aqui o conteudo e um
+   formulario, nao uma mensagem curta. */
+.feedback-box { align-items: stretch; text-align: left; max-width: 360px; }
+.feedback-box h3 { text-align: center; }
+.feedback-box .auth-text { text-align: center; }
+
+.feedback-textarea {
+  height: auto;
+  min-height: 110px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  resize: vertical;
+  font-family: var(--font-body);
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.feedback-attach-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.feedback-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.feedback-preview.hidden { display: none; }
+
+.feedback-preview img {
+  max-width: 100%;
+  max-height: 160px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+}
 
 /* ---------- Avisos flutuantes --------------------------------------------- */
 

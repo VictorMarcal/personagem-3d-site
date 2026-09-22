@@ -23,12 +23,16 @@ document.getElementById("btn-reset-character-profile").addEventListener("click",
 // podia misturar-se com a de OUTRA conta que entrasse a seguir no mesmo
 // aparelho - o Supabase e sempre a fonte de verdade, por isso arrancar sem
 // nada em cache e seguro e mais simples do que tentar limpar so parte dela.
-document.getElementById("btn-sign-out").addEventListener("click", async () => {
+// Partilhada com o botao equivalente no menu de Definicoes (js/settings.js,
+// 2026-09-22) - o mesmo comportamento, dois sitios de onde disparar.
+async function signOutBootlands() {
   if (!confirm("Sair da tua conta?")) return;
   await supabaseClient.auth.signOut();
   localStorage.clear();
   window.location.reload();
-});
+}
+
+document.getElementById("btn-sign-out").addEventListener("click", signOutBootlands);
 
 // --- Definicoes: peso corporal (kg), pre-requisito da formula de calorias/
 // MET planeada (secção 17 da documentação) - so afeta o que ainda nao

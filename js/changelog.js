@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.59.0",
+    title: "Menu de Definições",
+    changes: [
+      "Nova engrenagem no canto superior direito: Sair e Dar feedback (texto + imagem opcional) num só sítio.",
+    ],
+  },
+  {
     version: "v6.58.1",
     title: "Depósitos de todos os concelhos",
     changes: [
