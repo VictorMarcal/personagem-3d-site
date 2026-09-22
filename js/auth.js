@@ -19,6 +19,9 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_5o0ebiPFcC8jKjQbpbok2A_p1ozZMEz
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 const authModalEl = document.getElementById("auth-modal");
+const landingViewEl = document.querySelector(".landing");
+const loginViewEl = document.getElementById("login-view");
+const btnLoginBack = document.getElementById("btn-login-back");
 const namePickerModalEl = document.getElementById("name-picker-modal");
 const namePickerInputEl = document.getElementById("name-picker-input");
 const btnNamePickerConfirm = document.getElementById("btn-name-picker-confirm");
@@ -41,6 +44,24 @@ function delay(ms) {
 
 function hideAuthModal() {
   authModalEl.classList.add("hidden");
+}
+
+// Landing (apresentação, sempre a vista por omissão) e login (formulário,
+// só depois de um "Criar a minha conta"/"Já tenho conta") separados
+// (2026-09-22, a pedido - "separa a landing page do login"): antes o cartão
+// de login vivia dentro do herói da landing; agora são dois ecrãs dentro do
+// mesmo #auth-modal, um de cada vez.
+function showLandingView() {
+  loginViewEl.classList.add("hidden");
+  landingViewEl.classList.remove("hidden");
+  authModalEl.scrollTo({ top: 0 });
+}
+
+function showLoginView(mode) {
+  landingViewEl.classList.add("hidden");
+  loginViewEl.classList.remove("hidden");
+  setEmailAuthMode(mode);
+  authModalEl.scrollTo({ top: 0 });
 }
 
 function currentDisplayName() {
@@ -82,15 +103,16 @@ function setEmailAuthMode(mode) {
   showEmailAuthStatus("", false);
 }
 
-// Botoes da pagina de entrada (index.html, .landing-final): escolhem o modo do
-// cartao de login, levam ao topo onde ele esta e poem o cursor no email.
+// Botoes da pagina de entrada (index.html, .landing-final): abrem o ecra de
+// login/criar conta ja no modo certo, com o cursor no email.
 document.querySelectorAll("[data-landing-cta]").forEach((btn) => {
   btn.addEventListener("click", () => {
-    setEmailAuthMode(btn.dataset.landingCta === "criar" ? "criar" : "entrar");
-    authModalEl.scrollTo({ top: 0, behavior: "smooth" });
+    showLoginView(btn.dataset.landingCta === "criar" ? "criar" : "entrar");
     emailAuthEmailEl.focus({ preventScroll: true });
   });
 });
+
+btnLoginBack.addEventListener("click", showLandingView);
 
 btnEmailAuthToggle.addEventListener("click", () => {
   setEmailAuthMode(emailAuthMode === "criar" ? "entrar" : "criar");
@@ -231,7 +253,7 @@ btnPasswordResetConfirm.addEventListener("click", async () => {
   passwordResetInputEl.value = "";
   passwordResetModalEl.classList.add("hidden");
   authModalEl.classList.remove("hidden");
-  setEmailAuthMode("entrar");
+  showLoginView("entrar");
   if (emailDaConta) emailAuthEmailEl.value = emailDaConta;
   emailAuthPasswordEl.value = "";
   showEmailAuthStatus("Palavra-passe alterada! Entra com a nova palavra-passe.", false);

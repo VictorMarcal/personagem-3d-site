@@ -974,12 +974,19 @@ Começou só com Google (até 2026-09-11), depois ganhou Apple e email/palavra-p
 
 O que se vê **sem sessão** deixou de ser só o cartão de login. Continua a viver dentro do `#auth-modal` (`index.html`), que agora é uma página com scroll (`.landing`, `css/style.css`); depois do login o `#auth-modal` recebe `.hidden` como sempre e nada disto aparece.
 
-- **Herói**: kicker "Um jogo que se joga a andar", nome, frase *"Conquista o teu concelho a pé."*, texto curto e 3 pílulas (300+ concelhos, 5 recursos, 23 h entre hordas). O **cartão de login é o `.auth-box` de sempre** com os mesmos ids (`form-email-auth`, `email-auth-email`, `btn-email-auth-*`, `email-auth-status`) — `js/auth.js` não mudou de lógica. Em telemóvel a ordem é texto → login → composição de hexágonos (o login fica no primeiro ecrã); a partir de 860 px passa a duas colunas (`grid-template-areas`).
+- **Herói**: kicker "Um jogo que se joga a andar", nome, frase *"Conquista o teu concelho a pé."*, texto curto e 3 pílulas (300+ concelhos, 5 recursos, 23 h entre hordas), com a composição de hexágonos ao lado (abaixo, em telemóvel). Em telemóvel a ordem é texto → hexágonos; a partir de 860 px passa a duas colunas (`grid-template-areas`).
 - **Composição de hexágonos** (SVG inline, sem imagem): 19 células pointy-top como as do mapa H3, com a Fortaleza ao centro, terreno descoberto à volta (madeira, ferro, pele, pedra e barro, com os PNG de `assets/Icons/Recursos/`, `?v=3`, um hexágono descoberto **vazio** de propósito — não dá recursos) e nevoeiro em volta. Cores pelas variáveis do tema. Gerada por script, não à mão.
 - **Como funciona** (Treina · Descobre · Constrói · Defende) e **A Fortaleza trabalha por ti** (as 5 explorações a 1/h: Serraria, Pedreira, Gruta de ferro, Fazenda, Poça de barro) — todos os números vêm do código (100 níveis da Fortaleza, horda a cada 23 h, +1 monstro por horda vencida). **Se estas regras mudarem, este texto do `index.html` tem de mudar também.**
-- **Convite final**: "Criar a minha conta" / "Já tenho conta" (`data-landing-cta`, `js/auth.js`) escolhem o modo do cartão, sobem ao topo do modal e põem o foco no email.
+- **Convite final**: "Criar a minha conta" / "Já tenho conta" (`data-landing-cta`, `js/auth.js`).
 - Sem imagens novas nem bibliotecas: só HTML/CSS/SVG, os ícones que já existiam e as fontes do tema (Caprasimo/Figtree). "300+ concelhos" reflete a tabela `CONCELHO_AREA_KM2` (306 entradas).
 - **Limitação conhecida**: o `#auth-modal` aparece no arranque até o Supabase confirmar se há sessão; um jogador que volta pode ver a página de entrada por instantes antes de entrar (já acontecia com o cartão, agora dura mais por ter mais conteúdo).
+
+**Login separado da landing (2026-09-22, v6.60.0, a pedido — *"separa a landing page do login"*)**: o cartão de login já não vive dentro do herói — saiu para `#login-view`, um segundo ecrã dentro do mesmo `#auth-modal`, escondido por omissão. `showLandingView()`/`showLoginView(modo)` (`js/auth.js`) alternam qual dos dois (`.landing` / `#login-view`) fica visível, sempre um de cada vez:
+
+- **"Criar a minha conta" / "Já tenho conta"** chamam `showLoginView("criar"|"entrar")` e põem o foco no email — a landing fica **só** apresentação, sem formulário nenhum lá dentro.
+- **`#login-view`** é o `.auth-box` de sempre, com os mesmos ids (`form-email-auth`, `email-auth-email`, `btn-email-auth-*`, `email-auth-status`) — `js/auth.js` não mudou de lógica de autenticação, só de onde o formulário vive no DOM. Tem um botão **"← Voltar"** (`btnLoginBack`) que chama `showLandingView()`.
+- **Depois de repor a palavra-passe** (mesma secção do fluxo de recuperação, mais abaixo no `js/auth.js`), o jogador cai diretamente em `showLoginView("entrar")` — nunca na landing, que não faria sentido a meio desse fluxo.
+- Arranque: `.landing` visível e `#login-view` escondido por omissão no HTML — quem abre o site pela primeira vez (ou depois de sair da conta) vê sempre a landing primeiro.
 
 ## 15. Aba de Perfil e histórico de treinos
 

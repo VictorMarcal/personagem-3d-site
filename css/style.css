@@ -1913,10 +1913,12 @@ main {
 #name-picker-input { max-width: none; text-align: center; }
 
 /* ---------- Pagina de entrada (2026-09-21, a pedido - "o home page esta pobre") ----------
-   Vive dentro do #auth-modal (so se ve sem sessao). O cartao de login e o
-   .auth-box de sempre, com os mesmos ids - so mudou onde esta. Mobile
-   primeiro: texto, cartao e depois o resto por baixo; a partir de 860px o
-   herói passa a duas colunas. */
+   Vive dentro do #auth-modal (so se ve sem sessao), como irmao de #login-view
+   (2026-09-22, a pedido - "separa a landing page do login": o cartao de
+   login saiu do herói para um ecrã próprio, mostrado só ao carregar em
+   "Criar a minha conta"/"Já tenho conta" - ver showLandingView/showLoginView
+   em js/auth.js). Mobile primeiro: texto e depois o resto por baixo; a
+   partir de 860px o herói passa a duas colunas (texto | arte). */
 #auth-modal {
   align-items: flex-start;
   padding: 24px 20px 40px;
@@ -1931,14 +1933,18 @@ main {
   gap: 56px;
 }
 
+/* Mesma especificidade que .hidden (0,1,0) - sem o par ID/classe aqui, quem
+   ganhava era quem viesse depois no ficheiro, nao a classe .hidden (bug
+   real, 2026-09-22: a landing ficava com display:flex mesmo escondida). */
+.landing.hidden { display: none; }
+
 .landing-hero {
   display: grid;
-  grid-template-areas: "text" "login" "art";
+  grid-template-areas: "text" "art";
   gap: 28px;
   align-items: center;
 }
 .landing-hero-text { grid-area: text; }
-.landing-login { grid-area: login; }
 .landing-art { grid-area: art; }
 
 .landing-hero-text { text-align: left; }
@@ -2009,13 +2015,23 @@ main {
 .landing-art .landing-hex-land { fill: var(--sage-200); stroke: var(--sage-500); stroke-width: 1.2; }
 .landing-art .landing-hex-home { fill: var(--accent); stroke: var(--accent-700); stroke-width: 1.4; }
 
-.landing-login {
-  justify-self: center;
-  padding: 26px 22px 22px;
-  border-radius: var(--r-lg);
-  background: var(--surface-2);
-  box-shadow: var(--shadow-md);
+/* Ecrã de login/criar conta (2026-09-22) - separado da landing (ver
+   #auth-modal acima): mesmo #auth-modal, sozinho a preencher o ecrã como os
+   outros popups simples (#name-picker-modal etc.), sem cartão à parte por
+   cima da landing como tinha antes. */
+#login-view {
+  display: flex;
+  align-self: center;
+  justify-content: center;
+  width: 100%;
 }
+
+/* Especificidade de ID bate a de .hidden (classe) - sem isto #login-view
+   ficava sempre visivel ao lado da landing, mesmo com .hidden aplicada. */
+#login-view.hidden { display: none; }
+
+#login-view .auth-box { text-align: center; }
+#login-view #btn-login-back { align-self: flex-start; }
 
 .landing-section {
   display: flex;
@@ -2147,9 +2163,8 @@ main {
 @media (min-width: 860px) {
   #auth-modal { padding-top: 48px; }
   .landing { gap: 80px; }
-  .landing-hero { grid-template-columns: 1.15fr 0.85fr; grid-template-areas: "text login" "art login"; gap: 32px 48px; align-items: start; }
-  .landing-art { margin-left: 0; align-self: start; }
-  .landing-login { justify-self: end; }
+  .landing-hero { grid-template-columns: 1.15fr 0.85fr; grid-template-areas: "text art"; gap: 32px 48px; align-items: center; }
+  .landing-art { margin-left: 0; }
   .landing-steps { grid-template-columns: repeat(4, 1fr); }
   .landing-expl { padding: 32px; }
 }

@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.0",
+    title: "Landing e login separados",
+    changes: [
+      "A página de entrada passa a ser só a apresentação do jogo — o login/criar conta abre num ecrã próprio ao tocar em \"Criar a minha conta\" ou \"Já tenho conta\", com um botão para voltar.",
+    ],
+  },
+  {
     version: "v6.59.0",
     title: "Menu de Definições",
     changes: [
