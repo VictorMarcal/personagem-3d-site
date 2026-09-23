@@ -798,8 +798,12 @@ function onPositionUpdate(position) {
   if (typeof setMapPlayerPosition === "function") {
     setMapPlayerPosition(latitude, longitude, position.coords.heading);
   }
-  // Minas (secção 21): aviso a 500 m e recolha ao entrar no hexagono delas.
-  if (typeof verificarMinas === "function") verificarMinas(latitude, longitude);
+  // Minas (secção 21): so o aviso de radar corre aqui, sem filtro nenhum -
+  // a RECOLHA (tentarEncontrarMina) corre mais abaixo, junto de
+  // recordDiscoveredHexForTraining, com os mesmos filtros (bug corrigido
+  // 2026-09-23: minas eram encontradas em leituras que nunca desbloqueavam
+  // o hexagono correspondente, ver comentario em js/resources.js).
+  if (typeof avisarMinasProximas === "function") avisarMinasProximas(latitude, longitude);
 
   // Em pausa (secção 4.7) a leitura so serve para reancorar: nao credita
   // distancia, nao classifica atividade, nao conta calorias.
@@ -933,6 +937,7 @@ function onPositionUpdate(position) {
         // facto contaram como deslocamento, para deriva de GPS parado nao
         // "descobrir" hexagonos vizinhos sem lá se ter ido.
         recordDiscoveredHexForTraining(latitude, longitude);
+        if (typeof tentarEncontrarMina === "function") tentarEncontrarMina(latitude, longitude);
         lastCountedPosition = { latitude, longitude, timestamp };
       } else {
         gpsDiag.abaixoMovimentoMin += 1;

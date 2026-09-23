@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.1",
+    title: "Depósitos alinhados com o mapa",
+    changes: [
+      "Corrigido: um depósito podia ser encontrado numa leitura de GPS que nunca chegava a desbloquear esse pedaço do mapa, fazendo o ícone aparecer fora da zona já descoberta.",
+    ],
+  },
+  {
     version: "v6.60.0",
     title: "Landing e login separados",
     changes: [

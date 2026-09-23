@@ -230,7 +230,7 @@ const STORAGE_KEY_REINO_ECONOMIA_SEEN_AT = "personagem.economiaVistaEm";
 // {osmId: timestamp} - preenchido em computeUnlockedRegions() (js/hexes.js)
 // na primeira vez que cada concelho aparece em unlockedConcelhos.
 const STORAGE_KEY_CONCELHOS_NOTADOS_EM = "personagem.concelhosNotadosEm";
-// {minaId: timestamp} - preenchido em verificarMinas() (js/resources.js) no
+// {minaId: timestamp} - preenchido em tentarEncontrarMina() (js/resources.js) no
 // momento em que cada mina e encontrada (paralelo ao STORAGE_KEY_MINES real,
 // que so guarda os ids, sem quando).
 const STORAGE_KEY_MINAS_NOTADAS_EM = "personagem.minasNotadasEm";

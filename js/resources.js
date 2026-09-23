@@ -495,7 +495,7 @@ function minasEncontradasCount() {
 // sincronizados com o Supabase (player_progress.minas_encontradas) - sem
 // data de quando cada uma foi encontrada. Isto guarda essa data à parte,
 // só localmente (STORAGE_KEY_MINAS_NOTADAS_EM), preenchida uma única vez
-// por mina no momento em que verificarMinas() a encontra.
+// por mina no momento em que tentarEncontrarMina() a encontra.
 function notarMinaEncontrada(minaId) {
   let notas;
   try {
@@ -534,10 +534,63 @@ function contarMinasNaoVistas() {
 
 // Uma mina e reclamada ao entrar NO HEXAGONO dela - a mesma regra que
 // descobre territorio, por isso nao ha duas nocoes diferentes de "cheguei
-// la". Os avisos sonoros a 500 m e a 2,5 km sao so aviso: nao apanham nada -
-// so o segundo (mais proximo) toca se os dois calharem na mesma leitura de
-// GPS, para nao sobrepor sons.
-function verificarMinas(latitude, longitude) {
+// la": chamada por js/training.js do MESMO sitio que recordDiscoveredHexForTraining,
+// so depois de passar pelos filtros de precisao/velocidade/pausa/paragem
+// (nunca antes deles).
+//
+// Bug corrigido (2026-09-23, reportado com screenshot: "Descobri um deposito
+// sem ter desbloqueado o terreno?" - o icone aparecia fora da zona a cores no
+// mapa). Ate aqui esta funcao corria SEM NENHUM FILTRO, numa leitura de GPS
+// qualquer, ANTES dos filtros de precisao/velocidade/pausa/paragem que
+// recordDiscoveredHexForTraining tem de passar - apesar do comentario acima
+// dizer "a mesma regra", na pratica uma mina podia ser encontrada (ex: um
+// unico salto de GPS impreciso, ou parado, ou dentro do periodo de pausa) sem
+// o hexagono correspondente alguma vez ficar marcado como descoberto, dando
+// exatamente este desencontro visual. Ver avisarMinasProximas() abaixo para
+// os avisos sonoros de radar (esses continuam a correr sem filtro nenhum -
+// sao so um aviso, nao alteram estado nenhum).
+function tentarEncontrarMina(latitude, longitude) {
+  const minas = todasAsMinas();
+  if (minas.length === 0) return;
+
+  const encontradas = getMinasEncontradas();
+  let hexAtual = null;
+  try {
+    hexAtual = h3.latLngToCell(latitude, longitude, getHexResolution());
+  } catch (e) {
+    return;
+  }
+
+  let achouAlguma = false;
+
+  minas.forEach((mina) => {
+    if (encontradas.has(mina.id)) return;
+    if (mina.hexId !== hexAtual) return;
+
+    encontradas.add(mina.id);
+    minasRadarAvisadas.delete(mina.id);
+    achouAlguma = true;
+    notarMinaEncontrada(mina.id);
+    if (typeof showGameToast === "function") {
+      showGameToast("Depósito de " + RESOURCE_BY_ID[mina.recurso].nome.toLowerCase() + " encontrado! O ganho deste recurso sobe.", "medalha");
+    }
+  });
+
+  if (!achouAlguma) return;
+  saveMinasEncontradas(encontradas);
+  playMineFound();
+  if (typeof renderResourcesPanel === "function") renderResourcesPanel();
+  if (typeof redrawHexMap === "function") redrawHexMap();
+  if (typeof renderNavBadges === "function") renderNavBadges();
+  // Uma missao "encontra um deposito de X" pode ter acabado de ficar completa.
+  if (typeof verificarMissaoAtiva === "function") verificarMissaoAtiva();
+}
+
+// Avisos sonoros a 500 m e a 2,5 km (secção 21) - so aviso, nao apanham
+// nada, por isso continuam a correr em TODA leitura de GPS aceite pelo
+// browser, sem nenhum dos filtros de tentarEncontrarMina() acima. So o mais
+// proximo toca se dois mina calharem na mesma leitura, para nao sobrepor sons.
+function avisarMinasProximas(latitude, longitude) {
   const minas = todasAsMinas();
   if (minas.length === 0) return;
   if (typeof haversineDistance !== "function") return;
@@ -555,29 +608,10 @@ function verificarMinas(latitude, longitude) {
   if (mineAudioCtx && mineAudioCtx.state === "suspended") mineAudioCtx.resume().catch(() => {});
 
   const encontradas = getMinasEncontradas();
-  let hexAtual = null;
-  try {
-    hexAtual = h3.latLngToCell(latitude, longitude, getHexResolution());
-  } catch (e) {
-    return;
-  }
-
-  let achouAlguma = false;
   let avisouRadar = false;
 
   minas.forEach((mina) => {
     if (encontradas.has(mina.id)) return;
-
-    if (mina.hexId === hexAtual) {
-      encontradas.add(mina.id);
-      minasRadarAvisadas.delete(mina.id);
-      achouAlguma = true;
-      notarMinaEncontrada(mina.id);
-      if (typeof showGameToast === "function") {
-        showGameToast("Depósito de " + RESOURCE_BY_ID[mina.recurso].nome.toLowerCase() + " encontrado! O ganho deste recurso sobe.", "medalha");
-      }
-      return;
-    }
 
     const metros = haversineDistance(latitude, longitude, mina.lat, mina.lng);
     if (metros <= MINE_RADAR_RADIUS_M) {
@@ -593,20 +627,11 @@ function verificarMinas(latitude, longitude) {
     }
   });
 
-  if (achouAlguma) {
-    saveMinasEncontradas(encontradas);
-    playMineFound();
-    if (typeof renderResourcesPanel === "function") renderResourcesPanel();
-    if (typeof redrawHexMap === "function") redrawHexMap();
-    if (typeof renderNavBadges === "function") renderNavBadges();
-    // Uma missao "encontra um deposito de X" pode ter acabado de ficar completa.
-    if (typeof verificarMissaoAtiva === "function") verificarMissaoAtiva();
-  } else if (avisouRadar) {
-    playMineRadar();
-    vibrarRadar();
-    if (typeof showGameToast === "function") {
-      showGameToast("Existe um depósito no raio de 1km", "aviso");
-    }
+  if (!avisouRadar) return;
+  playMineRadar();
+  vibrarRadar();
+  if (typeof showGameToast === "function") {
+    showGameToast("Existe um depósito no raio de 1km", "aviso");
   }
 }
 
