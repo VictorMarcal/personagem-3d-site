@@ -132,6 +132,13 @@ function translateAuthError(error) {
   if (/auth session missing|session.*expired|invalid.*(token|refresh)/i.test(msg)) {
     return "O link de recuperação expirou ou já foi usado. Pede um novo em \"Esqueceste a palavra-passe?\".";
   }
+  // Beta fechada (2026-09-24): o Supabase Auth embrulha a exceção real do
+  // trigger (handle_new_user) numa mensagem genérica - isto é o "apanha tudo"
+  // para quem passar pela verificação prévia (beta_vagas_disponiveis) mas
+  // perder a corrida para a última vaga por segundos.
+  if (/database error saving new user/i.test(msg)) {
+    return "As inscrições da beta estão fechadas por agora — sem vagas.";
+  }
   return msg || "Não foi possível continuar. Tenta novamente.";
 }
 
@@ -148,6 +155,16 @@ formEmailAuthEl.addEventListener("submit", async (event) => {
   showEmailAuthStatus("", false);
 
   if (emailAuthMode === "criar") {
+    // Beta fechada com limite de contas (2026-09-24, a pedido). A fronteira
+    // real é o próprio trigger que cria o perfil (handle_new_user, SQL) -
+    // isto só evita o jogador preencher tudo para levar com um erro
+    // genérico do Postgres no fim.
+    const { data: haVagas, error: erroVagas } = await supabaseClient.rpc("beta_vagas_disponiveis");
+    if (!erroVagas && haVagas === false) {
+      btnEmailAuthSubmit.disabled = false;
+      showEmailAuthStatus("As inscrições da beta estão fechadas por agora — sem vagas.", true);
+      return;
+    }
     const { data, error } = await supabaseClient.auth.signUp({
       email,
       password,

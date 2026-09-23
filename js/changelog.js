@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.4",
+    title: "Beta fechada",
+    changes: [
+      "As inscrições passam a ter um limite de contas, enquanto o jogo estiver em fase de testes.",
+    ],
+  },
+  {
     version: "v6.60.3",
     title: "Mensal nunca passa do vitalício",
     changes: [
