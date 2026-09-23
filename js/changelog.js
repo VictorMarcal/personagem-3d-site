@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.2",
+    title: "Leaderboard mensal corrigido",
+    changes: [
+      "Corrigido: sair da conta podia zerar por engano os pontos do mês no leaderboard, fazendo um jogador com muito histórico aparecer atrás de outro com poucos dias de conta.",
+    ],
+  },
+  {
     version: "v6.60.1",
     title: "Depósitos alinhados com o mapa",
     changes: [

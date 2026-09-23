@@ -38,24 +38,39 @@ function medalAchievementId(medal, month) {
   return `medal_${medal}_${month.replace("-", "_")}`;
 }
 
-// Busca a linha do leaderboard do jogador e hidrata a distancia mensal
-// LOCAL a partir dela (leaderboard e' a fonte de verdade para isto, tal
-// como player_progress e' para o resto do progresso - ver
-// js/progress-sync.js), mesma guarda de SYNC_PENDING_KEY que o resto do
-// progresso ja usa (nao sobrescreve uma mutacao local ainda por
-// confirmar). Devolve a linha para quem precisar dela sem outro pedido
-// (checkMonthlyRollover abaixo).
+// Busca a linha do leaderboard do jogador e hidrata a distancia/calorias
+// mensais LOCAIS a partir dela (leaderboard e' a fonte de verdade para
+// isto, tal como player_progress e' para o resto do progresso - ver
+// js/progress-sync.js). Devolve a linha para quem precisar dela sem outro
+// pedido (checkMonthlyRollover abaixo).
 //
 // Chamada logo no arranque do login (js/auth.js bootstrapAfterLogin),
 // ANTES de qualquer passo que possa desbloquear uma conquista ou marcar
 // progresso (checkFrequencyAchievementsFromSessions, claimOwnMedals
 // abaixo, etc.) - qualquer um destes pode chamar queueProgressSync(), que
-// sobe o valor LOCAL de STORAGE_KEY_MONTHLY_DISTANCE_M (nao hidratado
-// ainda = 0/desatualizado) para o leaderboard, apagando em definitivo o
-// valor real do servidor antes de la chegar a ser lido. Bug real
-// encontrado em 2026-08-04 (ao restaurar manualmente uma sessao de
-// treino, o `best_streak_days` a subir disparou um sync a meio do login,
-// antes deste pedido correr, e reverteu a distancia mensal para 0).
+// sobe o valor LOCAL para o leaderboard.
+//
+// MAXIMO entre local e servidor, nunca "servidor ganha sempre" nem
+// "servidor so entra se nao houver mutacao pendente" (2026-09-23, bug
+// reportado com screenshot: "os valores no leaderboard mensal não fazem
+// sentido" - um jogador de nivel alto e muitos meses de historico apareceu
+// com menos XP mensal que uma jogadora na primeira semana de conta).
+// Causa: a guarda antiga só hidratava quando `SYNC_PENDING_KEY` NÃO estava
+// "true" - mas reconcileProgressWithServer (chamado ANTES desta função, no
+// mesmo arranque) marca esse mesmo `SYNC_PENDING_KEY` como "true" sempre
+// que QUALQUER campo do progresso divergir entre local e servidor, o que é
+// o caso comum de qualquer jogador ativo (recursos, missões, etc. mudam o
+// tempo todo) - ou seja, esta hidratação ficava praticamente **sempre**
+// bloqueada. Isso só passou a doer a sério quando o valor LOCAL de
+// mensal/kcal ficava incorretamente a zero (ex: `localStorage.clear()` ao
+// sair da conta, secção 25) - a próxima sincronização normal subia esse
+// zero para o servidor, apagando em definitivo o total mensal real. Corrigido
+// com o mesmo princípio já usado nos campos monótonos de player_progress
+// (secção 14.1): o maior dos dois lados vence, nunca um valor mais baixo -
+// só quando os dois lados concordam no MÊS (`month_reference`), para não
+// comparar a sobra de um mês antigo, ainda por rodar num dos lados, com o
+// início de um mês novo no outro (checkMonthlyRollover, mais abaixo, trata
+// dessa transição à parte).
 async function hydrateMonthlyDistanceFromServer() {
   if (!currentUserId) return null;
 
@@ -65,9 +80,11 @@ async function hydrateMonthlyDistanceFromServer() {
     .eq("user_id", currentUserId)
     .maybeSingle();
 
-  if (own && localStorage.getItem(SYNC_PENDING_KEY) !== "true") {
-    localStorage.setItem(STORAGE_KEY_MONTHLY_DISTANCE_M, String(own.monthly_distance_m || 0));
-    localStorage.setItem(STORAGE_KEY_MONTHLY_KCAL, String(own.monthly_calories_kcal || 0));
+  if (own) {
+    if (own.month_reference === getMonthReference()) {
+      localStorage.setItem(STORAGE_KEY_MONTHLY_DISTANCE_M, String(Math.max(getMonthlyDistanceM(), Number(own.monthly_distance_m) || 0)));
+      localStorage.setItem(STORAGE_KEY_MONTHLY_KCAL, String(Math.max(getMonthlyCaloriesKcal(), Number(own.monthly_calories_kcal) || 0)));
+    }
     setMonthReference(own.month_reference || formatMonthKey(new Date()));
   }
 
