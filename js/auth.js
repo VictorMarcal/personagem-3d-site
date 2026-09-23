@@ -103,6 +103,27 @@ function setEmailAuthMode(mode) {
   showEmailAuthStatus("", false);
 }
 
+// Anuncio de beta fechada na landing (2026-09-24, a pedido - "deixa esse
+// aviso/anuncio no site de que estamos em beta fechado e que temos vagas
+// para x pessoas experimentarem"). beta_vagas_restantes() e a mesma funcao
+// usada para bloquear "Criar conta" quando esgota - aqui e so para mostrar
+// o numero, por isso falhas de rede ficam em silencio (a landing funciona
+// na mesma sem o anuncio).
+const landingBetaBannerEl = document.getElementById("landing-beta-banner");
+
+async function mostrarAnuncioDeBeta() {
+  if (!landingBetaBannerEl) return;
+  const { data: vagas, error } = await supabaseClient.rpc("beta_vagas_restantes");
+  if (error || typeof vagas !== "number") return;
+
+  landingBetaBannerEl.textContent =
+    vagas > 0
+      ? `Beta fechada — ${vagas} vaga${vagas === 1 ? "" : "s"} disponíve${vagas === 1 ? "l" : "is"} para experimentar`
+      : "Beta fechada — sem vagas disponíveis neste momento";
+  landingBetaBannerEl.classList.remove("hidden");
+}
+mostrarAnuncioDeBeta();
+
 // Botoes da pagina de entrada (index.html, .landing-final): abrem o ecra de
 // login/criar conta ja no modo certo, com o cursor no email.
 document.querySelectorAll("[data-landing-cta]").forEach((btn) => {
@@ -159,8 +180,8 @@ formEmailAuthEl.addEventListener("submit", async (event) => {
     // real é o próprio trigger que cria o perfil (handle_new_user, SQL) -
     // isto só evita o jogador preencher tudo para levar com um erro
     // genérico do Postgres no fim.
-    const { data: haVagas, error: erroVagas } = await supabaseClient.rpc("beta_vagas_disponiveis");
-    if (!erroVagas && haVagas === false) {
+    const { data: vagasRestantes, error: erroVagas } = await supabaseClient.rpc("beta_vagas_restantes");
+    if (!erroVagas && vagasRestantes <= 0) {
       btnEmailAuthSubmit.disabled = false;
       showEmailAuthStatus("As inscrições da beta estão fechadas por agora — sem vagas.", true);
       return;

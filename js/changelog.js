@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.5",
+    title: "Anúncio de beta na landing",
+    changes: [
+      "A página de entrada mostra agora quantas vagas há para experimentar o Bootlands.",
+    ],
+  },
+  {
     version: "v6.60.4",
     title: "Beta fechada",
     changes: [

@@ -1938,6 +1938,23 @@ main {
    real, 2026-09-22: a landing ficava com display:flex mesmo escondida). */
 .landing.hidden { display: none; }
 
+/* Anuncio de beta fechada (2026-09-24, a pedido) - pilula centrada no topo
+   da landing, antes do herói. Numero de vagas vem de beta_vagas_restantes()
+   (js/auth.js) - escondido ate essa resposta chegar, para nunca mostrar um
+   número errado por instantes. */
+.landing-beta-banner {
+  align-self: center;
+  margin: 0;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--accent-200);
+  color: var(--accent-700);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  text-wrap: balance;
+}
+
 .landing-hero {
   display: grid;
   grid-template-areas: "text" "art";
