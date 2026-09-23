@@ -298,7 +298,10 @@ function mergeMissoes(local, server) {
 // dados e nao por uma marca "ja corrigi", auto-repara-se mesmo que um
 // aparelho antigo volte a subir o valor inflacionado. So BAIXA (nunca sobe) e
 // so quando ha pelo menos uma sessao, para uma lista vazia/falha de rede nunca
-// apagar progresso. O mensal fica no maximo igual ao vitalicio.
+// apagar progresso. O mensal nunca passa do vitalicio - garantido no proprio
+// getMonthlyCaloriesKcal() (js/monthly-medals.js, 2026-09-23), nao aqui: essa
+// garantia so no arranque nao chegava a uma aba ja aberta hà muito, que podia
+// reenviar um mensal inflacionado ate ao proximo login.
 const CALORIAS_TOLERANCIA_KCAL = 1;
 
 function corrigirCaloriasComSessoes(sessoesServidor) {
@@ -317,10 +320,6 @@ function corrigirCaloriasComSessoes(sessoesServidor) {
   }
   if (getBestSessionCaloriesKcal() > melhor + CALORIAS_TOLERANCIA_KCAL) {
     localStorage.setItem(STORAGE_KEY_BEST_SESSION_CALORIES_KCAL, String(melhor));
-    mudou = true;
-  }
-  if (getMonthlyCaloriesKcal() > getLifetimeCaloriesKcal() + CALORIAS_TOLERANCIA_KCAL) {
-    localStorage.setItem(STORAGE_KEY_MONTHLY_KCAL, String(getLifetimeCaloriesKcal()));
     mudou = true;
   }
 

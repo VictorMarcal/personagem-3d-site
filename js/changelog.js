@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.3",
+    title: "Mensal nunca passa do vitalício",
+    changes: [
+      "Reforçada a correção anterior: um valor mensal a mais nunca volta a aparecer, mesmo numa sessão de jogo aberta há muito tempo.",
+    ],
+  },
+  {
     version: "v6.60.2",
     title: "Leaderboard mensal corrigido",
     changes: [

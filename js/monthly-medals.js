@@ -16,8 +16,18 @@ function addToMonthlyDistance(deltaM) {
 // medalha mensal (Ouro/Prata/Bronze, ver checkMonthlyRollover abaixo).
 // getMonthlyDistanceM acima continua a existir/atualizar-se em paralelo,
 // so como estatistica informativa.
+//
+// Capado ao vitalicio aqui, no GETTER (2026-09-23) - nao so no arranque
+// (corrigirCaloriasComSessoes, js/progress-sync.js). Bug real: essa correcao
+// de arranque nao chega a uma aba/app que ja estava aberta antes da correcao
+// e nunca fez login de novo - o valor mensal antigo (empurrado para cima por
+// hydrateMonthlyDistanceFromServer antes do bug da secção 25 ser corrigido)
+// ficava preso acima do vitalicio ate ao proximo login, e cada sincronizacao
+// entretanto reenviava-o. Aqui garante-se sempre, em qualquer leitura
+// (mostrador, sincronizacao), mesmo numa sessao longa sem novo login.
 function getMonthlyCaloriesKcal() {
-  return Number(localStorage.getItem(STORAGE_KEY_MONTHLY_KCAL)) || 0;
+  const bruto = Number(localStorage.getItem(STORAGE_KEY_MONTHLY_KCAL)) || 0;
+  return Math.min(bruto, getLifetimeCaloriesKcal());
 }
 
 function addToMonthlyCalories(deltaKcal) {
