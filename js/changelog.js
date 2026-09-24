@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.7",
+    title: "Logo oficial",
+    changes: [
+      "O logo novo do Bootlands passa a ser o ícone da app, a miniatura ao partilhares o link, e aparece também na página de entrada.",
+    ],
+  },
+  {
     version: "v6.60.6",
     title: "Aviso de beta e treino em primeiro plano",
     changes: [

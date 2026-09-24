@@ -1973,9 +1973,17 @@ main {
 }
 
 .landing-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-heading);
   font-size: 18px;
   color: var(--ink);
+}
+
+.landing-topbar-logo {
+  display: block;
+  border-radius: 7px;
 }
 
 /* Anuncio de beta fechada (2026-09-24, a pedido) - pilula centrada no topo
