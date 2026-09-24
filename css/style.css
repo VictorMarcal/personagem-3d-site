@@ -176,6 +176,21 @@ a:hover { color: var(--accent-600); }
   border-radius: 999px;
 }
 
+/* Selo "Beta" no cabeçalho (2026-09-24, a pedido - "o site deve alertar que
+   está em fase de testes"), sempre visível durante o jogo, não só na
+   landing. Cinza/neutro de propósito - não é conquista nem aviso de erro,
+   so um lembrete discreto. */
+.site-title-beta {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  background: var(--surface);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
 .site-version-hero {
   font-size: 11px;
   font-weight: 600;
@@ -1937,6 +1952,31 @@ main {
    ganhava era quem viesse depois no ficheiro, nao a classe .hidden (bug
    real, 2026-09-22: a landing ficava com display:flex mesmo escondida). */
 .landing.hidden { display: none; }
+
+/* Barra fixa no topo da landing (2026-09-24, a pedido - "opção para ir para
+   login logo no início da página"): sempre visível, mesmo a meio do scroll
+   da landing, para quem já tem conta não ter de percorrer a página toda até
+   ao CTA do fundo. position:sticky dentro de #auth-modal (o proprio
+   scroller, overflow-y:auto) - nao precisa de position:fixed nem de gerir
+   z-index contra o resto do jogo. */
+.landing-topbar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 -20px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 20px 12px;
+  background: var(--bg);
+}
+
+.landing-topbar-brand {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  color: var(--ink);
+}
 
 /* Anuncio de beta fechada (2026-09-24, a pedido) - pilula centrada no topo
    da landing, antes do herói. Numero de vagas vem de beta_vagas_restantes()

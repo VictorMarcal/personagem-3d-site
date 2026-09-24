@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.6",
+    title: "Aviso de beta e treino em primeiro plano",
+    changes: [
+      "A landing já não mostra o número exato de vagas, só que há vagas limitadas. Selo \"Beta\" no cabeçalho do jogo, botão de Entrar logo no topo da página, e um aviso na contagem decrescente do treino para manteres a app em primeiro plano.",
+    ],
+  },
+  {
     version: "v6.60.5",
     title: "Anúncio de beta na landing",
     changes: [

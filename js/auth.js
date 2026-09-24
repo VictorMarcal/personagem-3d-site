@@ -105,10 +105,13 @@ function setEmailAuthMode(mode) {
 
 // Anuncio de beta fechada na landing (2026-09-24, a pedido - "deixa esse
 // aviso/anuncio no site de que estamos em beta fechado e que temos vagas
-// para x pessoas experimentarem"). beta_vagas_restantes() e a mesma funcao
-// usada para bloquear "Criar conta" quando esgota - aqui e so para mostrar
-// o numero, por isso falhas de rede ficam em silencio (a landing funciona
-// na mesma sem o anuncio).
+// para x pessoas experimentarem"; revisto no mesmo dia - "não gosto que
+// diga quantas vagas existem ao certo, prefiro que diga apenas vagas
+// limitadas para testes" + "o site deve alertar que está em fase de
+// testes"). beta_vagas_restantes() e a mesma funcao usada para bloquear
+// "Criar conta" quando esgota - aqui so decide qual das DUAS frases mostrar
+// (ha vagas / esgotou), nunca o numero exato. Falhas de rede ficam em
+// silencio (a landing funciona na mesma sem o anuncio).
 const landingBetaBannerEl = document.getElementById("landing-beta-banner");
 
 async function mostrarAnuncioDeBeta() {
@@ -118,8 +121,8 @@ async function mostrarAnuncioDeBeta() {
 
   landingBetaBannerEl.textContent =
     vagas > 0
-      ? `Beta fechada — ${vagas} vaga${vagas === 1 ? "" : "s"} disponíve${vagas === 1 ? "l" : "is"} para experimentar`
-      : "Beta fechada — sem vagas disponíveis neste momento";
+      ? "Em fase de testes — vagas limitadas para experimentar"
+      : "Em fase de testes — sem vagas disponíveis neste momento";
   landingBetaBannerEl.classList.remove("hidden");
 }
 mostrarAnuncioDeBeta();
