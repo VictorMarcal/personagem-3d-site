@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.8",
+    title: "Mais conquistas em vista",
+    changes: [
+      "O resumo de conquistas passa a mostrar 8 em vez de 5, preenchendo as duas linhas da grelha por completo.",
+    ],
+  },
+  {
     version: "v6.60.7",
     title: "Logo oficial",
     changes: [

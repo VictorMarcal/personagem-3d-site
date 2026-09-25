@@ -1053,8 +1053,15 @@ function createAchievementItemEl(achievement, unlockedMap = getUnlockedAchieveme
   return item;
 }
 
-// As 5 mais recentes: desbloqueadas primeiro (mais recente primeiro),
-// depois preenche com as mais proximas de desbloquear
+// As 8 mais recentes: desbloqueadas primeiro (mais recente primeiro),
+// depois preenche com as mais proximas de desbloquear. 8 (nao 5) para
+// preencher exatamente as 2 linhas da grelha de 4 colunas (.achievements-grid,
+// css/style.css) - com 5 sobrava uma linha quase vazia, so com 1 item (a
+// pedido, 2026-09-25 - "parece-me que existe espaco para mostrar pelo menos 9",
+// corrigido para 8 por ser o multiplo de 4 mais proximo, sem deixar a
+// grelha com uma linha incompleta).
+const ACHIEVEMENTS_SUMMARY_COUNT = 8;
+
 function renderAchievementsSummary() {
   const summaryEl = document.getElementById("achievements-summary");
   const unlockedMap = getUnlockedAchievements();
@@ -1070,10 +1077,10 @@ function renderAchievementsSummary() {
     .sort((a, b) => b.progress.current / b.progress.target - a.progress.current / a.progress.target)
     .map((entry) => entry.achievement);
 
-  const topFive = [...unlockedList, ...lockedList].slice(0, 5);
+  const topAchievements = [...unlockedList, ...lockedList].slice(0, ACHIEVEMENTS_SUMMARY_COUNT);
 
   summaryEl.innerHTML = "";
-  topFive.forEach((achievement) => {
+  topAchievements.forEach((achievement) => {
     summaryEl.appendChild(createAchievementItemEl(achievement));
   });
 }
