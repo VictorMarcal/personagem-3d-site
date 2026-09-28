@@ -1466,9 +1466,10 @@ main {
 .game-toast-medalha { background: var(--accent); color: var(--bg); }
 .game-toast-aviso { background: var(--accent-700); color: var(--bg); }
 
-/* ---------- Popup fullscreen de conquistas -------------------------------- */
+/* ---------- Popups fullscreen de conquistas/novidades ---------------------- */
 
-#achievements-modal {
+#achievements-modal,
+#changelog-modal {
   position: fixed;
   inset: 0;
   z-index: 950;
@@ -1477,7 +1478,8 @@ main {
   overflow-y: auto;
 }
 
-#achievements-modal.hidden { display: none; }
+#achievements-modal.hidden,
+#changelog-modal.hidden { display: none; }
 
 .player-trophies-title {
   margin-bottom: 14px;
@@ -2525,15 +2527,20 @@ main {
   color: var(--muted);
 }
 
-/* Card "Versao da Aplicacao" (2026-08-06, a pedido) - notas de
-   atualizacao em linguagem simples, uma entrada por versao "menor"
-   (js/changelog.js, CHANGELOG), mais recente primeiro. */
-#profile-changelog-list {
+/* Novidades (2026-08-06, a pedido) - notas de atualizacao em linguagem
+   simples, uma entrada por versao "menor" (js/changelog.js, CHANGELOG), mais
+   recente primeiro. Classe partilhada (2026-09-29) entre o popup de
+   Definicoes (#changelog-modal-list, lista toda, sem limite de altura - o
+   proprio popup ja tem scroll) e a landing (#landing-changelog-list, só as
+   mais recentes). */
+.changelog-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-height: 380px;
-  overflow-y: auto;
+}
+
+#landing-changelog-list {
+  max-width: 640px;
 }
 
 .changelog-entry-title {

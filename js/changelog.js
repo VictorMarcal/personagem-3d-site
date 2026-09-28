@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.9",
+    title: "Novidades em Definições e na landing",
+    changes: [
+      "As notas de cada versão saíram de Eu > Números e passaram a um popup próprio, aberto por \"Novidades\" no menu de Definições. A página de entrada mostra agora também as últimas atualizações.",
+    ],
+  },
+  {
     version: "v6.60.8",
     title: "Mais conquistas em vista",
     changes: [
@@ -1475,12 +1482,9 @@ const CHANGELOG = [
   },
 ];
 
-function renderChangelog() {
-  const listEl = document.getElementById("profile-changelog-list");
-  if (!listEl) return;
-
+function renderChangelogInto(listEl, entries) {
   listEl.innerHTML = "";
-  CHANGELOG.forEach((entry) => {
+  entries.forEach((entry) => {
     const item = document.createElement("div");
     item.className = "changelog-entry";
 
@@ -1500,6 +1504,22 @@ function renderChangelog() {
 
     listEl.appendChild(item);
   });
+}
+
+const LANDING_CHANGELOG_COUNT = 6;
+
+// Lista completa das novidades (2026-09-29, a pedido - "dentro da app esteja
+// apenas nas definições"): saiu do cartão em Eu > Números, passou a um popup
+// próprio aberto pelo menu de Definições (js/settings.js, #changelog-modal).
+function renderChangelog() {
+  const modalListEl = document.getElementById("changelog-modal-list");
+  if (modalListEl) renderChangelogInto(modalListEl, CHANGELOG);
+
+  // Landing (mesmo pedido - "tb quero ter esse changelog na landing page"):
+  // só as mais recentes, antes de sequer haver sessão - a lista toda (mais
+  // de 180 versões) seria demasiado para uma página de apresentação.
+  const landingListEl = document.getElementById("landing-changelog-list");
+  if (landingListEl) renderChangelogInto(landingListEl, CHANGELOG.slice(0, LANDING_CHANGELOG_COUNT));
 }
 
 renderChangelog();

@@ -30,6 +30,21 @@ document.getElementById("btn-settings-sign-out").addEventListener("click", () =>
   signOutBootlands();
 });
 
+// Novidades (2026-09-29, a pedido - "dentro da app esteja apenas nas
+// definições"): popup fullscreen com a lista toda (#changelog-modal-list,
+// já preenchida por renderChangelog() em js/changelog.js, corre uma vez no
+// arranque - aqui só mostra/esconde o popup).
+const changelogModalEl = document.getElementById("changelog-modal");
+
+document.getElementById("btn-open-changelog").addEventListener("click", () => {
+  closeSettingsMenu();
+  changelogModalEl.classList.remove("hidden");
+});
+
+document.getElementById("btn-close-changelog").addEventListener("click", () => {
+  changelogModalEl.classList.add("hidden");
+});
+
 // --- Dar feedback ----------------------------------------------------------
 //
 // Cartao Trello "Sistema de feedback dentro da app" (coluna Ideias): campo de

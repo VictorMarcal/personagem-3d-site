@@ -42,7 +42,7 @@ Um site que transforma distância percorrida na vida real (GPS) em progressão d
 | `js/horde.js` | Hordas de inimigos (secção 23) — spawn, movimento, auto-ataque dos dois lados na cena de Reino › Fortaleza |
 | `js/training.js` | GPS, tracking de distância, sessões de treino, filtros de ruído, fila local de sessões pendentes para `training_sessions` |
 | `js/profile.js` | Aba de Perfil: histórico de treinos, agregados semana/mês, gráficos SVG |
-| `js/changelog.js` | Card "Versão da Aplicação" na aba Perfil: notas de atualização em linguagem simples (array `CHANGELOG`), traduzidas a partir do histórico técnico de versões |
+| `js/changelog.js` | "Novidades": notas de atualização em linguagem simples (array `CHANGELOG`), traduzidas a partir do histórico técnico de versões — popup nas Definições (lista toda) e as mais recentes na landing (secção 25) |
 | `js/orientation.js` | Aviso de rodar para retrato em dispositivos touch — usa `screen.orientation` (rotação física), **não** `matchMedia("(orientation: landscape)")`: com o teclado aberto e `interactive-widget=resizes-content` a janela fica mais larga do que alta e o aviso tapava os campos de login (bug do Trello #9 reaberto a 2026-09-21, v6.50.1); `matchMedia` só como último recurso |
 | `manifest.webmanifest`, `sw.js`, `assets/Icons/app/` | PWA (2026-09-21): manifesto, service worker mínimo (sem cache) e os ícones da app — ver secção 24 |
 | `js/settings.js` | Menu de Definições (engrenagem no cabeçalho) e popup de "Dar feedback" — ver secção 25 |
@@ -1005,6 +1005,8 @@ O que se vê **sem sessão** deixou de ser só o cartão de login. Continua a vi
 
 **Acesso rápido ao login no topo (2026-09-24, a pedido — *"opção para ir para login logo no início da página"*)**: `.landing-topbar` — uma barra fina, `position: sticky` (dentro do próprio `#auth-modal`, que já é o scroller — não precisa de `position: fixed` nem de gerir z-index à parte), com o nome "Bootlands" e um botão "Já tenho conta · Entrar" (`data-landing-cta="entrar"`, o mesmo mecanismo de sempre). Fica visível mesmo a meio do scroll da landing longa, para quem já tem conta não ter de chegar ao fundo da página. **Logo ao lado do nome** (2026-09-24, mesmo pedido do logo oficial — ver secção 24): `icon-192.png` (já limpo/recortado, mesmo ficheiro do PWA) a 28×28, `border-radius: 7px`.
 
+**Novidades na landing (2026-09-29, a pedido — ver secção 25)**: secção "Novidades" antes do convite final, com as **6 mais recentes** (`#landing-changelog-list`, `LANDING_CHANGELOG_COUNT` em `js/changelog.js`) — a lista toda (mais de 180 versões) seria demasiado para uma página de apresentação; essa fica só no popup das Definições, depois do login.
+
 **Miniatura ao partilhar o link (2026-09-24, a pedido — logo oficial "em todo o lado")**: `og:image`/`twitter:image` no `<head>` apontam para `assets/imagens/og-image.png` (1200×630, gerado do mesmo recorte do logo — crachá à esquerda, "Bootlands" + tagline + kicker à direita, fundo creme do tema, texto nas fontes Caprasimo/Figtree via `document.fonts.load` antes de desenhar no canvas). **URL absoluto** (`https://bootlands.com/...`) — quem vai buscar isto para gerar a pré-visualização (WhatsApp, X, etc.) não resolve caminhos relativos ao contexto de uma página, como faz um browser normal.
 
 ## 15. Aba de Perfil e histórico de treinos
@@ -1710,9 +1712,11 @@ Primeiro passo para "tornar isto uma app" (o passo seguinte, a pedido, seria enc
 - **Como instalar**: Chrome Android — menu (⋮) › **Instalar app** (ou Adicionar ao ecrã inicial). A app instalada partilha o `localStorage` e a sessão com o Chrome (mesmo endereço), por isso não pede novo login.
 - **Testado** no browser de desenvolvimento: manifesto lido (nome, standalone, 3 ícones com os tamanhos certos), service worker `activated` com escopo `/`, jogo a funcionar por trás dele, sem erros na consola. **Não testado** o botão "Instalar" num telemóvel real.
 
-## 25. Menu de Definições e feedback (2026-09-22, v6.59.0, a pedido)
+## 25. Menu de Definições, feedback e Novidades (2026-09-22, v6.59.0, a pedido)
 
-Engrenagem no canto superior direito do cabeçalho (`js/settings.js`, `#btn-settings-menu`/`#settings-menu`) — um dropdown pequeno com **Dar feedback** e **Sair**, para não haver de ir a Perfil > Conta só para sair. `#btn-sign-out` (Perfil) e `#btn-settings-sign-out` (menu novo) chamam a mesma `signOutBootlands()` (`js/profile.js`). O menu fecha ao clicar fora (listener em `document`, `stopPropagation()` no próprio botão) ou ao escolher uma opção.
+Engrenagem no canto superior direito do cabeçalho (`js/settings.js`, `#btn-settings-menu`/`#settings-menu`) — um dropdown pequeno com **Novidades**, **Dar feedback** e **Sair**, para não haver de ir a Perfil > Conta só para sair. `#btn-sign-out` (Perfil) e `#btn-settings-sign-out` (menu novo) chamam a mesma `signOutBootlands()` (`js/profile.js`). O menu fecha ao clicar fora (listener em `document`, `stopPropagation()` no próprio botão) ou ao escolher uma opção.
+
+**Novidades (2026-09-29, a pedido — *"gostava de ter um changelog no site"* → *"dentro da app esteja apenas nas definições"*)**: popup fullscreen (`#changelog-modal`, mesmo padrão do `#achievements-modal` — `position: fixed`, `overflow-y: auto`) com a lista **completa** de versões (`#changelog-modal-list`, mais de 180 entradas). Já existia desde 2026-08-06 como o card "Versão da Aplicação" em Eu > Números — só mudou de sítio, a lógica de `js/changelog.js` (`CHANGELOG`, o array com uma entrada por versão "menor") não mudou. `renderChangelogInto(container, entries)` ficou genérica, para poder preencher tanto este popup como a lista reduzida da landing (secção 14.3) sem duplicar a função — as duas correm uma vez no arranque, sem depender de sessão.
 
 **Dar feedback** (`#feedback-modal`, mesmo estilo dos popups de missão/horda): caixa de texto (2000 carateres) + imagem opcional (`<input type="file" accept="image/*">`, pré-visualização, máx. 5 MB, só `image/*`) + Enviar. Cartão Trello de origem: "Sistema de feedback dentro da app" (coluna Ideias).
 
