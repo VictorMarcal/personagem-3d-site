@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.10",
+    title: "Missões aceites a meio do treino, corrigidas",
+    changes: [
+      "Corrigido: aceitar uma nova missão de distância a meio de um treino já em curso dava-lhe logo crédito pelo caminho já percorrido antes de a aceitares. Agora só conta o que andares depois.",
+    ],
+  },
+  {
     version: "v6.60.9",
     title: "Novidades em Definições e na landing",
     changes: [

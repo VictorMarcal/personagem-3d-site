@@ -233,13 +233,29 @@ function saveMissionState(estado) {
 function missionBaseline(tipo, recurso) {
   switch (tipo) {
     case "correr_km":
-    case "caminhar_km":
-      // Sem baseline: correr_km/caminhar_km sao um ACUMULADOR (ativa.progressoM),
-      // somado no fim de cada treino APENAS com a fatia de distancia detetada
-      // como "correr"/"caminhar" dessa sessao. Um baseline sobre
-      // getLifetimeDistanceM() contava os dois modos ao mesmo tempo (bug
-      // reportado 2026-09-10).
-      return {};
+    case "caminhar_km": {
+      // Sem baseline global: correr_km/caminhar_km sao um ACUMULADOR
+      // (ativa.progressoM), somado no fim de cada treino APENAS com a fatia
+      // de distancia detetada como "correr"/"caminhar" dessa sessao. Um
+      // baseline sobre getLifetimeDistanceM() contava os dois modos ao mesmo
+      // tempo (bug reportado 2026-09-10).
+      //
+      // offsetSessaoM (2026-09-29, bug reportado: "escolhi correr 35km mas
+      // já ficou acumulado o treino que estava a decorrer" - aceitar uma
+      // missão A MEIO de um treino já em curso creditava-a com a distância
+      // INTEIRA dessa sessão, incluindo a parte de ANTES de a aceitar,
+      // porque missionProgress()/verificarMissaoAtiva() somam sempre o total
+      // da sessão em cima de progressoM=0, sem saber quanto já tinha sido
+      // percorrido antes deste instante. Guarda-se aqui esse "já ia" para
+      // descontar depois (ver missionProgress e verificarMissaoAtiva) - fica
+      // a 0 (sem efeito) quando não há treino em curso, o caso normal de
+      // aceitar antes de sair de casa.
+      const modo = tipo === "correr_km" ? "correr" : "caminhar";
+      const offsetSessaoM = typeof reparticaoDaSessao === "function"
+        ? Number(reparticaoDaSessao().distancia[modo]) || 0
+        : 0;
+      return { offsetSessaoM };
+    }
     case "descobre_hex":
       return { hex: typeof getDiscoveredHexCount === "function" ? getDiscoveredHexCount() : 0 };
     case "descobre_mina":
@@ -273,7 +289,11 @@ function missionProgress(ativa, sessaoAoVivo) {
       // de 2026-09-10 nao tem progressoM - contam a partir de 0 (a
       // caminhada que tinham contado deixa de valer, que e o correto).
       const modo = ativa.tipo === "correr_km" ? "correr" : "caminhar";
-      const aoVivo = sessaoAoVivo && sessaoAoVivo.distanciaPorModo ? Number(sessaoAoVivo.distanciaPorModo[modo]) || 0 : 0;
+      const aoVivoTotal = sessaoAoVivo && sessaoAoVivo.distanciaPorModo ? Number(sessaoAoVivo.distanciaPorModo[modo]) || 0 : 0;
+      // Desconta a parte da sessao anterior a aceitar a missao (offsetSessaoM,
+      // ver missionBaseline) - sem isto, uma missao aceite a meio de um
+      // treino via ja "adiantada" pelo bocado percorrido antes de existir.
+      const aoVivo = Math.max(0, aoVivoTotal - (Number(base.offsetSessaoM) || 0));
       const feito = Math.max(0, (Number(ativa.progressoM) || 0) + aoVivo);
       return { current: Math.min(feito, ativa.alvo), target: ativa.alvo, done: feito >= ativa.alvo };
     }
@@ -464,9 +484,18 @@ function verificarMissaoAtiva(sessao) {
   Object.entries(estado.ativas).forEach(([id, ativa]) => {
     if (sessao && (ativa.tipo === "correr_km" || ativa.tipo === "caminhar_km")) {
       const modo = ativa.tipo === "correr_km" ? "correr" : "caminhar";
-      const andou = Number(sessao.distanciaPorModo && sessao.distanciaPorModo[modo]) || 0;
+      const totalSessao = Number(sessao.distanciaPorModo && sessao.distanciaPorModo[modo]) || 0;
+      const offset = Number((ativa.baseline || {}).offsetSessaoM) || 0;
+      // Desconta a parte de ANTES de aceitar a missao (ver missionBaseline) -
+      // so uma vez: zera-se a seguir para nunca descontar de uma sessao
+      // futura (esta missao pode continuar ativa em treinos seguintes).
+      const andou = Math.max(0, totalSessao - offset);
       if (andou > 0) {
         ativa.progressoM = (Number(ativa.progressoM) || 0) + andou;
+        mudou = true;
+      }
+      if (offset > 0 && ativa.baseline) {
+        ativa.baseline.offsetSessaoM = 0;
         mudou = true;
       }
     }
