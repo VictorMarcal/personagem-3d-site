@@ -157,3 +157,111 @@ document.getElementById("btn-feedback-submit").addEventListener("click", async (
   const avisoImagem = feedbackScreenshotFile && !screenshotPath ? " (a imagem não chegou a enviar-se)" : "";
   showGameToast("Obrigado pelo feedback!" + avisoImagem, "medalha");
 });
+
+// --- Notificações push -------------------------------------------------------
+//
+// "sistema de notificações" (2026-09-29, a pedido): antes disto só existiam
+// os badges dentro da própria app (contador vermelho nas abas, js/nav.js) -
+// isto é o primeiro passo para notificações reais, que chegam mesmo com a
+// app fechada. Subscrição Web Push standard (PushManager), guardada em
+// push_subscriptions (Supabase); quem envia é a função send-push (Edge
+// Function), chamada manualmente pelo Victor por agora - o jogo em si ainda
+// não dispara nenhum push sozinho (ver DOCUMENTACAO.md).
+const VAPID_PUBLIC_KEY =
+  "BKglTpE574ydME-2IKlsyqKCHt0pkyQJ-xywvmMerLTpQRoxrBTIaHfFY5c2dwqmw2PE9hx5QcoFJ9MCvaWt3dE";
+
+function urlBase64ToUint8Array(base64) {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const base64Safe = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64Safe);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+
+const btnTogglePush = document.getElementById("btn-toggle-push");
+const btnTogglePushLabel = document.getElementById("btn-toggle-push-label");
+
+function pushSuportado() {
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+async function getPushSubscriptionAtual() {
+  if (!pushSuportado()) return null;
+  const registration = await navigator.serviceWorker.ready;
+  return registration.pushManager.getSubscription();
+}
+
+async function updatePushToggleLabel() {
+  if (!btnTogglePush) return;
+  if (!pushSuportado()) {
+    btnTogglePush.hidden = true;
+    return;
+  }
+  if (Notification.permission === "denied") {
+    btnTogglePush.disabled = true;
+    btnTogglePushLabel.textContent = "Notificações bloqueadas no navegador";
+    return;
+  }
+  btnTogglePush.disabled = false;
+  const subscription = await getPushSubscriptionAtual();
+  btnTogglePushLabel.textContent = subscription ? "Desativar notificações" : "Ativar notificações";
+}
+
+async function ativarPushNotifications() {
+  const registration = await navigator.serviceWorker.ready;
+  const permissao = await Notification.requestPermission();
+  if (permissao !== "granted") {
+    showGameToast("Sem permissão, não é possível ativar notificações.", "aviso");
+    return;
+  }
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+  });
+  const json = subscription.toJSON();
+  const { error } = await supabaseClient.from("push_subscriptions").upsert(
+    {
+      user_id: currentUserId,
+      endpoint: json.endpoint,
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth,
+      user_agent: navigator.userAgent,
+    },
+    { onConflict: "endpoint" }
+  );
+  if (error) {
+    showGameToast("Não foi possível guardar a subscrição.", "aviso");
+    return;
+  }
+  showGameToast("Notificações ativadas!", "medalha");
+}
+
+async function desativarPushNotifications() {
+  const subscription = await getPushSubscriptionAtual();
+  if (!subscription) return;
+  const endpoint = subscription.endpoint;
+  await subscription.unsubscribe().catch(() => {});
+  await supabaseClient.from("push_subscriptions").delete().eq("endpoint", endpoint);
+  showGameToast("Notificações desativadas.", "aviso");
+}
+
+if (btnTogglePush) {
+  btnTogglePush.addEventListener("click", async () => {
+    closeSettingsMenu();
+    if (!currentUserId) return;
+    btnTogglePush.disabled = true;
+    const subscription = await getPushSubscriptionAtual();
+    try {
+      if (subscription) {
+        await desativarPushNotifications();
+      } else {
+        await ativarPushNotifications();
+      }
+    } catch {
+      showGameToast("Não foi possível alterar as notificações.", "aviso");
+    }
+    await updatePushToggleLabel();
+  });
+
+  btnSettingsMenu.addEventListener("click", updatePushToggleLabel);
+  updatePushToggleLabel();
+}

@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.11",
+    title: "Notificações push",
+    changes: [
+      "Novo em Definições: \"Ativar notificações\" liga o telemóvel a avisos do Bootlands mesmo com a app fechada, além dos avisos que já existiam dentro da própria app.",
+    ],
+  },
+  {
     version: "v6.60.10",
     title: "Missões aceites a meio do treino, corrigidas",
     changes: [
