@@ -976,11 +976,22 @@ function onPositionError(error) {
 }
 
 function beginWatch() {
-  watchId = navigator.geolocation.watchPosition(onPositionUpdate, onPositionError, {
-    enableHighAccuracy: true,
-    maximumAge: 5000,
-    timeout: 15000,
-  });
+  if (isNativeApp()) {
+    // "pending" so para as guardas `watchId !== null` mais abaixo (wake
+    // lock, contadores) ficarem ativas de imediato - nativeBeginWatch e
+    // assincrono (pede permissao ao Android), so troca pelo id real quando
+    // resolver.
+    watchId = "pending";
+    nativeBeginWatch(onPositionUpdate, onPositionError).then((id) => {
+      watchId = id;
+    });
+  } else {
+    watchId = navigator.geolocation.watchPosition(onPositionUpdate, onPositionError, {
+      enableHighAccuracy: true,
+      maximumAge: 5000,
+      timeout: 15000,
+    });
+  }
 
   // A barra/progresso de nivel usa as CALORIAS da sessao em curso
   // (2026-08-10, secção 5/17.1 - era distancia efetiva ate aqui), para
@@ -1318,7 +1329,11 @@ function showTrainingSummary({ mode, distanceM, activeSeconds, pausedSeconds, ac
 
 function stopTraining() {
   if (watchId !== null) {
-    navigator.geolocation.clearWatch(watchId);
+    if (isNativeApp()) {
+      nativeEndWatch();
+    } else {
+      navigator.geolocation.clearWatch(watchId);
+    }
     watchId = null;
   }
   if (saveIntervalId !== null) {

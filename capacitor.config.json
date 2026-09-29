@@ -1,0 +1,13 @@
+{
+  "appId": "com.bootlands.app",
+  "appName": "Bootlands",
+  "webDir": "www",
+  "backgroundColor": "#f5ead8",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "useLegacyBridge": true
+  }
+}

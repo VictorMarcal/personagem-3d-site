@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Bootlands</string>
+    <string name="title_activity_main">Bootlands</string>
+    <string name="package_name">com.bootlands.app</string>
+    <string name="custom_url_scheme">com.bootlands.app</string>
+
+    <!-- Notificacao persistente do GPS em segundo plano
+         (@capacitor-community/background-geolocation, ver DOCUMENTACAO.md
+         secção 27) - aparece enquanto um treino decorre com o ecrã
+         bloqueado, exigida pelo proprio Android para continuar a ler GPS. -->
+    <string name="capacitor_background_geolocation_notification_channel_name">Treino em curso</string>
+    <string name="capacitor_background_geolocation_notification_color">#c67139</string>
+</resources>

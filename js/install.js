@@ -7,7 +7,9 @@
   if (!btn || !hint) return;
 
   const jaInstalada =
-    window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true ||
+    (typeof isNativeApp === "function" && isNativeApp());
   if (jaInstalada) return;
 
   const ua = navigator.userAgent;

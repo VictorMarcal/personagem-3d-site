@@ -1,0 +1,27 @@
+# Dependencias Node (Capacitor) - reinstala com "npm install"
+node_modules/
+
+# Copia dos ficheiros web gerada por "npm run build:www" - regenera-se
+# sozinha, o codigo fonte real fica em index.html/css/js/assets
+www/
+
+# Copia da mesma coisa dentro do projeto Android, gerada por "cap sync" -
+# tambem se regenera sozinha (npm run cap:sync)
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+
+# Android/Gradle - ficheiros locais da maquina de quem compila, ou saida de
+# build, nunca codigo fonte
+android/local.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/app/release/
+android/.idea/
+android/*.iml
+android/app/*.iml
+
+# Assinatura da app - NUNCA comitar a keystore nem passwords
+*.keystore
+*.jks
+android/keystore.properties
