@@ -17,7 +17,7 @@ Isto **não** é um substituto de `DOCUMENTACAO.md` — esse continua a ser o re
 
 ## 1. Modelo de dados (Supabase) — reutilizado tal como está
 
-Unity fala com o mesmo projeto Supabase via REST (ou um SDK C# como o `supabase-csharp`). Nenhuma tabela muda de forma — só o cliente que as lê/escreve muda de JavaScript para C#.
+Unity fala com o **mesmo projeto Supabase**, mesma base de dados e mesmas chaves — nenhuma tabela muda de forma, só o cliente que as lê/escreve muda de JavaScript para C#. **Decisão (2026-09-29, a pedido — "não gosto de dependências"): REST direto via `UnityWebRequest`**, não o pacote `supabase-csharp` — evita puxar uma biblioteca inteira (realtime, storage, etc.) só para pedidos PostgREST simples + login por email/palavra-passe via `Auth`. A API REST do Supabase (PostgREST + `/auth/v1`) é HTTP simples, bem documentada, sem necessidade de um SDK para ser usada corretamente.
 
 | Tabela | Conteúdo | RLS |
 |---|---|---|
@@ -441,7 +441,7 @@ MISSION_MAX_ATIVAS = 3   MISSION_REJECT_COOLDOWN_MS = 12h
 **Precisa de trabalho novo, sem atalho**:
 - Toda a interface (UGUI/UI Toolkit) — nada do HTML/CSS é reaproveitável.
 - Toda a cena 3D (câmaras, animações, modelos) — os `.glb` existentes podem servir de referência visual, mas a integração em si (slots de equipamento, animação Mixamo, arena top-down) é código Three.js específico, sem equivalente direto em Unity.
-- Um cliente C# para o Supabase (REST direto ou uma biblioteca como `supabase-csharp`), incluindo reimplementar a reconciliação campo-a-campo da secção 1.1.
+- Um cliente C# para o Supabase (REST direto via `UnityWebRequest`, sem SDK externo — secção 1), incluindo reimplementar a reconciliação campo-a-campo da secção 1.1.
 - A decisão sobre Nominatim (secção 10) — chamar o mesmo serviço externo ou empacotar as fronteiras dos concelhos como asset local.
 - GPS em segundo plano no Android/iOS exige permissões e (Android) um foreground service — não é automático só por estar num motor nativo, mas é uma API do próprio SO, não uma limitação estrutural como no browser.
 
@@ -452,5 +452,6 @@ MISSION_MAX_ATIVAS = 3   MISSION_REJECT_COOLDOWN_MS = 12h
 - **2D ou 3D?** Não confirmado com o Victor nesta sessão — o jogo web usa Three.js para um herói/arena/torre em 3D; Unity permite qualquer um dos dois.
 - **Reaproveitar os modelos `.glb` existentes** (`assets/*.glb`) ou desenhar de novo para Unity? Formato compatível (glTF), mas todo o rigging/slots/animação teria de ser reconfigurado no Animator do Unity de qualquer forma.
 - **Nominatim em runtime vs. dados de concelhos empacotados** (secção 10).
+- ~~Cliente Supabase: REST direto vs. SDK~~ — **decidido**: REST direto via `UnityWebRequest` (secção 1), sem dependências externas.
 - **Alvo de plataforma**: Android primeiro (como a app Capacitor), iOS depois, ou os dois desde o início — Unity torna isto mais barato de ter os dois em paralelo do que a abordagem Capacitor atual.
 - **O que fazer ao ciclo de combate pausado** (secção 8) — decidir os modos de ataque do monstro/vitória-derrota antes ou depois da reescrita, já que a versão Unity vai precisar de uma resposta de qualquer forma.
