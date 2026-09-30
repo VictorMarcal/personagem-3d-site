@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.12",
+    title: "Novidades sobre a app Android",
+    changes: [
+      "Nova secção na página de entrada a explicar o que está a ser feito na app nativa para Android — e porque é que ela vai resolver o GPS parar com o ecrã bloqueado.",
+    ],
+  },
+  {
     version: "v6.60.11",
     title: "Notificações push",
     changes: [
