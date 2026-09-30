@@ -1,7 +1,12 @@
 const rotateOverlay = document.getElementById("rotate-overlay");
 
+// So conta como "telemovel/tablet" quando o toque e a UNICA forma de
+// apontar (sem rato como entrada principal) - "ontouchstart"/maxTouchPoints
+// sozinhos tambem dao verdadeiro num PC/portatil com ecra tatil, que nunca
+// se consegue "rodar" fisicamente. Bug reportado a 2026-09-30: o aviso
+// ficava preso para sempre num ecra tatil de secretaria, sempre em paisagem.
 function isTouchDevice() {
-  return "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  return window.matchMedia("(pointer: coarse)").matches && window.matchMedia("(hover: none)").matches;
 }
 
 // A rotacao FISICA do aparelho, nao o formato da janela. matchMedia

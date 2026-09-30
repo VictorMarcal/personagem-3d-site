@@ -7,6 +7,13 @@
 // vez de listar cada commit tecnico separadamente.
 const CHANGELOG = [
   {
+    version: "v6.60.13",
+    title: "Corrigido aviso de rodar o ecrã",
+    changes: [
+      "O aviso \"roda o dispositivo para retrato\" já não fica preso em computadores com ecrã tátil — só aparece a sério em telemóveis e tablets.",
+    ],
+  },
+  {
     version: "v6.60.12",
     title: "Novidades sobre a app Android",
     changes: [
