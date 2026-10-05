@@ -789,7 +789,19 @@ function onPositionUpdate(position) {
     // Feito por incrementos e nao por transicoes de estado: assim uma falha
     // de sinal a meio de uma paragem tambem conta, e nao ha estado aberto
     // para fechar em cada saida possivel da funcao.
-    if (currentActiveMode === ACTIVITY_STOPPED) autoPausedMs += gapMs;
+    //
+    // Bug encontrado em 2026-10-04 (sessao da VidaNova, ~63h de intervalo
+    // creditadas como "ativas"): esta condicao so apanhava o caso de o
+    // ultimo modo confirmado JA SER "parado" antes do intervalo comecar.
+    // Se a app fosse para segundo plano a meio de "a caminhar"/"a correr"
+    // (o caso normal - ecra bloqueado ou troca de app NAO para a deteccao
+    // de atividade primeiro), o intervalo inteiro ficava sem ser contado
+    // como pausa nenhuma, e entrava como se fosse tempo ativo real na
+    // formula de calorias (caloriasDeUmModo usa a duracao TOTAL da sessao
+    // como "horas"). Um intervalo > LONG_GAP_MS (30s) e sempre sinal de
+    // app suspensa, nao de "ainda a caminhar sem deteccao" - conta sempre
+    // como pausa automatica, seja qual for o ultimo modo confirmado.
+    if (currentActiveMode === ACTIVITY_STOPPED || gapMs > LONG_GAP_MS) autoPausedMs += gapMs;
   }
   lastReadingTimestamp = timestamp;
 

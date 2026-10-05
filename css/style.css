@@ -2125,6 +2125,16 @@ main {
   text-wrap: pretty;
 }
 
+/* Screenshot da app Android dentro de #landing-android - tamanho de
+   telemóvel, não a largura toda, para não dominar a secção. */
+.landing-screenshot {
+  align-self: center;
+  width: 100%;
+  max-width: 220px;
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+}
+
 .landing-steps {
   display: grid;
   gap: 12px;
