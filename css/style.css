@@ -2131,6 +2131,7 @@ main {
   align-self: center;
   width: 100%;
   max-width: 220px;
+  height: auto;
   border-radius: 18px;
   box-shadow: var(--shadow-lg);
 }
