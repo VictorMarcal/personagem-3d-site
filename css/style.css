@@ -2125,12 +2125,20 @@ main {
   text-wrap: pretty;
 }
 
-/* Screenshot da app Android dentro de #landing-android - tamanho de
-   telemóvel, não a largura toda, para não dominar a secção. */
+/* Screenshots da app Android dentro de #landing-android, lado a lado -
+   tamanho de telemóvel, não a largura toda, para não dominar a secção.
+   Envolve em flex-wrap para continuar a caber em ecrãs estreitos (~400px),
+   sem scroll horizontal. */
+.landing-screenshots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
 .landing-screenshot {
-  align-self: center;
   width: 100%;
-  max-width: 220px;
+  max-width: 160px;
   height: auto;
   border-radius: 18px;
   box-shadow: var(--shadow-lg);
