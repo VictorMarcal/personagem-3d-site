@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockup — passo 5: área bloqueada a cinzento</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root { --blur: 8px; --dark: 0.45; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #14181e;
+    color: #e8e2d6;
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header {
+    padding: 14px 18px 10px;
+  }
+  header h1 { margin: 0; font-size: 17px; letter-spacing: .2px; }
+  header p { margin: 4px 0 0; color: #97a0ad; font-size: 12.5px; }
+
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 16px;
+    padding: 12px 18px 18px;
+  }
+  @media (max-width: 700px) { .stage { grid-template-columns: 1fr; } }
+
+  #map {
+    height: 80vh;
+    min-height: 420px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #0d1116;
+  }
+
+  /* Duas camadas da MESMA imagem: uma cinzenta/escura (bloqueada) e uma a
+     cores (desbloqueada, recortada aos hexagonos da mancha). O desfoque e
+     igual nas duas - so muda a cor. */
+  .leaflet-locked-pane {
+    filter: blur(var(--blur)) grayscale(1) brightness(var(--dark));
+  }
+  .leaflet-unlocked-pane {
+    filter: blur(var(--blur));
+  }
+
+  #hexgrid-pane { pointer-events: none; }
+  .hex-canvas { position: absolute; top: 0; left: 0; }
+
+  .panel {
+    background: #1b2129;
+    border: 1px solid #2b333e;
+    border-radius: 12px;
+    padding: 14px;
+    align-self: start;
+  }
+  .panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #9fb0c2; }
+  .row { margin-bottom: 12px; }
+  .row label { display: flex; justify-content: space-between; font-size: 12.5px; color: #c7cfda; margin-bottom: 5px; }
+  .row label b { font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; }
+  .row input[type=range] { width: 100%; accent-color: #d98a4a; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #c7cfda; margin-bottom: 9px; }
+  .check input { accent-color: #d98a4a; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mockup — Passo 5: área bloqueada a cinzento</h1>
+  <p>A zona "desbloqueada" fictícia (a mancha ao centro) aparece a cores; o resto do mapa fica a cinzento escuro. Nada disto está na app.</p>
+</header>
+
+<div class="stage">
+  <div id="map"></div>
+  <div class="panel">
+    <h2>Afinação</h2>
+    <div class="row">
+      <label>Desfoque <b id="v-blur">8 px</b></label>
+      <input id="blur" type="range" min="0" max="20" step="1" value="8">
+    </div>
+    <div class="row">
+      <label>Escuridão da área bloqueada <b id="v-dark">45%</b></label>
+      <input id="dark" type="range" min="10" max="100" step="5" value="45">
+    </div>
+    <label class="check"><input id="grid" type="checkbox" checked> Limite da área desbloqueada</label>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script>
+<script>
+const SAT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+
+const map = L.map("map", { minZoom: 3, maxZoom: 18 }).setView([41.5503, -8.4201], 13);
+
+// Duas panes com a MESMA imagem - uma cinzenta/escura por baixo de tudo, uma
+// a cores por cima, recortada aos hexagonos desbloqueados (ver updateClip).
+map.createPane("locked");
+map.getPane("locked").style.zIndex = 200;
+map.createPane("unlocked");
+map.getPane("unlocked").style.zIndex = 300;
+
+L.tileLayer(SAT_URL, { pane: "locked", maxZoom: 18, attribution: "Esri World Imagery" }).addTo(map);
+L.tileLayer(SAT_URL, { pane: "unlocked", maxZoom: 18 }).addTo(map);
+
+const blurInput = document.getElementById("blur");
+const blurLabel = document.getElementById("v-blur");
+blurInput.addEventListener("input", () => {
+  document.documentElement.style.setProperty("--blur", blurInput.value + "px");
+  blurLabel.textContent = blurInput.value + " px";
+});
+
+const darkInput = document.getElementById("dark");
+const darkLabel = document.getElementById("v-dark");
+darkInput.addEventListener("input", () => {
+  document.documentElement.style.setProperty("--dark", darkInput.value / 100);
+  darkLabel.textContent = darkInput.value + "%";
+});
+
+// --- zona "desbloqueada" ficticia -------------------------------------------
+//
+// Nao ha GPS real neste mockup, por isso simula-se uma mancha ja explorada:
+// um disco de hexagonos a volta do centro do mapa, resolucao 9 (a mesma da
+// descoberta real na app). So estes hexagonos mostram a grelha E a cor -
+// o resto do mapa fica cinzento escuro e sem linhas nenhumas.
+const UNLOCKED_RES = 9;
+const centerCell = h3.latLngToCell(41.5503, -8.4201, UNLOCKED_RES);
+const unlocked = new Set(h3.gridDisk(centerCell, 9));
+
+// --- recorte da camada a cores, aos hexagonos desbloqueados -----------------
+//
+// Em "layer points": a origem so muda no zoom, por isso o recorte acompanha
+// o arrastar sem ser recalculado a cada frame.
+function hexPathLayer(cell) {
+  let d = "";
+  h3.cellToBoundary(cell).forEach(([lat, lng], i) => {
+    const p = map.latLngToLayerPoint([lat, lng]);
+    d += (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1) + " ";
+  });
+  return d + "Z";
+}
+function updateClip() {
+  const parts = [...unlocked].map(hexPathLayer);
+  map.getPane("unlocked").style.clipPath = parts.length ? `path("${parts.join(" ")}")` : `path("M0 0Z")`;
+}
+map.on("zoom zoomend viewreset resize", updateClip);
+updateClip();
+
+// --- limite da area desbloqueada (so a margem, nao a grelha toda) ----------
+//
+// A pedido: nao mostrar a linha de CADA hexagono, so o contorno onde a area
+// desbloqueada acaba. h3.cellsToMultiPolygon faz exatamente isso - devolve a
+// UNIAO dos hexagonos (as linhas internas entre dois hexagonos vizinhos, os
+// dois desbloqueados, desaparecem; so fica o traco onde um hexagono
+// desbloqueado faz fronteira com um bloqueado).
+map.createPane("hexgrid");
+map.getPane("hexgrid").style.zIndex = 400;
+const canvas = document.createElement("canvas");
+canvas.className = "hex-canvas";
+map.getPane("hexgrid").appendChild(canvas);
+
+// Calculado uma unica vez - a mancha desbloqueada e fixa neste mockup.
+const unlockedOutline = h3.cellsToMultiPolygon([...unlocked]).flat();
+
+function drawBorder() {
+  const size = map.getSize();
+  if (size.x === 0 || size.y === 0) return;
+  const ratio = window.devicePixelRatio || 1;
+  const wantW = Math.round(size.x * ratio);
+  const wantH = Math.round(size.y * ratio);
+  if (canvas.width !== wantW || canvas.height !== wantH) {
+    canvas.width = wantW;
+    canvas.height = wantH;
+    canvas.style.width = size.x + "px";
+    canvas.style.height = size.y + "px";
+  }
+  const origin = map.containerPointToLayerPoint([0, 0]);
+  canvas.style.transform = `translate(${origin.x}px, ${origin.y}px)`;
+
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, size.x, size.y);
+  if (!document.getElementById("grid").checked) return;
+
+  const project = (ll) => map.latLngToContainerPoint(ll);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  unlockedOutline.forEach((ring) => {
+    ctx.beginPath();
+    ring.forEach(([lat, lng], i) => {
+      const p = project([lat, lng]);
+      if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+    });
+    ctx.closePath();
+    ctx.stroke();
+  });
+}
+
+map.on("move zoom viewreset resize", drawBorder);
+document.getElementById("grid").addEventListener("change", drawBorder);
+drawBorder();
+</script>
+</body>
+</html>

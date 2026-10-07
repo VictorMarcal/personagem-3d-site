@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pré-visualização — painel de treino</title>
+<!-- CSS REAL da app, sem copias: se o estilo mudar la, muda aqui. -->
+<link rel="stylesheet" href="css/style.css?v=20260815g">
+<style>
+  body { padding: 20px 0 60px; }
+  .preview-head { padding: 0 16px 4px; }
+  .preview-head h1 { font-size: 20px; margin-bottom: 4px; }
+  .preview-head p { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .preview-case { padding: 0 16px 28px; }
+  .preview-case > h2 {
+    font-family: var(--font-body);
+    font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--accent-700); margin-bottom: 4px;
+  }
+  .preview-case > .sub { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  /* Duas colunas em ecra largo, uma no telemovel - para dar para comparar. */
+  .preview-grid { display: grid; gap: 8px; }
+  @media (min-width: 900px) { .preview-grid { grid-template-columns: 1fr 1fr; padding: 0 16px; } .preview-case { padding: 0 0 28px; } }
+</style>
+</head>
+<body>
+
+<div class="preview-head">
+  <h1>Painel de treino — como fica</h1>
+  <p>Os mesmos ficheiros de estilo da app. Não é um desenho, é o componente real com valores de dois treinos típicos.</p>
+</div>
+
+<div class="preview-grid">
+
+  <div class="preview-case">
+    <h2>Bicicleta</h2>
+    <p class="sub">25,40 km · 1h02 a pedalar · 14 min parado · 83 kg</p>
+
+    <section id="training-readout">
+      <p class="training-label">Distância percorrida</p>
+      <p class="training-distance">25.40 km</p>
+      <p class="training-live-stats">1:02:00 · nominal 24.8 km/h · média 24.6 km/h</p>
+      <p class="training-detected-activity">Atividade detetada: Bicicleta</p>
+
+      <dl class="summary-grid live-grid">
+        <dt>Tempo ativo</dt><dd>1:02:00</dd>
+        <dt>Tempo em pausa</dt><dd>14:00</dd>
+        <dt>Tempo total</dt><dd>1:16:00</dd>
+        <dt>Calorias ativas</dt><dd>858 kcal</dd>
+        <dt>Calorias totais</dt><dd>877 kcal</dd>
+      </dl>
+
+      <p class="training-calories-row">XP: <span>877 kcal</span></p>
+    </section>
+
+    <div class="panel-screen" style="margin-top:12px">
+      <button class="btn-primary" type="button">Pausa</button>
+    </div>
+  </div>
+
+  <div class="preview-case">
+    <h2>Caminhada</h2>
+    <p class="sub">5,20 km · 52 min a andar · 6 min parado · 83 kg</p>
+
+    <!-- id repetido de proposito: o CSS da app estiliza por #id e um
+         seletor de id casa com todos os elementos que o tenham. HTML
+         invalido, mas isto e uma pagina de pre-visualizacao e a
+         alternativa era duplicar as regras e ve-las a desactualizar. -->
+    <section id="training-readout">
+      <p class="training-label">Distância percorrida</p>
+      <p class="training-distance">5.20 km</p>
+      <p class="training-live-stats">52:00 · nominal 5.9 km/h · média 6.0 km/h</p>
+      <p class="training-detected-activity">Atividade detetada: Caminhar</p>
+
+      <dl class="summary-grid live-grid">
+        <dt>Tempo ativo</dt><dd>52:00</dd>
+        <dt>Tempo em pausa</dt><dd>6:00</dd>
+        <dt>Tempo total</dt><dd>58:00</dd>
+        <dt>Calorias ativas</dt><dd>277 kcal</dd>
+        <dt>Calorias totais</dt><dd>286 kcal</dd>
+      </dl>
+
+      <p class="training-calories-row">XP: <span>286 kcal</span></p>
+    </section>
+
+    <div class="panel-screen" style="margin-top:12px">
+      <button class="btn-primary" type="button">Pausa</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="preview-head">
+  <h1 style="font-size:16px">E o resumo no fim</h1>
+  <p>O que aparece ao carregar em Terminar, dentro da pausa.</p>
+</div>
+
+<div class="preview-grid">
+  <div class="preview-case">
+    <div class="pause-box summary-box" style="max-width:340px">
+      <p class="pause-title">Treino terminado</p>
+      <p class="summary-mode">Bicicleta</p>
+      <dl class="summary-grid">
+        <dt>Tempo ativo</dt><dd>1:02:00</dd>
+        <dt>Tempo em pausa</dt><dd>14:00</dd>
+        <dt>Tempo total</dt><dd>1:16:00</dd>
+        <dt>Distância</dt><dd>25.40 km</dd>
+        <dt>Velocidade média</dt><dd>24.6 km/h</dd>
+        <dt>Calorias ativas</dt><dd>858 kcal</dd>
+        <dt>Calorias totais</dt><dd>877 kcal</dd>
+        <dt class="summary-xp-row">XP ganho</dt><dd class="summary-xp-row">877 XP</dd>
+      </dl>
+      <p class="pause-hint">O XP são as calorias totais.</p>
+      <div class="pause-actions"><button class="btn-primary" type="button">Fechar</button></div>
+    </div>
+  </div>
+
+  <div class="preview-case">
+    <div class="pause-box summary-box" style="max-width:340px">
+      <p class="pause-title">Treino terminado</p>
+      <p class="summary-mode">Caminhar</p>
+      <dl class="summary-grid">
+        <dt>Tempo ativo</dt><dd>52:00</dd>
+        <dt>Tempo em pausa</dt><dd>6:00</dd>
+        <dt>Tempo total</dt><dd>58:00</dd>
+        <dt>Distância</dt><dd>5.20 km</dd>
+        <dt>Velocidade média</dt><dd>6.0 km/h</dd>
+        <dt>Calorias ativas</dt><dd>277 kcal</dd>
+        <dt>Calorias totais</dt><dd>286 kcal</dd>
+        <dt class="summary-xp-row">XP ganho</dt><dd class="summary-xp-row">286 XP</dd>
+      </dl>
+      <p class="pause-hint">O XP são as calorias totais.</p>
+      <div class="pause-actions"><button class="btn-primary" type="button">Fechar</button></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
