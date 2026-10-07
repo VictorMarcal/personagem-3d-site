@@ -1468,8 +1468,7 @@ main {
 
 /* ---------- Popups fullscreen de conquistas/novidades ---------------------- */
 
-#achievements-modal,
-#changelog-modal {
+#achievements-modal {
   position: fixed;
   inset: 0;
   z-index: 950;
@@ -1478,8 +1477,7 @@ main {
   overflow-y: auto;
 }
 
-#achievements-modal.hidden,
-#changelog-modal.hidden { display: none; }
+#achievements-modal.hidden { display: none; }
 
 .player-trophies-title {
   margin-bottom: 14px;
@@ -1988,23 +1986,6 @@ main {
   border-radius: 7px;
 }
 
-/* Anuncio de beta fechada (2026-09-24, a pedido) - pilula centrada no topo
-   da landing, antes do herói. Numero de vagas vem de beta_vagas_restantes()
-   (js/auth.js) - escondido ate essa resposta chegar, para nunca mostrar um
-   número errado por instantes. */
-.landing-beta-banner {
-  align-self: center;
-  margin: 0;
-  padding: 8px 18px;
-  border-radius: 999px;
-  background: var(--accent-200);
-  color: var(--accent-700);
-  font-size: 13px;
-  font-weight: 700;
-  text-align: center;
-  text-wrap: balance;
-}
-
 .landing-hero {
   display: grid;
   grid-template-areas: "text" "art";
@@ -2226,7 +2207,6 @@ main {
 }
 
 .landing-final .landing-sub { text-align: center; }
-.landing-cta { width: auto; min-width: 240px; }
 .landing-install { min-width: 240px; }
 .landing-install-hint {
   max-width: 320px;
@@ -2542,48 +2522,6 @@ main {
 }
 
 .profile-history-session-list li {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-/* Novidades (2026-08-06, a pedido) - notas de atualizacao em linguagem
-   simples, uma entrada por versao "menor" (js/changelog.js, CHANGELOG), mais
-   recente primeiro. Classe partilhada (2026-09-29) entre o popup de
-   Definicoes (#changelog-modal-list, lista toda, sem limite de altura - o
-   proprio popup ja tem scroll) e a landing (#landing-changelog-list, só as
-   mais recentes). */
-.changelog-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-#landing-changelog-list {
-  max-width: 640px;
-}
-
-.changelog-entry-title {
-  font-family: var(--font-heading);
-  font-size: 15px;
-  color: var(--text);
-}
-
-.changelog-entry-version {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted-2);
-}
-
-.changelog-entry-changes {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 6px 0 0;
-  padding-left: 18px;
-}
-
-.changelog-entry-changes li {
   font-size: 13px;
   color: var(--muted);
 }

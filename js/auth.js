@@ -103,40 +103,46 @@ function setEmailAuthMode(mode) {
   showEmailAuthStatus("", false);
 }
 
-// Anuncio de beta fechada na landing (2026-09-24, a pedido - "deixa esse
-// aviso/anuncio no site de que estamos em beta fechado e que temos vagas
-// para x pessoas experimentarem"; revisto no mesmo dia - "não gosto que
-// diga quantas vagas existem ao certo, prefiro que diga apenas vagas
-// limitadas para testes" + "o site deve alertar que está em fase de
-// testes"). beta_vagas_restantes() e a mesma funcao usada para bloquear
-// "Criar conta" quando esgota - aqui so decide qual das DUAS frases mostrar
-// (ha vagas / esgotou), nunca o numero exato. Falhas de rede ficam em
-// silencio (a landing funciona na mesma sem o anuncio).
-const landingBetaBannerEl = document.getElementById("landing-beta-banner");
-
-async function mostrarAnuncioDeBeta() {
-  if (!landingBetaBannerEl) return;
-  const { data: vagas, error } = await supabaseClient.rpc("beta_vagas_restantes");
-  if (error || typeof vagas !== "number") return;
-
-  landingBetaBannerEl.textContent =
-    vagas > 0
-      ? "Em fase de testes — vagas limitadas para experimentar"
-      : "Em fase de testes — sem vagas disponíveis neste momento";
-  landingBetaBannerEl.classList.remove("hidden");
-}
-mostrarAnuncioDeBeta();
-
-// Botoes da pagina de entrada (index.html, .landing-final): abrem o ecra de
-// login/criar conta ja no modo certo, com o cursor no email.
-document.querySelectorAll("[data-landing-cta]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    showLoginView(btn.dataset.landingCta === "criar" ? "criar" : "entrar");
-    emailAuthEmailEl.focus({ preventScroll: true });
-  });
-});
-
 btnLoginBack.addEventListener("click", showLandingView);
+
+// --- Pedido de acesso ao teste da app Android (2026-10-07, a pedido -
+// "remove a opção de login da landing, passa a só um campo de email para
+// pedir para entrar no teste da app mobile") -------------------------------
+//
+// Sem conta nem sessao: so grava o email em app_testers (supabase/schema.sql).
+// O Victor acrescenta esse email a mao na lista de testers do Firebase App
+// Distribution (sistema que ja usamos para distribuir builds aos jogadores).
+const formTesterRequestEl = document.getElementById("form-tester-request");
+const testerRequestEmailEl = document.getElementById("tester-request-email");
+const btnTesterRequestSubmit = document.getElementById("btn-tester-request-submit");
+const testerRequestStatusEl = document.getElementById("tester-request-status");
+
+formTesterRequestEl.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const email = testerRequestEmailEl.value.trim();
+  testerRequestStatusEl.classList.remove("auth-status-error");
+  if (!email) {
+    testerRequestStatusEl.textContent = "Escreve o teu email.";
+    testerRequestStatusEl.classList.add("auth-status-error");
+    return;
+  }
+
+  btnTesterRequestSubmit.disabled = true;
+  testerRequestStatusEl.textContent = "";
+
+  const { error } = await supabaseClient.from("app_testers").insert({ email });
+
+  btnTesterRequestSubmit.disabled = false;
+  if (error) {
+    testerRequestStatusEl.textContent =
+      error.code === "23505" ? "Esse email já está na lista — não precisas de repetir." : "Não foi possível guardar. Tenta novamente.";
+    testerRequestStatusEl.classList.add("auth-status-error");
+    return;
+  }
+
+  formTesterRequestEl.reset();
+  testerRequestStatusEl.textContent = "Pedido recebido! Avisamos por email quando a beta da app abrir.";
+});
 
 btnEmailAuthToggle.addEventListener("click", () => {
   setEmailAuthMode(emailAuthMode === "criar" ? "entrar" : "criar");

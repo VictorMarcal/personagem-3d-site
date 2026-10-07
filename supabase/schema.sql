@@ -485,3 +485,21 @@ alter table public.player_progress
 -- para nao partir a sincronizacao de clientes com JS antigo em cache.
 -- Sessoes antigas em `training_sessions` com mode='bicicleta' ficam como
 -- estao (historico); podem ser convertidas a mao no cartao do treino.
+
+-- Migracao (2026-10-07, a pedido): a landing deixou de oferecer login/criar
+-- conta - passa a pedir so o email, como pedido de acesso ao teste da app
+-- Android nativa. Sem conta nem sessao nenhuma envolvida; o Victor acrescenta
+-- cada email a mao na lista de testers do Firebase App Distribution (sistema
+-- que ja usamos para distribuir builds). Sem policy de select: so o service
+-- role (dashboard do Supabase) le esta lista - o anon key usado pelo site so
+-- pode inserir, nunca ver os emails de outras pessoas.
+create table public.app_testers (
+  id bigint generated always as identity primary key,
+  email text not null unique,
+  created_at timestamptz not null default now()
+);
+
+alter table public.app_testers enable row level security;
+
+create policy "app_testers_insert_anyone" on public.app_testers
+  for insert with check (true);
