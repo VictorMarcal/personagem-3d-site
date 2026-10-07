@@ -18,6 +18,17 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_5o0ebiPFcC8jKjQbpbok2A_p1ozZMEz
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
+// Jogo web desligado da base de dados (2026-10-07, a pedido - "de web só
+// vamos ter o site"): o cliente Supabase acima fica só para o pedido de
+// acesso ao teste da app (js/app-changelog.js/#form-tester-request). Quem
+// tiver uma sessão antiga guardada no browser (Skllrx/VidaNova) é
+// desconectado logo no arranque - nunca mais vê o jogo por aqui, só a
+// landing. A app Android/Unity liga-se ao MESMO Supabase de forma
+// completamente independente (REST direto, ver PORTING_UNITY.md) - nada
+// aqui mexe no projeto, nas chaves ou nas políticas RLS do lado do servidor,
+// só deixa de haver um cliente web ativo a lê-las/escrevê-las.
+supabaseClient.auth.signOut({ scope: "local" }).catch(() => {});
+
 const authModalEl = document.getElementById("auth-modal");
 const landingViewEl = document.querySelector(".landing");
 const loginViewEl = document.getElementById("login-view");
@@ -555,22 +566,9 @@ async function bootstrapAfterLogin(user) {
   }
 }
 
-supabaseClient.auth.onAuthStateChange((event, session) => {
-  // PASSWORD_RECOVERY: ha sessao, mas ainda NAO e um login - o jogador
-  // seguiu o link do email so para repor a palavra-passe (fluxo acima,
-  // btnPasswordResetConfirm). So depois de a definir e que se arranca o
-  // jogo com esta sessao.
-  if (event === "PASSWORD_RECOVERY") {
-    passwordRecoveryEmFluxo = true;
-    openPasswordResetModal();
-    return;
-  }
-  if (passwordRecoveryEmFluxo) return;
-  if (!session) return;
-  hideAuthModal();
-  if (bootstrapped) return;
-  bootstrapped = true;
-  bootstrapAfterLogin(session.user).catch((err) => {
-    console.error("Falha ao preparar sessão após login:", err);
-  });
-});
+// Nunca mais arranca o jogo a partir daqui (ver nota junto do signOut()
+// acima) - sem este listener, uma sessão válida por acaso (ex: signOut()
+// falhou por estar offline no arranque) nunca chega a esconder a landing
+// nem a chamar bootstrapAfterLogin(). bootstrapAfterLogin/hideAuthModal
+// continuam definidas (outros ficheiros podem referi-las sem rebentar),
+// só deixaram de ter quem as chame.
