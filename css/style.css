@@ -2531,6 +2531,53 @@ main {
   color: var(--muted);
 }
 
+/* Novidades da app (2026-10-07, a pedido) - notas de atualizacao da app
+   Android/Unity, uma entrada por versao lancada (js/app-changelog.js,
+   APP_CHANGELOG), mais recente primeiro. Substitui o changelog da versao
+   web (removido no mesmo dia) - agora o que interessa e a app nativa. */
+.changelog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+#landing-changelog-list {
+  max-width: 640px;
+}
+
+.changelog-entry-title {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  color: var(--text);
+}
+
+.changelog-entry-version {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted-2);
+}
+
+.changelog-entry-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.changelog-entry-changes li {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.changelog-entry-screenshots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
 .profile-month-nav {
   display: flex;
   align-items: center;
