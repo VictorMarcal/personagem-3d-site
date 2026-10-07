@@ -16,6 +16,7 @@ const APP_CHANGELOG = [
       "Novo menu de Definições (ícone de engrenagem) com a opção de Sair.",
       "O teu nome passa a aparecer na barra de navegação principal.",
       "O ecrã de treino ficou mais simples: o detalhe da sessão fica sempre visível, sem precisar de abrir/fechar.",
+      "Pequenos ajustes visuais nos ecrãs de Entrar, Criar Conta e Recuperar Palavra-passe.",
     ],
     screenshots: [],
   },
