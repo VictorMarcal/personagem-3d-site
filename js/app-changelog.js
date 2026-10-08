@@ -17,6 +17,8 @@ const APP_CHANGELOG = [
       "O teu nome passa a aparecer na barra de navegação principal.",
       "O ecrã de treino ficou mais simples: o detalhe da sessão fica sempre visível, sem precisar de abrir/fechar.",
       "Pequenos ajustes visuais nos ecrãs de Entrar, Criar Conta e Recuperar Palavra-passe.",
+      "Corrigido: o tempo em pausa durante o treino aparecia a oscilar sem sentido no ecrã.",
+      "A app começa a reconhecer os territórios que vais descobrindo durante o treino (ainda sem mapa visível).",
     ],
     screenshots: [],
   },
