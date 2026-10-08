@@ -10,6 +10,14 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.2",
+    title: "Nunca mais perder um treino",
+    changes: [
+      "Corrigido: se o treino não conseguisse guardar (ex: sessão expirada), ficava perdido para sempre. Agora fica guardado no telemóvel e envia-se sozinho assim que voltares a entrar.",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.1",
     title: "O teu nível, sempre visível",
     changes: [
