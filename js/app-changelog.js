@@ -10,6 +10,17 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.1",
+    title: "O teu nível, sempre visível",
+    changes: [
+      "Novo: o teu nível aparece agora no topo da app, junto ao teu nome.",
+      "O menu de Definições (ícone de engrenagem) já funciona a sério, com a opção de Sair.",
+      "Mais ajustes visuais nos ecrãs de Entrar, Criar Conta e Recuperar Palavra-passe.",
+      "Continua o trabalho no ecrã de Treino — mais novidades em breve.",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.0",
     title: "Menu de Definições e nome na barra de navegação",
     changes: [
