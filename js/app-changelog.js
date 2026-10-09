@@ -10,6 +10,16 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.3",
+    title: "Os teus treinos de hoje, num relance",
+    changes: [
+      "Novo: painel \"Treinos de Hoje\" no ecrã de Treino — vê todos os treinos que já fizeste hoje (modo, distância, ritmo médio, calorias e XP), sempre atualizado sozinho.",
+      "Ajustes visuais nos ecrãs de Entrar, Criar Conta e Recuperar Palavra-passe.",
+      "Corrigido: depois de uma atualização da app, por vezes entrava sem pedir login mas com o nome/nível em branco e sem conseguir guardar o treino. Agora pede sempre para entrares de novo depois de uma atualização.",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.2",
     title: "Nunca mais perder um treino",
     changes: [
