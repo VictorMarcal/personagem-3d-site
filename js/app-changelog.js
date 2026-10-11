@@ -10,6 +10,15 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.4",
+    title: "Novo painel Perfil",
+    changes: [
+      "Novo: painel \"Perfil\" (4ª aba, em baixo) com o teu histórico completo de treinos (distância, tempo e número de sessões, por corrida e caminhada) e os teus recordes pessoais.",
+      "Novo: leaderboard geral dentro do Perfil, com os melhores jogadores por XP.",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.3",
     title: "Os teus treinos de hoje, num relance",
     changes: [
