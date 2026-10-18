@@ -10,6 +10,17 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.5",
+    title: "Mapa mais estável, missões mais claras",
+    changes: [
+      "Melhorado: o mapa do Território ficou mais estável a arrastar e a fazer zoom, com o teu ícone de posição agora sempre visível.",
+      "Novo: missões concluídas no mês deixam de desaparecer da lista — ficam no fim, marcadas como \"Concluída\".",
+      "Novo: quando já tens 3 missões ativas escolhidas, as outras ficam claramente marcadas como \"Bloqueada\".",
+      "Pequenos ajustes visuais nas missões (recompensa e unidade de progresso mais claras).",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.4",
     title: "Novo painel Perfil",
     changes: [
