@@ -10,6 +10,17 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.6",
+    title: "O apontador segue-te a sério",
+    changes: [
+      "Novo: o teu ícone de posição no mapa segue agora a direção real do movimento enquanto corres/andas, não só a orientação do telemóvel.",
+      "Corrigido: alguns recordes de velocidade pessoal podiam aparecer com valores impossíveis depois de treinar com o ecrã bloqueado.",
+      "Melhorado: ícones de recursos no mapa maiores e mais fáceis de ver.",
+      "Melhorado: texto das missões mais limpo (já não repete a unidade duas vezes).",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.5",
     title: "Mapa mais estável, missões mais claras",
     changes: [
