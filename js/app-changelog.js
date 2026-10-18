@@ -10,6 +10,17 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.8",
+    title: "Missões em tempo real",
+    changes: [
+      "Novo: o progresso das missões (quilómetros, hexágonos) atualiza-se agora ao vivo durante o treino, sem precisares de esperar até ao fim.",
+      "Melhorado: gráfico de evolução do peso mais claro e mais bonito.",
+      "Novo: o botão de registar peso mostra quanto tempo falta até poderes voltar a registar.",
+      "Corrigido: o recorde de \"melhor corrida\" podia aparecer igual ao de \"melhor caminhada\" por um erro no cálculo - agora reflete mesmo a tua melhor corrida.",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.6",
     title: "O apontador segue-te a sério",
     changes: [
