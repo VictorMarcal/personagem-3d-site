@@ -120,13 +120,31 @@ btnLoginBack.addEventListener("click", showLandingView);
 // "remove a opção de login da landing, passa a só um campo de email para
 // pedir para entrar no teste da app mobile") -------------------------------
 //
-// Sem conta nem sessao: so grava o email em app_testers (supabase/schema.sql).
+// Sem conta nem sessao: grava o email em app_testers (supabase/schema.sql)
+// através da Edge Function submit-tester-request (2026-10-22) - essa
+// função é que confirma o Cloudflare Turnstile e insere com a service
+// role key; o anon key do site já não consegue inserir diretamente na
+// tabela (policy "app_testers_insert_anyone" removida nesse mesmo dia).
 // O Victor acrescenta esse email a mao na lista de testers do Firebase App
 // Distribution (sistema que ja usamos para distribuir builds aos jogadores).
 const formTesterRequestEl = document.getElementById("form-tester-request");
 const testerRequestEmailEl = document.getElementById("tester-request-email");
+const testerRequestWebsiteEl = document.getElementById("tester-request-website");
 const btnTesterRequestSubmit = document.getElementById("btn-tester-request-submit");
 const testerRequestStatusEl = document.getElementById("tester-request-status");
+
+// Anti-spam (2026-10-22, reportado - pedidos com emails de padrão
+// suspeito tipo "uq.o.hah.i.h.e.jo45@gmail.com"): duas defesas sem
+// dependências externas, as duas só detetam bots GENÉRICOS (um bot feito
+// de propósito para este formulário pode simular as duas à vontade - sem
+// isso, só um CAPTCHA a sério resolve).
+// 1) Campo-isco: #tester-request-website, escondido via CSS - pessoas
+//    nunca o preenchem, bots que preenchem tudo às cegas preenchem.
+// 2) Tempo mínimo: marca quando a página carregou, rejeita envios
+//    suspeitosamente rápidos a seguir (bots costumam submeter
+//    instantaneamente, sem o atraso "humano" de ler/escrever).
+const testerRequestPageLoadedAt = Date.now();
+const MIN_TESTER_REQUEST_SECONDS = 2;
 
 formTesterRequestEl.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -138,15 +156,46 @@ formTesterRequestEl.addEventListener("submit", async (event) => {
     return;
   }
 
+  // Bot apanhado - finge sucesso (não dá pista nenhuma sobre o que falhou,
+  // para não ajudar a próxima tentativa a contornar isto) e não grava nada.
+  const isSuspicious =
+    testerRequestWebsiteEl.value.trim() !== "" ||
+    (Date.now() - testerRequestPageLoadedAt) / 1000 < MIN_TESTER_REQUEST_SECONDS;
+  if (isSuspicious) {
+    formTesterRequestEl.reset();
+    testerRequestStatusEl.textContent = "Pedido recebido! Avisamos por email quando a beta da app abrir.";
+    return;
+  }
+
+  // Campo escondido que o próprio widget Turnstile injeta no <form>
+  // quando resolvido (ver o <div class="cf-turnstile"> no index.html).
+  const turnstileToken = formTesterRequestEl.querySelector('[name="cf-turnstile-response"]')?.value;
+  if (!turnstileToken) {
+    testerRequestStatusEl.textContent = "Aguarda um momento e tenta novamente (verificação ainda a carregar).";
+    testerRequestStatusEl.classList.add("auth-status-error");
+    return;
+  }
+
   btnTesterRequestSubmit.disabled = true;
   testerRequestStatusEl.textContent = "";
 
-  const { error } = await supabaseClient.from("app_testers").insert({ email });
+  const { data, error } = await supabaseClient.functions.invoke("submit-tester-request", {
+    body: { email, turnstileToken },
+  });
+
+  // Token do Turnstile é de uso único - qualquer tentativa (sucesso ou
+  // falha) precisa de um novo antes do próximo envio.
+  if (window.turnstile) window.turnstile.reset();
 
   btnTesterRequestSubmit.disabled = false;
   if (error) {
+    // supabase-js devolve o corpo da resposta (status != 2xx) dentro de
+    // error.context (um Response), nunca em "data" - é lá que a função
+    // manda { error: "duplicate" | "turnstile_failed" | ... }.
+    let errorCode = null;
+    try { errorCode = (await error.context.json()).error; } catch { /* resposta sem JSON - ignora */ }
     testerRequestStatusEl.textContent =
-      error.code === "23505" ? "Esse email já está na lista — não precisas de repetir." : "Não foi possível guardar. Tenta novamente.";
+      errorCode === "duplicate" ? "Esse email já está na lista — não precisas de repetir." : "Não foi possível guardar. Tenta novamente.";
     testerRequestStatusEl.classList.add("auth-status-error");
     return;
   }

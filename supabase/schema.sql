@@ -491,8 +491,8 @@ alter table public.player_progress
 -- Android nativa. Sem conta nem sessao nenhuma envolvida; o Victor acrescenta
 -- cada email a mao na lista de testers do Firebase App Distribution (sistema
 -- que ja usamos para distribuir builds). Sem policy de select: so o service
--- role (dashboard do Supabase) le esta lista - o anon key usado pelo site so
--- pode inserir, nunca ver os emails de outras pessoas.
+-- role (dashboard do Supabase) le esta lista - o anon key usado pelo site
+-- nunca ve os emails de outras pessoas.
 create table public.app_testers (
   id bigint generated always as identity primary key,
   email text not null unique,
@@ -501,5 +501,14 @@ create table public.app_testers (
 
 alter table public.app_testers enable row level security;
 
-create policy "app_testers_insert_anyone" on public.app_testers
-  for insert with check (true);
+-- "app_testers_insert_anyone" (insert direto pelo anon key, sem nenhuma
+-- verificacao) removida 2026-10-22 - pedidos com emails de padrao
+-- suspeito tipo "uq.o.hah.i.h.e.jo45@gmail.com" (padrao tipico de bot,
+-- pontos a mais que o Gmail ignora) mostraram que isto nao travava bots a
+-- inserir diretamente na tabela, sem sequer passar pelo site. A partir
+-- daqui, o unico caminho para gravar um pedido novo e a Edge Function
+-- supabase/functions/submit-tester-request (confirma um token do
+-- Cloudflare Turnstile junto da propria Cloudflare, so depois insere com
+-- a service role key, que ignora RLS) - sem policy de insert nenhuma
+-- aqui, de proposito.
+--   drop policy if exists "app_testers_insert_anyone" on public.app_testers;

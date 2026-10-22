@@ -44,6 +44,9 @@
        DEPOIS do style.css de propósito — só sobrepõe o que muda. -->
   <link rel="stylesheet" href="css/campo-aberto-v6.css?v=20260921a">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Cloudflare Turnstile (2026-10-22) - widget do formulário "Pedir
+       para testar" (ver #tester-request-website mais abaixo). -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
   <div id="rotate-overlay">
@@ -135,11 +138,22 @@
         <p class="landing-sub">Estamos a testar a app nativa para Android (secção acima) e precisamos de jogadores para a experimentar. Deixa o teu email para te adicionarmos à lista de testers — é só o que precisamos para te dar acesso.</p>
         <form id="form-tester-request" class="auth-email-form" novalidate>
           <input type="email" id="tester-request-email" class="auth-input" placeholder="O teu email" autocomplete="email" required>
+          <!-- Campo-isco anti-spam (2026-10-22) - escondido para pessoas,
+               mas bots genéricos que preenchem tudo às cegas acabam por
+               preencher. Nome comum o suficiente para atrair um bot
+               ("website"), sem ser óbvio de mais. Nunca mostrado a
+               ninguém - ver .tester-request-honeypot no style.css e a
+               verificação em js/auth.js. -->
+          <input type="text" id="tester-request-website" name="website" class="tester-request-honeypot" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <!-- Cloudflare Turnstile (2026-10-22) - 3ª camada anti-spam, a
+               única que protege mesmo contra um pedido feito diretamente
+               à API do Supabase (sem passar pelo site). O widget injeta
+               sozinho um campo escondido "cf-turnstile-response" dentro
+               deste <form> quando resolvido - js/auth.js só vai buscá-lo. -->
+          <div class="cf-turnstile" data-sitekey="0x4AAAAAAFhQmxnP0ToBa0BT"></div>
           <button type="submit" id="btn-tester-request-submit" class="btn-primary auth-provider-btn">Pedir para testar</button>
         </form>
         <p id="tester-request-status" class="debug-status"></p>
-        <button type="button" id="btn-install-app" class="btn-secondary landing-install" hidden>Instalar a app</button>
-        <p id="install-app-hint" class="landing-install-hint" hidden></p>
       </section>
 
       <footer class="landing-footer">Bootlands · feito em Portugal</footer>
@@ -792,7 +806,6 @@
   <script src="js/missions.js?v=20260929a"></script>
   <script src="js/orientation.js?v=20260930a"></script>
   <script src="js/nav.js?v=20260920b"></script>
-  <script src="js/install.js?v=20260929a"></script>
   <script src="js/settings.js?v=20260929b"></script>
   <script src="js/app-changelog.js?v=20261007a"></script>
   <script>

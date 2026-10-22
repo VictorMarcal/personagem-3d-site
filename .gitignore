@@ -25,3 +25,7 @@ android/app/*.iml
 *.keystore
 *.jks
 android/keystore.properties
+
+# Supabase CLI - estado local de "supabase login"/"link" (project-ref,
+# versoes dos servicos, etc.), nunca codigo fonte
+supabase/.temp/

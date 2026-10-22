@@ -10,6 +10,17 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.9",
+    title: "Medalhas de corrida",
+    changes: [
+      "Novo: medalhas de corrida no Perfil - 1 milha abaixo dos 9/8/7 min, 5km abaixo dos 30 min, 10km abaixo dos 50 min, meia maratona e maratona.",
+      "Novo: o leaderboard mostra agora a tua posição (#1, #2...) e o teu nível em cada linha.",
+      "Corrigido: as calorias/XP ganhos durante um treino podiam parar de contar se bloqueasses o ecrã - agora continuam a somar-se corretamente mesmo com o telemóvel em segundo plano.",
+      "Melhorado: ícones de recursos no mapa ainda maiores.",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.8",
     title: "Missões em tempo real",
     changes: [
