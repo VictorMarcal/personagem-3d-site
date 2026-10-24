@@ -10,6 +10,22 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.12",
+    title: "Mais medalhas, missões novas e mapa mais esperto",
+    changes: [
+      "Novo: mais 6 medalhas - percorrer 5, 10 ou 15 km numa sessão só, e subir 100, 300 ou 500 m de altitude numa sessão.",
+      "Novo: visualizador de medalhas - toca numa medalha já ganha para veres a descrição, a data e o concelho onde a conquistaste.",
+      "Novo: duas missões novas - \"encontra uma mina de...\" e \"desbloqueia um concelho\" (entra num concelho sem nenhum hexágono descoberto e percorre pelo menos 3 km nessa sessão).",
+      "Novo: a dificuldade e a recompensa das missões sobem com o teu nível.",
+      "Novo: ao terminar um treino, vês uma pré-visualização antes de gravar - confirma logo, ou deixa gravar sozinho ao fim de alguns segundos.",
+      "Novo: o mapa mostra agora o nome do concelho onde estás e quantos hexágonos já descobriste lá, de quantos no total.",
+      "Corrigido: um treino com corrida e caminhada misturadas só mostrava um dos dois modos, com o passe errado - agora aparecem os dois separados, cada um com o seu passe certo.",
+      "Corrigido: o marcador no mapa podia \"saltar\" e perder hexágonos se desbloqueasses o telemóvel a meio do treino - já não perde nada.",
+      "Corrigido: o mapa podia aparecer esticado em alguns ecrãs - já não acontece.",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.9",
     title: "Medalhas de corrida",
     changes: [
