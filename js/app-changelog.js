@@ -10,6 +10,18 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.14",
+    title: "Mais estável, mais caminhada",
+    changes: [
+      "Corrigido: um erro raro podia fazer um treino inteiro perder-se sem nenhum aviso - já não acontece, o treino grava-se sempre.",
+      "Corrigido: o card do fim do treino (no Relatório e ao terminar um treino) mostra agora o modo predominante, com o passe sempre certo.",
+      "Corrigido: \"Áreas\" no card do treino mostra o número certo de hexágonos descobertos.",
+      "Corrigido: o mini-painel do concelho no mapa já atualiza os hexágonos descobertos ao vivo, durante o próprio treino.",
+      "Novo: mais 5 medalhas de distância - 5, 10 e 15 km, meia maratona e maratona, agora também a caminhar.",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.12",
     title: "Mais medalhas, missões novas e mapa mais esperto",
     changes: [
@@ -17,7 +29,7 @@ const APP_CHANGELOG = [
       "Novo: visualizador de medalhas - toca numa medalha já ganha para veres a descrição, a data e o concelho onde a conquistaste.",
       "Novo: duas missões novas - \"encontra uma mina de...\" e \"desbloqueia um concelho\" (entra num concelho sem nenhum hexágono descoberto e percorre pelo menos 3 km nessa sessão).",
       "Novo: a dificuldade e a recompensa das missões sobem com o teu nível.",
-      "Novo: ao terminar um treino, vês uma pré-visualização antes de gravar - confirma logo, ou deixa gravar sozinho ao fim de alguns segundos.",
+      "Novo: ao terminar um treino, vês um resumo do que acabaste de fazer.",
       "Novo: o mapa mostra agora o nome do concelho onde estás e quantos hexágonos já descobriste lá, de quantos no total.",
       "Corrigido: um treino com corrida e caminhada misturadas só mostrava um dos dois modos, com o passe errado - agora aparecem os dois separados, cada um com o seu passe certo.",
       "Corrigido: o marcador no mapa podia \"saltar\" e perder hexágonos se desbloqueasses o telemóvel a meio do treino - já não perde nada.",
