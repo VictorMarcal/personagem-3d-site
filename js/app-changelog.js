@@ -10,6 +10,17 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.15",
+    title: "Leaderboard com medalhas, mapa mais limpo",
+    changes: [
+      "Novo: a tabela do Leaderboard mostra agora as medalhas mais recentes de cada jogador.",
+      "Corrigido: medalhas já desbloqueadas não estavam a chegar ao Leaderboard - agora aparecem sempre, mal sejam conquistadas.",
+      "Corrigido: o marcador \"estás aqui\" e os ícones de recursos no mapa apareciam por baixo do nevoeiro - agora aparecem sempre por cima.",
+      "Corrigido: a app já não mostra o ecrã errado por um instante ao abrir, antes de ires para o login.",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.14",
     title: "Mais estável, mais caminhada",
     changes: [
