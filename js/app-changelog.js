@@ -10,6 +10,15 @@
 // screencap`) a pedido, nunca inventados.
 const APP_CHANGELOG = [
   {
+    version: "v0.1.16",
+    title: "Leaderboard mais estável",
+    changes: [
+      "Corrigido: a tabela do Leaderboard podia falhar a abrir, dependendo das medalhas de cada jogador - já não acontece.",
+      "Pequenos retoques visuais nas medalhas.",
+    ],
+    screenshots: [],
+  },
+  {
     version: "v0.1.15",
     title: "Leaderboard com medalhas, mapa mais limpo",
     changes: [
